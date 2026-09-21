@@ -1,0 +1,437 @@
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { DEMO_MODE_DEFAULT } from '../config/flags';
+import { buildDemoDataset } from '../demo/seed';
+import { settleRound } from '../domain/engine';
+import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
+import type {
+  Course,
+  GameKey,
+  GameOptions,
+  Group,
+  Hole,
+  JunkKind,
+  Player,
+  PlayerId,
+  Round,
+  Settlement,
+} from '../domain/types';
+import { clearDataset, loadDataset, loadSettings, saveDataset, saveSettings } from './persistence';
+
+interface Dataset {
+  groups: Group[];
+  courses: Course[];
+  rounds: Round[];
+  activeGroupId: string | null;
+  activeRoundId: string | null;
+}
+
+interface AppState extends Dataset {
+  ready: boolean;
+  demoMode: boolean;
+}
+
+export interface AppStore extends AppState {
+  // Derived
+  group: Group | null;
+  course: Course | null;
+  round: Round | null;
+  settlement: Settlement | null;
+
+  // Mode
+  setDemoMode(on: boolean): void;
+  resetDemoData(): void;
+  eraseLiveData(): void;
+
+  // Groups and players
+  createGroup(name: string): Group;
+  updateGroup(id: string, patch: Partial<Group>): void;
+  deleteGroup(id: string): void;
+  setActiveGroup(id: string): void;
+  addPlayer(groupId: string, player: Player): void;
+  updatePlayer(groupId: string, playerId: PlayerId, patch: Partial<Player>): void;
+  removePlayer(groupId: string, playerId: PlayerId): void;
+
+  // Courses
+  createCourse(course: Course): void;
+  updateCourse(id: string, patch: Partial<Course>): void;
+  updateHole(courseId: string, holeIndex: number, patch: Partial<Hole>): void;
+  deleteCourse(id: string): void;
+
+  // Rounds
+  startRound(round: Round): void;
+  setActiveRound(id: string | null): void;
+  completeRound(id: string): void;
+  reopenRound(id: string): void;
+  deleteRound(id: string): void;
+
+  // Live round edits
+  setScore(playerId: PlayerId, hole: number, value: number | null): void;
+  bumpScore(playerId: PlayerId, hole: number, delta: number): void;
+  setPops(playerId: PlayerId, pops: number): void;
+  toggleJunk(hole: number, playerId: PlayerId, kind: JunkKind): void;
+  toggleGame(key: GameKey): void;
+  setStake(key: GameKey, cents: number): void;
+  setOptions(patch: Partial<GameOptions>): void;
+  addPress(by: PlayerId, against: PlayerId, startHole: number, endHole: number, stake: number): void;
+  removePress(pressId: string): void;
+  setWolfPick(hole: number, wolf: PlayerId, partner: PlayerId | null): void;
+  setRoundPlayers(playerIds: PlayerId[]): void;
+}
+
+const EMPTY_STATE: AppState = {
+  ready: false,
+  demoMode: DEMO_MODE_DEFAULT,
+  groups: [],
+  courses: [],
+  rounds: [],
+  activeGroupId: null,
+  activeRoundId: null,
+};
+
+const StoreContext = createContext<AppStore | null>(null);
+
+export function AppStoreProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AppState>(EMPTY_STATE);
+  // Writes are debounced, so a burst of +/- taps doesn't hammer AsyncStorage.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persist = useCallback((next: AppState) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void saveDataset(next.demoMode, {
+        groups: next.groups,
+        courses: next.courses,
+        rounds: next.rounds,
+        activeGroupId: next.activeGroupId,
+        activeRoundId: next.activeRoundId,
+      });
+    }, 250);
+  }, []);
+
+  /** Every mutation goes through here so nothing can change state without being saved. */
+  const commit = useCallback(
+    (fn: (prev: AppState) => AppState) => {
+      setState((prev) => {
+        const next = fn(prev);
+        if (next === prev) return prev;
+        persist(next);
+        return next;
+      });
+    },
+    [persist],
+  );
+
+  // Initial load.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const settings = await loadSettings({
+        demoMode: DEMO_MODE_DEFAULT,
+        activeGroupId: null,
+        activeRoundId: null,
+      });
+      const dataset = await hydrate(settings.demoMode);
+      if (cancelled) return;
+      setState({ ready: true, demoMode: settings.demoMode, ...dataset });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setDemoMode = useCallback((on: boolean) => {
+    setState((prev) => ({ ...prev, ready: false }));
+    void (async () => {
+      const dataset = await hydrate(on);
+      await saveSettings({ demoMode: on, activeGroupId: dataset.activeGroupId, activeRoundId: dataset.activeRoundId });
+      setState({ ready: true, demoMode: on, ...dataset });
+    })();
+  }, []);
+
+  const store = useMemo<AppStore>(() => {
+    const group = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;
+    const round = state.rounds.find((r) => r.id === state.activeRoundId) ?? null;
+    const course = round ? state.courses.find((c) => c.id === round.courseId) ?? null : null;
+
+    let settlement: Settlement | null = null;
+    if (round && course && group) {
+      settlement = settleRound(round, course, group.players);
+    }
+
+    /** Applies a patch to the active round. No active round means the call is a no-op. */
+    const patchRound = (fn: (r: Round) => Round) =>
+      commit((prev) => {
+        if (!prev.activeRoundId) return prev;
+        const idx = prev.rounds.findIndex((r) => r.id === prev.activeRoundId);
+        if (idx < 0) return prev;
+        const rounds = prev.rounds.slice();
+        rounds[idx] = fn(rounds[idx]);
+        return { ...prev, rounds };
+      });
+
+    return {
+      ...state,
+      group,
+      course,
+      round,
+      settlement,
+
+      setDemoMode,
+      resetDemoData: () => {
+        void (async () => {
+          await clearDataset(true);
+          if (state.demoMode) {
+            const dataset = await hydrate(true);
+            setState((prev) => ({ ...prev, ...dataset }));
+          }
+        })();
+      },
+      eraseLiveData: () => {
+        void (async () => {
+          await clearDataset(false);
+          if (!state.demoMode) {
+            setState((prev) => ({
+              ...prev,
+              groups: [],
+              courses: [],
+              rounds: [],
+              activeGroupId: null,
+              activeRoundId: null,
+            }));
+          }
+        })();
+      },
+
+      createGroup: (name) => {
+        const created: Group = {
+          id: makeId('g'),
+          name,
+          players: [],
+          youId: null,
+          defaultCourseId: null,
+          subtitle: '',
+          createdAt: Date.now(),
+        };
+        commit((prev) => ({ ...prev, groups: [...prev.groups, created], activeGroupId: created.id }));
+        return created;
+      },
+      updateGroup: (id, patch) =>
+        commit((prev) => ({
+          ...prev,
+          groups: prev.groups.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+        })),
+      deleteGroup: (id) =>
+        commit((prev) => {
+          const groups = prev.groups.filter((g) => g.id !== id);
+          const rounds = prev.rounds.filter((r) => r.groupId !== id);
+          const activeGroupId = prev.activeGroupId === id ? groups[0]?.id ?? null : prev.activeGroupId;
+          const activeRoundId = rounds.some((r) => r.id === prev.activeRoundId) ? prev.activeRoundId : null;
+          return { ...prev, groups, rounds, activeGroupId, activeRoundId };
+        }),
+      setActiveGroup: (id) => commit((prev) => ({ ...prev, activeGroupId: id })),
+
+      addPlayer: (groupId, player) =>
+        commit((prev) => ({
+          ...prev,
+          groups: prev.groups.map((g) =>
+            g.id === groupId
+              ? { ...g, players: [...g.players, player], youId: g.youId ?? player.id }
+              : g,
+          ),
+        })),
+      updatePlayer: (groupId, playerId, patch) =>
+        commit((prev) => ({
+          ...prev,
+          groups: prev.groups.map((g) =>
+            g.id === groupId
+              ? { ...g, players: g.players.map((p) => (p.id === playerId ? { ...p, ...patch } : p)) }
+              : g,
+          ),
+        })),
+      removePlayer: (groupId, playerId) =>
+        commit((prev) => {
+          const groups = prev.groups.map((g) => {
+            if (g.id !== groupId) return g;
+            const players = g.players.filter((p) => p.id !== playerId);
+            return { ...g, players, youId: g.youId === playerId ? players[0]?.id ?? null : g.youId };
+          });
+          // Drop them from any round that has not been settled; completed rounds
+          // keep their history so the season ledger stays truthful.
+          const rounds = prev.rounds.map((r) => {
+            if (r.groupId !== groupId || r.status === 'completed' || !r.playerIds.includes(playerId)) return r;
+            const playerIds = r.playerIds.filter((id) => id !== playerId);
+            const course = prev.courses.find((c) => c.id === r.courseId);
+            return reconcileRound({ ...r, playerIds }, course?.holes.length ?? 18);
+          });
+          return { ...prev, groups, rounds };
+        }),
+
+      createCourse: (created) =>
+        commit((prev) => ({ ...prev, courses: [...prev.courses, created] })),
+      updateCourse: (id, patch) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        })),
+      updateHole: (courseId, holeIndex, patch) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => {
+            if (c.id !== courseId) return c;
+            const holes = c.holes.slice();
+            holes[holeIndex] = { ...holes[holeIndex], ...patch };
+            return { ...c, holes };
+          }),
+        })),
+      deleteCourse: (id) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.filter((c) => c.id !== id),
+          groups: prev.groups.map((g) =>
+            g.defaultCourseId === id ? { ...g, defaultCourseId: null } : g,
+          ),
+        })),
+
+      startRound: (created) =>
+        commit((prev) => ({
+          ...prev,
+          rounds: [...prev.rounds, created],
+          activeRoundId: created.id,
+          activeGroupId: created.groupId,
+        })),
+      setActiveRound: (id) => commit((prev) => ({ ...prev, activeRoundId: id })),
+      completeRound: (id) =>
+        commit((prev) => ({
+          ...prev,
+          rounds: prev.rounds.map((r) =>
+            r.id === id ? { ...r, status: 'completed' as const, completedAt: Date.now() } : r,
+          ),
+          activeRoundId: prev.activeRoundId === id ? null : prev.activeRoundId,
+        })),
+      reopenRound: (id) =>
+        commit((prev) => ({
+          ...prev,
+          rounds: prev.rounds.map((r) =>
+            r.id === id ? { ...r, status: 'active' as const, completedAt: null } : r,
+          ),
+          activeRoundId: id,
+        })),
+      deleteRound: (id) =>
+        commit((prev) => ({
+          ...prev,
+          rounds: prev.rounds.filter((r) => r.id !== id),
+          activeRoundId: prev.activeRoundId === id ? null : prev.activeRoundId,
+        })),
+
+      setScore: (playerId, hole, value) =>
+        patchRound((r) => {
+          const row = (r.scores[playerId] ?? []).slice();
+          row[hole] = value;
+          return { ...r, scores: { ...r.scores, [playerId]: row } };
+        }),
+      bumpScore: (playerId, hole, delta) =>
+        patchRound((r) => {
+          const row = (r.scores[playerId] ?? []).slice();
+          const current = row[hole];
+          // First tap from blank lands on par, not on 1 or 13.
+          const par = course?.holes[hole]?.par ?? 4;
+          const base = current == null ? par - delta : current;
+          row[hole] = Math.max(1, Math.min(20, base + delta));
+          return { ...r, scores: { ...r.scores, [playerId]: row } };
+        }),
+      setPops: (playerId, pops) =>
+        patchRound((r) => ({
+          ...r,
+          pops: { ...r.pops, [playerId]: Math.max(0, Math.min(54, Math.round(pops))) },
+        })),
+      toggleJunk: (hole, playerId, kind) =>
+        patchRound((r) => {
+          const key = `${hole}:${playerId}:${kind}`;
+          const junk = { ...r.junk };
+          if (junk[key]) delete junk[key];
+          else junk[key] = true;
+          return { ...r, junk };
+        }),
+      toggleGame: (key) =>
+        patchRound((r) => {
+          const on = !r.games[key].on;
+          const games = { ...r.games, [key]: { ...r.games[key], on } };
+          // Turning on a team game with no sides set picks the obvious default
+          // rather than leaving the format silently unable to pay.
+          let options = r.options;
+          if (on && (key === 'bestball' || key === 'vegas') && options.teams.length < 2) {
+            options = { ...options, teams: defaultTeams(r.playerIds) };
+          }
+          return { ...r, games, options };
+        }),
+      setStake: (key, cents) =>
+        patchRound((r) => ({
+          ...r,
+          games: { ...r.games, [key]: { ...r.games[key], stake: Math.max(0, Math.round(cents)) } },
+        })),
+      setOptions: (patch) => patchRound((r) => ({ ...r, options: { ...r.options, ...patch } })),
+      addPress: (by, against, startHole, endHole, stake) =>
+        patchRound((r) => ({
+          ...r,
+          presses: [...r.presses, { id: makeId('press'), by, against, startHole, endHole, stake }],
+        })),
+      removePress: (pressId) =>
+        patchRound((r) => ({ ...r, presses: r.presses.filter((p) => p.id !== pressId) })),
+      setWolfPick: (hole, wolf, partner) =>
+        patchRound((r) => {
+          const picks = r.wolfPicks.filter((p) => p.hole !== hole);
+          return { ...r, wolfPicks: [...picks, { hole, wolf, partner }].sort((a, b) => a.hole - b.hole) };
+        }),
+      setRoundPlayers: (playerIds) =>
+        patchRound((r) => reconcileRound({ ...r, playerIds }, course?.holes.length ?? 18)),
+    };
+  }, [state, commit, setDemoMode]);
+
+  // Keep the demo/live preference and the active pointers in sync on disk.
+  useEffect(() => {
+    if (!state.ready) return;
+    void saveSettings({
+      demoMode: state.demoMode,
+      activeGroupId: state.activeGroupId,
+      activeRoundId: state.activeRoundId,
+    });
+  }, [state.ready, state.demoMode, state.activeGroupId, state.activeRoundId]);
+
+  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
+}
+
+/**
+ * Loads a dataset, seeding the demo one the first time it is opened.
+ *
+ * Live mode is never seeded — an empty app is the correct starting state for a
+ * real group, and inventing players for them would poison their ledger.
+ */
+async function hydrate(demoMode: boolean): Promise<Dataset> {
+  const stored = await loadDataset(demoMode);
+  if (demoMode && stored.groups.length === 0) {
+    const seeded = buildDemoDataset();
+    await saveDataset(true, seeded);
+    return seeded;
+  }
+  return {
+    groups: stored.groups,
+    courses: stored.courses,
+    rounds: stored.rounds,
+    activeGroupId: stored.activeGroupId,
+    activeRoundId: stored.activeRoundId,
+  };
+}
+
+export function useStore(): AppStore {
+  const store = useContext(StoreContext);
+  if (!store) throw new Error('useStore must be used inside AppStoreProvider');
+  return store;
+}

@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Press",
+    "slug": "press-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "press",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0C120E",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.press.golf"
+    },
+    "android": {
+      "package": "com.press.golf",
+      "adaptiveIcon": {
+        "backgroundColor": "#0C120E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-system-ui",
+        {
+          "backgroundColor": "#0C120E"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
