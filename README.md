@@ -26,11 +26,17 @@ npx expo start        # scan the QR: iOS Camera app, Android via Expo Go
 Your phone and your computer need to be on the same Wi-Fi. If they are not, or
 the QR sits there spinning, use `npx expo start --tunnel`.
 
+You will land on the Saturday Dogs demo — a fourball through eleven holes.
+**Settings → Group → Pine Hollow Society** switches to the twenty-man outing
+with the field pots running.
+
 ### For testing on an actual course
 
 Expo Go runs the app off your laptop's dev server, which is no use standing on
-the twelfth tee. For that you want a standalone build — it installs like any
-other app and needs nothing running.
+the twelfth tee. It also cannot test the behaviour that matters most out there:
+kill the Wi-Fi and Expo Go stops, where a real build would keep scoring and
+queue the edits. For anything resembling a real round you want a standalone
+build — it installs like any other app and needs nothing running.
 
 ```bash
 npm install -g eas-cli
@@ -55,6 +61,23 @@ npm run typecheck # tsc --noEmit
 npm run lint      # eslint
 npx expo-doctor   # dependency and config sanity
 ```
+
+### What has and has not been verified
+
+Verified: 71 tests over the money math and the sync logic, a clean typecheck and
+lint, bundles for both iOS and Android, a headless run through every route with
+no runtime errors, and the SQL schema's row-level security exercised against a
+real Postgres.
+
+**Not verified: any of it on real hardware.** Nothing here has run on a phone.
+Two things to eyeball first, because a headless browser cannot judge them:
+
+- **Touch targets.** The score steppers carry hit-slop for cold or gloved
+  hands, but that is a guess until a thumb lands on one.
+- **The floating tab bar against real safe areas.** It reads the actual insets
+  rather than hard-coding them, but a notch and a punch-hole are worth seeing.
+
+Also unverified: the live Supabase wire (see [Multiplayer scoring](#multiplayer-scoring)).
 
 ## Demo mode
 
@@ -254,6 +277,9 @@ app meant changing some things on purpose:
   SQL schema and its row-level security were exercised against a real Postgres.
   But nothing here has talked to an actual Supabase project — that needs a
   provisioned project and two phones.
+- **Nothing has run on a phone yet.** Bundled for both platforms and driven
+  headlessly, but never on real hardware — see
+  [What has and has not been verified](#what-has-and-has-not-been-verified).
 - **No presence or activity feed yet.** You can see that a group is `THRU 12`,
   but not who is typing right now or who entered a given score.
 - **Web is for previewing only.** `react-native-web` is installed and the app
