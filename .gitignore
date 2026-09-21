@@ -30,8 +30,11 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# local env files. `.env*.local` alone does not cover a plain `.env`,
+# which is the one that would hold resolved Supabase keys.
+.env
+.env.*
+!.env.op
 
 # typescript
 *.tsbuildinfo

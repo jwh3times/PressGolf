@@ -172,7 +172,28 @@ without one.
 
 1. Create a Supabase project.
 2. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
-3. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+3. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
+   item called `Supabase`:
+
+   ```bash
+   op item create --vault PressGolf --category "API Credential" --title Supabase \
+     url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
+   ```
+
+4. Start with the two injected: `npm run start:op`, which wraps
+   `op run --env-file=.env.op -- expo start`. [`.env.op`](.env.op) holds
+   `op://` references rather than values, so it is committed and no key is
+   ever written into the working tree. Plain `npm start` still works — without
+   the variables the app is simply local-only.
+
+Both variables are `EXPO_PUBLIC_`, so they are compiled into the bundle. The
+anon key is *meant* to be public; row-level security is what actually guards
+the data. The vault keeps the pair out of git and gives one source of truth —
+it does not make them secret from anyone holding a build.
+
+Cloud builds cannot reach your local 1Password, so EAS needs the same two
+values set as EAS environment variables against the `preview` and `production`
+profiles before a build can talk to Supabase.
 
 Sign-in is anonymous — nobody types an email on the first tee. The organiser
 gets a six-character join code (no `O`/`0` or `I`/`1`, because people read them
