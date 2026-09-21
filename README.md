@@ -11,25 +11,50 @@ Scales from a fourball to a twenty-man society: field-wide pots across everyone
 who buys in, split into foursomes that each run their own games, with four
 phones scoring the same day at once.
 
-## Running it
+## Running it on a phone
+
+Every native module here ships inside **Expo Go**, so there is nothing to
+compile to try it.
 
 ```bash
+git clone https://github.com/jwh3times/PressGolf.git
+cd PressGolf
 npm install
-npx expo start          # then scan the QR with Expo Go
-npx expo start --android
-npx expo start --ios    # needs macOS, or use Expo Go
+npx expo start        # scan the QR: iOS Camera app, Android via Expo Go
 ```
 
-Checks:
+Your phone and your computer need to be on the same Wi-Fi. If they are not, or
+the QR sits there spinning, use `npx expo start --tunnel`.
+
+### For testing on an actual course
+
+Expo Go runs the app off your laptop's dev server, which is no use standing on
+the twelfth tee. For that you want a standalone build — it installs like any
+other app and needs nothing running.
+
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+eas build --profile preview --platform android   # .apk, install directly
+eas build --profile preview --platform ios       # needs a paid Apple account
+```
+
+Android gives you an APK you can sideload straight away, no developer account.
+iOS internal distribution needs a paid Apple Developer account ($99/yr) to
+register the device — without one, Expo Go is the way on iPhone.
+
+Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
+`android/` are generated — never edit or commit them by hand.
+
+### Checks
 
 ```bash
 npm test          # jest — 71 tests (engine, outings, sync)
 npm run typecheck # tsc --noEmit
 npm run lint      # eslint
+npx expo-doctor   # dependency and config sanity
 ```
-
-Building signed apps needs EAS (`npx eas-cli build`); no Xcode or Android Studio
-required locally. `ios/` and `android/` are generated, so don't commit them by hand.
 
 ## Demo mode
 
