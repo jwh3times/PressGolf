@@ -213,7 +213,16 @@ src/
     (tabs)/         index · format · score · settle
     roster · courses · course/[id] · sides · new-round · history · settings
     new-outing · outing · field-games · groups · join
+scripts/
+  generate-icons.py the icon and splash art, drawn from theme/tokens.ts
 ```
+
+The mark is a flagstick in the cup, in the app's own paper-white and green.
+Every asset in `assets/` — the iOS icon, the splash, the three Android
+adaptive layers and the favicon — comes out of `scripts/generate-icons.py`, so
+they are one shape at different sizes rather than six files to keep in step.
+Re-run it (`pip install Pillow && python3 scripts/generate-icons.py`) after
+changing the mark or the palette.
 
 The engine is deliberately free of React. `settleRound(round, course, roster)`
 takes plain data and returns a settlement, which is why the whole thing is
