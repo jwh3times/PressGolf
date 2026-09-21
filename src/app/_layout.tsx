@@ -12,13 +12,21 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppStoreProvider } from '../store/AppStore';
 import { colors } from '../theme/tokens';
+
+// Must run before the first render, not inside the component, or the native
+// splash is already gone by the time the effect fires. The splash is the
+// loading state: it stays up until the fonts have settled, so there is no
+// flash of system-face text on the way in.
+SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ duration: 300, fade: true });
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -35,6 +43,10 @@ export default function RootLayout() {
   // A font that fails to download should not brick the app — the layout still
   // works on the system face, it just loses the typographic character.
   const ready = fontsLoaded || fontError != null;
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.screen }}>
