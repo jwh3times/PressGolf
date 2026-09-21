@@ -173,17 +173,20 @@ without one.
 1. Create a Supabase project.
 2. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
 3. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
-   item called `Supabase`:
+   item called `Supabase`. Writing needs a token with write access on the
+   vault; the token the app runs under is read-only:
 
    ```bash
-   op item create --vault PressGolf --category "API Credential" --title Supabase \
-     url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
+   OP_SERVICE_ACCOUNT_TOKEN="$OP_WRITE_TOKEN" \
+     op item create --vault PressGolf --category "API Credential" --title Supabase \
+       url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
    ```
 
 4. Start with the two injected: `npm run start:op`, which wraps
-   `op run --env-file=.env.op -- expo start`. [`.env.op`](.env.op) holds
-   `op://` references rather than values, so it is committed and no key is
-   ever written into the working tree. Plain `npm start` still works — without
+   `op run --env-file=.env.op -- expo start`. That only ever reads, so it runs
+   under the default read-only `OP_SERVICE_ACCOUNT_TOKEN`.
+   [`.env.op`](.env.op) holds `op://` references rather than values, so it is
+   committed and no key is ever written into the working tree. Plain `npm start` still works — without
    the variables the app is simply local-only.
 
 Both variables are `EXPO_PUBLIC_`, so they are compiled into the bundle. The
