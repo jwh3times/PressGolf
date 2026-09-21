@@ -1,15 +1,9 @@
 import { FORMATS } from '../formats';
-import type { Cents, Course, GameKey, GameResult, Player, Round, Settlement } from '../types';
+import type { Cents, Course, GameResult, Player, Round, Settlement } from '../types';
 import { GAME_KEYS } from '../types';
 import { RoundContext } from './context';
 import { Ledger, minimiseTransfers } from './ledger';
-import { settleJunk } from './formats/junk';
-import { settleMatch } from './formats/match';
-import { settleNassau } from './formats/nassau';
-import { settleStableford, settleStroke } from './formats/points';
-import { settleSkins } from './formats/skins';
-import { settleBestBall, settleVegas } from './formats/teams';
-import { settleWolf } from './formats/wolf';
+import { runFormat } from './run-format';
 
 export * from './context';
 export * from './ledger';
@@ -19,6 +13,9 @@ export { stablefordTotals } from './formats/points';
 export { validateTeams, vegasNumber } from './formats/teams';
 export { wolfForHole, wolfPickForHole } from './formats/wolf';
 export { allPairings, resolvePairings } from './formats/match';
+export { resolveFieldHole, settleFieldGame } from './formats/field';
+export { buildFieldContext, fieldPotTotal, settleOuting } from './outing';
+export { runFormat } from './run-format';
 
 /**
  * Runs every switched-on format over the round and nets the results down to the
@@ -55,35 +52,6 @@ export function settleRound(round: Round, course: Course, roster: Player[]): Set
     transfers: minimiseTransfers(net),
     thru: ctx.thru(),
   };
-}
-
-function runFormat(
-  key: GameKey,
-  ctx: RoundContext,
-  ledger: Ledger,
-  stake: Cents,
-  round: Round,
-): Pick<GameResult, 'lines' | 'carry' | 'blocked' | 'blockedReason'> {
-  switch (key) {
-    case 'nassau':
-      return settleNassau(ctx, ledger, stake);
-    case 'skins':
-      return settleSkins(ctx, ledger, stake);
-    case 'junk':
-      return settleJunk(ctx, ledger, stake);
-    case 'stableford':
-      return settleStableford(ctx, ledger, stake, round.options);
-    case 'bestball':
-      return settleBestBall(ctx, ledger, stake, round.options);
-    case 'wolf':
-      return settleWolf(ctx, ledger, stake, round.options);
-    case 'vegas':
-      return settleVegas(ctx, ledger, stake, round.options);
-    case 'match':
-      return settleMatch(ctx, ledger, stake, round.options);
-    case 'stroke':
-      return settleStroke(ctx, ledger, stake);
-  }
 }
 
 /**

@@ -78,6 +78,42 @@ export default function SettingsScreen() {
         )}
       </View>
 
+      {/* With more than one group on the phone there has to be a way to move
+          between them — a society Saturday and a regular fourball are different
+          rosters, different ledgers and different days. */}
+      {store.groups.length > 1 ? (
+        <View style={{ gap: 10 }}>
+          <Eyebrow>Group</Eyebrow>
+          {store.groups.map((g) => {
+            const on = g.id === store.group?.id;
+            const liveOuting = store.outings.find(
+              (o) => o.groupId === g.id && o.status === 'active',
+            );
+            return (
+              <Pressable
+                key={g.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={g.name}
+                onPress={() => store.setActiveGroup(g.id)}
+                style={[styles.groupRow, on ? styles.groupRowOn : null]}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.name}>{g.name}</Text>
+                  <Text style={styles.hint}>
+                    {g.players.length} player{g.players.length === 1 ? '' : 's'}
+                    {liveOuting ? ` · ${liveOuting.name} on now` : ''}
+                  </Text>
+                </View>
+                <View style={[styles.check, on ? styles.checkOn : null]}>
+                  {on ? <Text style={styles.checkMark}>✓</Text> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
       <View style={{ gap: 10 }}>
         <Eyebrow>Manage</Eyebrow>
         {[
@@ -85,6 +121,8 @@ export default function SettingsScreen() {
           { label: 'Courses', href: '/courses' as const },
           { label: 'Sides and rivals', href: '/sides' as const },
           { label: 'Round history', href: '/history' as const },
+          { label: 'Set up an outing', href: '/new-outing' as const },
+          { label: 'Join an outing by code', href: '/join' as const },
         ].map((item) => (
           <Pressable
             key={item.href}
@@ -140,4 +178,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   linkText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
+  groupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    backgroundColor: colors.cardDeep,
+    borderWidth: 1,
+    borderColor: line.card,
+    borderRadius: radius.card,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+  },
+  groupRowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+  check: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: line.control,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
 });

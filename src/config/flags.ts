@@ -17,4 +17,8 @@ export function storageNamespace(demoMode: boolean): string {
   return demoMode ? 'press:demo' : 'press:live';
 }
 
-export const STORAGE_VERSION = 1;
+/**
+ * 1 — rounds only.
+ * 2 — outings: a round can belong to a bigger day with field-wide pots.
+ */
+export const STORAGE_VERSION = 2;

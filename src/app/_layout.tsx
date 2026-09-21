@@ -55,6 +55,11 @@ export default function RootLayout() {
               <Stack.Screen name="courses" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="course/[id]" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="new-round" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="new-outing" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="outing" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="field-games" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="groups" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="join" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="sides" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="history" options={{ animation: 'slide_from_right' }} />
             </Stack>

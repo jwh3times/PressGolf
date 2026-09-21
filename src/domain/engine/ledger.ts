@@ -9,12 +9,34 @@ import type { Cents, PlayerId, Transfer } from '../types';
  */
 export class Ledger {
   private readonly matrix: Record<PlayerId, Record<PlayerId, Cents>> = {};
+  /**
+   * Pot games are tracked apart from the pairwise matrix.
+   *
+   * A twenty-man skins pot is not twenty people paying each other — it is
+   * twenty buy-ins going into one pile and coming back out to whoever won
+   * holes. Forcing that through the matrix would invent 380 phantom
+   * transactions and lose the fact that it was one pot.
+   */
+  private readonly pot: Record<PlayerId, Cents> = {};
 
   constructor(private readonly ids: PlayerId[]) {
     for (const a of ids) {
       this.matrix[a] = {};
+      this.pot[a] = 0;
       for (const b of ids) this.matrix[a][b] = 0;
     }
+  }
+
+  /** A player puts their buy-in into a pot. */
+  contribute(player: PlayerId, amount: Cents): void {
+    if (amount <= 0 || this.pot[player] == null) return;
+    this.pot[player] -= Math.round(amount);
+  }
+
+  /** A player takes money back out of a pot. */
+  award(player: PlayerId, amount: Cents): void {
+    if (amount <= 0 || this.pot[player] == null) return;
+    this.pot[player] += Math.round(amount);
   }
 
   /** `from` hands `to` this many cents. Non-positive amounts are ignored. */
@@ -62,10 +84,16 @@ export class Ledger {
     return out;
   }
 
-  /** Positive means the player is up for the round. */
+  /**
+   * Positive means the player is up for the round.
+   *
+   * Pairwise transfers and pot positions net together here: a player can be
+   * down $30 in their foursome's Nassau and up $180 from the field skins pot,
+   * and what they actually hand over is the sum.
+   */
   net(): Record<PlayerId, Cents> {
     const net: Record<PlayerId, Cents> = {};
-    for (const id of this.ids) net[id] = 0;
+    for (const id of this.ids) net[id] = this.pot[id] ?? 0;
     for (const from of this.ids) {
       for (const to of this.ids) {
         const amt = this.matrix[from][to];
@@ -75,6 +103,11 @@ export class Ledger {
       }
     }
     return net;
+  }
+
+  /** Pot position only, for showing a pot game's own line. */
+  potNet(): Record<PlayerId, Cents> {
+    return { ...this.pot };
   }
 
   /** Total cents that changed hands, before netting. */

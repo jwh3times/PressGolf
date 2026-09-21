@@ -1,5 +1,5 @@
-import { defaultGames, defaultOptions } from './formats';
-import type { Course, Group, Hole, Player, PlayerId, Round } from './types';
+import { defaultFieldGames, defaultGames, defaultOptions } from './formats';
+import type { Course, Group, Hole, Outing, Player, PlayerId, Round, TeeFormat } from './types';
 
 /** Avatar colours, handed out in order so a new group looks deliberate. */
 export const PLAYER_COLORS = [
@@ -70,7 +70,12 @@ export function makeCourse(name: string, holeCount: 9 | 18 = 18): Course {
   return { id: makeId('c'), name, holes, createdAt: Date.now() };
 }
 
-export function makeRound(group: Group, course: Course, playerIds?: PlayerId[]): Round {
+export function makeRound(
+  group: Group,
+  course: Course,
+  playerIds?: PlayerId[],
+  extras: { outingId?: string; name?: string; teeTime?: string | null } = {},
+): Round {
   const ids = playerIds ?? group.players.map((p) => p.id);
   const pops: Record<PlayerId, number> = {};
   const scores: Record<PlayerId, (number | null)[]> = {};
@@ -82,6 +87,9 @@ export function makeRound(group: Group, course: Course, playerIds?: PlayerId[]):
     id: makeId('r'),
     groupId: group.id,
     courseId: course.id,
+    outingId: extras.outingId ?? null,
+    name: extras.name ?? 'Our group',
+    teeTime: extras.teeTime ?? null,
     playerIds: ids,
     pops,
     scores,
@@ -90,6 +98,47 @@ export function makeRound(group: Group, course: Course, playerIds?: PlayerId[]):
     wolfPicks: [],
     games: defaultGames(),
     options: defaultOptions(),
+    status: 'active',
+    startedAt: Date.now(),
+    completedAt: null,
+  };
+}
+
+/**
+ * Splits a field into playing groups of at most `size`.
+ *
+ * A remainder of one is folded back into the previous group rather than sent
+ * out alone — nineteen players go out as four fours and a three, never as four
+ * fours, a two and a single.
+ */
+export function splitIntoGroups(field: PlayerId[], size = 4): PlayerId[][] {
+  if (field.length === 0) return [];
+  const groups: PlayerId[][] = [];
+  for (let i = 0; i < field.length; i += size) groups.push(field.slice(i, i + size));
+  if (groups.length > 1 && groups[groups.length - 1].length === 1) {
+    const orphan = groups.pop()!;
+    groups[groups.length - 1].push(...orphan);
+  }
+  return groups;
+}
+
+/** A day out with a field, before anybody has been put into groups. */
+export function makeOuting(
+  group: Group,
+  course: Course,
+  options: { name?: string; field?: PlayerId[]; teeFormat?: TeeFormat; date?: number } = {},
+): Outing {
+  const field = options.field ?? group.players.map((p) => p.id);
+  return {
+    id: makeId('o'),
+    groupId: group.id,
+    courseId: course.id,
+    name: options.name ?? `${course.name} outing`,
+    date: options.date ?? Date.now(),
+    teeFormat: options.teeFormat ?? 'sequential',
+    field,
+    fieldGames: defaultFieldGames(),
+    roundIds: [],
     status: 'active',
     startedAt: Date.now(),
     completedAt: null,

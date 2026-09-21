@@ -1,4 +1,4 @@
-import type { GameKey, GameOptions, GamesConfig } from './types';
+import type { FieldGameKey, FieldGames, GameKey, GameOptions, GamesConfig } from './types';
 
 export interface FormatMeta {
   name: string;
@@ -104,6 +104,63 @@ export function defaultGames(): GamesConfig {
     vegas: { on: false, stake: 100 },
     match: { on: false, stake: 2000 },
     stroke: { on: false, stake: 1000 },
+  };
+}
+
+export interface FieldFormatMeta {
+  name: string;
+  tag: string;
+  blurb: string;
+  buyInLabel: string;
+  color: string;
+  detail: string;
+}
+
+export const FIELD_FORMATS: Record<FieldGameKey, FieldFormatMeta> = {
+  fieldSkins: {
+    name: 'Field skins',
+    tag: 'whole field',
+    blurb:
+      'Low net on the hole, outright, against everyone who bought in. The pot splits evenly among every skin won, so a skin is only worth what the day says it is.',
+    buyInLabel: 'Buy-in per man',
+    color: '#E8C46A',
+    detail: 'pot, split per skin',
+  },
+  scats: {
+    name: 'Scats',
+    tag: 'rabbit',
+    blurb:
+      'Low gross on the hole, outright. Nobody alone at the low score means the hole carries — five blank holes then a scat on the sixth takes all six holes of money.',
+    buyInLabel: 'Buy-in per man',
+    color: '#E8A0C8',
+    detail: 'pot, per hole, carries',
+  },
+};
+
+/**
+ * Field pots default to $20 a man.
+ *
+ * Scats are gross and carry (the rabbit); field skins are net and split evenly
+ * at the end. Neither default is universal — both are switchable per outing.
+ */
+export function defaultFieldGames(): FieldGames {
+  return {
+    fieldSkins: {
+      on: false,
+      buyIn: 2000,
+      entrants: [],
+      useNet: true,
+      carry: false,
+      unclaimed: 'splitAmongWinners',
+    },
+    scats: {
+      on: false,
+      buyIn: 2000,
+      entrants: [],
+      useNet: false,
+      carry: true,
+      unclaimed: 'splitAmongWinners',
+    },
   };
 }
 

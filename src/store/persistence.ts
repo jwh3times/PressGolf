@@ -10,20 +10,54 @@ interface StoredPayload {
   groups: AppData['groups'];
   courses: AppData['courses'];
   rounds: AppData['rounds'];
+  outings: AppData['outings'];
   activeGroupId: string | null;
   activeRoundId: string | null;
+  activeOutingId: string | null;
 }
 
-export const EMPTY_DATA: Omit<AppData, 'settings'> & { activeGroupId: null; activeRoundId: null } = {
+export const EMPTY_DATA: Omit<AppData, 'settings'> & {
+  activeGroupId: null;
+  activeRoundId: null;
+  activeOutingId: null;
+} = {
   groups: [],
   courses: [],
   rounds: [],
+  outings: [],
   activeGroupId: null,
   activeRoundId: null,
+  activeOutingId: null,
 };
 
 function dataKey(demoMode: boolean): string {
   return `${storageNamespace(demoMode)}:data`;
+}
+
+/**
+ * Brings a stored blob up to the current shape.
+ *
+ * Version 1 had no outings, and every Round was implicitly a standalone group.
+ * Those rounds are still perfectly good — they just need the fields that came
+ * with outings, defaulted to "this was its own thing".
+ */
+function migrate(parsed: Partial<StoredPayload>): StoredPayload {
+  const rounds = (parsed.rounds ?? []).map((round) => ({
+    ...round,
+    outingId: round.outingId ?? null,
+    name: round.name ?? 'Our group',
+    teeTime: round.teeTime ?? null,
+  }));
+  return {
+    version: STORAGE_VERSION,
+    groups: parsed.groups ?? [],
+    courses: parsed.courses ?? [],
+    rounds,
+    outings: parsed.outings ?? [],
+    activeGroupId: parsed.activeGroupId ?? null,
+    activeRoundId: parsed.activeRoundId ?? null,
+    activeOutingId: parsed.activeOutingId ?? null,
+  };
 }
 
 /** Reads the dataset for the given mode. A corrupt blob is treated as empty, not fatal. */
@@ -31,16 +65,9 @@ export async function loadDataset(demoMode: boolean): Promise<StoredPayload> {
   try {
     const raw = await AsyncStorage.getItem(dataKey(demoMode));
     if (!raw) return { version: STORAGE_VERSION, ...EMPTY_DATA };
-    const parsed = JSON.parse(raw) as StoredPayload;
+    const parsed = JSON.parse(raw) as Partial<StoredPayload>;
     if (typeof parsed !== 'object' || parsed == null) throw new Error('not an object');
-    return {
-      version: parsed.version ?? STORAGE_VERSION,
-      groups: parsed.groups ?? [],
-      courses: parsed.courses ?? [],
-      rounds: parsed.rounds ?? [],
-      activeGroupId: parsed.activeGroupId ?? null,
-      activeRoundId: parsed.activeRoundId ?? null,
-    };
+    return migrate(parsed);
   } catch {
     // Losing a round hurts, but refusing to open at all hurts more.
     return { version: STORAGE_VERSION, ...EMPTY_DATA };
@@ -61,6 +88,7 @@ export async function loadSettings(fallback: AppSettings): Promise<AppSettings> 
       demoMode: typeof parsed.demoMode === 'boolean' ? parsed.demoMode : fallback.demoMode,
       activeGroupId: parsed.activeGroupId ?? null,
       activeRoundId: parsed.activeRoundId ?? null,
+      activeOutingId: parsed.activeOutingId ?? null,
     };
   } catch {
     return fallback;

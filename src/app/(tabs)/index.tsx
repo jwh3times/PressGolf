@@ -34,6 +34,20 @@ export default function HomeScreen() {
     [group, store.rounds, store.courses],
   );
 
+  // Any day still running that this group is out on.
+  const activeOuting = useMemo(
+    () => store.outings.find((o) => o.status === 'active' && o.groupId === group?.id) ?? null,
+    [store.outings, group],
+  );
+
+  const outingPot = useMemo(() => {
+    if (!activeOuting) return 0;
+    return Object.values(activeOuting.fieldGames).reduce(
+      (sum, g) => sum + (g.on ? g.buyIn * g.entrants.length : 0),
+      0,
+    );
+  }, [activeOuting]);
+
   if (!store.ready) return <Screen><Body>Loading…</Body></Screen>;
 
   if (!group) {
@@ -78,6 +92,36 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      {/* A day with more than one group out gets its own entry point — the
+          round card below still shows whichever group this phone is in. */}
+      {activeOuting ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            store.setActiveOuting(activeOuting.id);
+            router.push('/outing');
+          }}
+          style={styles.outingRow}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <LivePulse size={6} color={colors.gold} />
+              <Text style={styles.outingLabel}>Outing on</Text>
+            </View>
+            <Text style={styles.outingName} numberOfLines={1}>
+              {activeOuting.name}
+            </Text>
+            <Text style={styles.outingMeta}>
+              {activeOuting.field.length} out · {activeOuting.roundIds.length} groups ·{' '}
+              {money(outingPot)} in the pots
+            </Text>
+          </View>
+          <Mono size={11} style={{ color: ink.trace }}>
+            ›
+          </Mono>
+        </Pressable>
+      ) : null}
+
       {round && course && settlement ? (
         <LiveRoundCard
           thru={settlement.thru}
@@ -102,11 +146,18 @@ export default function HomeScreen() {
               : 'Set the format, pick a course, and start entering scores.'
           }
           action={
-            <PrimaryButton
-              label={players.length < 2 ? 'Add players' : 'Start a round'}
-              onPress={() => router.push(players.length < 2 ? '/roster' : '/new-round')}
-              style={{ alignSelf: 'stretch' }}
-            />
+            <View style={{ alignSelf: 'stretch', gap: 8 }}>
+              <PrimaryButton
+                label={players.length < 2 ? 'Add players' : 'Start a round'}
+                onPress={() => router.push(players.length < 2 ? '/roster' : '/new-round')}
+              />
+              {players.length >= 2 ? (
+                <GhostButton
+                  label="More than one group? Set up an outing"
+                  onPress={() => router.push('/new-outing')}
+                />
+              ) : null}
+            </View>
           }
         />
       )}
@@ -293,6 +344,26 @@ const styles = StyleSheet.create({
   noGames: { padding: 16 },
   seasonHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   seasonMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost },
+  outingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.cardDeep,
+    borderWidth: 1,
+    borderColor: 'rgba(232,196,106,.28)',
+    borderRadius: radius.card,
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+  },
+  outingLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: colors.gold,
+  },
+  outingName: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full, marginTop: 4 },
+  outingMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
   seasonRow: {
     flexDirection: 'row',
     alignItems: 'center',

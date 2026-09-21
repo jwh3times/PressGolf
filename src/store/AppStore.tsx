@@ -9,15 +9,19 @@ import React, {
 } from 'react';
 import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
-import { settleRound } from '../domain/engine';
+import { settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import type {
   Course,
+  FieldGameConfig,
+  FieldGameKey,
   GameKey,
   GameOptions,
   Group,
   Hole,
   JunkKind,
+  Outing,
+  OutingSettlement,
   Player,
   PlayerId,
   Round,
@@ -29,8 +33,10 @@ interface Dataset {
   groups: Group[];
   courses: Course[];
   rounds: Round[];
+  outings: Outing[];
   activeGroupId: string | null;
   activeRoundId: string | null;
+  activeOutingId: string | null;
 }
 
 interface AppState extends Dataset {
@@ -38,12 +44,36 @@ interface AppState extends Dataset {
   demoMode: boolean;
 }
 
+/** A playing group as the organiser screen edits it. */
+export interface OutingGroupDraft {
+  roundId: string | null;
+  name: string;
+  teeTime: string | null;
+  playerIds: PlayerId[];
+}
+
 export interface AppStore extends AppState {
-  // Derived
+  // Derived — the active round (one foursome)
   group: Group | null;
   course: Course | null;
   round: Round | null;
   settlement: Settlement | null;
+
+  // Derived — the active outing (a whole day, if there is one)
+  outing: Outing | null;
+  outingCourse: Course | null;
+  outingGroup: Group | null;
+  outingRounds: Round[];
+  outingSettlement: OutingSettlement | null;
+
+  // Outings
+  startOuting(outing: Outing, groups: Round[]): void;
+  setActiveOuting(id: string | null): void;
+  updateOuting(patch: Partial<Outing>): void;
+  setFieldGame(key: FieldGameKey, patch: Partial<FieldGameConfig>): void;
+  toggleFieldEntrant(key: FieldGameKey, playerId: PlayerId): void;
+  setOutingGroups(groups: OutingGroupDraft[]): void;
+  completeOuting(id: string): void;
 
   // Mode
   setDemoMode(on: boolean): void;
@@ -92,8 +122,10 @@ const EMPTY_STATE: AppState = {
   groups: [],
   courses: [],
   rounds: [],
+  outings: [],
   activeGroupId: null,
   activeRoundId: null,
+  activeOutingId: null,
 };
 
 const StoreContext = createContext<AppStore | null>(null);
@@ -110,8 +142,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         groups: next.groups,
         courses: next.courses,
         rounds: next.rounds,
+        outings: next.outings,
         activeGroupId: next.activeGroupId,
         activeRoundId: next.activeRoundId,
+        activeOutingId: next.activeOutingId,
       });
     }, 250);
   }, []);
@@ -137,6 +171,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         demoMode: DEMO_MODE_DEFAULT,
         activeGroupId: null,
         activeRoundId: null,
+        activeOutingId: null,
       });
       const dataset = await hydrate(settings.demoMode);
       if (cancelled) return;
@@ -151,7 +186,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, ready: false }));
     void (async () => {
       const dataset = await hydrate(on);
-      await saveSettings({ demoMode: on, activeGroupId: dataset.activeGroupId, activeRoundId: dataset.activeRoundId });
+      await saveSettings({
+        demoMode: on,
+        activeGroupId: dataset.activeGroupId,
+        activeRoundId: dataset.activeRoundId,
+        activeOutingId: dataset.activeOutingId,
+      });
       setState({ ready: true, demoMode: on, ...dataset });
     })();
   }, []);
@@ -160,11 +200,30 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     const group = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;
     const round = state.rounds.find((r) => r.id === state.activeRoundId) ?? null;
     const course = round ? state.courses.find((c) => c.id === round.courseId) ?? null : null;
+    const outing = state.outings.find((o) => o.id === state.activeOutingId) ?? null;
+    const outingCourse = outing ? state.courses.find((c) => c.id === outing.courseId) ?? null : null;
+    const outingGroup = outing ? state.groups.find((g) => g.id === outing.groupId) ?? null : null;
 
     let settlement: Settlement | null = null;
     if (round && course && group) {
       settlement = settleRound(round, course, group.players);
     }
+
+    // The whole day, when there is one: every group's games plus the field pots.
+    let outingSettlement: OutingSettlement | null = null;
+    if (outing && outingCourse && outingGroup) {
+      outingSettlement = settleOuting(outing, state.rounds, outingCourse, outingGroup.players);
+    }
+
+    const patchOuting = (fn: (o: Outing) => Outing) =>
+      commit((prev) => {
+        if (!prev.activeOutingId) return prev;
+        const idx = prev.outings.findIndex((o) => o.id === prev.activeOutingId);
+        if (idx < 0) return prev;
+        const outings = prev.outings.slice();
+        outings[idx] = fn(outings[idx]);
+        return { ...prev, outings };
+      });
 
     /** Applies a patch to the active round. No active round means the call is a no-op. */
     const patchRound = (fn: (r: Round) => Round) =>
@@ -183,6 +242,89 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       course,
       round,
       settlement,
+      outing,
+      outingCourse,
+      outingGroup,
+      outingSettlement,
+      outingRounds: outing
+        ? outing.roundIds
+            .map((id) => state.rounds.find((r) => r.id === id))
+            .filter((r): r is Round => r != null)
+        : [],
+
+      startOuting: (created, groups) =>
+        commit((prev) => ({
+          ...prev,
+          outings: [...prev.outings, created],
+          rounds: [...prev.rounds, ...groups],
+          activeOutingId: created.id,
+          activeGroupId: created.groupId,
+          // Drop the phone straight into whichever group holds "you".
+          activeRoundId:
+            groups.find((r) =>
+              r.playerIds.includes(
+                prev.groups.find((g) => g.id === created.groupId)?.youId ?? '',
+              ),
+            )?.id ??
+            groups[0]?.id ??
+            null,
+        })),
+      setActiveOuting: (id) => commit((prev) => ({ ...prev, activeOutingId: id })),
+      updateOuting: (patch) => patchOuting((o) => ({ ...o, ...patch })),
+      setFieldGame: (key, patch) =>
+        patchOuting((o) => ({
+          ...o,
+          fieldGames: { ...o.fieldGames, [key]: { ...o.fieldGames[key], ...patch } },
+        })),
+      toggleFieldEntrant: (key, playerId) =>
+        patchOuting((o) => {
+          const config = o.fieldGames[key];
+          const entrants = config.entrants.includes(playerId)
+            ? config.entrants.filter((id) => id !== playerId)
+            : [...config.entrants, playerId];
+          return { ...o, fieldGames: { ...o.fieldGames, [key]: { ...config, entrants } } };
+        }),
+      setOutingGroups: (groups) =>
+        commit((prev) => {
+          if (!prev.activeOutingId) return prev;
+          const outingIdx = prev.outings.findIndex((o) => o.id === prev.activeOutingId);
+          if (outingIdx < 0) return prev;
+          const current = prev.outings[outingIdx];
+          const holeCount =
+            prev.courses.find((c) => c.id === current.courseId)?.holes.length ?? 18;
+
+          // Existing groups keep their cards and bets; only the make-up changes.
+          const byId = new Map(prev.rounds.map((r) => [r.id, r]));
+          const updated = groups.map((g) => {
+            const existing = g.roundId ? byId.get(g.roundId) : undefined;
+            if (!existing) return null;
+            return reconcileRound(
+              { ...existing, playerIds: g.playerIds, name: g.name, teeTime: g.teeTime },
+              holeCount,
+            );
+          });
+
+          const rounds = prev.rounds.map((r) => updated.find((u) => u?.id === r.id) ?? r);
+          return {
+            ...prev,
+            rounds,
+            outings: prev.outings.map((o) =>
+              o.id === current.id ? { ...o, roundIds: groups.map((g) => g.roundId!) } : o,
+            ),
+          };
+        }),
+      completeOuting: (id) =>
+        commit((prev) => ({
+          ...prev,
+          outings: prev.outings.map((o) =>
+            o.id === id ? { ...o, status: 'completed' as const, completedAt: Date.now() } : o,
+          ),
+          rounds: prev.rounds.map((r) =>
+            r.outingId === id ? { ...r, status: 'completed' as const, completedAt: Date.now() } : r,
+          ),
+          activeOutingId: prev.activeOutingId === id ? null : prev.activeOutingId,
+          activeRoundId: null,
+        })),
 
       setDemoMode,
       resetDemoData: () => {
@@ -203,8 +345,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
               groups: [],
               courses: [],
               rounds: [],
+              outings: [],
               activeGroupId: null,
               activeRoundId: null,
+              activeOutingId: null,
             }));
           }
         })();
@@ -402,8 +546,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       demoMode: state.demoMode,
       activeGroupId: state.activeGroupId,
       activeRoundId: state.activeRoundId,
+      activeOutingId: state.activeOutingId,
     });
-  }, [state.ready, state.demoMode, state.activeGroupId, state.activeRoundId]);
+  }, [state.ready, state.demoMode, state.activeGroupId, state.activeRoundId, state.activeOutingId]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
@@ -425,8 +570,10 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     groups: stored.groups,
     courses: stored.courses,
     rounds: stored.rounds,
+    outings: stored.outings,
     activeGroupId: stored.activeGroupId,
     activeRoundId: stored.activeRoundId,
+    activeOutingId: stored.activeOutingId,
   };
 }
 
