@@ -64,7 +64,7 @@ request and every push to `main`:
 
 | Job | What it does |
 |---|---|
-| **Tests, types, lint** | `npm test`, `tsc --noEmit`, `expo lint` |
+| **Tests, types, lint** | `npm test`, `tsc --noEmit`, `expo lint`, `expo-doctor` |
 | **Migrations and RLS** | Applies every migration to a throwaway Postgres 16, applies the baseline a second time to prove it is repeatable, then runs 24 row-level-security assertions |
 | **Apply migrations** | Only on `main`, only after both of the above pass |
 
@@ -78,6 +78,21 @@ the check that caught it.
 Migrations reach the real project only from `main`, and only behind green
 tests. `db push` is a no-op when the project has already seen everything, so it
 runs on every merge rather than guessing from which files changed.
+
+### Dependency updates
+
+[`.github/dependabot.yml`](.github/dependabot.yml) scans every day at 05:00
+Eastern, for both npm and the workflow actions.
+
+The Expo packages are grouped into a single pull request on purpose. Expo pins
+them to the SDK and they are meant to move together — `npx expo install --fix`
+on an upgrade, not one at a time — and bumping one alone is how a project ends
+up on a version Expo never shipped against. `expo-doctor` runs in CI for the
+same reason: a group that stops agreeing with itself goes red here rather than
+on a phone on the first tee.
+
+Everything that only touches the build is grouped separately, minor and patch
+only.
 
 Three repository secrets are needed for that last job
 (**Settings → Secrets and variables → Actions**):

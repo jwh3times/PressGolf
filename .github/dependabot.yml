@@ -1,0 +1,76 @@
+version: 2
+
+updates:
+  # ── The app ────────────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "05:00"
+      # Identical rules to America/Kentucky/Monticello, and certain to be
+      # recognised. Without this the default is UTC, which would be midnight.
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+      prefix-development: deps(dev)
+
+    groups:
+      # Expo pins these to the SDK. They are meant to move together, via
+      # `npx expo install --fix` on an SDK upgrade, and bumping one on its own
+      # is how a project ends up with a version Expo never shipped against.
+      # Grouped into a single pull request so they are judged as one decision —
+      # and CI runs expo-doctor, which fails the moment the set stops agreeing.
+      expo-sdk:
+        patterns:
+          - expo
+          - expo-*
+          - "@expo/*"
+          - "@expo-google-fonts/*"
+          - babel-preset-expo
+          - jest-expo
+          - eslint-config-expo
+          - react
+          - react-dom
+          - react-native
+          - react-native-*
+          - "@react-native-async-storage/*"
+
+      # Everything that only affects the build, never the app people carry
+      # round a golf course.
+      tooling:
+        dependency-type: development
+        patterns:
+          - "*"
+        exclude-patterns:
+          - expo
+          - expo-*
+          - "@expo/*"
+          - "@expo-google-fonts/*"
+          - babel-preset-expo
+          - jest-expo
+          - eslint-config-expo
+          - react
+          - react-dom
+          - react-native
+          - react-native-*
+        update-types:
+          - minor
+          - patch
+
+  # ── The workflows ──────────────────────────────────────────────────────────
+  # Actions go stale quietly: a deprecated runtime is a warning long before it
+  # is a failure, and nobody reads warnings.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - "*"

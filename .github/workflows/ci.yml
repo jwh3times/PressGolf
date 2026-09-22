@@ -34,6 +34,12 @@ jobs:
       - name: Lint
         run: npx expo lint
 
+      # The net under Dependabot. Expo pins its packages to the SDK, and a
+      # bump that leaves the set disagreeing shows up here rather than on a
+      # phone on the first tee.
+      - name: Expo SDK agrees with itself
+        run: npx expo-doctor
+
   database:
     name: Migrations and row-level security
     runs-on: ubuntu-latest
