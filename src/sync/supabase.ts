@@ -143,39 +143,58 @@ export interface HostedOuting {
   joinCode: string;
 }
 
-/** Publishes an outing so other phones can join it. */
-export async function hostOuting(
-  outingId: string,
-  name: string,
-  course: unknown,
-  payload: unknown,
-): Promise<HostedOuting> {
+/**
+ * Publishes an outing so other phones can join it.
+ *
+ * The outing row itself is already on the server — the ordinary data sync put
+ * it there. Publishing is only two things: giving it a code, and joining it
+ * yourself. That second part is not a formality. Every guest's scores are
+ * owned by the guest, and the organiser reads them through the same
+ * membership check everybody else does, so an organiser who never joined her
+ * own outing would be the one person unable to see it.
+ */
+export async function hostOuting(outingId: string): Promise<HostedOuting> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Multiplayer is not set up on this build.');
+  if (!supabase) throw new Error('This build has no server configured.');
   const userId = await requireUserId();
-  const joinCode = makeJoinCode();
 
-  const { error } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from('outings')
-    .insert({ id: outingId, join_code: joinCode, name, course, payload });
-  if (error) throw error;
+    .select('join_code')
+    .eq('id', outingId)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!existing) {
+    throw new Error('This outing has not reached the server yet. Try again in a moment.');
+  }
+  // Already shared: hand back the code it already has rather than minting a
+  // second one and stranding whoever wrote the first one down.
+  const joinCode = existing.join_code ?? makeJoinCode();
+
+  if (!existing.join_code) {
+    const { error } = await supabase
+      .from('outings')
+      .update({ join_code: joinCode })
+      .eq('id', outingId);
+    if (error) throw new Error(error.message);
+  }
 
   const { error: memberError } = await supabase
     .from('outing_members')
-    .insert({ outing_id: outingId, user_id: userId, role: 'organiser' });
-  if (memberError) throw memberError;
+    .upsert({ outing_id: outingId, user_id: userId, role: 'organiser' }, { onConflict: 'outing_id,user_id' });
+  if (memberError) throw new Error(memberError.message);
 
   return { outingId, joinCode };
 }
 
-/** Joins an outing by code, returning the stored outing document. */
+/** Joins an outing by code. Returns the id; the day itself is pulled after. */
 export async function joinOuting(
   code: string,
   asPlayer: string | null,
   displayName: string | null,
-): Promise<{ outingId: string; payload: unknown; course: unknown; name: string }> {
+): Promise<{ outingId: string }> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Multiplayer is not set up on this build.');
+  if (!supabase) throw new Error('This build has no server configured.');
   await requireUserId();
 
   const { data: outingId, error } = await supabase.rpc('join_outing', {
@@ -183,16 +202,9 @@ export async function joinOuting(
     as_player: asPlayer,
     display: displayName,
   });
-  if (error) throw error;
-
-  const { data, error: readError } = await supabase
-    .from('outings')
-    .select('id, name, course, payload')
-    .eq('id', outingId)
-    .single();
-  if (readError) throw readError;
-
-  return { outingId: data.id, payload: data.payload, course: data.course, name: data.name };
+  if (error) throw new Error(error.message);
+  if (!outingId) throw new Error('No outing with that code.');
+  return { outingId: outingId as string };
 }
 
 interface MutationRow {

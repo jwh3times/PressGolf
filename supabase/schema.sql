@@ -402,6 +402,120 @@ drop policy if exists "members write mutations" on mutations;
 create policy "members write mutations" on mutations
   for insert with check (is_member(outing_id) and user_id = auth.uid());
 
+-- ── What a guest of a shared outing can see ────────────────────────────────
+--
+-- Everything above is owner-only, which is right for your own season and
+-- wrong for a day twenty people are playing together. Joining an outing has
+-- to open up exactly that outing and nothing else.
+--
+-- The trust boundary is the join code. Anyone holding it can read the day's
+-- card and write scores on it — which is the point, and is the same trust you
+-- extend by telling somebody the code in the first place. It buys no access
+-- to any other outing, and none at all to your other groups, courses or
+-- seasons.
+
+create or replace function shared_round(target_round text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from rounds r
+    join outing_members m on m.outing_id = r.outing_id
+    where r.id = target_round and m.user_id = auth.uid()
+  );
+$$;
+
+create or replace function shared_course(target_course text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from outings o
+    join outing_members m on m.outing_id = o.id
+    where o.course_id = target_course and m.user_id = auth.uid()
+  );
+$$;
+
+create or replace function shared_group(target_group text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from outings o
+    join outing_members m on m.outing_id = o.id
+    where o.group_id = target_group and m.user_id = auth.uid()
+  );
+$$;
+
+create or replace function shared_player(target_player text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from outing_field f
+    join outing_members m on m.outing_id = f.outing_id
+    where f.player_id = target_player and m.user_id = auth.uid()
+  );
+$$;
+
+-- Reading the day: the round rows themselves, and everything hanging off them.
+drop policy if exists "guests read shared rounds" on rounds;
+create policy "guests read shared rounds" on rounds
+  for select using (outing_id is not null and is_member(outing_id));
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'round_players', 'scores', 'junk', 'presses', 'wolf_picks',
+    'round_games', 'round_options', 'round_teams', 'round_pairings'
+  ]
+  loop
+    execute format('drop policy if exists "guests read shared" on %I', t);
+    execute format('create policy "guests read shared" on %I for select using (shared_round(round_id))', t);
+  end loop;
+end
+$$;
+
+-- The field needs names to put against the scores, and a card to play. The
+-- group comes too, because a player without one has nothing to hang off and
+-- would be dropped on the way into the app.
+drop policy if exists "guests read shared groups" on groups;
+create policy "guests read shared groups" on groups
+  for select using (shared_group(id));
+
+-- The field needs names to put against the scores, and a card to play.
+drop policy if exists "guests read shared players" on players;
+create policy "guests read shared players" on players
+  for select using (shared_player(id));
+
+drop policy if exists "guests read shared courses" on courses;
+create policy "guests read shared courses" on courses
+  for select using (shared_course(id));
+
+drop policy if exists "guests read shared holes" on holes;
+create policy "guests read shared holes" on holes
+  for select using (shared_course(course_id));
+
+do $$
+declare t text;
+begin
+  foreach t in array array['outing_field', 'outing_field_games', 'outing_field_entrants']
+  loop
+    execute format('drop policy if exists "guests read shared" on %I', t);
+    execute format('create policy "guests read shared" on %I for select using (is_member(outing_id))', t);
+  end loop;
+end
+$$;
+
+-- Writing the day. Only the two things a scorer actually enters: the card and
+-- the junk claimed on it. Stakes, sides and presses stay with whoever set the
+-- round up, so a guest cannot quietly change what the round is worth.
+do $$
+declare t text;
+begin
+  foreach t in array array['scores', 'junk']
+  loop
+    execute format('drop policy if exists "guests score shared" on %I', t);
+    execute format('create policy "guests score shared" on %I for insert with check (shared_round(round_id) and owner_id = auth.uid())', t);
+    execute format('drop policy if exists "guests correct shared" on %I', t);
+    execute format('create policy "guests correct shared" on %I for update using (shared_round(round_id)) with check (shared_round(round_id))', t);
+  end loop;
+end
+$$;
+
 -- ── Joining by code ────────────────────────────────────────────────────────
 --
 -- Joining has to read an outing you are not yet a member of, so it goes

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ModalHeader, Screen } from '../components/Screen';
 import {
@@ -19,6 +19,7 @@ import {
 import { money, signedMoney } from '../domain/engine';
 import type { FieldGameResult, PlayerId } from '../domain/types';
 import { useStore } from '../store/AppStore';
+import { hostOuting, isSupabaseConfigured } from '../sync/supabase';
 import { colors, fonts, ink, line, radius } from '../theme/tokens';
 
 /**
@@ -29,6 +30,8 @@ import { colors, fonts, ink, line, radius } from '../theme/tokens';
  * the morning, and a leaderboard that hides that is worse than no leaderboard.
  */
 export default function OutingScreen() {
+  const [joinCode, setJoinCode] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
   const store = useStore();
   const router = useRouter();
   const { outing, outingCourse, outingGroup, outingSettlement, outingRounds } = store;
@@ -107,6 +110,40 @@ export default function OutingScreen() {
         </Text>
         <GhostButton label="Set up the pots" onPress={() => router.push('/field-games')} />
       </LinearGradient>
+
+      {isSupabaseConfigured() ? (
+        <View style={{ gap: 8 }}>
+          <Eyebrow>Scoring on more than one phone</Eyebrow>
+          {joinCode ? (
+            <View style={styles.codeBox}>
+              <Mono size={26} weight="bold" style={styles.code}>
+                {joinCode}
+              </Mono>
+              <Text style={styles.codeHint}>
+                Read that out to whoever else is scoring. They tap Join an outing in Settings and
+                type it in. Everybody&apos;s scores land on the same card.
+              </Text>
+            </View>
+          ) : (
+            <GhostButton
+              label={sharing ? 'Getting a code…' : 'Share this outing'}
+              onPress={() => {
+                if (sharing) return;
+                setSharing(true);
+                void hostOuting(outing.id)
+                  .then((result) => setJoinCode(result.joinCode))
+                  .catch((error: unknown) =>
+                    Alert.alert(
+                      'Could not share this outing',
+                      error instanceof Error ? error.message : 'Try again in a moment.',
+                    ),
+                  )
+                  .finally(() => setSharing(false));
+              }}
+            />
+          )}
+        </View>
+      ) : null}
 
       {outingSettlement.fieldGames.map((game) => (
         <FieldPot key={game.key} game={game} holeCount={holeCount} />
@@ -259,6 +296,23 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
 }
 
 const styles = StyleSheet.create({
+  codeBox: {
+    backgroundColor: colors.cardDeep,
+    borderWidth: 1,
+    borderColor: colors.accentLine,
+    borderRadius: radius.panel,
+    padding: 16,
+    gap: 8,
+    alignItems: 'center',
+  },
+  code: { color: colors.accent, letterSpacing: 8 },
+  codeHint: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: ink.soft,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
   hero: {
     borderWidth: 1,
     borderColor: colors.accentSoft,

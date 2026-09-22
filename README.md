@@ -60,7 +60,7 @@ Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
 ### Checks
 
 ```bash
-npm test          # jest — 117 tests (engine, outings, sync, auth)
+npm test          # jest — 130 tests (engine, outings, sync, auth)
 npm run typecheck # tsc --noEmit
 npm run lint      # eslint
 npx expo-doctor   # dependency and config sanity
@@ -68,20 +68,30 @@ npx expo-doctor   # dependency and config sanity
 
 ### What has and has not been verified
 
-Verified: 117 tests over the money math, the sync logic and the credential checks, a clean typecheck and
+Verified: 130 tests over the money math, the sync logic and the credential checks, a clean typecheck and
 lint, bundles for both iOS and Android, a headless run through every route with
 no runtime errors, and the SQL schema's row-level security exercised against a
 real Postgres.
 
-**Not verified: any of it on real hardware.** Nothing here has run on a phone.
-Two things to eyeball first, because a headless browser cannot judge them:
+Run on an iPhone through Expo Go, signed in against a real Supabase project,
+with rows landing in the database from the phone. That covers the parts no test
+can reach: real PostgREST writes against real row-level security, `owner_id`
+resolving to the signed-in account, parents landing before children so no
+foreign key trips, and the push staying off the path of an edit.
 
+**Still not verified on hardware:**
+
+- **Pruning.** Only runs once something is deleted — a player dropped, a round
+  binned. Covered by tests as a pure function; never yet run against the live
+  project.
+- **Adopting a season on a second phone.** Only fires on a fresh install
+  signing into an account that already has data.
+- **Two phones on one card.** The guest boundary is proven against Postgres
+  (below), but no second phone has actually joined an outing.
 - **Touch targets.** The score steppers carry hit-slop for cold or gloved
   hands, but that is a guess until a thumb lands on one.
 - **The floating tab bar against real safe areas.** It reads the actual insets
   rather than hard-coding them, but a notch and a punch-hole are worth seeing.
-
-Also unverified: the live Supabase wire (see [Multiplayer scoring](#multiplayer-scoring)).
 
 ## Demo mode
 
@@ -173,9 +183,13 @@ for one person's own devices and is why the pull happens first.
 
 ## Multiplayer scoring
 
-Four phones can score the same outing. It is **offline-first**, which is not a
-nicety: half of golf courses have no signal on the back nine, and a
-request/response app would silently lose people's birdies.
+Four phones can score the same outing. Open the outing and tap **Share this
+outing** for a six-character code; everybody else takes **Settings → Join an
+outing by code**. From then on all of them are writing to the same card.
+
+It is **offline-first**, which is not a nicety: half of golf courses have no
+signal on the back nine, and a request/response app would silently lose
+people's birdies.
 
 - Every edit is applied **locally first** and queued. Nothing waits on a network.
 - The queue is **durable** — it survives the app being killed in a car park.
@@ -282,13 +296,14 @@ src/
     rows.ts         documents to rows and back — the whole translation
     diff.ts         what the server holds that the phone no longer does
     remote.ts       push, pull, and the one reconcile at sign-in
+    merge-shared.ts folding other phones' scores back in
     useDataSync.ts  debounced push, never on the path of an edit
     types.ts        a mutation is one addressable cell, not a document
     merge.ts        per-cell last-write-wins
     engine.ts       durable queue, coalescing flush, backoff
     fake-transport.ts  an in-memory server that can fail on demand
     supabase.ts     the real wire, plus join-by-code
-    __tests__/      48 tests, including losing signal mid-round
+    __tests__/      61 tests, including losing signal mid-round
   store/            AsyncStorage persistence + React context
   components/       primitives, floating tab bar, screen chrome, sign-in
   theme/tokens.ts   design tokens lifted from the prototype
@@ -364,14 +379,19 @@ app meant changing some things on purpose:
 
 ## Known limits
 
-- **The live Supabase wire is untested.** The sync *logic* is covered by 21
-  tests against a fake transport that can drop the network on demand, and the
-  SQL schema and its row-level security were exercised against a real Postgres.
-  But nothing here has talked to an actual Supabase project — that needs a
-  provisioned project and two phones.
-- **Nothing has run on a phone yet.** Bundled for both platforms and driven
-  headlessly, but never on real hardware — see
-  [What has and has not been verified](#what-has-and-has-not-been-verified).
+- **No second phone has joined an outing yet.** Hosting publishes a code and
+  guests can score against it, and the whole boundary is proven against a real
+  Postgres 16 — a guest reads the shared day and nothing else, can write scores
+  and junk, and is refused when it tries to change a stake or touch a private
+  round. But one phone has been through it, not four.
+- **Changes from another phone arrive on the next push, not instantly.** The
+  cycle is push-then-pull every couple of seconds while the app is open. The
+  `mutations` table and its realtime publication are there for a live feed and
+  are not yet wired to one.
+- **One phone, one round of testing.** It runs on an iPhone through Expo Go
+  and writes to a real project — see
+  [What has and has not been verified](#what-has-and-has-not-been-verified)
+  for the paths that still have not been exercised on hardware.
 - **No presence or activity feed yet.** You can see that a group is `THRU 12`,
   but not who is typing right now or who entered a given score.
 - **Web is for previewing only.** `react-native-web` is installed and the app

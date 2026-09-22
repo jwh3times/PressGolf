@@ -232,7 +232,27 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [commit],
   );
 
-  const sync = useDataSync({ enabled: syncEnabled, documents, onAdoptRemote: adoptRemote });
+  const takeShared = useCallback(
+    (merged: Documents) => {
+      // Scores other phones entered on a day we are all playing. Everything
+      // outside that day is left exactly as it was.
+      commit((prev) => ({
+        ...prev,
+        groups: merged.groups,
+        courses: merged.courses,
+        rounds: merged.rounds,
+        outings: merged.outings,
+      }));
+    },
+    [commit],
+  );
+
+  const sync = useDataSync({
+    enabled: syncEnabled,
+    documents,
+    onAdoptRemote: adoptRemote,
+    onSharedData: takeShared,
+  });
 
   const store = useMemo<AppStore>(() => {
     const group = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;

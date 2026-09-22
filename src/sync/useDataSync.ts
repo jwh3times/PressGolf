@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deletions } from './diff';
-import { pushSnapshot, reconcile } from './remote';
+import { pullSharedOutings, pushSnapshot, reconcile } from './remote';
+import { changesAnything, mergeShared } from './merge-shared';
 import { fromRows, toRows, type Documents, type Snapshot } from './rows';
 
 export interface SyncState {
@@ -34,8 +35,9 @@ export function useDataSync(options: {
   enabled: boolean;
   documents: Documents;
   onAdoptRemote: (documents: Documents) => void;
+  onSharedData: (documents: Documents) => void;
 }): SyncState {
-  const { enabled, documents, onAdoptRemote } = options;
+  const { enabled, documents, onAdoptRemote, onSharedData } = options;
   const [state, setState] = useState<SyncState>(OFF);
 
   // What we believe the server is holding. Later pushes diff against this to
@@ -44,10 +46,14 @@ export function useDataSync(options: {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef(false);
   const adopt = useRef(onAdoptRemote);
+  const shared = useRef(onSharedData);
+  const latest = useRef(documents);
 
   useEffect(() => {
     adopt.current = onAdoptRemote;
-  }, [onAdoptRemote]);
+    shared.current = onSharedData;
+    latest.current = documents;
+  }, [onAdoptRemote, onSharedData, documents]);
 
   const fail = useCallback((error: unknown) => {
     setState({
@@ -111,6 +117,11 @@ export function useDataSync(options: {
           const prune = deletions(serverHas.current ?? local, local);
           await pushSnapshot(local, { prune });
           serverHas.current = local;
+          // Only now, with this phone's edits safely up, is it safe to let the
+          // server's copy of a shared day win.
+          const incoming = fromRows(await pullSharedOutings());
+          const merged = mergeShared(latest.current, incoming);
+          if (changesAnything(latest.current, merged)) shared.current(merged);
           setState({ status: 'synced', at: Date.now(), message: null });
         } catch (error) {
           fail(error);

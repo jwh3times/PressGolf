@@ -28,18 +28,86 @@ function chunked<T>(rows: T[]): T[][] {
 export async function pullSnapshot(): Promise<Snapshot> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('This build has no server configured.');
-  await requireUserId();
+  const ownerId = await requireUserId();
 
   const snapshot = emptySnapshot();
   for (const table of TABLES) {
-    const { data, error } = await supabase.from(table).select('*');
+    // Scoped to rows we own, deliberately, even though policy would also let
+    // a shared outing's rows through. This snapshot is what pruning diffs
+    // against, and a guest's scores are owned by the guest — pulling them here
+    // would let one phone delete another's card the moment it fell behind.
+    const { data, error } = await supabase.from(table).select('*').eq('owner_id', ownerId);
     if (error) throw new Error(`${table}: ${error.message}`);
-    // Row-level security already limits this to rows we own, so there is no
-    // filter here to get wrong.
     (snapshot[table] as unknown as Record<string, unknown>[]).push(
       ...((data ?? []) as Record<string, unknown>[]),
     );
   }
+  return snapshot;
+}
+
+/**
+ * The days other people are sharing with this phone, and the days this phone
+ * is sharing with them.
+ *
+ * Everything here is read-only as far as the local data is concerned: it is
+ * what the other phones have written. The server is authoritative for a shared
+ * card, which is only safe because this always runs after a push — anything
+ * typed on this phone is already up there before any of it comes back down.
+ */
+export async function pullSharedOutings(): Promise<Snapshot> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  await requireUserId();
+
+  const snapshot = emptySnapshot();
+
+  const { data: memberships, error: memberError } = await supabase
+    .from('outing_members')
+    .select('outing_id');
+  if (memberError) throw new Error(`outing_members: ${memberError.message}`);
+  const outingIds = (memberships ?? []).map((m) => m.outing_id as string);
+  if (outingIds.length === 0) return snapshot;
+
+  // The table name is the snapshot key in every case, so one argument does.
+  const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
+    if (values.length === 0) return;
+    const { data, error } = await supabase.from(table).select('*').in(column, values);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    (snapshot[table] as unknown as Record<string, unknown>[]).push(
+      ...((data ?? []) as Record<string, unknown>[]),
+    );
+  };
+
+  await add('outings', 'id', outingIds);
+  // The group has to come too: fromRows hangs players off it, and a player
+  // with no group would be dropped on the way back into the app.
+  await add('outing_field', 'outing_id', outingIds);
+  await add('outing_field_games', 'outing_id', outingIds);
+  await add('outing_field_entrants', 'outing_id', outingIds);
+  await add('rounds', 'outing_id', outingIds);
+
+  const roundIds = snapshot.rounds.map((r) => r.id);
+  for (const table of [
+    'round_players',
+    'scores',
+    'junk',
+    'presses',
+    'wolf_picks',
+    'round_games',
+    'round_options',
+    'round_teams',
+    'round_pairings',
+  ] as (keyof Snapshot)[]) {
+    await add(table, 'round_id', roundIds);
+  }
+
+  // The names to put against the scores, and a card to play them on.
+  await add('players', 'id', [...new Set(snapshot.outing_field.map((f) => f.player_id))]);
+  await add('groups', 'id', [...new Set(snapshot.outings.map((o) => o.group_id))]);
+  const courseIds = [...new Set(snapshot.outings.map((o) => o.course_id))];
+  await add('courses', 'id', courseIds);
+  await add('holes', 'course_id', courseIds);
+
   return snapshot;
 }
 
