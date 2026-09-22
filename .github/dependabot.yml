@@ -25,22 +25,32 @@ updates:
     # `expo` has no update to be grouped with it, so the group arrives holding
     # only the React Native half. Hence ignores as well as groups.
     #
-    # Patch releases still come through, because those happen inside an SDK.
+    # Whether a patch is safe depends on how Expo pins the package, which is not
+    # uniform. `react`, `react-dom` and `react-native` are pinned to an exact
+    # version, so no bump of them is safe at all. The rest are pinned with `~`
+    # to a minor, so a patch inside it is fine and still comes through.
     ignore:
-      # Expo pins react and react-native exactly, and the rest of the React
-      # Native side to a minor — so anything above a patch has left SDK 57.
+      # Pinned by Expo to an exact version, so there is no safe bump of them —
+      # not even a patch. react 19.2.3 to 19.2.8 is as small as an update gets
+      # and expo-doctor still refused it. No update-types here, which ignores
+      # every one.
       - dependency-name: react
-        update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: react-dom
-        update-types: [version-update:semver-minor, version-update:semver-major]
-      - dependency-name: "@types/react"
-        update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: react-native
-        update-types: [version-update:semver-minor, version-update:semver-major]
-      # Covers react-native-web, which Expo pins at ~0.21.0, along with the rest.
+      - dependency-name: "@react-native-async-storage/*"
+
+      # Pinned with `~` to a minor instead, so a patch inside that minor is
+      # exactly what the SDK expects and is left to come through. Covers
+      # react-native-web at ~0.21.0, gesture-handler, screens, safe-area-context.
+      #
+      # The glob also catches packages Expo pins exactly — react-native-svg,
+      # react-native-reanimated and a dozen others — for which a patch would slip
+      # past this rule. None of them is a direct dependency today. If one becomes
+      # a direct dependency, name it in the exact list above; expo-doctor is the
+      # net in the meantime.
       - dependency-name: react-native-*
         update-types: [version-update:semver-minor, version-update:semver-major]
-      - dependency-name: "@react-native-async-storage/*"
+      - dependency-name: "@types/react"
         update-types: [version-update:semver-minor, version-update:semver-major]
 
       # jest-expo@57 is a jest 29 preset: it depends on babel-jest,
