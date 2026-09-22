@@ -60,7 +60,7 @@ Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
 ### Checks
 
 ```bash
-npm test          # jest — 90 tests (engine, outings, sync, auth)
+npm test          # jest — 117 tests (engine, outings, sync, auth)
 npm run typecheck # tsc --noEmit
 npm run lint      # eslint
 npx expo-doctor   # dependency and config sanity
@@ -68,7 +68,7 @@ npx expo-doctor   # dependency and config sanity
 
 ### What has and has not been verified
 
-Verified: 90 tests over the money math, the sync logic and the credential checks, a clean typecheck and
+Verified: 117 tests over the money math, the sync logic and the credential checks, a clean typecheck and
 lint, bundles for both iOS and Android, a headless run through every route with
 no runtime errors, and the SQL schema's row-level security exercised against a
 real Postgres.
@@ -154,6 +154,22 @@ Buy-ins come out of everyone's pocket the moment the pot is on, so the standings
 read negative for most of the field until the pots pay. That is the truth of a
 pot — the money has genuinely left the players and is sitting in an envelope —
 and it is why the outing's net does not sum to zero the way a pairwise bet does.
+
+## Where your data lives
+
+Everything is written to the phone first, into AsyncStorage, and that is what
+the app reads. With a server configured and an account signed in, it is then
+copied up to Supabase as real rows — twenty tables, one row per thing that can
+change on its own, so losing a phone stops meaning losing a season.
+
+Nothing waits on the network. The push is debounced and runs after the local
+save has already happened; if it fails, the status in **Settings → Account**
+says so and the next change tries again. Demo data is never sent anywhere.
+
+Signing in on a second phone with nothing on it pulls the season down. Signing
+in on a phone that already has data pushes it up. Two phones both holding
+different data is resolved bluntly — whichever asks last wins — which is honest
+for one person's own devices and is why the pull happens first.
 
 ## Multiplayer scoring
 
@@ -262,13 +278,17 @@ src/
     AuthProvider.tsx  session state, including the offline grant
     AuthGate.tsx    app, or the way in
     __tests__/      19 tests over the validation and error copy
-  sync/             offline-first multiplayer
+  sync/             the server half
+    rows.ts         documents to rows and back — the whole translation
+    diff.ts         what the server holds that the phone no longer does
+    remote.ts       push, pull, and the one reconcile at sign-in
+    useDataSync.ts  debounced push, never on the path of an edit
     types.ts        a mutation is one addressable cell, not a document
     merge.ts        per-cell last-write-wins
     engine.ts       durable queue, coalescing flush, backoff
     fake-transport.ts  an in-memory server that can fail on demand
     supabase.ts     the real wire, plus join-by-code
-    __tests__/      21 tests, including losing signal mid-round
+    __tests__/      48 tests, including losing signal mid-round
   store/            AsyncStorage persistence + React context
   components/       primitives, floating tab bar, screen chrome, sign-in
   theme/tokens.ts   design tokens lifted from the prototype

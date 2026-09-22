@@ -8,6 +8,14 @@ import { Body, Card, Eyebrow, Mono, Switch } from '../components/primitives';
 import { useStore } from '../store/AppStore';
 import { colors, fonts, ink, line, radius } from '../theme/tokens';
 
+const SYNC_LABEL: Record<string, string> = {
+  off: 'Not backing up',
+  syncing: 'Backing up\u2026',
+  synced: 'Backed up',
+  pending: 'Changes not sent yet',
+  error: 'Could not back up',
+};
+
 export default function SettingsScreen() {
   const store = useStore();
   const router = useRouter();
@@ -161,6 +169,17 @@ export default function SettingsScreen() {
                 : 'Edits you make in a shared outing are attributed to this account.'}
             </Mono>
           </Card>
+          <Card style={{ padding: 16, gap: 8 }}>
+            <Text style={styles.name}>{SYNC_LABEL[store.sync.status]}</Text>
+            <Mono size={10.5} style={{ color: ink.ghost, lineHeight: 16 }}>
+              {store.sync.status === 'error'
+                ? `${store.sync.message ?? 'Could not reach the server.'} Your rounds are safe on this phone and will go up when it can.`
+                : store.demoMode
+                  ? 'Demo data is never sent anywhere. Switch to your own data to back it up.'
+                  : 'Scores save on this phone first. The server is a copy, so nothing waits on signal.'}
+            </Mono>
+          </Card>
+
           <Pressable
             accessibilityRole="button"
             onPress={confirmSignOut}

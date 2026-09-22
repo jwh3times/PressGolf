@@ -27,6 +27,9 @@ import type {
   Round,
   Settlement,
 } from '../domain/types';
+import { useAuth } from '../auth/AuthProvider';
+import { useDataSync, type SyncState } from '../sync/useDataSync';
+import type { Documents } from '../sync/rows';
 import { clearDataset, loadDataset, loadSettings, saveDataset, saveSettings } from './persistence';
 
 interface Dataset {
@@ -53,6 +56,8 @@ export interface OutingGroupDraft {
 }
 
 export interface AppStore extends AppState {
+  /** Where this phone's data stands with the server. Never blocks an edit. */
+  sync: SyncState;
   // Derived — the active round (one foursome)
   group: Group | null;
   course: Course | null;
@@ -196,6 +201,39 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  const auth = useAuth();
+
+  // Demo data is never synced: it is invented, and it would land in a real
+  // account's season looking exactly like a real Saturday.
+  const syncEnabled = state.ready && !state.demoMode && auth.status === 'signed-in';
+
+  const documents = useMemo<Documents>(
+    () => ({
+      groups: state.groups,
+      courses: state.courses,
+      rounds: state.rounds,
+      outings: state.outings,
+    }),
+    [state.groups, state.courses, state.rounds, state.outings],
+  );
+
+  const adoptRemote = useCallback(
+    (remote: Documents) => {
+      // A phone with nothing on it, signing in to an account that already has a
+      // season. Take what is there rather than pushing emptiness over it.
+      commit((prev) => ({
+        ...prev,
+        groups: remote.groups,
+        courses: remote.courses,
+        rounds: remote.rounds,
+        outings: remote.outings,
+      }));
+    },
+    [commit],
+  );
+
+  const sync = useDataSync({ enabled: syncEnabled, documents, onAdoptRemote: adoptRemote });
+
   const store = useMemo<AppStore>(() => {
     const group = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;
     const round = state.rounds.find((r) => r.id === state.activeRoundId) ?? null;
@@ -238,6 +276,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
     return {
       ...state,
+      sync,
       group,
       course,
       round,
@@ -537,7 +576,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setRoundPlayers: (playerIds) =>
         patchRound((r) => reconcileRound({ ...r, playerIds }, course?.holes.length ?? 18)),
     };
-  }, [state, commit, setDemoMode]);
+  }, [state, sync, commit, setDemoMode]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
   useEffect(() => {

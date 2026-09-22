@@ -22,7 +22,6 @@ import {
   type Course,
   type FieldGameConfig,
   type FieldGameKey,
-  type GameKey,
   type GameOptions,
   type GamesConfig,
   type Group,
