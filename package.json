@@ -40,7 +40,7 @@
   },
   "scripts": {
     "start": "expo start",
-    "start:op": "op run --env-file=.env.op -- expo start",
+    "start:op": "eval \"$(op inject -i .env.op | grep -v '^#' | grep . | sed 's/^/export /')\" && expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

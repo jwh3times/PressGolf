@@ -203,9 +203,13 @@ without one.
        url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
    ```
 
-5. Start with the two injected: `npm run start:op`, which wraps
-   `op run --env-file=.env.op -- expo start`. That only ever reads, so it runs
-   under the default read-only `OP_SERVICE_ACCOUNT_TOKEN`.
+5. Start with the two injected: `npm run start:op`. That only ever reads, so it
+   runs under the default read-only `OP_SERVICE_ACCOUNT_TOKEN`.
+
+   It resolves the references with `op inject` and exports them, rather than
+   wrapping the whole run in `op run`. `op run` pipes the child's output
+   through itself to mask secrets, which costs Expo its terminal — no QR code
+   and no keypress menu, so there is nothing to scan into Expo Go.
    [`.env.op`](.env.op) holds `op://` references rather than values, so it is
    committed and no key is ever written into the working tree. Plain `npm start` still works — without
    the variables the app is simply local-only.
