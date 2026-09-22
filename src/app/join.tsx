@@ -51,7 +51,7 @@ export default function JoinScreen() {
           </Body>
           <Mono size={11} style={{ color: ink.ghost, lineHeight: 17 }}>
             Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY, and run
-            supabase/schema.sql once in your project. The README has the steps.
+            the migrations in your project. The README has the steps.
           </Mono>
         </Card>
       ) : (

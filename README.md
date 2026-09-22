@@ -57,6 +57,25 @@ register the device — without one, Expo Go is the way on iPhone.
 Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
 `android/` are generated — never edit or commit them by hand.
 
+### Changing the database
+
+The schema lives in `supabase/migrations/`, and the CLI applies it. Nothing is
+ever pasted into the SQL editor, and nothing is edited on the server directly —
+the remote would then disagree with the repo and no one could tell which was
+right.
+
+```bash
+npm run db:new add_something   # writes a timestamped, empty migration
+npm run db:push                # applies whatever the project has not seen
+npm run db:status              # what is applied where
+```
+
+The first migration is the whole schema, and it is written to be safe to run
+twice — it was hand-applied in the SQL editor before this existed, so it has to
+survive meeting a project that already has it. **Migrations added after it do
+not need that and should not try.** They run exactly once, in timestamp order,
+and the migration history table is what remembers.
+
 ### Checks
 
 ```bash
@@ -222,7 +241,16 @@ without one.
    > and a twenty-man society is a full day of it. Configure a real SMTP
    > provider before onboarding a group — that is the only thing standing
    > between this and a normal sign-up.
-3. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
+3. Apply the schema with the Supabase CLI rather than pasting SQL:
+
+   ```bash
+   npx supabase login                     # once, or set SUPABASE_ACCESS_TOKEN
+   npx supabase link --project-ref <ref>  # the ref is in your project URL
+   npm run db:push                        # applies everything in supabase/migrations
+   ```
+
+   The database password `link` asks for is in the `PressGolf` vault, on the
+   same `Supabase Project` item as the URL and the anon key.
 4. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
    item called `Supabase Project`. Writing needs a token with write access on the
    vault; the token the app runs under is read-only:
@@ -311,6 +339,8 @@ src/
     (tabs)/         index · format · score · settle
     roster · courses · course/[id] · sides · new-round · history · settings
     new-outing · outing · field-games · groups · join
+supabase/
+  migrations/       the schema, applied with `npm run db:push`
 scripts/
   generate-icons.py the icon and splash art, drawn from theme/tokens.ts
 ```

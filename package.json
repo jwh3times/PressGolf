@@ -36,6 +36,7 @@
     "eslint-config-expo": "~57.0.2",
     "jest": "^29.7.0",
     "jest-expo": "~57.0.0",
+    "supabase": "^2.117.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -46,7 +47,11 @@
     "web": "expo start --web",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "db:new": "supabase migration new",
+    "db:push": "supabase db push",
+    "db:status": "supabase migration list --linked",
+    "db:lint": "supabase db lint --linked"
   },
   "private": true,
   "jest": {

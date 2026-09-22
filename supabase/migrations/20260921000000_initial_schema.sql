@@ -1,8 +1,16 @@
--- Press — Supabase schema
+-- Press — the baseline migration.
 --
--- Run this once in the SQL editor of a fresh Supabase project, then put the
--- project URL and anon key into EXPO_PUBLIC_SUPABASE_URL and
--- EXPO_PUBLIC_SUPABASE_ANON_KEY. See README "Multiplayer scoring".
+-- Applied with `npm run db:push`. See README "Multiplayer scoring" for getting
+-- the project URL and anon key into the app.
+--
+-- This one file is written to be safe to run twice — every create is `if not
+-- exists` and every policy is dropped before it is made. That is deliberate:
+-- it was hand-run in the SQL editor before migrations existed here, so it has
+-- to be applicable to a project that already has some of it.
+--
+-- Migrations added after this one do not need that, and should not try. They
+-- run exactly once, in timestamp order, and the migration history table is
+-- what remembers.
 --
 -- Auth is email and password. Every policy keys off auth.uid(), so it does not
 -- care how the session was obtained, but the app signs people in with an

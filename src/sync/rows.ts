@@ -32,7 +32,7 @@ import {
   type UnclaimedRule,
 } from '../domain/types';
 
-// ─── Row shapes, mirroring supabase/schema.sql ──────────────────────────────
+// ─── Row shapes, mirroring supabase/migrations ──────────────────────────────
 
 export interface GroupRow {
   id: string;
