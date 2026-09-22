@@ -60,7 +60,7 @@ Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
 ### Checks
 
 ```bash
-npm test          # jest — 87 tests (engine, outings, sync, auth)
+npm test          # jest — 90 tests (engine, outings, sync, auth)
 npm run typecheck # tsc --noEmit
 npm run lint      # eslint
 npx expo-doctor   # dependency and config sanity
@@ -68,7 +68,7 @@ npx expo-doctor   # dependency and config sanity
 
 ### What has and has not been verified
 
-Verified: 87 tests over the money math, the sync logic and the credential checks, a clean typecheck and
+Verified: 90 tests over the money math, the sync logic and the credential checks, a clean typecheck and
 lint, bundles for both iOS and Android, a headless run through every route with
 no runtime errors, and the SQL schema's row-level security exercised against a
 real Postgres.
@@ -175,10 +175,23 @@ Multiplayer is off unless a server is configured, and the app is fully usable
 without one.
 
 1. Create a Supabase project.
-2. In **Authentication → Providers**, leave **Email** on and turn **Confirm
-   email** off. Accounts then work the moment they are created, with no SMTP to
-   configure — the join code is the real gate on an outing. Leave **Anonymous
-   sign-ins** off; the app does not use them.
+2. In **Authentication → Providers**, leave **Email** on with **Confirm email**
+   on, which is how a new project arrives. Leave **Anonymous sign-ins** off; the
+   app does not use them.
+
+   Then in **Authentication → URL Configuration**, add `press://*` and `exp://*`
+   to the redirect allow-list. Without them the link in a confirmation email
+   sends people to `http://localhost:3000` — the address is confirmed either
+   way, but they are shown a connection error, which reads exactly like
+   failure.
+
+   > **The built-in mail service sends two messages an hour, for the whole
+   > project.** That is Supabase's cap on its own sender and is not adjustable;
+   > only custom SMTP raises it, to 30/hour by default. It is fine for signing
+   > yourself up. A fourball all joining at once means two of them wait an hour,
+   > and a twenty-man society is a full day of it. Configure a real SMTP
+   > provider before onboarding a group — that is the only thing standing
+   > between this and a normal sign-up.
 3. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
 4. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
    item called `Supabase Project`. Writing needs a token with write access on the
@@ -244,7 +257,7 @@ src/
     validate.ts     credential checks and the copy for what the server says
     AuthProvider.tsx  session state, including the offline grant
     AuthGate.tsx    app, or the way in
-    __tests__/      16 tests over the validation and error copy
+    __tests__/      19 tests over the validation and error copy
   sync/             offline-first multiplayer
     types.ts        a mutation is one addressable cell, not a document
     merge.ts        per-cell last-write-wins

@@ -66,6 +66,15 @@ export function authErrorMessage(raw: string): string {
   if (lower.includes('password should be at least')) {
     return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
   }
+  // The built-in mail service sends two messages an hour for the whole project,
+  // so this is not an edge case when a group signs up together — say what is
+  // actually happening rather than blaming the person tapping the button.
+  if (lower.includes('email rate limit exceeded') || lower.includes('over_email_send_rate_limit')) {
+    return 'The server has hit its limit for confirmation emails this hour. Yours will send shortly — try again in a little while.';
+  }
+  if (lower.includes('for security purposes') || lower.includes('after 60 seconds')) {
+    return 'Just a moment — another email was sent seconds ago.';
+  }
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
     return 'Too many attempts. Wait a minute and try again.';
   }

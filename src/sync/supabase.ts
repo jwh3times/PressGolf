@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { authErrorMessage, normaliseEmail } from '../auth/validate';
 import type { Mutation, RemoteChanges, SyncTransport } from './types';
@@ -63,17 +64,51 @@ export interface SignUpResult {
   needsConfirmation: boolean;
 }
 
+/**
+ * Where the link in a confirmation email should land.
+ *
+ * Left unset, Supabase sends people to the project's Site URL, which starts
+ * life as http://localhost:3000 — so the address gets confirmed and the person
+ * is shown a connection error, which reads exactly like failure. This hands it
+ * a link back into the app instead, and expo-linking picks the right scheme for
+ * whatever this is running as. The address is confirmed by the time the
+ * redirect happens either way, so a redirect that goes nowhere useful costs
+ * nothing: signing in with the new password still works.
+ */
+function confirmationRedirect(): string {
+  return Linking.createURL('/');
+}
+
 export async function signUpWithPassword(email: string, password: string): Promise<SignUpResult> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('This build has no server configured.');
   const { data, error } = await supabase.auth.signUp({
     email: normaliseEmail(email),
     password,
+    options: { emailRedirectTo: confirmationRedirect() },
   });
   if (error) throw new Error(authErrorMessage(error.message));
   // With confirmation off a session comes back straight away; with it on there
   // is no session until the link in the email is followed.
   return { needsConfirmation: data.session == null };
+}
+
+/**
+ * Sends the confirmation email again.
+ *
+ * Worth having because the built-in mail service is capped at two messages an
+ * hour for the whole project, so a group signing up together will have people
+ * whose email simply has not been sent yet.
+ */
+export async function resendConfirmation(email: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: normaliseEmail(email),
+    options: { emailRedirectTo: confirmationRedirect() },
+  });
+  if (error) throw new Error(authErrorMessage(error.message));
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<void> {

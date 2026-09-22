@@ -76,6 +76,24 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage('Signups not allowed for this instance')).toMatch(/not accepting/);
   });
 
+  it('explains the two-an-hour mail cap rather than blaming the person', () => {
+    const message = authErrorMessage('email rate limit exceeded');
+    expect(message).toMatch(/limit for confirmation emails/);
+    expect(authErrorMessage('over_email_send_rate_limit')).toBe(message);
+  });
+
+  it('recognises the sixty-second gap between sends', () => {
+    expect(authErrorMessage('For security purposes, you can only request this after 60 seconds.')).toMatch(
+      /another email was sent/,
+    );
+  });
+
+  it('keeps the mail cap distinct from a generic rate limit', () => {
+    expect(authErrorMessage('Request rate limit reached')).toBe(
+      'Too many attempts. Wait a minute and try again.',
+    );
+  });
+
   it('treats a failed fetch as the signal problem it almost always is', () => {
     expect(authErrorMessage('Network request failed')).toMatch(/Check your signal/);
     expect(authErrorMessage('TypeError: Failed to fetch')).toMatch(/Check your signal/);

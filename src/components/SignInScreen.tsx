@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
+import { resendConfirmation } from '../sync/supabase';
 import { MIN_PASSWORD_LENGTH, authErrorMessage, emailProblem, passwordProblem } from '../auth/validate';
 import { Screen } from './Screen';
 import { Body, Display, Eyebrow, Mono, PrimaryButton } from './primitives';
@@ -32,11 +33,29 @@ export function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Set once an address is known to exist but not yet be confirmed, which is
+  // the only state where offering to send the email again makes sense.
+  const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
 
   const swapMode = () => {
     setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
     setError(null);
     setNotice(null);
+  };
+
+  const resend = async () => {
+    if (!unconfirmed) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await resendConfirmation(unconfirmed);
+      setNotice('Sent again. It can take a minute to arrive.');
+    } catch (e) {
+      setError(e instanceof Error ? authErrorMessage(e.message) : 'Could not send that again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submit = async () => {
@@ -52,7 +71,10 @@ export function SignInScreen() {
       if (mode === 'sign-up') {
         const { needsConfirmation } = await signUp(email, password);
         if (needsConfirmation) {
-          setNotice('Account created. Confirm your address from the email, then sign in.');
+          setUnconfirmed(email);
+          setNotice(
+            'Account created. Tap the link in the email we sent, then come back here and sign in.',
+          );
           setMode('sign-in');
         }
       } else {
@@ -61,7 +83,12 @@ export function SignInScreen() {
       // On success the session lands and the gate swaps this screen out; there
       // is nothing to navigate to.
     } catch (e) {
-      setError(e instanceof Error ? authErrorMessage(e.message) : 'Something went wrong. Try again.');
+      const message =
+        e instanceof Error ? authErrorMessage(e.message) : 'Something went wrong. Try again.';
+      // Signing in before following the link is the likeliest way to end up
+      // here, and the one case where sending it again is the actual fix.
+      if (/email confirmed/i.test(message)) setUnconfirmed(email);
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -130,6 +157,19 @@ export function SignInScreen() {
             }}
           />
         )}
+
+        {unconfirmed && !busy ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              void resend();
+            }}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignItems: 'center' })}
+          >
+            <Text style={styles.swap}>Send the confirmation email again</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"
