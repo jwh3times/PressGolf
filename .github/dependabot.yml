@@ -15,6 +15,59 @@ updates:
       prefix: deps
       prefix-development: deps(dev)
 
+    # ── What Expo owns, and we do not ──────────────────────────────────────────
+    # The version of these is not ours to choose. Expo pins them to the SDK, and
+    # the only correct way to move them is `npx expo install --fix` when the SDK
+    # itself moves. Dependabot offering react-native 0.87 the day it ships is not
+    # an upgrade — it is a version Expo has never shipped against.
+    #
+    # Grouping cannot prevent that on its own: on the day react-native 0.87 lands,
+    # `expo` has no update to be grouped with it, so the group arrives holding
+    # only the React Native half. Hence ignores as well as groups.
+    #
+    # Patch releases still come through, because those happen inside an SDK.
+    ignore:
+      # Expo pins react and react-native exactly, and the rest of the React
+      # Native side to a minor — so anything above a patch has left SDK 57.
+      - dependency-name: react
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "@types/react"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-native
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      # Covers react-native-web, which Expo pins at ~0.21.0, along with the rest.
+      - dependency-name: react-native-*
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "@react-native-async-storage/*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+
+      # jest-expo@57 is a jest 29 preset: it depends on babel-jest,
+      # jest-environment-jsdom and jest-snapshot at ^29. A jest 30 runner over
+      # jest 29 internals is the sort of mismatch a green suite can miss, so jest
+      # waits for the jest-expo that comes with the next SDK.
+      - dependency-name: jest
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/jest"
+        update-types: [version-update:semver-major]
+
+      # Expo's own packages move within an SDK constantly and those are welcome.
+      # A major is the SDK upgrade itself — a deliberate act, with a changelog to
+      # read first, not something to meet at 05:00 as an open pull request.
+      - dependency-name: expo
+        update-types: [version-update:semver-major]
+      - dependency-name: expo-*
+        update-types: [version-update:semver-major]
+      - dependency-name: "@expo/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@expo-google-fonts/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: babel-preset-expo
+        update-types: [version-update:semver-major]
+      - dependency-name: jest-expo
+        update-types: [version-update:semver-major]
+
     groups:
       # Expo pins these to the SDK. They are meant to move together, via
       # `npx expo install --fix` on an SDK upgrade, and bumping one on its own
@@ -35,6 +88,7 @@ updates:
           - react-native
           - react-native-*
           - "@react-native-async-storage/*"
+          - "@types/react"
 
       # Everything that only affects the build, never the app people carry
       # round a golf course.
@@ -54,6 +108,7 @@ updates:
           - react-dom
           - react-native
           - react-native-*
+          - "@types/react"
         update-types:
           - minor
           - patch
