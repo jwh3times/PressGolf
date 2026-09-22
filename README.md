@@ -57,6 +57,39 @@ register the device — without one, Expo Go is the way on iPhone.
 Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
 `android/` are generated — never edit or commit them by hand.
 
+### CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull
+request and every push to `main`:
+
+| Job | What it does |
+|---|---|
+| **Tests, types, lint** | `npm test`, `tsc --noEmit`, `expo lint` |
+| **Migrations and RLS** | Applies every migration to a throwaway Postgres 16, applies the baseline a second time to prove it is repeatable, then runs 24 row-level-security assertions |
+| **Apply migrations** | Only on `main`, only after both of the above pass |
+
+The row-level security assertions are the ones worth having. They are the part
+no unit test can reach, because the rules live in the database — a stranger
+seeing nothing, a guest with the code seeing that day and nothing else, and a
+guest being refused when it tries to change a stake or touch a private round.
+The test is written to fail loudly: break a policy and the job goes red naming
+the check that caught it.
+
+Migrations reach the real project only from `main`, and only behind green
+tests. `db push` is a no-op when the project has already seen everything, so it
+runs on every merge rather than guessing from which files changed.
+
+Three repository secrets are needed for that last job
+(**Settings → Secrets and variables → Actions**):
+
+| Secret | Where it comes from |
+|---|---|
+| `SUPABASE_ACCESS_TOKEN` | supabase.com/dashboard/account/tokens |
+| `SUPABASE_PROJECT_REF` | the subdomain of your project URL |
+| `SUPABASE_DB_PASSWORD` | the `db_password` field of the `Supabase Project` vault item |
+
+Without them the first two jobs still run; only the apply step fails.
+
 ### Changing the database
 
 The schema lives in `supabase/migrations/`, and the CLI applies it. Nothing is
@@ -341,6 +374,7 @@ src/
     new-outing · outing · field-games · groups · join
 supabase/
   migrations/       the schema, applied with `npm run db:push`
+  ci/               a stand-in for Supabase, and the RLS assertions
 scripts/
   generate-icons.py the icon and splash art, drawn from theme/tokens.ts
 ```

@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A second push to the same branch makes the first one irrelevant — except on
+# main, where a run may be applying migrations and must be left alone.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  checks:
+    name: Tests, types, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Types
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx expo lint
+
+  database:
+    name: Migrations and row-level security
+    runs-on: ubuntu-latest
+
+    # The migrations are applied to a throwaway database on every pull request,
+    # so a broken one is caught here rather than against real rounds.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: press
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGPASSWORD: postgres
+      PSQL: psql -h localhost -U postgres -d press -v ON_ERROR_STOP=1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Postgres client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Stand in for what Supabase provides
+        run: $PSQL -q -f supabase/ci/stubs.sql
+
+      - name: Apply every migration, in order
+        run: |
+          shopt -s nullglob
+          for file in supabase/migrations/*.sql; do
+            echo "── $file"
+            $PSQL -q -f "$file"
+          done
+
+      - name: Apply them again, to prove the baseline is safe to repeat
+        run: $PSQL -q -f supabase/migrations/20260921000000_initial_schema.sql
+
+      - name: Row-level security holds two accounts apart
+        run: $PSQL -f supabase/ci/rls-test.sql
+
+  migrate:
+    name: Apply migrations to Supabase
+    # Only once the tests and the throwaway database both agree, and only for
+    # something that actually landed on main.
+    needs: [checks, database]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # A no-op when the project has already seen everything in the folder, so
+      # this runs on every merge rather than guessing from changed paths.
+      - name: Push pending migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          npx supabase db push \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
