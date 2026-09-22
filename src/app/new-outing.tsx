@@ -157,7 +157,7 @@ export default function NewOutingScreen() {
       <View style={{ gap: 10 }}>
         <View style={styles.fieldHeader}>
           <Eyebrow>Who is out</Eyebrow>
-          <Mono size={11} style={{ color: ink.ghost }}>
+          <Mono size={11} style={{ color: ink.quiet }}>
             {field.length} in · {groupCount} group{groupCount === 1 ? '' : 's'}
           </Mono>
         </View>
@@ -245,5 +245,5 @@ const styles = StyleSheet.create({
   },
   checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost, lineHeight: 16 },
+  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
 });

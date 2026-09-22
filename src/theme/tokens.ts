@@ -1,10 +1,13 @@
 /**
  * Design tokens lifted from the Press prototype.
  *
- * The values are the prototype's, verbatim — the rgba() ink levels in
- * particular carry the whole feel of the thing, so they are named rather than
- * re-derived. The app is dark-only by design: it is used outdoors in daylight
- * with the brightness up, and a light theme would be a different design.
+ * The values are the prototype's, with one deliberate exception: the ink scale
+ * was re-derived to meet WCAG AA, which the prototype's ten levels did not.
+ * Everything else — the greens, the money colours, the hairlines, the radii —
+ * is verbatim, because it carries the whole feel of the thing.
+ *
+ * The app is dark-only by design: it is used outdoors in daylight with the
+ * brightness up, and a light theme would be a different design.
  */
 
 export const colors = {
@@ -41,18 +44,36 @@ export const colors = {
   glass: 'rgba(18,25,20,.82)',
 } as const;
 
-/** Ink at the opacities the prototype uses. Named by role, not by number. */
+/**
+ * Ink, at opacities that all clear WCAG AA for body text. Named by role, not by
+ * number.
+ *
+ * The prototype had ten levels and six of them failed AA — the faintest read at
+ * 2.07:1 while carrying the text that explains what is happening to somebody's
+ * money. There is no arrangement of ten levels that passes: the alpha needed for
+ * 4.5:1 on the lightest card is .493, which is above six of the ten, so they all
+ * collapse to one value. Six levels is what this background actually affords.
+ *
+ * Little was lost in the collapse. The bottom three sat at .32, .28 and .25 —
+ * a hierarchy of 0.07 alpha, which nobody has ever perceived. `faint` folded
+ * into `soft` for the same reason.
+ *
+ * Ratios are over `colors.screen`; `theme/contrast.ts` measures them and
+ * `__tests__/contrast.test.ts` holds every level to its number.
+ */
 export const ink = {
+  /** 16.48:1 — headings, figures, anything that is the point of the screen. */
   full: '#F2EFE6',
+  /** 10.69:1 */
   strong: 'rgba(242,239,230,.8)',
+  /** 8.80:1 — running text. */
   body: 'rgba(242,239,230,.72)',
-  muted: 'rgba(242,239,230,.5)',
-  soft: 'rgba(242,239,230,.45)',
-  faint: 'rgba(242,239,230,.4)',
-  dim: 'rgba(242,239,230,.38)',
-  ghost: 'rgba(242,239,230,.32)',
-  trace: 'rgba(242,239,230,.28)',
-  whisper: 'rgba(242,239,230,.25)',
+  /** 6.77:1 — secondary text that still has to be read. */
+  muted: 'rgba(242,239,230,.62)',
+  /** 5.55:1 — eyebrows, meta, supporting detail. */
+  soft: 'rgba(242,239,230,.55)',
+  /** 4.59:1 on the lightest card — the floor. Nothing may go below this. */
+  quiet: 'rgba(242,239,230,.5)',
 } as const;
 
 /** Hairlines and fills, again at the prototype's exact opacities. */
@@ -105,7 +126,7 @@ export const eyebrow = {
   fontSize: 10,
   letterSpacing: 2,
   textTransform: 'uppercase' as const,
-  color: ink.faint,
+  color: ink.soft,
 };
 
 /** Money figures are always mono — columns of numbers have to line up. */

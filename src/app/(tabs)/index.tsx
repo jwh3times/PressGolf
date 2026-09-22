@@ -116,7 +116,7 @@ export default function HomeScreen() {
               {money(outingPot)} in the pots
             </Text>
           </View>
-          <Mono size={11} style={{ color: ink.trace }}>
+          <Mono size={11} style={{ color: ink.quiet }}>
             ›
           </Mono>
         </Pressable>
@@ -210,7 +210,7 @@ export default function HomeScreen() {
               const width = season.peak ? Math.min(60, (Math.abs(entry.net) / season.peak) * 60) : 0;
               return (
                 <View key={entry.playerId} style={styles.seasonRow}>
-                  <Mono size={11} style={{ color: ink.trace, width: 14 }}>
+                  <Mono size={11} style={{ color: ink.quiet, width: 14 }}>
                     {index + 1}
                   </Mono>
                   <Avatar initials={player.initials} color={player.color} size={26} />
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   gameDetail: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
   noGames: { padding: 16 },
   seasonHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  seasonMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost },
+  seasonMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
   outingRow: {
     flexDirection: 'row',
     alignItems: 'center',

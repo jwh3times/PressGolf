@@ -127,7 +127,7 @@ export default function RosterScreen() {
                   </View>
                   <Text style={styles.sub}>{open ? 'tap to close' : 'tap to edit'}</Text>
                 </View>
-                <Mono size={11} style={{ color: ink.trace }}>
+                <Mono size={11} style={{ color: ink.quiet }}>
                   {index + 1}
                 </Mono>
               </Pressable>
@@ -226,13 +226,13 @@ export default function RosterScreen() {
 
 const styles = StyleSheet.create({
   name: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full },
-  sub: { fontFamily: fonts.sans, fontSize: 11, color: ink.dim, marginTop: 2 },
+  sub: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 2 },
   fieldLabel: {
     fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: ink.faint,
+    color: ink.soft,
   },
   youTag: {
     backgroundColor: 'rgba(139,224,174,.15)',

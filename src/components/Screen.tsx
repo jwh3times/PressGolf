@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    color: ink.faint,
+    color: ink.soft,
   },
   headerTitle: { fontFamily: fonts.serif, fontSize: 32, lineHeight: 34, color: ink.full, marginTop: 3 },
   close: {

@@ -125,7 +125,7 @@ export default function NewRoundScreen() {
                 {p.name}
               </Text>
               {on ? (
-                <Mono size={10} style={{ color: ink.ghost }}>
+                <Mono size={10} style={{ color: ink.quiet }}>
                   TEE {group.players.filter((q) => selected.includes(q.id)).indexOf(p) + 1}
                 </Mono>
               ) : null}
@@ -182,5 +182,5 @@ const styles = StyleSheet.create({
   },
   checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost, lineHeight: 16 },
+  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
 });

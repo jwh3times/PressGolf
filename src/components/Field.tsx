@@ -13,7 +13,7 @@ export function Field({
     <View style={{ gap: 6 }}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        placeholderTextColor={ink.trace}
+        placeholderTextColor={ink.quiet}
         selectionColor={colors.accent}
         {...rest}
         style={[styles.input, style]}
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: ink.faint,
+    color: ink.soft,
   },
   input: {
     backgroundColor: colors.cardDeep,
@@ -42,5 +42,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: ink.full,
   },
-  hint: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost },
+  hint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
 });

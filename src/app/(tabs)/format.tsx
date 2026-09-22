@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     borderTopColor: line.hair,
     gap: 4,
   },
-  requirementLabel: { letterSpacing: 1.2, color: ink.faint },
+  requirementLabel: { letterSpacing: 1.2, color: ink.soft },
   requirementText: { fontFamily: fonts.sans, fontSize: 12, color: ink.body, lineHeight: 17 },
   popsHeader: {
     flexDirection: 'row',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  popsMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost },
+  popsMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
   popsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,11 +286,11 @@ const styles = StyleSheet.create({
     borderTopColor: line.hair,
   },
   popsName: { fontFamily: fonts.sans, fontSize: 14, color: ink.full },
-  popsHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.dim, marginTop: 1 },
+  popsHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 1 },
   exposureNote: {
     fontFamily: fonts.sans,
     fontSize: 11,
-    color: ink.ghost,
+    color: ink.quiet,
     lineHeight: 16,
     textAlign: 'center',
     marginTop: -10,

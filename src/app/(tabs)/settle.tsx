@@ -92,7 +92,7 @@ export default function SettleScreen() {
             return (
               <View key={i} style={styles.transfer}>
                 <Avatar initials={from.initials} color={from.color} size={30} />
-                <Text style={{ fontSize: 13, color: ink.ghost }}>→</Text>
+                <Text style={{ fontSize: 13, color: ink.quiet }}>→</Text>
                 <Avatar initials={to.initials} color={to.color} size={30} />
                 {/* Full names, not first words: "Big Ray" truncates to "Big". */}
                 <Text style={styles.transferText} numberOfLines={1}>
@@ -121,7 +121,7 @@ export default function SettleScreen() {
                 <Text style={styles.breakdownName}>
                   {game.name} · {game.detail}
                 </Text>
-                <Mono size={11} style={{ color: ink.faint }}>
+                <Mono size={11} style={{ color: ink.soft }}>
                   {money(round.games[game.key].stake)}
                 </Mono>
               </View>
@@ -159,7 +159,7 @@ export default function SettleScreen() {
               <Text style={styles.netName} numberOfLines={1}>
                 {player.name}
               </Text>
-              <Mono size={11} style={{ color: ink.ghost }}>
+              <Mono size={11} style={{ color: ink.quiet }}>
                 {toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}
               </Mono>
               <Money cents={net} label={signedMoney(net)} />
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     borderTopColor: line.hair,
   },
   breakdownText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.body, lineHeight: 17 },
-  breakdownAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.faint },
+  breakdownAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
   netRow: {
     flexDirection: 'row',
     alignItems: 'center',

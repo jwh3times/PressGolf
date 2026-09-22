@@ -69,7 +69,7 @@ export default function CoursesScreen() {
                     {needsIndex ? ' · stroke index not set' : ''}
                   </Text>
                 </View>
-                <Mono size={11} style={{ color: ink.trace }}>
+                <Mono size={11} style={{ color: ink.quiet }}>
                   EDIT ›
                 </Mono>
               </Pressable>
@@ -143,5 +143,5 @@ const styles = StyleSheet.create({
   },
   toggleOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   toggleText: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.body },
-  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost, lineHeight: 16 },
+  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
 });
