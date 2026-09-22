@@ -6,7 +6,7 @@ import { colors } from '../../theme/tokens';
 export default function TabsLayout() {
   return (
     <Tabs
-      tabBar={(props) => <TabBar {...props} />}
+      tabBar={TabBar}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.screen },

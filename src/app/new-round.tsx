@@ -110,7 +110,7 @@ export default function NewRoundScreen() {
 
       <View style={{ gap: 10 }}>
         <Eyebrow>Who’s playing</Eyebrow>
-        {group.players.map((p, i) => {
+        {group.players.map((p) => {
           const on = selected.includes(p.id);
           return (
             <Pressable

@@ -332,7 +332,7 @@ describe('a whole outing', () => {
   it('holds together with 20 players, foursome games and both pots', () => {
     // Deterministic but uneven scoring so lots of formats have something to do.
     const cards = Array.from({ length: 20 }, (_, p) =>
-      Array.from({ length: 18 }, (_, h) => TEST_PAR[h] + ((p * 7 + h * 3) % 4) - 1),
+      Array.from({ length: 18 }, (__, h) => TEST_PAR[h] + ((p * 7 + h * 3) % 4) - 1),
     );
     const { outing, rounds, course, roster } = makeTestOuting({
       cards,

@@ -471,8 +471,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const rounds = prev.rounds.map((r) => {
             if (r.groupId !== groupId || r.status === 'completed' || !r.playerIds.includes(playerId)) return r;
             const playerIds = r.playerIds.filter((id) => id !== playerId);
-            const course = prev.courses.find((c) => c.id === r.courseId);
-            return reconcileRound({ ...r, playerIds }, course?.holes.length ?? 18);
+            const roundCourse = prev.courses.find((c) => c.id === r.courseId);
+            return reconcileRound({ ...r, playerIds }, roundCourse?.holes.length ?? 18);
           });
           return { ...prev, groups, rounds };
         }),

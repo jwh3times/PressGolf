@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "import", "jest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "env": { "es2024": true, "node": true },
+  "ignorePatterns": ["node_modules", ".expo", "dist", "scripts", "supabase"],
+  "rules": {
+    "react/style-prop-object": "off",
+    "react/jsx-filename-extension": "off"
+  }
+}

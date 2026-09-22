@@ -64,7 +64,7 @@ request and every push to `main`:
 
 | Job | What it does |
 |---|---|
-| **Tests, types, lint** | `npm test`, `tsc --noEmit`, `expo lint`, `expo-doctor` |
+| **Tests, types, lint** | `npm test`, `tsc --noEmit`, `oxlint`, `expo-doctor` |
 | **Migrations and RLS** | Applies every migration to a throwaway Postgres 16, applies the baseline a second time to prove it is repeatable, then runs 24 row-level-security assertions |
 | **Apply migrations** | Only on `main`, only after both of the above pass |
 
@@ -127,15 +127,15 @@ and the migration history table is what remembers.
 ### Checks
 
 ```bash
-npm test          # jest — 130 tests (engine, outings, sync, auth)
+npm test          # jest — 134 tests (engine, outings, sync, auth)
 npm run typecheck # tsc --noEmit
-npm run lint      # eslint
+npm run lint      # oxlint
 npx expo-doctor   # dependency and config sanity
 ```
 
 ### What has and has not been verified
 
-Verified: 130 tests over the money math, the sync logic and the credential checks, a clean typecheck and
+Verified: 134 tests over the money math, the sync logic and the credential checks, a clean typecheck and
 lint, bundles for both iOS and Android, a headless run through every route with
 no runtime errors, and the SQL schema's row-level security exercised against a
 real Postgres.
