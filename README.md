@@ -173,12 +173,12 @@ without one.
 1. Create a Supabase project.
 2. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
 3. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
-   item called `Supabase`. Writing needs a token with write access on the
+   item called `Supabase Project`. Writing needs a token with write access on the
    vault; the token the app runs under is read-only:
 
    ```bash
    OP_SERVICE_ACCOUNT_TOKEN="$OP_WRITE_TOKEN" \
-     op item create --vault PressGolf --category "API Credential" --title Supabase \
+     op item create --vault PressGolf --category "API Credential" --title "Supabase Project" \
        url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
    ```
 
