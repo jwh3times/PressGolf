@@ -101,7 +101,7 @@ export default function CourseEditorScreen() {
               accessibilityLabel={`Yards for hole ${hole.number}`}
               value={hole.yards ? String(hole.yards) : ''}
               placeholder="—"
-              placeholderTextColor={ink.trace}
+              placeholderTextColor={ink.quiet}
               keyboardType="number-pad"
               selectTextOnFocus
               selectionColor={colors.accent}
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: ink.faint,
+    color: ink.soft,
     width: 46,
     textAlign: 'center',
   },

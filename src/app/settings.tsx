@@ -151,7 +151,7 @@ export default function SettingsScreen() {
             style={styles.link}
           >
             <Text style={styles.linkText}>{item.label}</Text>
-            <Mono size={11} style={{ color: ink.trace }}>
+            <Mono size={11} style={{ color: ink.quiet }}>
               ›
             </Mono>
           </Pressable>
@@ -163,7 +163,7 @@ export default function SettingsScreen() {
           <Eyebrow>Account</Eyebrow>
           <Card style={{ padding: 16, gap: 8 }}>
             <Text style={styles.name}>{auth.email ?? 'Signed in'}</Text>
-            <Mono size={10.5} style={{ color: ink.ghost, lineHeight: 16 }}>
+            <Mono size={10.5} style={{ color: ink.quiet, lineHeight: 16 }}>
               {auth.unverified
                 ? 'Signed in on this phone. Not re-checked with the server yet — that happens the next time you have signal.'
                 : 'Edits you make in a shared outing are attributed to this account.'}
@@ -171,7 +171,7 @@ export default function SettingsScreen() {
           </Card>
           <Card style={{ padding: 16, gap: 8 }}>
             <Text style={styles.name}>{SYNC_LABEL[store.sync.status]}</Text>
-            <Mono size={10.5} style={{ color: ink.ghost, lineHeight: 16 }}>
+            <Mono size={10.5} style={{ color: ink.quiet, lineHeight: 16 }}>
               {store.sync.status === 'error'
                 ? `${store.sync.message ?? 'Could not reach the server.'} Your rounds are safe on this phone and will go up when it can.`
                 : store.demoMode
@@ -198,7 +198,7 @@ export default function SettingsScreen() {
             junk, Stableford, four-ball, Wolf, Vegas, match play and stroke play. Everything is
             computed in whole cents and netted down to the fewest hand-offs.
           </Body>
-          <Mono size={10.5} style={{ color: ink.ghost }}>
+          <Mono size={10.5} style={{ color: ink.quiet }}>
             v{Constants.expoConfig?.version ?? '1.0.0'} · {store.demoMode ? 'demo' : 'live'} dataset
           </Mono>
         </Card>

@@ -184,7 +184,7 @@ export function SignInScreen() {
 
         <View style={{ gap: 6 }}>
           <Eyebrow>Once you are in</Eyebrow>
-          <Mono size={11} style={{ color: ink.ghost, lineHeight: 17 }}>
+          <Mono size={11} style={{ color: ink.quiet, lineHeight: 17 }}>
             You stay signed in. The app opens straight onto your card after this, with or without
             signal — scoring, settling and the season ledger all run on the phone.
           </Mono>

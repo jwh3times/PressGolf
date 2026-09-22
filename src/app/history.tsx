@@ -62,7 +62,7 @@ export default function HistoryScreen() {
                 <Text style={styles.name} numberOfLines={1}>
                   {player.name}
                 </Text>
-                <Mono size={10.5} style={{ color: ink.ghost }}>
+                <Mono size={10.5} style={{ color: ink.quiet }}>
                   {entry.roundsPlayed} rd
                 </Mono>
                 <Money cents={entry.net} label={signedMoney(entry.net)} size={13} />

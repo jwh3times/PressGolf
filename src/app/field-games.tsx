@@ -209,7 +209,7 @@ export default function FieldGamesScreen() {
 
       <View style={{ gap: 6 }}>
         <Eyebrow>Worth knowing</Eyebrow>
-        <Mono size={11} style={{ color: ink.ghost, lineHeight: 17 }}>
+        <Mono size={11} style={{ color: ink.quiet, lineHeight: 17 }}>
           A hole only pays once every entrant has posted a score on it. With tee times ten minutes
           apart that means most of the card sits unresolved until the last group is in — which is
           reported rather than guessed at.
@@ -269,6 +269,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     maxWidth: '48%',
   },
-  entrantName: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.dim, flexShrink: 1 },
+  entrantName: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.quiet, flexShrink: 1 },
   warn: { fontFamily: fonts.sans, fontSize: 11.5, color: colors.clay, lineHeight: 16 },
 });

@@ -120,7 +120,7 @@ export default function GroupsScreen() {
             {player(picked)?.name} — tap a group below
           </Text>
           <Pressable accessibilityRole="button" onPress={() => setPicked(null)} hitSlop={8}>
-            <Mono size={10} style={{ color: ink.faint }}>
+            <Mono size={10} style={{ color: ink.soft }}>
               CANCEL
             </Mono>
           </Pressable>
@@ -166,12 +166,12 @@ export default function GroupsScreen() {
           <View style={styles.groupHead}>
             <Text style={styles.groupName}>{group.name}</Text>
             {group.teeTime ? (
-              <Mono size={10.5} style={{ color: ink.ghost }}>
+              <Mono size={10.5} style={{ color: ink.quiet }}>
                 {group.teeTime}
               </Mono>
             ) : null}
             <View style={{ flex: 1 }} />
-            <Mono size={10.5} style={{ color: group.playerIds.length > 4 ? colors.clay : ink.ghost }}>
+            <Mono size={10.5} style={{ color: group.playerIds.length > 4 ? colors.clay : ink.quiet }}>
               {group.playerIds.length}
             </Mono>
           </View>
@@ -195,7 +195,7 @@ export default function GroupsScreen() {
                     <Text style={styles.memberName} numberOfLines={1}>
                       {p.name}
                     </Text>
-                    <Mono size={10} style={{ color: ink.trace }}>
+                    <Mono size={10} style={{ color: ink.quiet }}>
                       MOVE
                     </Mono>
                   </Pressable>
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   groupTarget: { borderColor: colors.accentSoft, borderStyle: 'dashed' },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupName: { fontFamily: fonts.sansBold, fontSize: 14.5, color: ink.full },
-  emptyGroup: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.ghost },
+  emptyGroup: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.quiet },
   member: {
     flexDirection: 'row',
     alignItems: 'center',

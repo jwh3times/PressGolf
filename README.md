@@ -382,7 +382,8 @@ src/
     __tests__/      61 tests, including losing signal mid-round
   store/            AsyncStorage persistence + React context
   components/       primitives, floating tab bar, screen chrome, sign-in
-  theme/tokens.ts   design tokens lifted from the prototype
+  theme/tokens.ts   design tokens; ink re-derived to meet WCAG AA
+  theme/contrast.ts WCAG contrast measurement, used by the token test
   app/              expo-router routes
     (tabs)/         index · format · score · settle
     roster · courses · course/[id] · sides · new-round · history · settings
@@ -477,6 +478,11 @@ app meant changing some things on purpose:
   runs in a browser, but `Alert`-based confirmations (post to ledger, delete
   player, switch datasets) are no-ops there. They work on iOS and Android.
 - **Dark theme only**, as designed. It is used outdoors with the brightness up.
+- **Contrast meets AA; the rest of accessibility is unmeasured.** Every ink
+  level clears WCAG AA for body text and `theme/__tests__/contrast.test.ts`
+  holds them there on every surface. Type size is a separate question the test
+  says nothing about — the smallest labels are 8.5px — and no VoiceOver or
+  TalkBack pass has been made on a device.
 
 ## License
 

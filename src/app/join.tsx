@@ -49,7 +49,7 @@ export default function JoinScreen() {
           <Body style={{ color: colors.gold, lineHeight: 19 }}>
             This build has no server configured, so everything stays on this phone.
           </Body>
-          <Mono size={11} style={{ color: ink.ghost, lineHeight: 17 }}>
+          <Mono size={11} style={{ color: ink.quiet, lineHeight: 17 }}>
             Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY, and run
             the migrations in your project. The README has the steps.
           </Mono>
@@ -92,7 +92,7 @@ export default function JoinScreen() {
 
       <View style={{ gap: 6 }}>
         <Eyebrow>How it behaves out there</Eyebrow>
-        <Mono size={11} style={{ color: ink.ghost, lineHeight: 17 }}>
+        <Mono size={11} style={{ color: ink.quiet, lineHeight: 17 }}>
           Scores save on your phone first and sync when there is signal. Lose the radio on the back
           nine and nothing stops — the edits queue up and go out when you walk back into range.
         </Mono>

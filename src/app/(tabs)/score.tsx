@@ -143,7 +143,7 @@ export default function ScoreScreen() {
                   {
                     color:
                       gross == null
-                        ? ink.whisper
+                        ? ink.quiet
                         : rel! < 0
                           ? colors.accent
                           : rel! > 1
@@ -201,7 +201,7 @@ export default function ScoreScreen() {
       >
         <View style={styles.holeCardTop}>
           <Text style={styles.holeCardLabel}>What this hole did</Text>
-          <Mono size={10.5} style={{ color: ink.faint }}>
+          <Mono size={10.5} style={{ color: ink.soft }}>
             {carry > 1 ? `${carry - 1} skin${carry > 2 ? 's' : ''} riding` : 'skins clean'}
           </Mono>
         </View>
@@ -253,7 +253,7 @@ function WolfPicker({ hole }: { hole: number }) {
             onPress={() => store.setWolfPick(hole, wolfId, null)}
             hitSlop={8}
           >
-            <Mono size={10} style={{ color: ink.faint }}>
+            <Mono size={10} style={{ color: ink.soft }}>
               RESET
             </Mono>
           </Pressable>
@@ -362,7 +362,7 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
               <Text
                 style={[
                   styles.pressButtonText,
-                  { color: down ? colors.screen : ink.trace },
+                  { color: down ? colors.screen : ink.quiet },
                 ]}
               >
                 {down ? 'Press' : '—'}
@@ -390,7 +390,7 @@ function buildHoleEvents(ctx: RoundContext, hole: number): HoleEvent[] {
       {
         text: `Enter all ${ctx.ids.length} scores to settle this hole.`,
         amount: '',
-        color: ink.whisper,
+        color: ink.quiet,
         tone: 'pending',
       },
     ];
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   playerName: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
-  playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.faint, marginTop: 2 },
+  playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
   pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
   popText: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 0.85, color: colors.gold },
   scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
   },
   eventDot: { width: 7, height: 7, borderRadius: 999 },
   eventText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.strong },
-  eventAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.faint },
+  eventAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
   wolfCard: {
     backgroundColor: colors.cardDeep,
     borderWidth: 1,
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   pressStatus: { fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
-  pressDetail: { fontFamily: fonts.sans, fontSize: 11, color: ink.faint, marginTop: 2 },
+  pressDetail: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
   pressButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
   pressButtonLive: { backgroundColor: colors.clay },
   pressButtonIdle: { borderWidth: 1, borderColor: line.bright },

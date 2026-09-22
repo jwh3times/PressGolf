@@ -228,7 +228,7 @@ export default function SidesScreen() {
 
 const styles = StyleSheet.create({
   sideLabel: { fontFamily: fonts.sansBold, fontSize: 14, color: ink.full },
-  sideCount: { fontFamily: fonts.mono, fontSize: 11, color: ink.ghost },
+  sideCount: { fontFamily: fonts.mono, fontSize: 11, color: ink.quiet },
   slot: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 13,
   },
-  vs: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost },
+  vs: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
   pairNames: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
   check: {
     width: 22,

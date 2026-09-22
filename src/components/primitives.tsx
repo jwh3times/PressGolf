@@ -351,7 +351,7 @@ export function Chip({
           fontFamily: fonts.mono,
           fontSize: 8.5,
           letterSpacing: 0.85,
-          color: active ? color : ink.dim,
+          color: active ? color : ink.quiet,
         }}
       >
         {label}

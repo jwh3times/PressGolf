@@ -153,7 +153,7 @@ export default function OutingScreen() {
         <View style={styles.sectionHead}>
           <Eyebrow>Groups</Eyebrow>
           <Pressable accessibilityRole="button" onPress={() => router.push('/groups')} hitSlop={8}>
-            <Mono size={11} style={{ color: ink.ghost }}>
+            <Mono size={11} style={{ color: ink.quiet }}>
               REARRANGE ›
             </Mono>
           </Pressable>
@@ -175,7 +175,7 @@ export default function OutingScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
                   <Text style={styles.groupName}>{round.name}</Text>
                   {round.teeTime ? (
-                    <Mono size={10} style={{ color: ink.ghost }}>
+                    <Mono size={10} style={{ color: ink.quiet }}>
                       {round.teeTime}
                     </Mono>
                   ) : null}
@@ -193,10 +193,10 @@ export default function OutingScreen() {
                 </View>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                <Mono size={11} style={{ color: ink.faint }}>
+                <Mono size={11} style={{ color: ink.soft }}>
                   THRU {summary?.thru ?? 0}
                 </Mono>
-                <Mono size={10} style={{ color: ink.ghost }}>
+                <Mono size={10} style={{ color: ink.quiet }}>
                   {summary?.games.length ?? 0} game{(summary?.games.length ?? 0) === 1 ? '' : 's'}
                 </Mono>
               </View>
@@ -207,7 +207,7 @@ export default function OutingScreen() {
 
       <View style={{ gap: 8 }}>
         <Eyebrow>Where everybody stands</Eyebrow>
-        <Body style={{ color: ink.ghost, fontSize: 11.5, lineHeight: 16 }}>
+        <Body style={{ color: ink.quiet, fontSize: 11.5, lineHeight: 16 }}>
           Buy-ins are already out of everyone’s pocket, so most of the field sits negative until
           the pots pay.
         </Body>
@@ -216,7 +216,7 @@ export default function OutingScreen() {
           if (!p) return null;
           return (
             <View key={entry.id} style={styles.standingRow}>
-              <Mono size={11} style={{ color: ink.trace, width: 18 }}>
+              <Mono size={11} style={{ color: ink.quiet, width: 18 }}>
                 {i + 1}
               </Mono>
               <Avatar initials={p.initials} color={p.color} size={26} />
@@ -246,7 +246,7 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
       <View style={styles.potHead}>
         <GameDot color={game.color} />
         <Text style={styles.potName}>{game.name}</Text>
-        <Mono size={11} style={{ color: ink.faint }}>
+        <Mono size={11} style={{ color: ink.soft }}>
           {money(game.pot)}
         </Mono>
       </View>
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     borderTopColor: line.hair,
     paddingTop: 9,
   },
-  pendingText: { fontFamily: fonts.sans, fontSize: 11, color: ink.ghost, lineHeight: 15 },
+  pendingText: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 15 },
   groupRow: {
     flexDirection: 'row',
     alignItems: 'center',
