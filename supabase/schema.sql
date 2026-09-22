@@ -4,6 +4,10 @@
 -- project URL and anon key into EXPO_PUBLIC_SUPABASE_URL and
 -- EXPO_PUBLIC_SUPABASE_ANON_KEY. See README "Multiplayer scoring".
 --
+-- Auth is email and password. Every policy below keys off auth.uid(), so it
+-- does not care how the session was obtained, but the app signs people in with
+-- an account and anonymous sign-ins are expected to stay off.
+--
 -- The design is deliberately thin. The app already knows how to settle a round
 -- from plain data, so the server does not need to understand golf — it stores
 -- an outing, who is in it, and an append-only log of edits. All the money is

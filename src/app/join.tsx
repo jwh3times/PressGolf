@@ -11,8 +11,9 @@ import { colors, fonts, ink, radius } from '../theme/tokens';
 /**
  * Joining somebody else's outing with a six-character code.
  *
- * No account, no password: the code is the shared secret, and the session
- * behind it is anonymous. Nobody is typing an email address on the first tee.
+ * The code is the shared secret that decides which outing you land in; the
+ * account behind it is what puts your name on the edits once you are there.
+ * You are already signed in by the time this screen can be reached.
  */
 export default function JoinScreen() {
   const store = useStore();

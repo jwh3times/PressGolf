@@ -26,9 +26,13 @@ npx expo start        # scan the QR: iOS Camera app, Android via Expo Go
 Your phone and your computer need to be on the same Wi-Fi. If they are not, or
 the QR sits there spinning, use `npx expo start --tunnel`.
 
-You will land on the Saturday Dogs demo — a fourball through eleven holes.
-**Settings → Group → Pine Hollow Society** switches to the twenty-man outing
-with the field pots running.
+With no server configured — which is what a plain `npm start` gives you — the
+app is local-only and opens straight onto the Saturday Dogs demo, a fourball
+through eleven holes. **Settings → Group → Pine Hollow Society** switches to the
+twenty-man outing with the field pots running.
+
+Run it with a server (`npm run start:op`, see [Multiplayer
+scoring](#multiplayer-scoring)) and it asks you to sign in first, once.
 
 ### For testing on an actual course
 
@@ -56,7 +60,7 @@ Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
 ### Checks
 
 ```bash
-npm test          # jest — 71 tests (engine, outings, sync)
+npm test          # jest — 87 tests (engine, outings, sync, auth)
 npm run typecheck # tsc --noEmit
 npm run lint      # eslint
 npx expo-doctor   # dependency and config sanity
@@ -64,7 +68,7 @@ npx expo-doctor   # dependency and config sanity
 
 ### What has and has not been verified
 
-Verified: 71 tests over the money math and the sync logic, a clean typecheck and
+Verified: 87 tests over the money math, the sync logic and the credential checks, a clean typecheck and
 lint, bundles for both iOS and Android, a headless run through every route with
 no runtime errors, and the SQL schema's row-level security exercised against a
 real Postgres.
@@ -171,8 +175,12 @@ Multiplayer is off unless a server is configured, and the app is fully usable
 without one.
 
 1. Create a Supabase project.
-2. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
-3. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
+2. In **Authentication → Providers**, leave **Email** on and turn **Confirm
+   email** off. Accounts then work the moment they are created, with no SMTP to
+   configure — the join code is the real gate on an outing. Leave **Anonymous
+   sign-ins** off; the app does not use them.
+3. Run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor.
+4. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
    item called `Supabase Project`. Writing needs a token with write access on the
    vault; the token the app runs under is read-only:
 
@@ -182,7 +190,7 @@ without one.
        url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
    ```
 
-4. Start with the two injected: `npm run start:op`, which wraps
+5. Start with the two injected: `npm run start:op`, which wraps
    `op run --env-file=.env.op -- expo start`. That only ever reads, so it runs
    under the default read-only `OP_SERVICE_ACCOUNT_TOKEN`.
    [`.env.op`](.env.op) holds `op://` references rather than values, so it is
@@ -198,9 +206,18 @@ Cloud builds cannot reach your local 1Password, so EAS needs the same two
 values set as EAS environment variables against the `preview` and `production`
 profiles before a build can talk to Supabase.
 
-Sign-in is anonymous — nobody types an email on the first tee. The organiser
-gets a six-character join code (no `O`/`0` or `I`/`1`, because people read them
-out loud), and that code is the shared secret.
+Everyone signs in with an email and a password, so an edit can be attributed
+to a person rather than to a device. The organiser then gets a six-character
+join code (no `O`/`0` or `I`/`1`, because people read them out loud), and that
+code is what decides who is in the outing — the account says who you are, the
+code says which day you are on.
+
+You sign in once. The session persists, and a phone that has signed in before
+is let straight through on later launches whether or not it can reach the
+server — being locked out of your own scorecard in a car park with no signal
+would defeat the point of an offline-first app. Everything the server actually
+protects is still protected: row-level security does not care what the app
+chose to render.
 
 The schema's row-level security was exercised against a real Postgres: an
 outsider sees no outings and cannot write edits, joining requires the code,
@@ -223,6 +240,11 @@ src/
       outing.ts     settleOuting() — every group's games plus the field pots
       index.ts      settleRound() — one group's games
     __tests__/      50 tests over the money math
+  auth/             accounts
+    validate.ts     credential checks and the copy for what the server says
+    AuthProvider.tsx  session state, including the offline grant
+    AuthGate.tsx    app, or the way in
+    __tests__/      16 tests over the validation and error copy
   sync/             offline-first multiplayer
     types.ts        a mutation is one addressable cell, not a document
     merge.ts        per-cell last-write-wins
@@ -231,7 +253,7 @@ src/
     supabase.ts     the real wire, plus join-by-code
     __tests__/      21 tests, including losing signal mid-round
   store/            AsyncStorage persistence + React context
-  components/       primitives, floating tab bar, screen chrome
+  components/       primitives, floating tab bar, screen chrome, sign-in
   theme/tokens.ts   design tokens lifted from the prototype
   app/              expo-router routes
     (tabs)/         index · format · score · settle

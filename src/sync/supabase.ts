@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { authErrorMessage, normaliseEmail } from '../auth/validate';
 import type { Mutation, RemoteChanges, SyncTransport } from './types';
 
 /**
@@ -36,20 +37,61 @@ export function getSupabase(): SupabaseClient | null {
 }
 
 /**
- * Signs in anonymously.
+ * Who this phone is signed in as, or null.
  *
- * Nobody is entering a password on the first tee. An anonymous session is
- * enough: the outing's join code is the shared secret, and the session only
- * has to be stable enough to attribute edits and satisfy row level security.
+ * Reads the session Supabase has already persisted to AsyncStorage rather than
+ * asking the server, so it answers on the back nine with no signal. An access
+ * token that has expired still identifies whose phone this is, which is all
+ * the local half of the app needs.
  */
-export async function ensureSession(): Promise<string | null> {
+export async function currentUserId(): Promise<string | null> {
   const supabase = getSupabase();
   if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
-  if (data.session?.user?.id) return data.session.user.id;
-  const { data: created, error } = await supabase.auth.signInAnonymously();
-  if (error) throw error;
-  return created.user?.id ?? null;
+  return data.session?.user?.id ?? null;
+}
+
+/** The id a server write is attributed to. Refuses rather than guessing. */
+export async function requireUserId(): Promise<string> {
+  const id = await currentUserId();
+  if (!id) throw new Error('Sign in to share an outing.');
+  return id;
+}
+
+export interface SignUpResult {
+  /** True when the project still wants the address confirmed by email. */
+  needsConfirmation: boolean;
+}
+
+export async function signUpWithPassword(email: string, password: string): Promise<SignUpResult> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  const { data, error } = await supabase.auth.signUp({
+    email: normaliseEmail(email),
+    password,
+  });
+  if (error) throw new Error(authErrorMessage(error.message));
+  // With confirmation off a session comes back straight away; with it on there
+  // is no session until the link in the email is followed.
+  return { needsConfirmation: data.session == null };
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  const { error } = await supabase.auth.signInWithPassword({
+    email: normaliseEmail(email),
+    password,
+  });
+  if (error) throw new Error(authErrorMessage(error.message));
+}
+
+export async function signOut(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  // `local` clears this device without needing the network to agree, which
+  // matters because signing out should never hang on a dead connection.
+  await supabase.auth.signOut({ scope: 'local' });
 }
 
 /** Unambiguous alphabet: no O/0, no I/1. People read these out loud. */
@@ -75,7 +117,7 @@ export async function hostOuting(
 ): Promise<HostedOuting> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Multiplayer is not set up on this build.');
-  const userId = await ensureSession();
+  const userId = await requireUserId();
   const joinCode = makeJoinCode();
 
   const { error } = await supabase
@@ -99,7 +141,7 @@ export async function joinOuting(
 ): Promise<{ outingId: string; payload: unknown; course: unknown; name: string }> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Multiplayer is not set up on this build.');
-  await ensureSession();
+  await requireUserId();
 
   const { data: outingId, error } = await supabase.rpc('join_outing', {
     code: code.trim().toUpperCase(),

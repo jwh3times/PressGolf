@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '../auth/AuthProvider';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, Switch } from '../components/primitives';
 import { useStore } from '../store/AppStore';
@@ -10,6 +11,17 @@ import { colors, fonts, ink, line, radius } from '../theme/tokens';
 export default function SettingsScreen() {
   const store = useStore();
   const router = useRouter();
+  const auth = useAuth();
+
+  const confirmSignOut = () =>
+    Alert.alert(
+      'Sign out?',
+      'Your rounds stay on this phone. You will need your password to sign back in, and signing in again needs signal.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: () => void auth.signOut() },
+      ],
+    );
 
   const toggleDemo = () => {
     const goingLive = store.demoMode;
@@ -137,6 +149,27 @@ export default function SettingsScreen() {
           </Pressable>
         ))}
       </View>
+
+      {auth.status === 'signed-in' ? (
+        <View style={{ gap: 10 }}>
+          <Eyebrow>Account</Eyebrow>
+          <Card style={{ padding: 16, gap: 8 }}>
+            <Text style={styles.name}>{auth.email ?? 'Signed in'}</Text>
+            <Mono size={10.5} style={{ color: ink.ghost, lineHeight: 16 }}>
+              {auth.unverified
+                ? 'Signed in on this phone. Not re-checked with the server yet — that happens the next time you have signal.'
+                : 'Edits you make in a shared outing are attributed to this account.'}
+            </Mono>
+          </Card>
+          <Pressable
+            accessibilityRole="button"
+            onPress={confirmSignOut}
+            style={[styles.action, { borderColor: 'rgba(232,154,127,.4)' }]}
+          >
+            <Text style={[styles.actionText, { color: colors.clay }]}>Sign out</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={{ gap: 10 }}>
         <Eyebrow>About</Eyebrow>
