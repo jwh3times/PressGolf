@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   tag: { backgroundColor: fill.control, borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 6 },
   tagText: {
     fontFamily: fonts.mono,
-    fontSize: 8.5,
+    fontSize: 10,
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: ink.muted,

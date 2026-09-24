@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   playerName: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
   playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
   pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
-  popText: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 0.85, color: colors.gold },
+  popText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.gold },
   scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
   chipRow: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
   holeCard: {
