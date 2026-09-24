@@ -21,7 +21,11 @@ import {
 import { potTotal } from '../../domain/engine';
 import { money, signedMoney } from '../../domain/engine/context';
 import { buildSeason, seasonSubtitle } from '../../domain/season';
-import { useLargeText } from '../../hooks/useLargeText';
+import {
+  MAX_CONTROL_SCALE,
+  useAccessibilityControlScale,
+  useLargeText,
+} from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fonts, ink, line, radius } from '../../theme/tokens';
 
@@ -29,6 +33,7 @@ export default function HomeScreen() {
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
+  const controlScale = useAccessibilityControlScale();
   const { group, round, course, settlement } = store;
 
   const season = useMemo(
@@ -88,9 +93,15 @@ export default function HomeScreen() {
           accessibilityLabel="Settings"
           onPress={() => router.push('/settings')}
           hitSlop={8}
-          style={styles.gear}
+          style={[
+            styles.gear,
+            { width: 38 * controlScale, height: 38 * controlScale },
+          ]}
         >
-          <Text maxFontSizeMultiplier={1.25} style={{ fontSize: 14, color: ink.muted }}>⚙</Text>
+          <Text
+            maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+            style={{ fontSize: 14, lineHeight: 18, color: ink.muted }}
+          >⚙</Text>
         </Pressable>
       </View>
 

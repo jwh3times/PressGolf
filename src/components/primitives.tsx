@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { colors, eyebrow, fill, fonts, ink, line, moneyColor, radius } from '../theme/tokens';
+import { MAX_CONTROL_SCALE, useAccessibilityControlScale } from '../hooks/useLargeText';
 
 /** Section label: 10px mono, wide tracking, uppercase. */
 export function Eyebrow({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
@@ -53,7 +54,11 @@ export function Mono({
 }) {
   const family =
     weight === 'bold' ? fonts.monoBold : weight === 'medium' ? fonts.monoMedium : fonts.mono;
-  return <Text style={[{ fontFamily: family, fontSize: size, color: ink.body }, style]}>{children}</Text>;
+  return (
+    <Text style={[{ fontFamily: family, fontSize: size, lineHeight: size * 1.35, color: ink.body }, style]}>
+      {children}
+    </Text>
+  );
 }
 
 /** Player bubble. Colour comes from the player, so two people never read alike. */
@@ -68,12 +73,15 @@ export function Avatar({
   size?: number;
   style?: ViewStyle;
 }) {
+  const controlScale = useAccessibilityControlScale(1.5);
+  const scaledSize = size * controlScale;
+
   return (
     <View
       style={[
         {
-          width: size,
-          height: size,
+          width: scaledSize,
+          height: scaledSize,
           borderRadius: 999,
           backgroundColor: `${color}22`,
           borderWidth: 1,
@@ -85,7 +93,7 @@ export function Avatar({
       ]}
     >
       <Text
-        maxFontSizeMultiplier={1}
+        maxFontSizeMultiplier={1.5}
         style={{
           fontFamily: fonts.monoBold,
           fontSize: size < 28 ? 10 : 10.5,
@@ -112,7 +120,12 @@ export function Money({
   style?: TextStyle;
 }) {
   return (
-    <Text style={[{ fontFamily: fonts.monoBold, fontSize: size, color: moneyColor(cents) }, style]}>
+    <Text
+      style={[
+        { fontFamily: fonts.monoBold, fontSize: size, lineHeight: size * 1.35, color: moneyColor(cents) },
+        style,
+      ]}
+    >
       {label}
     </Text>
   );
@@ -173,7 +186,18 @@ export function PrimaryButton({
         style,
       ]}
     >
-      <Text style={{ fontFamily: fonts.sansBold, fontSize: 15, color: colors.screen }}>{label}</Text>
+      <Text
+        style={{
+          width: '100%',
+          fontFamily: fonts.sansBold,
+          fontSize: 15,
+          lineHeight: 20,
+          color: colors.screen,
+          textAlign: 'center',
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -208,7 +232,16 @@ export function GhostButton({
         style,
       ]}
     >
-      <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: dashed ? ink.muted : ink.body }}>
+      <Text
+        style={{
+          width: '100%',
+          fontFamily: fonts.sans,
+          fontSize: 13.5,
+          lineHeight: 18,
+          color: dashed ? ink.muted : ink.body,
+          textAlign: 'center',
+        }}
+      >
         {label}
       </Text>
     </Pressable>
@@ -231,15 +264,24 @@ export function Stepper({
   valueStyle?: TextStyle;
   minWidth?: number;
 }) {
+  const controlScale = useAccessibilityControlScale();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
       {/* JSX string attributes are not escape-processed, so the minus sign has
           to come through an expression or it renders as literal backslash-u. */}
       <StepperButton label={'−'} onPress={onDecrement} size={size} />
       <Text
-        maxFontSizeMultiplier={1.35}
+        maxFontSizeMultiplier={MAX_CONTROL_SCALE}
         style={[
-          { fontFamily: fonts.monoBold, fontSize: 15, color: ink.full, minWidth, textAlign: 'center' },
+          {
+            fontFamily: fonts.monoBold,
+            fontSize: 15,
+            lineHeight: 20,
+            color: ink.full,
+            minWidth: minWidth * controlScale,
+            textAlign: 'center',
+          },
           valueStyle,
         ]}
       >
@@ -259,6 +301,9 @@ export function StepperButton({
   onPress: () => void;
   size?: number;
 }) {
+  const controlScale = useAccessibilityControlScale();
+  const scaledSize = size * controlScale;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -267,9 +312,9 @@ export function StepperButton({
       // Hit slop keeps these tappable with a glove on in February.
       hitSlop={6}
       style={({ pressed }) => ({
-        width: size,
-        height: size,
-        borderRadius: size / 3,
+        width: scaledSize,
+        height: scaledSize,
+        borderRadius: scaledSize / 3,
         backgroundColor: fill.control,
         borderWidth: 1,
         borderColor: line.control,
@@ -279,7 +324,7 @@ export function StepperButton({
       })}
     >
       <Text
-        maxFontSizeMultiplier={1.25}
+        maxFontSizeMultiplier={MAX_CONTROL_SCALE}
         style={{ fontFamily: fonts.sans, fontSize: size / 2, color: ink.full, lineHeight: size / 2 + 2 }}
       >
         {label}
@@ -290,6 +335,8 @@ export function StepperButton({
 
 /** The pill switch on format cards. */
 export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; label?: string }) {
+  const controlScale = useAccessibilityControlScale();
+
   return (
     <Pressable
       accessibilityRole="switch"
@@ -298,21 +345,21 @@ export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => v
       onPress={onToggle}
       hitSlop={8}
       style={{
-        width: 46,
-        height: 27,
+        width: 46 * controlScale,
+        height: 27 * controlScale,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: on ? colors.accent : line.avatar,
         backgroundColor: on ? colors.accent : fill.control,
-        padding: 2,
+        padding: 2 * controlScale,
         justifyContent: 'center',
         alignItems: on ? 'flex-end' : 'flex-start',
       }}
     >
       <View
         style={{
-          width: 21,
-          height: 21,
+          width: 21 * controlScale,
+          height: 21 * controlScale,
           borderRadius: 999,
           backgroundColor: on ? colors.screen : ink.muted,
         }}

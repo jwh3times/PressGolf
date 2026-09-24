@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
+import { MAX_CONTROL_SCALE } from '../../hooks/useLargeText';
 import { Avatar, Chip, PrimaryButton, Stepper, Switch } from '../primitives';
 
 // The first tests in the tree that mount anything (#10). They hold the
@@ -43,14 +44,14 @@ describe('Stepper', () => {
     expect(onDecrement).toHaveBeenCalledTimes(1);
     expect(onIncrement).toHaveBeenCalledTimes(2);
     expect(screen.getByText('4')).toBeOnTheScreen();
-    expect(screen.getByText('4')).toHaveProp('maxFontSizeMultiplier', 1.35);
+    expect(screen.getByText('4')).toHaveProp('maxFontSizeMultiplier', MAX_CONTROL_SCALE);
   });
 });
 
 describe('Avatar', () => {
   it('keeps initials inside the fixed-size player bubble', async () => {
     await render(<Avatar initials="JD" color="#fff" size={24} />);
-    expect(screen.getByText('JD')).toHaveProp('maxFontSizeMultiplier', 1);
+    expect(screen.getByText('JD')).toHaveProp('maxFontSizeMultiplier', 1.5);
   });
 });
 

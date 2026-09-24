@@ -17,7 +17,11 @@ import {
 } from '../../components/primitives';
 import { MANUAL_JUNK, RoundContext, matchStatus, money, wolfForHole, wolfPickForHole } from '../../domain/engine';
 import type { JunkKind, PlayerId } from '../../domain/types';
-import { useLargeText } from '../../hooks/useLargeText';
+import {
+  MAX_CONTROL_SCALE,
+  useAccessibilityControlScale,
+  useLargeText,
+} from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
 
@@ -151,7 +155,7 @@ export default function ScoreScreen() {
                   onPress={() => store.bumpScore(player.id, current, -1)}
                 />
                 <Text
-                  maxFontSizeMultiplier={1.35}
+                  maxFontSizeMultiplier={MAX_CONTROL_SCALE}
                   style={[
                     styles.scoreValue,
                     {
@@ -483,16 +487,21 @@ function firstUnplayedHole(ctx: RoundContext): number {
 }
 
 function RoundButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const controlScale = useAccessibilityControlScale();
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label === '‹' ? 'Previous hole' : 'Next hole'}
       onPress={onPress}
       hitSlop={8}
-      style={({ pressed }) => [styles.roundButton, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [
+        styles.roundButton,
+        { width: 40 * controlScale, height: 40 * controlScale, opacity: pressed ? 0.6 : 1 },
+      ]}
     >
       <Text
-        maxFontSizeMultiplier={1.25}
+        maxFontSizeMultiplier={MAX_CONTROL_SCALE}
         style={{ fontFamily: fonts.sans, fontSize: 17, color: ink.full, lineHeight: 20 }}
       >
         {label}

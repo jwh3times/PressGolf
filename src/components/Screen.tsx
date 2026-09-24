@@ -1,9 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, ink, line } from '../theme/tokens';
 import { useLargeText } from '../hooks/useLargeText';
-import { TAB_BAR_CLEARANCE } from './TabBar';
+import { tabBarClearance } from './TabBar';
 
 /**
  * Standard scrolling screen body.
@@ -27,9 +27,10 @@ export function Screen({
   scroll?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const padding = {
     paddingTop: insets.top + 18,
-    paddingBottom: (floatingTabBar ? TAB_BAR_CLEARANCE : 24) + insets.bottom,
+    paddingBottom: (floatingTabBar ? tabBarClearance(fontScale) : 24) + insets.bottom,
     paddingHorizontal: 20,
   };
 
