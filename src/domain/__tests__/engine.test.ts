@@ -1,4 +1,4 @@
-import { settleRound } from '../engine';
+import { maxExposure, potTotal, settleRound } from '../engine';
 import { RoundContext, money, parseMoney, signedMoney } from '../engine/context';
 import { minimiseTransfers, splitEvenly } from '../engine/ledger';
 import { vegasNumber } from '../engine/formats/teams';
@@ -28,6 +28,94 @@ describe('money formatting', () => {
     expect(parseMoney('$12.50')).toBe(1250);
     expect(parseMoney('5')).toBe(500);
     expect(parseMoney('')).toBeNull();
+  });
+
+  it('handles fractional negatives, empty values, and non-finite input', () => {
+    expect(money(-125)).toBe('−$1.25');
+    expect(signedMoney(-125)).toBe('−$1.25');
+    expect(parseMoney('.')).toBeNull();
+    expect(parseMoney('junk')).toBeNull();
+    expect(parseMoney('9'.repeat(400))).toBeNull();
+  });
+});
+
+describe('RoundContext edge cases', () => {
+  it('provides safe fallbacks for missing players, cards, holes, and empty courses', () => {
+    const round = makeTestRound({ scores: [], playerCount: 1 });
+    delete round.scores.a;
+    delete round.pops.a;
+    const ctx = new RoundContext(round, { ...course, holes: [] }, players);
+    expect(ctx.name('missing')).toBe('Unknown');
+    expect(ctx.shortName('missing')).toBe('Unknown');
+    expect(ctx.initials('missing')).toBe('??');
+    expect(ctx.gross('a', 0)).toBeNull();
+    expect(ctx.strokes('a', 0)).toBe(0);
+    round.pops.a = 4;
+    expect(ctx.strokes('a', 0)).toBe(0);
+    expect(ctx.par(0)).toBe(4);
+    expect(ctx.backRange).toBeNull();
+    expect(ctx.frontRange).toEqual([0, -1]);
+  });
+
+  it('caches nets and covers front/back, junk, empty-player, and incomplete-hole paths', () => {
+    const round = makeTestRound({ scores: [flat(4), flat(4), flat(4), flat(4)] });
+    round.scores.a[1] = null;
+    round.junk['0:a:greenie'] = true;
+    const ctx = new RoundContext(round, course, players);
+    expect(ctx.net('a', 0)).toBe(4);
+    expect(ctx.net('a', 0)).toBe(4);
+    expect(ctx.played(1)).toBe(false);
+    expect(ctx.playedHolesIn(0, 99)).toContain(0);
+    expect(ctx.nineFor(0)).toEqual(ctx.frontRange);
+    expect(ctx.nineFor(10)).toEqual(ctx.backRange);
+    expect(ctx.hasJunk(0, 'a', 'greenie')).toBe(true);
+    expect(ctx.hasJunk(0, 'a', 'sandie')).toBe(false);
+    expect(ctx.netToPar('a')).toBe(1);
+
+    const empty = new RoundContext({ ...round, playerIds: [] }, course, players);
+    expect(empty.played(0)).toBe(false);
+  });
+});
+
+describe('exposure and pot totals', () => {
+  it('returns zero before a second player joins', () => {
+    const round = makeTestRound({ scores: [], playerCount: 1 });
+    expect(maxExposure(round, course, players)).toBe(0);
+  });
+
+  it('includes every enabled format, relevant presses, and nine-hole segment rules', () => {
+    const round = makeTestRound({
+      scores: [],
+      playerCount: 4,
+      games: {
+        nassau: { on: true, stake: 500 },
+        skins: { on: true, stake: 200 },
+        junk: { on: true, stake: 200 },
+        stableford: { on: true, stake: 500 },
+        bestball: { on: true, stake: 1000 },
+        wolf: { on: true, stake: 300 },
+        vegas: { on: true, stake: 100 },
+        match: { on: true, stake: 2000 },
+        stroke: { on: true, stake: 1000 },
+      },
+      presses: [
+        { id: 'relevant', by: 'a', against: 'b', startHole: 0, endHole: 8, stake: 500 },
+        { id: 'other', by: 'b', against: 'c', startHole: 0, endHole: 8, stake: 900 },
+      ],
+      options: {
+        teams: [['a', 'b'], ['c', 'd']],
+        matchPairings: [['a', 'b']],
+        wolfLoneMultiplier: 3,
+      },
+    });
+    expect(maxExposure(round, { ...course, holes: course.holes.slice(0, 9) }, players)).toBeGreaterThan(0);
+    expect(maxExposure({ ...round, options: { ...round.options, matchPairings: [] } }, course, players)).toBeGreaterThan(0);
+  });
+
+  it('quotes zero when every game is off and totals a settlement matrix', () => {
+    const round = makeTestRound({ scores: [], playerCount: 2 });
+    expect(maxExposure(round, course, players)).toBe(0);
+    expect(potTotal({ matrix: { a: { b: 200 }, b: { a: 300 } } } as never)).toBe(500);
   });
 });
 

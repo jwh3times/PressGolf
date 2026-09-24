@@ -47,6 +47,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
+    "test:coverage": "jest --coverage --runInBand",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "db:new": "supabase migration new",
@@ -64,6 +65,19 @@
     "testMatch": [
       "**/*.test.ts",
       "**/*.test.tsx"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/__tests__/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90
+      }
+    },
+    "coverageReporters": [
+      "text-summary",
+      "json-summary"
     ]
   },
   "expo": {

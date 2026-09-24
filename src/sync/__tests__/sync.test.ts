@@ -1,8 +1,8 @@
 import { makeTestCourse, makeTestPlayers, makeTestRound } from '../../domain/__tests__/helpers';
 import { settleRound } from '../../domain/engine';
-import type { Mutation } from '../types';
+import type { Mutation, SyncTransport } from '../types';
 import { applyAll, applyMutation, collapse, laterWins } from '../merge';
-import { SyncEngine } from '../engine';
+import { deviceId, setDeviceId, SyncEngine } from '../engine';
 import { FakeTransport } from '../fake-transport';
 
 let seq = 0;
@@ -158,6 +158,37 @@ describe('mutation kinds', () => {
     expect(round.games.nassau.stake).toBe(1000);
     expect(round.games.skins.on).toBe(true);
   });
+
+  it('applies pops, press removal, options, and round-player changes', () => {
+    const press = { id: 'p1', by: 'a', against: 'b', startHole: 0, endHole: 8, stake: 500 };
+    const starting = { ...baseRound(), presses: [press] };
+    const changed = applyAll(starting, [
+      mutation({ kind: 'pops', key: 'pops:a', value: { playerId: 'a', pops: 7 } }),
+      mutation({ kind: 'pressRemoved', key: 'press:p1', value: { pressId: 'p1' } }),
+      mutation({ kind: 'options', key: 'options', value: { wolfLoneMultiplier: 4 } }),
+      mutation({ kind: 'roundPlayers', key: 'players', value: { playerIds: ['b', 'a'] } }),
+    ]);
+    expect(changed.pops.a).toBe(7);
+    expect(changed.presses).toEqual([]);
+    expect(changed.options.wolfLoneMultiplier).toBe(4);
+    expect(changed.playerIds).toEqual(['b', 'a']);
+  });
+
+  it('ignores stake and toggle changes for unknown games', () => {
+    const round = baseRound();
+    expect(
+      applyMutation(round, mutation({ kind: 'gameToggle', value: { key: 'future', on: true } })),
+    ).toBe(round);
+    expect(
+      applyMutation(round, mutation({ kind: 'gameStake', value: { key: 'future', stake: 10 } })),
+    ).toBe(round);
+  });
+
+  it('collapses outing-only and unscoped mutations independently', () => {
+    const outingOnly = mutation({ roundId: undefined, outingId: 'outing-a', key: 'name' });
+    const unscoped = mutation({ roundId: undefined, outingId: undefined, key: 'name' });
+    expect(collapse([outingOnly, unscoped])).toHaveLength(2);
+  });
 });
 
 describe('sync engine', () => {
@@ -296,6 +327,61 @@ describe('sync engine', () => {
     await transport.push('outing1', [m]);
     expect(transport.log).toHaveLength(1);
     engine.stop();
+  });
+
+  it('loads a cursor, receives subscriptions, persists the next cursor, and unsubscribes', async () => {
+    let subscriber: ((changes: { mutations: Mutation[]; cursor: string | null }) => void) | null = null;
+    const unsubscribe = jest.fn();
+    const onRemote = jest.fn();
+    const saveCursor = jest.fn();
+    const transport: SyncTransport = {
+      name: 'subscription-test',
+      push: jest.fn().mockResolvedValue(undefined),
+      pull: jest.fn().mockResolvedValue({ mutations: [], cursor: null }),
+      subscribe: jest.fn((_outingId: string, callback: (changes: { mutations: Mutation[]; cursor: string | null }) => void) => {
+        subscriber = callback;
+        return unsubscribe;
+      }),
+    };
+    const engine = new SyncEngine({
+      transport,
+      outingId: 'outing1',
+      onRemote,
+      loadQueue: async () => [],
+      loadCursor: async () => 'cursor-1',
+      saveCursor,
+      onState: jest.fn(),
+    });
+    await engine.start();
+    (subscriber as ((changes: { mutations: Mutation[]; cursor: string | null }) => void) | null)?.({
+      mutations: [mutation()],
+      cursor: 'cursor-2',
+    });
+    await Promise.resolve();
+    expect(onRemote).toHaveBeenCalled();
+    expect(saveCursor).toHaveBeenCalledWith('cursor-2');
+    engine.stop();
+    expect(unsubscribe).toHaveBeenCalled();
+    await engine.sync();
+  });
+
+  it('reports non-Error transport failures and gives one stable generated device id', async () => {
+    const transport: SyncTransport = {
+      name: 'failure-test',
+      push: jest.fn().mockResolvedValue(undefined),
+      pull: jest.fn().mockRejectedValue('radio down'),
+    };
+    const engine = new SyncEngine({ transport, outingId: 'outing1', onRemote: jest.fn() });
+    await engine.start();
+    expect(engine.getState().lastError).toBe('radio down');
+    engine.stop();
+
+    setDeviceId('fixed');
+    expect(deviceId(() => 'other')).toBe('fixed');
+    setDeviceId('');
+    const generated = deviceId();
+    expect(generated).toMatch(/^d_/);
+    expect(deviceId(() => 'different')).toBe(generated);
   });
 });
 
