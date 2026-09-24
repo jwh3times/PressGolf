@@ -87,7 +87,7 @@ export function Avatar({
       <Text
         style={{
           fontFamily: fonts.monoBold,
-          fontSize: size < 28 ? 9 : 10.5,
+          fontSize: size < 28 ? 10 : 10.5,
           color,
           letterSpacing: 0.2,
         }}
@@ -349,7 +349,7 @@ export function Chip({
       <Text
         style={{
           fontFamily: fonts.mono,
-          fontSize: 8.5,
+          fontSize: 10,
           letterSpacing: 0.85,
           color: active ? color : ink.quiet,
         }}

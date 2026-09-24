@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
   glyph: { fontSize: 13, lineHeight: 15, fontFamily: fonts.sans },
-  label: { fontSize: 9.5, letterSpacing: 0.38, fontFamily: fonts.sans },
+  label: { fontSize: 10, letterSpacing: 0.38, fontFamily: fonts.sans },
 });
 
 /** How much bottom padding a screen needs so content clears the floating bar. */

@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   outingLabel: {
     fontFamily: fonts.mono,
-    fontSize: 9.5,
+    fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
     color: colors.gold,

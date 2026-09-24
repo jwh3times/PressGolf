@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 5,
   },
-  youText: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 0.85, color: colors.accent },
+  youText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
   swatch: {
     width: 34,
     height: 34,

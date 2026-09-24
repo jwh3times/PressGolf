@@ -106,6 +106,13 @@ export const fonts = {
   monoBold: 'JetBrainsMono_700Bold',
 } as const;
 
+/**
+ * Smallest permitted base text size. React Native uses numeric logical units
+ * here rather than CSS units such as rem; Text applies the device's font scale
+ * to these values by default.
+ */
+export const MIN_FONT_SIZE = 10;
+
 export const radius = {
   chip: 999,
   sm: 5,
@@ -117,7 +124,7 @@ export const radius = {
 } as const;
 
 /**
- * The prototype's eyebrow label: 10px mono, wide tracking, uppercase.
+ * The prototype's eyebrow label: 10-unit mono, wide tracking, uppercase.
  * It appears above nearly every section, so it lives here rather than being
  * re-typed a dozen times.
  */
