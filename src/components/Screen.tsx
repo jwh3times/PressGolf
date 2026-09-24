@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, ink, line } from '../theme/tokens';
-import { TAB_BAR_CLEARANCE } from './TabBar';
+import { useLargeText } from '../hooks/useLargeText';
+import { tabBarClearance } from './TabBar';
 
 /**
  * Standard scrolling screen body.
@@ -26,9 +27,10 @@ export function Screen({
   scroll?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const padding = {
     paddingTop: insets.top + 18,
-    paddingBottom: (floatingTabBar ? TAB_BAR_CLEARANCE : 24) + insets.bottom,
+    paddingBottom: (floatingTabBar ? tabBarClearance(fontScale) : 24) + insets.bottom,
     paddingHorizontal: 20,
   };
 
@@ -62,16 +64,20 @@ export function ModalHeader({
   closeLabel?: string;
   right?: React.ReactNode;
 }) {
+  const largeText = useLargeText();
+
   return (
-    <View style={styles.header}>
-      <View style={{ flex: 1, minWidth: 0 }}>
+    <View style={[styles.header, largeText ? styles.headerLarge : null]}>
+      <View style={[styles.headerCopy, largeText ? styles.headerCopyLarge : null]}>
         {eyebrow ? <Text style={styles.headerEyebrow}>{eyebrow}</Text> : null}
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
-      {right}
-      <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={styles.close}>
-        <Text style={styles.closeLabel}>{closeLabel}</Text>
-      </Pressable>
+      <View style={styles.headerActions}>
+        {right}
+        <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={styles.close}>
+          <Text style={styles.closeLabel}>{closeLabel}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -80,6 +86,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.screen },
   content: { gap: 22 },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  headerLarge: { flexDirection: 'column' },
+  headerCopy: { flex: 1, minWidth: 0 },
+  headerCopyLarge: { flex: 0, width: '100%' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerEyebrow: {
     fontFamily: fonts.mono,
     fontSize: 10,

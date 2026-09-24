@@ -18,6 +18,7 @@ import {
 } from '../components/primitives';
 import { money, signedMoney } from '../domain/engine';
 import type { FieldGameResult, PlayerId } from '../domain/types';
+import { useLargeText } from '../hooks/useLargeText';
 import { useStore } from '../store/AppStore';
 import { hostOuting, isSupabaseConfigured } from '../sync/supabase';
 import { colors, fonts, ink, line, radius } from '../theme/tokens';
@@ -34,6 +35,7 @@ export default function OutingScreen() {
   const [sharing, setSharing] = useState(false);
   const store = useStore();
   const router = useRouter();
+  const largeText = useLargeText();
   const { outing, outingCourse, outingGroup, outingSettlement, outingRounds } = store;
 
   if (!outing || !outingCourse || !outingGroup || !outingSettlement) {
@@ -94,7 +96,7 @@ export default function OutingScreen() {
         end={{ x: 0.82, y: 1 }}
         style={styles.hero}
       >
-        <View style={styles.heroTop}>
+        <View style={[styles.heroTop, largeText ? styles.stackRow : null]}>
           <Text style={styles.heroLabel}>In the pots</Text>
           <Mono size={11} style={{ color: ink.muted }}>
             FIELD THRU {outingSettlement.fieldThru}/{holeCount}
@@ -150,7 +152,7 @@ export default function OutingScreen() {
       ))}
 
       <View style={{ gap: 10 }}>
-        <View style={styles.sectionHead}>
+        <View style={[styles.sectionHead, largeText ? styles.stackRow : null]}>
           <Eyebrow>Groups</Eyebrow>
           <Pressable accessibilityRole="button" onPress={() => router.push('/groups')} hitSlop={8}>
             <Mono size={11} style={{ color: ink.quiet }}>
@@ -169,10 +171,14 @@ export default function OutingScreen() {
                 store.setActiveRound(round.id);
                 router.push('/score');
               }}
-              style={[styles.groupRow, isMine ? styles.groupRowMine : null]}
+              style={[
+                styles.groupRow,
+                isMine ? styles.groupRowMine : null,
+                largeText ? styles.stackRow : null,
+              ]}
             >
-              <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <View style={[styles.groupMain, largeText ? styles.fullWidth : null]}>
+                <View style={styles.groupTitleRow}>
                   <Text style={styles.groupName}>{round.name}</Text>
                   {round.teeTime ? (
                     <Mono size={10} style={{ color: ink.quiet }}>
@@ -185,14 +191,14 @@ export default function OutingScreen() {
                     </View>
                   ) : null}
                 </View>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
+                <View style={styles.avatarRow}>
                   {round.playerIds.map((id) => {
                     const p = player(id);
                     return p ? <Avatar key={id} initials={p.initials} color={p.color} size={24} /> : null;
                   })}
                 </View>
               </View>
-              <View style={{ alignItems: 'flex-end', gap: 3 }}>
+              <View style={[styles.groupSummary, largeText ? styles.groupSummaryLarge : null]}>
                 <Mono size={11} style={{ color: ink.soft }}>
                   THRU {summary?.thru ?? 0}
                 </Mono>
@@ -215,14 +221,19 @@ export default function OutingScreen() {
           const p = player(entry.id);
           if (!p) return null;
           return (
-            <View key={entry.id} style={styles.standingRow}>
-              <Mono size={11} style={{ color: ink.quiet, width: 18 }}>
-                {i + 1}
-              </Mono>
-              <Avatar initials={p.initials} color={p.color} size={26} />
-              <Text style={styles.standingName} numberOfLines={1}>
-                {p.name}
-              </Text>
+            <View
+              key={entry.id}
+              style={[styles.standingRow, largeText ? styles.standingRowLarge : null]}
+            >
+              <View style={[styles.standingIdentity, largeText ? styles.fullWidth : null]}>
+                <Mono size={11} style={{ color: ink.quiet, width: 18 }}>
+                  {i + 1}
+                </Mono>
+                <Avatar initials={p.initials} color={p.color} size={26} />
+                <Text style={styles.standingName} numberOfLines={largeText ? undefined : 1}>
+                  {p.name}
+                </Text>
+              </View>
               <Money cents={entry.net} label={signedMoney(entry.net)} />
             </View>
           );
@@ -237,15 +248,16 @@ export default function OutingScreen() {
 /** One pot's state: what is in it, what has been won, what is still out. */
 function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: number }) {
   const store = useStore();
+  const largeText = useLargeText();
   const players = store.outingGroup?.players ?? [];
   const won = Object.entries(game.payouts).sort((a, b) => b[1] - a[1]);
   const settledHoles = game.holes.filter((h) => h.complete).length;
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <View style={styles.potHead}>
+      <View style={[styles.potHead, largeText ? styles.stackRow : null]}>
         <GameDot color={game.color} />
-        <Text style={styles.potName}>{game.name}</Text>
+        <Text style={[styles.potName, largeText ? styles.fullWidth : null]}>{game.name}</Text>
         <Mono size={11} style={{ color: ink.soft }}>
           {money(game.pot)}
         </Mono>
@@ -268,11 +280,16 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
               const p = players.find((x) => x.id === id);
               if (!p) return null;
               return (
-                <View key={id} style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
-                  <Avatar initials={p.initials} color={p.color} size={24} />
-                  <Text style={styles.potWinner} numberOfLines={1}>
-                    {p.name}
-                  </Text>
+                <View
+                  key={id}
+                  style={[styles.potWinnerRow, largeText ? styles.stackRow : null]}
+                >
+                  <View style={[styles.potWinnerIdentity, largeText ? styles.fullWidth : null]}>
+                    <Avatar initials={p.initials} color={p.color} size={24} />
+                    <Text style={styles.potWinner} numberOfLines={largeText ? undefined : 1}>
+                      {p.name}
+                    </Text>
+                  </View>
                   <Money cents={amount} label={money(amount)} size={13} />
                 </View>
               );
@@ -296,6 +313,8 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
 }
 
 const styles = StyleSheet.create({
+  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+  fullWidth: { flex: 0, width: '100%' },
   codeBox: {
     backgroundColor: colors.cardDeep,
     borderWidth: 1,
@@ -342,6 +361,8 @@ const styles = StyleSheet.create({
   potBody: { padding: 14, gap: 8 },
   potMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, lineHeight: 16 },
   potWinner: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
+  potWinnerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  potWinnerIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9 },
   pendingBar: {
     marginTop: 4,
     borderTopWidth: 1,
@@ -360,6 +381,11 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   groupRowMine: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+  groupMain: { flex: 1, minWidth: 0, gap: 6 },
+  groupTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+  avatarRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  groupSummary: { alignItems: 'flex-end', gap: 3 },
+  groupSummaryLarge: { alignItems: 'flex-start' },
   groupName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
   youTag: {
     backgroundColor: 'rgba(139,224,174,.15)',
@@ -376,5 +402,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: line.soft,
   },
+  standingRowLarge: { flexDirection: 'column', alignItems: 'stretch' },
+  standingIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   standingName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
 });

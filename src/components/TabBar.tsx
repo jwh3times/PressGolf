@@ -1,10 +1,19 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { MAX_CONTROL_SCALE, accessibilityControlScale } from '../hooks/useLargeText';
+
+export function tabBarHeight(fontScale: number): number {
+  return 62 + (accessibilityControlScale(fontScale) - 1) * 30;
+}
+
+export function tabBarClearance(fontScale: number): number {
+  return tabBarHeight(fontScale) + 48;
+}
 
 /**
  * The floating glass pill from the design.
@@ -29,6 +38,7 @@ const LABELS: Record<string, string> = {
 
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
 
   return (
     <View
@@ -38,7 +48,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
       <BlurView
         intensity={Platform.OS === 'android' ? 0 : 40}
         tint="dark"
-        style={styles.bar}
+        style={[styles.bar, { height: tabBarHeight(fontScale) }]}
       >
         {state.routes.map((route, index) => {
           const focused = state.index === index;
@@ -59,10 +69,19 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
               }}
               style={styles.tab}
             >
-              <Text style={[styles.glyph, { color, opacity: focused ? 1 : 0.75 }]}>
+              <Text
+                maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+                style={[styles.glyph, { color, opacity: focused ? 1 : 0.75 }]}
+              >
                 {GLYPHS[route.name] ?? '●'}
               </Text>
-              <Text style={[styles.label, { color }]}>{LABELS[route.name] ?? route.name}</Text>
+              <Text
+                maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+                numberOfLines={1}
+                style={[styles.label, { color }]}
+              >
+                {LABELS[route.name] ?? route.name}
+              </Text>
             </Pressable>
           );
         })}
@@ -74,7 +93,6 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 14, right: 14 },
   bar: {
-    height: 62,
     borderRadius: radius.hero,
     // Android has no backdrop filter, so the pill carries its own near-opaque
     // fill; on iOS the blur does the work and this tints it.
@@ -87,9 +105,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
-  glyph: { fontSize: 13, lineHeight: 15, fontFamily: fonts.sans },
-  label: { fontSize: 10, letterSpacing: 0.38, fontFamily: fonts.sans },
+  glyph: { fontSize: 13, lineHeight: 18, fontFamily: fonts.sans },
+  label: { fontSize: 10, lineHeight: 14, letterSpacing: 0.2, fontFamily: fonts.sans },
 });
-
-/** How much bottom padding a screen needs so content clears the floating bar. */
-export const TAB_BAR_CLEARANCE = 110;

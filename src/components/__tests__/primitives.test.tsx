@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
-import { Chip, PrimaryButton, Stepper, Switch } from '../primitives';
+import { StyleSheet } from 'react-native';
+import { MAX_CONTROL_SCALE } from '../../hooks/useLargeText';
+import { Avatar, Chip, Mono, PrimaryButton, Stepper, Switch } from '../primitives';
 
 // The first tests in the tree that mount anything (#10). They hold the
 // primitives to what a screen reader is told, since every screen builds on them.
@@ -12,7 +14,10 @@ describe('PrimaryButton', () => {
     await render(<PrimaryButton label="Post to ledger" onPress={onPress} />);
 
     const button = screen.getByRole('button', { name: 'Post to ledger' });
+    const label = screen.getByText('Post to ledger');
     expect(button).toBeEnabled();
+    expect(label).toHaveProp('allowFontScaling', false);
+    expect(label).toHaveStyle({ fontSize: 30, lineHeight: 40 });
     await user.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -43,6 +48,25 @@ describe('Stepper', () => {
     expect(onDecrement).toHaveBeenCalledTimes(1);
     expect(onIncrement).toHaveBeenCalledTimes(2);
     expect(screen.getByText('4')).toBeOnTheScreen();
+    expect(screen.getByText('4')).toHaveProp('maxFontSizeMultiplier', MAX_CONTROL_SCALE);
+  });
+});
+
+describe('scaled text', () => {
+  it('owns both font size and line height so custom fonts cannot clip at Dynamic Type sizes', async () => {
+    await render(<Mono size={12}>$2</Mono>);
+    const amount = screen.getByText('$2');
+    const style = StyleSheet.flatten(amount.props.style);
+    expect(amount).toHaveProp('allowFontScaling', false);
+    expect(style.fontSize).toBe(24);
+    expect(style.lineHeight).toBeCloseTo(33.6);
+  });
+});
+
+describe('Avatar', () => {
+  it('keeps initials inside the fixed-size player bubble', async () => {
+    await render(<Avatar initials="JD" color="#fff" size={24} />);
+    expect(screen.getByText('JD')).toHaveProp('maxFontSizeMultiplier', 1.5);
   });
 });
 

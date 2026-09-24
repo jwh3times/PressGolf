@@ -17,12 +17,18 @@ import {
 } from '../../components/primitives';
 import { MANUAL_JUNK, RoundContext, matchStatus, money, wolfForHole, wolfPickForHole } from '../../domain/engine';
 import type { JunkKind, PlayerId } from '../../domain/types';
+import {
+  MAX_CONTROL_SCALE,
+  useAccessibilityControlScale,
+  useLargeText,
+} from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
 
 export default function ScoreScreen() {
   const store = useStore();
   const router = useRouter();
+  const largeText = useLargeText();
   const { round, course, group, settlement } = store;
 
   const ctx = useMemo(
@@ -76,13 +82,21 @@ export default function ScoreScreen() {
         <RoundButton label="‹" onPress={() => setHole(Math.max(0, current - 1))} />
         <View style={{ alignItems: 'center' }}>
           <Display size={27}>Hole {holeInfo.number}</Display>
-          <Mono size={10.5} style={styles.holeMeta}>
-            PAR {holeInfo.par}
-            {holeInfo.yards ? ` · ${holeInfo.yards}Y` : ''} · SI {holeInfo.strokeIndex}
-          </Mono>
+          {!largeText ? (
+            <Mono size={10.5} style={styles.holeMeta}>
+              PAR {holeInfo.par}
+              {holeInfo.yards ? ` · ${holeInfo.yards}Y` : ''} · SI {holeInfo.strokeIndex}
+            </Mono>
+          ) : null}
         </View>
         <RoundButton label="›" onPress={() => setHole(Math.min(holeCount - 1, current + 1))} />
       </View>
+      {largeText ? (
+        <Mono size={10.5} style={styles.holeMetaLarge}>
+          PAR {holeInfo.par}
+          {holeInfo.yards ? ` · ${holeInfo.yards}Y` : ''} · SI {holeInfo.strokeIndex}
+        </Mono>
+      ) : null}
 
       <View style={{ flexDirection: 'row', gap: 3 }}>
         {Array.from({ length: holeCount }, (_, i) => (
@@ -113,55 +127,60 @@ export default function ScoreScreen() {
             key={player.id}
             style={[styles.scoreRow, { borderColor: gross != null ? line.strong : line.hair }]}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-              <Avatar initials={player.initials} color={player.color} size={32} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.playerName} numberOfLines={1}>
-                    {player.name}
+            <View style={[styles.scoreMain, largeText ? styles.stackRow : null]}>
+              <View style={[styles.playerIdentity, largeText ? styles.fullWidth : null]}>
+                <Avatar initials={player.initials} color={player.color} size={32} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.playerTitleRow}>
+                    <Text style={styles.playerName} numberOfLines={largeText ? undefined : 1}>
+                      {player.name}
+                    </Text>
+                    {strokes > 0 ? (
+                      <View style={styles.pop}>
+                        <Text style={styles.popText}>{strokes > 1 ? `POP ×${strokes}` : 'POP'}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.playerSub}>
+                    {gross == null
+                      ? 'no score yet'
+                      : `net ${net} · ${rel === 0 ? 'par' : rel! > 0 ? `+${rel}` : rel}`}
                   </Text>
-                  {strokes > 0 ? (
-                    <View style={styles.pop}>
-                      <Text style={styles.popText}>{strokes > 1 ? `POP ×${strokes}` : 'POP'}</Text>
-                    </View>
-                  ) : null}
                 </View>
-                <Text style={styles.playerSub}>
-                  {gross == null
-                    ? 'no score yet'
-                    : `net ${net} · ${rel === 0 ? 'par' : rel! > 0 ? `+${rel}` : rel}`}
-                </Text>
               </View>
-              <StepperButton
-                label={'−'}
-                size={34}
-                onPress={() => store.bumpScore(player.id, current, -1)}
-              />
-              <Text
-                style={[
-                  styles.scoreValue,
-                  {
-                    color:
-                      gross == null
-                        ? ink.quiet
-                        : rel! < 0
-                          ? colors.accent
-                          : rel! > 1
-                            ? colors.clay
-                            : ink.full,
-                  },
-                ]}
-              >
-                {gross == null ? '–' : gross}
-              </Text>
-              <StepperButton
-                label="+"
-                size={34}
-                onPress={() => {
-                  void Haptics.selectionAsync().catch(() => {});
-                  store.bumpScore(player.id, current, 1);
-                }}
-              />
+              <View style={styles.scoreControls}>
+                <StepperButton
+                  label={'−'}
+                  size={34}
+                  onPress={() => store.bumpScore(player.id, current, -1)}
+                />
+                <Text
+                  maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+                  style={[
+                    styles.scoreValue,
+                    {
+                      color:
+                        gross == null
+                          ? ink.quiet
+                          : rel! < 0
+                            ? colors.accent
+                            : rel! > 1
+                              ? colors.clay
+                              : ink.full,
+                    },
+                  ]}
+                >
+                  {gross == null ? '–' : gross}
+                </Text>
+                <StepperButton
+                  label="+"
+                  size={34}
+                  onPress={() => {
+                    void Haptics.selectionAsync().catch(() => {});
+                    store.bumpScore(player.id, current, 1);
+                  }}
+                />
+              </View>
             </View>
 
             <View style={styles.chipRow}>
@@ -199,16 +218,16 @@ export default function ScoreScreen() {
         end={{ x: 0.88, y: 1 }}
         style={styles.holeCard}
       >
-        <View style={styles.holeCardTop}>
+        <View style={[styles.holeCardTop, largeText ? styles.stackRow : null]}>
           <Text style={styles.holeCardLabel}>What this hole did</Text>
           <Mono size={10.5} style={{ color: ink.soft }}>
             {carry > 1 ? `${carry - 1} skin${carry > 2 ? 's' : ''} riding` : 'skins clean'}
           </Mono>
         </View>
         {buildHoleEvents(ctx, current).map((event, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+          <View key={i} style={[styles.eventRow, largeText ? styles.stackRow : null]}>
             <View style={[styles.eventDot, { backgroundColor: event.color }]} />
-            <Text style={styles.eventText}>{event.text}</Text>
+            <Text style={[styles.eventText, largeText ? styles.fullWidth : null]}>{event.text}</Text>
             <Text
               style={[
                 styles.eventAmount,
@@ -233,6 +252,7 @@ export default function ScoreScreen() {
 /** Per-hole partner selection — the flow Wolf needs and the prototype never had. */
 function WolfPicker({ hole }: { hole: number }) {
   const store = useStore();
+  const largeText = useLargeText();
   const round = store.round!;
   const group = store.group!;
   const ctx = new RoundContext(round, store.course!, group.players);
@@ -245,7 +265,7 @@ function WolfPicker({ hole }: { hole: number }) {
 
   return (
     <View style={styles.wolfCard}>
-      <View style={styles.wolfHeader}>
+      <View style={[styles.wolfHeader, largeText ? styles.stackRow : null]}>
         <Eyebrow>Wolf · hole {hole + 1}</Eyebrow>
         {pick ? (
           <Pressable
@@ -305,6 +325,7 @@ function WolfPicker({ hole }: { hole: number }) {
  */
 function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
   const store = useStore();
+  const largeText = useLargeText();
   const round = store.round!;
   const group = store.group!;
   const ctx = new RoundContext(round, store.course!, group.players);
@@ -328,9 +349,9 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
         const exposure = stake + running.reduce((sum, p) => sum + p.stake, 0);
 
         return (
-          <View key={opponentId} style={styles.pressRow}>
+          <View key={opponentId} style={[styles.pressRow, largeText ? styles.stackRow : null]}>
             <Avatar initials={opponent.initials} color={opponent.color} size={30} />
-            <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={[styles.pressCopy, largeText ? styles.fullWidth : null]}>
               <Text style={styles.pressStatus}>
                 {status.up === 0
                   ? `All square with ${opponent.name}`
@@ -466,15 +487,23 @@ function firstUnplayedHole(ctx: RoundContext): number {
 }
 
 function RoundButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const controlScale = useAccessibilityControlScale();
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label === '‹' ? 'Previous hole' : 'Next hole'}
       onPress={onPress}
       hitSlop={8}
-      style={({ pressed }) => [styles.roundButton, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [
+        styles.roundButton,
+        { width: 40 * controlScale, height: 40 * controlScale, opacity: pressed ? 0.6 : 1 },
+      ]}
     >
-      <Text style={{ fontFamily: fonts.sans, fontSize: 17, color: ink.full, lineHeight: 20 }}>
+      <Text
+        maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+        style={{ fontFamily: fonts.sans, fontSize: 17, color: ink.full, lineHeight: 20 }}
+      >
         {label}
       </Text>
     </Pressable>
@@ -482,8 +511,17 @@ function RoundButton({ label, onPress }: { label: string; onPress: () => void })
 }
 
 const styles = StyleSheet.create({
+  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+  fullWidth: { flex: 0, width: '100%' },
   holeNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   holeMeta: { letterSpacing: 1.4, color: ink.soft, marginTop: 5 },
+  holeMetaLarge: {
+    letterSpacing: 1.4,
+    color: ink.soft,
+    marginTop: 5,
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
   roundButton: {
     width: 40,
     height: 40,
@@ -502,6 +540,10 @@ const styles = StyleSheet.create({
     paddingTop: 13,
     paddingBottom: 12,
   },
+  scoreMain: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  playerIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  playerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  scoreControls: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   playerName: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
   playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
   pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
@@ -524,6 +566,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   eventDot: { width: 7, height: 7, borderRadius: 999 },
+  eventRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   eventText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.strong },
   eventAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
   wolfCard: {
@@ -548,6 +591,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 12,
   },
+  pressCopy: { flex: 1, minWidth: 0 },
   pressStatus: { fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
   pressDetail: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
   pressButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },

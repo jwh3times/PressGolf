@@ -19,12 +19,14 @@ import { maxExposure } from '../../domain/engine';
 import { money } from '../../domain/engine/context';
 import { FORMATS } from '../../domain/formats';
 import { GAME_KEYS, type GameKey } from '../../domain/types';
+import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
 
 export default function FormatScreen() {
   const store = useStore();
   const router = useRouter();
+  const largeText = useLargeText();
   const { round, course, group } = store;
 
   if (!round || !course || !group) {
@@ -79,8 +81,8 @@ export default function FormatScreen() {
               },
             ]}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-              <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={[styles.formatHeader, largeText ? styles.stackRow : null]}>
+              <View style={[styles.flexCopy, largeText ? styles.fullWidth : null]}>
                 <View style={styles.formatTitleRow}>
                   <Text style={styles.formatName}>{meta.name}</Text>
                   <View style={styles.tag}>
@@ -93,13 +95,17 @@ export default function FormatScreen() {
             </View>
 
             {on ? (
-              <View style={styles.stakeRow}>
-                <Text style={styles.stakeLabel}>{meta.stakeLabel}</Text>
-                <Stepper
-                  value={money(config.stake)}
-                  onDecrement={() => store.setStake(key, Math.max(0, config.stake - step(config.stake)))}
-                  onIncrement={() => store.setStake(key, config.stake + step(config.stake))}
-                />
+              <View style={[styles.stakeRow, largeText ? styles.stackRow : null]}>
+                <Text style={[styles.stakeLabel, largeText ? styles.fullWidth : null]}>
+                  {meta.stakeLabel}
+                </Text>
+                <View>
+                  <Stepper
+                    value={money(config.stake)}
+                    onDecrement={() => store.setStake(key, Math.max(0, config.stake - step(config.stake)))}
+                    onIncrement={() => store.setStake(key, config.stake + step(config.stake))}
+                  />
+                </View>
               </View>
             ) : null}
 
@@ -116,18 +122,20 @@ export default function FormatScreen() {
       })}
 
       <Card style={{ padding: 16, gap: 4 }}>
-        <View style={styles.popsHeader}>
+        <View style={[styles.popsHeader, largeText ? styles.stackRow : null]}>
           <Eyebrow>Pops</Eyebrow>
           <Text style={styles.popsMeta}>strokes off the low man</Text>
         </View>
         {roster.map((player) => {
           const pops = round.pops[player.id] ?? 0;
           return (
-            <View key={player.id} style={styles.popsRow}>
-              <Avatar initials={player.initials} color={player.color} size={30} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.popsName}>{player.name}</Text>
-                <Text style={styles.popsHint}>{popsHint(pops, course.holes.length)}</Text>
+            <View key={player.id} style={[styles.popsRow, largeText ? styles.stackRow : null]}>
+              <View style={[styles.popsIdentity, largeText ? styles.fullWidth : null]}>
+                <Avatar initials={player.initials} color={player.color} size={30} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.popsName}>{player.name}</Text>
+                  <Text style={styles.popsHint}>{popsHint(pops, course.holes.length)}</Text>
+                </View>
               </View>
               <Stepper
                 size={30}
@@ -239,7 +247,11 @@ function popsHint(pops: number, holeCount: number): string {
 }
 
 const styles = StyleSheet.create({
+  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+  flexCopy: { flex: 1, minWidth: 0 },
+  fullWidth: { flex: 0, width: '100%' },
   formatCard: { borderWidth: 1, borderRadius: radius.format, padding: 15 },
+  formatHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   formatTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   formatName: { fontFamily: fonts.sansBold, fontSize: 15.5, color: ink.full },
   tag: { backgroundColor: fill.control, borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 6 },
@@ -285,6 +297,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: line.hair,
   },
+  popsIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
   popsName: { fontFamily: fonts.sans, fontSize: 14, color: ink.full },
   popsHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 1 },
   exposureNote: {
