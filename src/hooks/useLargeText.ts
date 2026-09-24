@@ -23,3 +23,10 @@ export function accessibilityControlScale(fontScale: number, max = MAX_CONTROL_S
 export function useAccessibilityControlScale(max = MAX_CONTROL_SCALE): number {
   return accessibilityControlScale(useWindowDimensions().fontScale, max);
 }
+
+export function scaledTypeMetrics(size: number, lineHeight: number, fontScale: number) {
+  return {
+    fontSize: size * fontScale,
+    lineHeight: lineHeight * fontScale,
+  };
+}

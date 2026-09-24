@@ -3,17 +3,48 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  type StyleProp,
   type TextProps,
   type TextStyle,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
 import { colors, eyebrow, fill, fonts, ink, line, moneyColor, radius } from '../theme/tokens';
-import { MAX_CONTROL_SCALE, useAccessibilityControlScale } from '../hooks/useLargeText';
+import {
+  MAX_CONTROL_SCALE,
+  scaledTypeMetrics,
+  useAccessibilityControlScale,
+} from '../hooks/useLargeText';
+
+function ScaledText({
+  size,
+  baseLineHeight,
+  style,
+  ...props
+}: TextProps & {
+  size: number;
+  baseLineHeight: number;
+  style?: StyleProp<TextStyle>;
+}) {
+  const { fontScale } = useWindowDimensions();
+
+  return (
+    <Text
+      {...props}
+      allowFontScaling={false}
+      style={[style, scaledTypeMetrics(size, baseLineHeight, fontScale)]}
+    />
+  );
+}
 
 /** Section label: 10px mono, wide tracking, uppercase. */
 export function Eyebrow({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
-  return <Text style={[eyebrow, style]}>{children}</Text>;
+  return (
+    <ScaledText size={10} baseLineHeight={14} style={[eyebrow, style]}>
+      {children}
+    </ScaledText>
+  );
 }
 
 /** The Instrument Serif display face, used for every big number and headline. */
@@ -55,9 +86,13 @@ export function Mono({
   const family =
     weight === 'bold' ? fonts.monoBold : weight === 'medium' ? fonts.monoMedium : fonts.mono;
   return (
-    <Text style={[{ fontFamily: family, fontSize: size, lineHeight: size * 1.35, color: ink.body }, style]}>
+    <ScaledText
+      size={size}
+      baseLineHeight={size * 1.4}
+      style={[{ fontFamily: family, color: ink.body }, style]}
+    >
       {children}
-    </Text>
+    </ScaledText>
   );
 }
 
@@ -120,14 +155,16 @@ export function Money({
   style?: TextStyle;
 }) {
   return (
-    <Text
+    <ScaledText
+      size={size}
+      baseLineHeight={size * 1.4}
       style={[
-        { fontFamily: fonts.monoBold, fontSize: size, lineHeight: size * 1.35, color: moneyColor(cents) },
+        { fontFamily: fonts.monoBold, color: moneyColor(cents) },
         style,
       ]}
     >
       {label}
-    </Text>
+    </ScaledText>
   );
 }
 
@@ -186,18 +223,18 @@ export function PrimaryButton({
         style,
       ]}
     >
-      <Text
+      <ScaledText
+        size={15}
+        baseLineHeight={20}
         style={{
-          width: '100%',
+          alignSelf: 'stretch',
           fontFamily: fonts.sansBold,
-          fontSize: 15,
-          lineHeight: 20,
           color: colors.screen,
           textAlign: 'center',
         }}
       >
         {label}
-      </Text>
+      </ScaledText>
     </Pressable>
   );
 }
@@ -232,18 +269,18 @@ export function GhostButton({
         style,
       ]}
     >
-      <Text
+      <ScaledText
+        size={13.5}
+        baseLineHeight={18}
         style={{
-          width: '100%',
+          alignSelf: 'stretch',
           fontFamily: fonts.sans,
-          fontSize: 13.5,
-          lineHeight: 18,
           color: dashed ? ink.muted : ink.body,
           textAlign: 'center',
         }}
       >
         {label}
-      </Text>
+      </ScaledText>
     </Pressable>
   );
 }

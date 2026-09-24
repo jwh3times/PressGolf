@@ -228,7 +228,7 @@ export default function HomeScreen() {
                   style={[styles.seasonRow, largeText ? styles.seasonRowLarge : null]}
                 >
                   <View style={[styles.seasonIdentity, largeText ? styles.fullWidth : null]}>
-                    <Mono size={11} style={{ color: ink.quiet, width: 14 }}>
+                    <Mono size={11} style={{ color: ink.quiet }}>
                       {index + 1}
                     </Mono>
                     <Avatar initials={player.initials} color={player.color} size={26} />
@@ -284,7 +284,7 @@ function LiveRoundCard({
       <View style={[styles.liveTop, largeText ? styles.stackRow : null]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           <LivePulse />
-          <Text style={styles.liveLabel}>Round live</Text>
+          <Eyebrow style={styles.liveLabel}>Round live</Eyebrow>
         </View>
         <Mono size={11} style={{ color: ink.muted }}>
           THRU {thru}

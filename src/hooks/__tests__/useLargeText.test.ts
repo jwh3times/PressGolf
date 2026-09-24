@@ -3,6 +3,7 @@ import {
   MAX_CONTROL_SCALE,
   accessibilityControlScale,
   needsLargeTextLayout,
+  scaledTypeMetrics,
 } from '../useLargeText';
 
 describe('needsLargeTextLayout', () => {
@@ -21,5 +22,14 @@ describe('accessibilityControlScale', () => {
     expect(accessibilityControlScale(1)).toBe(1);
     expect(accessibilityControlScale(1.75)).toBe(1.75);
     expect(accessibilityControlScale(3.1)).toBe(MAX_CONTROL_SCALE);
+  });
+});
+
+describe('scaledTypeMetrics', () => {
+  it('scales the font and its line box by the same accessibility factor', () => {
+    expect(scaledTypeMetrics(12, 16, 3.1)).toEqual({
+      fontSize: 37.2,
+      lineHeight: 49.6,
+    });
   });
 });
