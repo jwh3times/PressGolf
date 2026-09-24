@@ -143,4 +143,90 @@ describe('snapshot helpers', () => {
     const byHand = TABLES.reduce((total, table) => total + rows[table].length, 0);
     expect(countRows(rows)).toBe(byHand);
   });
+
+  it('rebuilds sparse legacy rows with safe defaults', () => {
+    const rows = emptySnapshot();
+    rows.groups.push({
+      id: 'group',
+      name: 'Sparse',
+      you_id: null,
+      default_course_id: null,
+      subtitle: '',
+      created_at: 1,
+    });
+    rows.courses.push({ id: 'course', name: 'Bare', created_at: 1 });
+    rows.rounds.push({
+      id: 'round',
+      group_id: 'group',
+      course_id: 'course',
+      outing_id: 'outing',
+      name: 'Round',
+      tee_time: null,
+      status: 'active',
+      started_at: 1,
+      completed_at: null,
+    });
+    rows.outings.push({
+      id: 'outing',
+      group_id: 'group',
+      course_id: 'course',
+      name: 'Outing',
+      date: 1,
+      tee_format: 'sequential',
+      status: 'active',
+      started_at: 1,
+      completed_at: null,
+    });
+
+    const documents = fromRows(rows);
+    expect(documents.groups[0].players).toEqual([]);
+    expect(documents.courses[0].holes).toEqual([]);
+    expect(documents.rounds[0]).toMatchObject({
+      playerIds: [],
+      scores: {},
+      junk: {},
+      presses: [],
+      wolfPicks: [],
+      options: {
+        teams: [],
+        matchPairings: [],
+        wolfLoneMultiplier: 1,
+        vegasFlipOnBirdie: true,
+        stablefordPoints: { eagleOrBetter: 4, birdie: 3, par: 2, bogey: 1, worse: 0 },
+      },
+    });
+    expect(documents.outings[0]).toMatchObject({
+      field: [],
+      roundIds: ['round'],
+      fieldGames: {
+        fieldSkins: {
+          on: false,
+          buyIn: 0,
+          entrants: [],
+          useNet: true,
+          carry: true,
+          unclaimed: 'splitAmongWinners',
+        },
+        scats: {
+          on: false,
+          buyIn: 0,
+          entrants: [],
+          useNet: false,
+          carry: true,
+          unclaimed: 'splitAmongWinners',
+        },
+      },
+    });
+  });
+
+  it('skips malformed junk keys and supplies absent score maps and pops on upload', () => {
+    const round = makeTestRound({ scores: [], playerCount: 2 });
+    round.junk = { malformed: true, ':also-bad': true, '2:a:greenie': true };
+    delete round.pops[round.playerIds[0]];
+    delete round.scores[round.playerIds[0]];
+    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [] });
+    expect(rows.junk).toHaveLength(1);
+    expect(rows.round_players[0].pops).toBe(0);
+    expect(rows.scores.every((score) => score.player_id !== round.playerIds[0])).toBe(true);
+  });
 });
