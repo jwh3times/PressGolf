@@ -59,10 +59,15 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
               }}
               style={styles.tab}
             >
-              <Text style={[styles.glyph, { color, opacity: focused ? 1 : 0.75 }]}>
+              <Text
+                maxFontSizeMultiplier={1.25}
+                style={[styles.glyph, { color, opacity: focused ? 1 : 0.75 }]}
+              >
                 {GLYPHS[route.name] ?? '●'}
               </Text>
-              <Text style={[styles.label, { color }]}>{LABELS[route.name] ?? route.name}</Text>
+              <Text maxFontSizeMultiplier={1.25} numberOfLines={1} style={[styles.label, { color }]}>
+                {LABELS[route.name] ?? route.name}
+              </Text>
             </Pressable>
           );
         })}

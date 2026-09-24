@@ -85,6 +85,7 @@ export function Avatar({
       ]}
     >
       <Text
+        maxFontSizeMultiplier={1}
         style={{
           fontFamily: fonts.monoBold,
           fontSize: size < 28 ? 10 : 10.5,
@@ -236,6 +237,7 @@ export function Stepper({
           to come through an expression or it renders as literal backslash-u. */}
       <StepperButton label={'−'} onPress={onDecrement} size={size} />
       <Text
+        maxFontSizeMultiplier={1.35}
         style={[
           { fontFamily: fonts.monoBold, fontSize: 15, color: ink.full, minWidth, textAlign: 'center' },
           valueStyle,
@@ -276,7 +278,10 @@ export function StepperButton({
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: fonts.sans, fontSize: size / 2, color: ink.full, lineHeight: size / 2 + 2 }}>
+      <Text
+        maxFontSizeMultiplier={1.25}
+        style={{ fontFamily: fonts.sans, fontSize: size / 2, color: ink.full, lineHeight: size / 2 + 2 }}
+      >
         {label}
       </Text>
     </Pressable>

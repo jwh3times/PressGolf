@@ -21,12 +21,14 @@ import {
 import { potTotal } from '../../domain/engine';
 import { money, signedMoney } from '../../domain/engine/context';
 import { buildSeason, seasonSubtitle } from '../../domain/season';
+import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fonts, ink, line, radius } from '../../theme/tokens';
 
 export default function HomeScreen() {
   const store = useStore();
   const router = useRouter();
+  const largeText = useLargeText();
   const { group, round, course, settlement } = store;
 
   const season = useMemo(
@@ -71,8 +73,8 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={[styles.headerRow, largeText ? styles.stackRow : null]}>
+        <View style={[styles.flexCopy, largeText ? styles.fullWidth : null]}>
           <Eyebrow>Your group</Eyebrow>
           <Display size={33} style={{ marginTop: 3 }}>
             {group.name}
@@ -88,7 +90,7 @@ export default function HomeScreen() {
           hitSlop={8}
           style={styles.gear}
         >
-          <Text style={{ fontSize: 14, color: ink.muted }}>⚙</Text>
+          <Text maxFontSizeMultiplier={1.25} style={{ fontSize: 14, color: ink.muted }}>⚙</Text>
         </Pressable>
       </View>
 
@@ -101,14 +103,14 @@ export default function HomeScreen() {
             store.setActiveOuting(activeOuting.id);
             router.push('/outing');
           }}
-          style={styles.outingRow}
+          style={[styles.outingRow, largeText ? styles.stackRow : null]}
         >
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={[styles.flexCopy, largeText ? styles.fullWidth : null]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
               <LivePulse size={6} color={colors.gold} />
               <Text style={styles.outingLabel}>Outing on</Text>
             </View>
-            <Text style={styles.outingName} numberOfLines={1}>
+            <Text style={styles.outingName} numberOfLines={largeText ? undefined : 1}>
               {activeOuting.name}
             </Text>
             <Text style={styles.outingMeta}>
@@ -136,6 +138,7 @@ export default function HomeScreen() {
               color: p.color,
               net: settlement.net[p.id] ?? 0,
             }))}
+          largeText={largeText}
         />
       ) : (
         <EmptyState
@@ -171,9 +174,9 @@ export default function HomeScreen() {
             </Card>
           ) : (
             settlement.games.map((game) => (
-              <View key={game.key} style={styles.gameRow}>
+              <View key={game.key} style={[styles.gameRow, largeText ? styles.stackRow : null]}>
                 <GameDot color={game.color} />
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={[styles.flexCopy, largeText ? styles.fullWidth : null]}>
                   <Text style={styles.gameName}>{game.name}</Text>
                   <Text style={styles.gameDetail}>
                     {game.blocked ? game.blockedReason : game.detail}
@@ -191,7 +194,7 @@ export default function HomeScreen() {
 
       {season ? (
         <View style={{ gap: 6 }}>
-          <View style={styles.seasonHeader}>
+          <View style={[styles.seasonHeader, largeText ? styles.stackRow : null]}>
             <Eyebrow>Season ledger</Eyebrow>
             <Pressable accessibilityRole="button" onPress={() => router.push('/history')} hitSlop={8}>
               <Text style={styles.seasonMeta}>{seasonSubtitle(season)} ›</Text>
@@ -209,15 +212,20 @@ export default function HomeScreen() {
               if (!player) return null;
               const width = season.peak ? Math.min(60, (Math.abs(entry.net) / season.peak) * 60) : 0;
               return (
-                <View key={entry.playerId} style={styles.seasonRow}>
-                  <Mono size={11} style={{ color: ink.quiet, width: 14 }}>
-                    {index + 1}
-                  </Mono>
-                  <Avatar initials={player.initials} color={player.color} size={26} />
-                  <Text style={styles.seasonName} numberOfLines={1}>
-                    {player.name}
-                  </Text>
-                  <View style={styles.barTrack}>
+                <View
+                  key={entry.playerId}
+                  style={[styles.seasonRow, largeText ? styles.seasonRowLarge : null]}
+                >
+                  <View style={[styles.seasonIdentity, largeText ? styles.fullWidth : null]}>
+                    <Mono size={11} style={{ color: ink.quiet, width: 14 }}>
+                      {index + 1}
+                    </Mono>
+                    <Avatar initials={player.initials} color={player.color} size={26} />
+                    <Text style={styles.seasonName} numberOfLines={largeText ? undefined : 1}>
+                      {player.name}
+                    </Text>
+                  </View>
+                  <View style={[styles.barTrack, largeText ? styles.barTrackLarge : null]}>
                     <View
                       style={{
                         width,
@@ -245,12 +253,14 @@ function LiveRoundCard({
   gameCount,
   standings,
   onEnterScores,
+  largeText,
 }: {
   thru: number;
   pot: number;
   gameCount: number;
   standings: { id: string; initials: string; color: string; net: number }[];
   onEnterScores: () => void;
+  largeText: boolean;
 }) {
   return (
     <LinearGradient
@@ -260,7 +270,7 @@ function LiveRoundCard({
       end={{ x: 0.82, y: 1 }}
       style={styles.live}
     >
-      <View style={styles.liveTop}>
+      <View style={[styles.liveTop, largeText ? styles.stackRow : null]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           <LivePulse />
           <Text style={styles.liveLabel}>Round live</Text>
@@ -270,7 +280,7 @@ function LiveRoundCard({
         </Mono>
       </View>
 
-      <View style={styles.liveMiddle}>
+      <View style={[styles.liveMiddle, largeText ? styles.liveMiddleLarge : null]}>
         <View>
           <Display size={32}>{money(pot)}</Display>
           <Text style={styles.liveSub}>
@@ -280,15 +290,15 @@ function LiveRoundCard({
         <PrimaryButton
           label="Enter scores"
           onPress={onEnterScores}
-          style={{ borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20 }}
+          style={largeText ? styles.liveButtonLarge : styles.liveButton}
         />
       </View>
 
       <Divider />
 
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={[styles.standings, largeText ? styles.standingsLarge : null]}>
         {standings.map((p) => (
-          <View key={p.id} style={styles.standing}>
+          <View key={p.id} style={[styles.standing, largeText ? styles.standingLarge : null]}>
             <Avatar initials={p.initials} color={p.color} size={34} />
             <Money cents={p.net} label={signedMoney(p.net)} />
           </View>
@@ -299,6 +309,9 @@ function LiveRoundCard({
 }
 
 const styles = StyleSheet.create({
+  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+  flexCopy: { flex: 1, minWidth: 0 },
+  fullWidth: { flex: 0, width: '100%' },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   subtitle: { fontFamily: fonts.sans, fontSize: 12, color: ink.soft, marginTop: 4 },
   gear: {
@@ -326,8 +339,14 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   liveMiddle: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+  liveMiddleLarge: { flexDirection: 'column', alignItems: 'stretch' },
+  liveButton: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20 },
+  liveButtonLarge: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20, alignSelf: 'stretch' },
   liveSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 4 },
   standing: { flex: 1, alignItems: 'center', gap: 7 },
+  standings: { flexDirection: 'row', gap: 8 },
+  standingsLarge: { flexWrap: 'wrap' },
+  standingLarge: { flexBasis: '45%' },
   gameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -372,6 +391,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: line.soft,
   },
+  seasonRowLarge: { flexDirection: 'column', alignItems: 'stretch' },
+  seasonIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
   seasonName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
   barTrack: { width: 74, alignItems: 'center', justifyContent: 'center' },
+  barTrackLarge: { display: 'none' },
 });
