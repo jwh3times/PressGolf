@@ -54,7 +54,8 @@ Two pins exist only because SDK 57 fixes React at 19.2:
 
 - `test-renderer` stays on `~1.2.0`. Version 1.3 depends on
   `react-reconciler@0.34`, which requires React 19.3 and causes an `ERESOLVE`
-  peer warning. Lift the pin when the SDK moves to React 19.3.
+  peer warning. Lift the pin, and its Dependabot ignore rule, when the SDK
+  moves to React 19.3.
 - `overrides.uuid` forces `^11.1.1` under `xcode` (used by config plugins at
   prebuild time) to clear GHSA-w5hq-g745-h8pq. Remove it once
   `@expo/config-plugins` no longer resolves an older `uuid`.
