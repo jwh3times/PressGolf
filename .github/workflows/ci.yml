@@ -45,6 +45,16 @@ jobs:
       - name: Lint
         run: npx oxlint
 
+      - name: Repository script tests
+        run: npm run test:scripts
+
+      # `.claude/skills/` is generated from `.agents/skills/` (and
+      # `.codex/agents/` from `.claude/agents/`). Editing a skill without
+      # re-running the sync fails here, so the Claude and Codex copies
+      # cannot drift apart.
+      - name: Agent skill mirrors are up to date
+        run: npm run sync:agents:check
+
       # The net under Dependabot. Expo pins its packages to the SDK, and a
       # bump that leaves the set disagreeing shows up here rather than on a
       # phone on the first tee.

@@ -127,6 +127,9 @@ supabase/
 scripts/
   check-patch-coverage.mjs
   generate-icons.py
+  sync-agents.mjs         .agents/skills -> .claude/skills generator
+.agents/skills/     authored agent skills (Claude Code and Codex)
+.claude/skills/     generated copy for Claude Code; do not edit
 .maestro/
   smoke.yml         native round-to-ledger smoke flow
 ```
