@@ -11,6 +11,16 @@ npm run lint
 npx expo-doctor
 ```
 
+When a change touches `scripts/` or `.agents/skills/`, also run:
+
+```bash
+npm run test:scripts        # node:test suites for the repository scripts
+npm run sync:agents:check   # .claude/skills matches .agents/skills
+```
+
+`npm run sync:agents` rewrites the generated mirror; see
+[AGENTS.md § Agent skills](../AGENTS.md#agent-skills) for which tree is authored.
+
 `npm test` runs Jest without collecting coverage. `npm run test:coverage` is the
 CI-equivalent suite and enforces the global thresholds in `package.json`:
 
@@ -35,7 +45,7 @@ figures, are authoritative.
 
 | Check | What it proves |
 |---|---|
-| **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, and Expo dependency/config compatibility |
+| **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 24 account-isolation assertions pass |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
