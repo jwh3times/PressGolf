@@ -11,6 +11,10 @@ name: Complete a demo round
 - assertVisible: Hole 12
 - tapOn: Increase score for Marcus
 - assertVisible: net 3 · par
+- scrollUntilVisible:
+    element:
+      text: See the damage so far →
+    direction: DOWN
 - tapOn: See the damage so far →
 - assertVisible: Settlement.*
 - scrollUntilVisible:

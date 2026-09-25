@@ -27,6 +27,9 @@ jobs:
     name: Android native smoke
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Cold GitHub-hosted emulators can take several minutes to start the driver.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -71,7 +74,7 @@ jobs:
           disable-animations: true
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
-            maestro test --format JUNIT --output maestro-android.xml .maestro/smoke.yml
+            maestro --device=emulator-5554 test --format JUNIT --output maestro-android.xml .maestro/smoke.yml
 
   ios:
     name: iOS native smoke
