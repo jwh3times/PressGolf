@@ -331,10 +331,12 @@ export function Stepper({
 
 export function StepperButton({
   label,
+  accessibilityLabel,
   onPress,
   size = 32,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   size?: number;
 }) {
@@ -344,7 +346,7 @@ export function StepperButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label === '+' ? 'increase' : 'decrease'}
+      accessibilityLabel={accessibilityLabel ?? (label === '+' ? 'increase' : 'decrease')}
       onPress={onPress}
       // Hit slop keeps these tappable with a glove on in February.
       hitSlop={6}

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { MAX_CONTROL_SCALE } from '../../hooks/useLargeText';
-import { Avatar, Chip, Mono, PrimaryButton, Stepper, Switch } from '../primitives';
+import { Avatar, Chip, Mono, PrimaryButton, Stepper, StepperButton, Switch } from '../primitives';
 
 // The first tests in the tree that mount anything (#10). They hold the
 // primitives to what a screen reader is told, since every screen builds on them.
@@ -49,6 +49,18 @@ describe('Stepper', () => {
     expect(onIncrement).toHaveBeenCalledTimes(2);
     expect(screen.getByText('4')).toBeOnTheScreen();
     expect(screen.getByText('4')).toHaveProp('maxFontSizeMultiplier', MAX_CONTROL_SCALE);
+  });
+
+  it('accepts a contextual name when several steppers share a screen', async () => {
+    await render(
+      <StepperButton
+        label="+"
+        accessibilityLabel="Increase score for Marcus"
+        onPress={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Increase score for Marcus' })).toBeOnTheScreen();
   });
 });
 

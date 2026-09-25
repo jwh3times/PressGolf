@@ -151,6 +151,7 @@ export default function ScoreScreen() {
               <View style={styles.scoreControls}>
                 <StepperButton
                   label={'−'}
+                  accessibilityLabel={`Decrease score for ${player.name}`}
                   size={34}
                   onPress={() => store.bumpScore(player.id, current, -1)}
                 />
@@ -174,6 +175,7 @@ export default function ScoreScreen() {
                 </Text>
                 <StepperButton
                   label="+"
+                  accessibilityLabel={`Increase score for ${player.name}`}
                   size={34}
                   onPress={() => {
                     void Haptics.selectionAsync().catch(() => {});

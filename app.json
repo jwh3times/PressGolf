@@ -46,6 +46,13 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bc673b2e-3a56-4299-aa37-afe8944630e5"
+      }
+    },
+    "owner": "jwh3times"
   }
 }
