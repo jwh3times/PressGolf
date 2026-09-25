@@ -13,15 +13,18 @@ Expo ships breaking changes every SDK release. APIs you remember are likely rena
 Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
 
 ```bash
+npm ci                      # install the committed dependency graph
 npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
+npm start                   # start the dev server
+npm run test:coverage       # Jest plus enforced repository coverage floors
+npm run typecheck           # tsc --noEmit
 npm run lint                # oxlint (ESLint is not installed)
-npx tsc --noEmit            # typecheck
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```
 
-Run lint and typecheck before declaring any task done.
+Run lint and typecheck before declaring any task done. Run the relevant tests
+for behavior changes; use the full coverage command when the scope is broad.
 
 ## Navigation & Routing
 
@@ -38,4 +41,10 @@ Docs: https://docs.expo.dev/eas/index.md
 
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Use the matching versioned SDK reference discovered above, not `/versions/latest/`.
+
+## Documentation
+
+- `README.md` is the durable product overview and quick start. Put detailed setup in `docs/development.md`, design and data-flow details in `docs/architecture.md`, CI behavior in `docs/testing-and-ci.md`, and accessibility evidence in `docs/accessibility.md`.
+- Update documentation in the same change whenever commands, environment variables, build profiles, CI, validation status, or known limitations change.
+- Treat executable configuration (`package.json`, workflows, `app.json`, `eas.json`, migrations) as authoritative. Date any point-in-time counts and avoid copying volatile service pricing or quotas when an official link is clearer.

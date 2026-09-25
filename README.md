@@ -1,488 +1,112 @@
 # Press
 
-A weekend golf betting tracker for iOS and Android. Set the format, enter scores,
-and the app works out who hands who cash in the car park.
+Press is an offline-first golf game and settlement tracker for iOS and Android.
+Set the format, enter one scorecard, and the app calculates the fewest cash
+hand-offs needed at the end of the round.
 
-Nassau with live presses, skins that carry, junk, Stableford, four-ball, Wolf,
-Vegas, match play and stroke play — all nine settling off one card, netted down
-to the fewest hand-offs. One Expo / React Native codebase ships to both platforms.
+It supports Nassau with presses, skins, junk, Stableford, four-ball, Wolf,
+Vegas, match play, and stroke play. Outings can split a larger field into
+playing groups while settling field-wide skins or scats alongside each group's
+games.
 
-Scales from a fourball to a twenty-man society: field-wide pots across everyone
-who buys in, split into foursomes that each run their own games, with four
-phones scoring the same day at once.
+## Quick start
 
-## Running it on a phone
-
-Every native module here ships inside **Expo Go**, so there is nothing to
-compile to try it.
+Press currently targets [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/),
+which requires Node.js 22.13 or newer. Install
+[Expo Go](https://expo.dev/go) on a phone, then run:
 
 ```bash
 git clone https://github.com/jwh3times/PressGolf.git
 cd PressGolf
-npm install
-npx expo start        # scan the QR: iOS Camera app, Android via Expo Go
+npm ci
+npm start
 ```
 
-Your phone and your computer need to be on the same Wi-Fi. If they are not, or
-the QR sits there spinning, use `npx expo start --tunnel`.
+Scan the QR code with the iOS Camera app or Expo Go on Android. The computer
+and phone normally need to be on the same network; if LAN discovery fails, run
+`npx expo start --tunnel`.
 
-With no server configured — which is what a plain `npm start` gives you — the
-app is local-only and opens straight onto the Saturday Dogs demo, a fourball
-through eleven holes. **Settings → Group → Pine Hollow Society** switches to the
-twenty-man outing with the field pots running.
+Without Supabase variables, the app is intentionally local-only and opens with
+the Saturday Dogs demo data. The current dependency set works in Expo Go. If a
+future change adds native code that Expo Go does not bundle, use a
+[development build](https://docs.expo.dev/develop/development-builds/introduction/)
+instead.
 
-Run it with a server (`npm run start:op`, see [Multiplayer
-scoring](#multiplayer-scoring)) and it asks you to sign in first, once.
-
-### For testing on an actual course
-
-Expo Go runs the app off your laptop's dev server, which is no use standing on
-the twelfth tee. It also cannot test the behaviour that matters most out there:
-kill the Wi-Fi and Expo Go stops, where a real build would keep scoring and
-queue the edits. For anything resembling a real round you want a standalone
-build — it installs like any other app and needs nothing running.
+For a build that works away from the development computer:
 
 ```bash
-npm install -g eas-cli
-eas login
-eas build:configure
-eas build --profile preview --platform android   # .apk, install directly
-eas build --profile preview --platform ios       # needs a paid Apple account
+npx eas-cli@latest login
+npx eas-cli@latest build --profile preview --platform android
+npx eas-cli@latest build --profile preview --platform ios
 ```
 
-Android gives you an APK you can sideload straight away, no developer account.
-iOS internal distribution needs a paid Apple Developer account ($99/yr) to
-register the device — without one, Expo Go is the way on iPhone.
-
-Builds happen in the cloud, so no Xcode or Android Studio locally. `ios/` and
-`android/` are generated — never edit or commit them by hand.
-
-### CI
-
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull
-request and every push to `main`:
-
-| Job | What it does |
-|---|---|
-| **Tests, types, lint** | `npm test`, `tsc --noEmit`, `oxlint`, `expo-doctor` |
-| **Migrations and RLS** | Applies every migration to a throwaway Postgres 16, applies the baseline a second time to prove it is repeatable, then runs 24 row-level-security assertions |
-| **Apply migrations** | Only on `main`, only after both of the above pass |
-
-The row-level security assertions are the ones worth having. They are the part
-no unit test can reach, because the rules live in the database — a stranger
-seeing nothing, a guest with the code seeing that day and nothing else, and a
-guest being refused when it tries to change a stake or touch a private round.
-The test is written to fail loudly: break a policy and the job goes red naming
-the check that caught it.
-
-Migrations reach the real project only from `main`, and only behind green
-tests. `db push` is a no-op when the project has already seen everything, so it
-runs on every merge rather than guessing from which files changed.
-
-### Dependency updates
-
-[`.github/dependabot.yml`](.github/dependabot.yml) scans every day at 05:00
-Eastern, for both npm and the workflow actions.
-
-The Expo packages are grouped into a single pull request on purpose. Expo pins
-them to the SDK and they are meant to move together — `npx expo install --fix`
-on an upgrade, not one at a time — and bumping one alone is how a project ends
-up on a version Expo never shipped against. `expo-doctor` runs in CI for the
-same reason: a group that stops agreeing with itself goes red here rather than
-on a phone on the first tee.
-
-Everything that only touches the build is grouped separately, minor and patch
-only.
-
-Three repository secrets are needed for that last job
-(**Settings → Secrets and variables → Actions**):
-
-| Secret | Where it comes from |
-|---|---|
-| `SUPABASE_ACCESS_TOKEN` | supabase.com/dashboard/account/tokens |
-| `SUPABASE_PROJECT_REF` | the subdomain of your project URL |
-| `SUPABASE_DB_PASSWORD` | the `db_password` field of the `Supabase Project` vault item |
-
-Without them the first two jobs still run; only the apply step fails.
-
-### Changing the database
-
-The schema lives in `supabase/migrations/`, and the CLI applies it. Nothing is
-ever pasted into the SQL editor, and nothing is edited on the server directly —
-the remote would then disagree with the repo and no one could tell which was
-right.
-
-```bash
-npm run db:new add_something   # writes a timestamped, empty migration
-npm run db:push                # applies whatever the project has not seen
-npm run db:status              # what is applied where
-```
-
-The first migration is the whole schema, and it is written to be safe to run
-twice — it was hand-applied in the SQL editor before this existed, so it has to
-survive meeting a project that already has it. **Migrations added after it do
-not need that and should not try.** They run exactly once, in timestamp order,
-and the migration history table is what remembers.
-
-### Checks
-
-```bash
-npm test          # jest — 134 tests (engine, outings, sync, auth)
-npm run typecheck # tsc --noEmit
-npm run lint      # oxlint
-npx expo-doctor   # dependency and config sanity
-```
-
-### What has and has not been verified
-
-Verified: 134 tests over the money math, the sync logic and the credential checks, a clean typecheck and
-lint, bundles for both iOS and Android, a headless run through every route with
-no runtime errors, and the SQL schema's row-level security exercised against a
-real Postgres.
-
-Run on an iPhone through Expo Go, signed in against a real Supabase project,
-with rows landing in the database from the phone. That covers the parts no test
-can reach: real PostgREST writes against real row-level security, `owner_id`
-resolving to the signed-in account, parents landing before children so no
-foreign key trips, and the push staying off the path of an edit.
-
-**Still not verified on hardware:**
-
-- **Pruning.** Only runs once something is deleted — a player dropped, a round
-  binned. Covered by tests as a pure function; never yet run against the live
-  project.
-- **Adopting a season on a second phone.** Only fires on a fresh install
-  signing into an account that already has data.
-- **Two phones on one card.** The guest boundary is proven against Postgres
-  (below), but no second phone has actually joined an outing.
-- **Touch targets.** The score steppers carry hit-slop for cold or gloved
-  hands, but that is a guess until a thumb lands on one.
-- **The floating tab bar against real safe areas.** It reads the actual insets
-  rather than hard-coding them, but a notch and a punch-hole are worth seeing.
-
-## Demo mode
-
-`DEMO_MODE` seeds the Saturday Dogs at Pine Hollow — a live round through eleven
-holes, plus eighteen settled Saturdays behind it — so the app has something to
-show before a real group exists.
-
-- Build-time default: `EXPO_PUBLIC_DEMO_MODE=false` turns it off at the source.
-- Runtime: **Settings → Demo data**. This is the one that persists.
-
-Demo and live data sit in **separate storage namespaces** (`press:demo:*` and
-`press:live:*`). Switching never mixes fake money into a real season ledger, and
-flipping back and forth loses nothing on either side. With demo off the app is
-genuinely empty — that is the correct starting state for a real group, so every
-screen has an empty state rather than invented players.
-
-The season ledger is **not** a stored number. It is recomputed by re-settling
-every completed round, so correcting a score from three weeks ago moves the
-standings. The demo's prior rounds are generated from a fixed seed, so the
-history is a real sum of real settlements rather than four numbers typed in.
-
-## Outings: a field, split into groups
-
-A normal Saturday needs none of this — "Start a round" still goes straight to a
-card. An **outing** is for the day when twenty of you are out in five groups.
-
-- **The field** is everybody playing. It splits into playing groups of four,
-  rearranged by tapping a player and then the group they belong in.
-- **Field pots** run across everyone who buys in: field skins and scats.
-- **Each group still plays its own games** — Group 1 can have a $5 Nassau while
-  Group 3 plays Wolf, and neither affects the other.
-- One settlement covers the lot. Lose $30 in your fourball's Nassau, take $180
-  out of the scats pot, and you collect $150.
-
-### Field pots are pots, not per-man bets
-
-The foursome games move money directly between players. At twenty that stops
-working: one skin at $2 a man would collect $38, and a hot round would swing
-someone $300. So field games are buy-in pots — everyone puts up the same stake
-and the pot comes back out to whoever won holes.
-
-|  | Field skins | Scats |
-|---|---|---|
-| Wins the hole | Alone at the low score | Alone at the low score |
-| Decided on | Net (pops applied) | Gross |
-| Tied hole | Nobody wins it | Carries — the **rabbit** |
-| Money | Pot split evenly across every skin won | Pot cut into per-hole shares |
-
-They are the same bet with different money. "Only one man made par on the
-fifth" is exactly a skin's win condition, so the two share one calculator —
-which means the scat math is covered by the skins tests. The differences that
-actually matter are three switches on the pot's setup screen: gross or net,
-whether ties carry, and where leftovers go.
-
-Both defaults are stated rather than assumed. Scats default to gross because
-that is how "made par" is meant; field skins default to net because that is how
-skins have always been played. Either can be flipped per outing.
-
-### Nothing pays until the field has finished the hole
-
-With tee times ten minutes apart, the last group is an hour behind the first.
-A hole only settles once every entrant has posted a score on it, and the rabbit
-cannot jump a hole the field has not finished — so most of the card is
-legitimately unresolved for most of the morning.
-
-The app says so: `6/18 holes settled`, `12 holes waiting on groups still out on
-the course`. A field leaderboard that hid that would be worse than none.
-
-Buy-ins come out of everyone's pocket the moment the pot is on, so the standings
-read negative for most of the field until the pots pay. That is the truth of a
-pot — the money has genuinely left the players and is sitting in an envelope —
-and it is why the outing's net does not sum to zero the way a pairwise bet does.
-
-## Where your data lives
-
-Everything is written to the phone first, into AsyncStorage, and that is what
-the app reads. With a server configured and an account signed in, it is then
-copied up to Supabase as real rows — twenty tables, one row per thing that can
-change on its own, so losing a phone stops meaning losing a season.
-
-Nothing waits on the network. The push is debounced and runs after the local
-save has already happened; if it fails, the status in **Settings → Account**
-says so and the next change tries again. Demo data is never sent anywhere.
-
-Signing in on a second phone with nothing on it pulls the season down. Signing
-in on a phone that already has data pushes it up. Two phones both holding
-different data is resolved bluntly — whichever asks last wins — which is honest
-for one person's own devices and is why the pull happens first.
-
-## Multiplayer scoring
-
-Four phones can score the same outing. Open the outing and tap **Share this
-outing** for a six-character code; everybody else takes **Settings → Join an
-outing by code**. From then on all of them are writing to the same card.
-
-It is **offline-first**, which is not a nicety: half of golf courses have no
-signal on the back nine, and a request/response app would silently lose
-people's birdies.
-
-- Every edit is applied **locally first** and queued. Nothing waits on a network.
-- The queue is **durable** — it survives the app being killed in a car park.
-- Sync is a log of small facts (`player X, hole 7, scored 5, at time T`), not
-  whole documents. Two people scoring different holes never conflict; two people
-  scoring the same hole resolve to the later edit, with ties broken identically
-  on every device.
-- Re-sending after a timeout is harmless: every mutation carries a stable id.
-
-### Setting it up
-
-Multiplayer is off unless a server is configured, and the app is fully usable
-without one.
-
-1. Create a Supabase project.
-2. In **Authentication → Providers**, leave **Email** on with **Confirm email**
-   on, which is how a new project arrives. Leave **Anonymous sign-ins** off; the
-   app does not use them.
-
-   Then in **Authentication → URL Configuration**, add `press://*` and `exp://*`
-   to the redirect allow-list. Without them the link in a confirmation email
-   sends people to `http://localhost:3000` — the address is confirmed either
-   way, but they are shown a connection error, which reads exactly like
-   failure.
-
-   > **The built-in mail service sends two messages an hour, for the whole
-   > project.** That is Supabase's cap on its own sender and is not adjustable;
-   > only custom SMTP raises it, to 30/hour by default. It is fine for signing
-   > yourself up. A fourball all joining at once means two of them wait an hour,
-   > and a twenty-man society is a full day of it. Configure a real SMTP
-   > provider before onboarding a group — that is the only thing standing
-   > between this and a normal sign-up.
-3. Apply the schema with the Supabase CLI rather than pasting SQL:
-
-   ```bash
-   npx supabase login                     # once, or set SUPABASE_ACCESS_TOKEN
-   npx supabase link --project-ref <ref>  # the ref is in your project URL
-   npm run db:push                        # applies everything in supabase/migrations
-   ```
-
-   The database password `link` asks for is in the `PressGolf` vault, on the
-   same `Supabase Project` item as the URL and the anon key.
-4. Put the project URL and anon key in the `PressGolf` 1Password vault, as an
-   item called `Supabase Project`. Writing needs a token with write access on the
-   vault; the token the app runs under is read-only:
-
-   ```bash
-   OP_SERVICE_ACCOUNT_TOKEN="$OP_WRITE_TOKEN" \
-     op item create --vault PressGolf --category "API Credential" --title "Supabase Project" \
-       url=https://YOUR-PROJECT.supabase.co anon_key=YOUR-ANON-KEY
-   ```
-
-5. Start with the two injected: `npm run start:op`. That only ever reads, so it
-   runs under the default read-only `OP_SERVICE_ACCOUNT_TOKEN`.
-
-   It resolves the references with `op inject` and exports them, rather than
-   wrapping the whole run in `op run`. `op run` pipes the child's output
-   through itself to mask secrets, which costs Expo its terminal — no QR code
-   and no keypress menu, so there is nothing to scan into Expo Go.
-   [`.env.op`](.env.op) holds `op://` references rather than values, so it is
-   committed and no key is ever written into the working tree. Plain `npm start` still works — without
-   the variables the app is simply local-only.
-
-Both variables are `EXPO_PUBLIC_`, so they are compiled into the bundle. The
-anon key is *meant* to be public; row-level security is what actually guards
-the data. The vault keeps the pair out of git and gives one source of truth —
-it does not make them secret from anyone holding a build.
-
-Cloud builds cannot reach your local 1Password, so EAS needs the same two
-values set as EAS environment variables against the `preview` and `production`
-profiles before a build can talk to Supabase.
-
-Everyone signs in with an email and a password, so an edit can be attributed
-to a person rather than to a device. The organiser then gets a six-character
-join code (no `O`/`0` or `I`/`1`, because people read them out loud), and that
-code is what decides who is in the outing — the account says who you are, the
-code says which day you are on.
-
-You sign in once. The session persists, and a phone that has signed in before
-is let straight through on later launches whether or not it can reach the
-server — being locked out of your own scorecard in a car park with no signal
-would defeat the point of an offline-first app. Everything the server actually
-protects is still protected: row-level security does not care what the app
-chose to render.
-
-The schema's row-level security was exercised against a real Postgres: an
-outsider sees no outings and cannot write edits, joining requires the code,
-duplicate mutation ids are rejected so retries are safe, and the log is
-append-only — `DELETE` affects zero rows even when the grant exists.
-
-## Layout
-
-```
-src/
-  domain/           pure TypeScript, no React — this is the part that matters
-    types.ts        Player, Course, Round, GameConfig, Press, WolfPick…
-    formats.ts      the nine formats' copy, colours and defaults
-    factory.ts      constructors, id generation, round reconciliation
-    season.ts       season standings, rebuilt from completed rounds
-    engine/
-      context.ts    pops allocation, net scores, money formatting
-      ledger.ts     payment matrix, pot contributions, minimum transfers
-      formats/      one file per game, incl. field.ts for the pots
-      outing.ts     settleOuting() — every group's games plus the field pots
-      index.ts      settleRound() — one group's games
-    __tests__/      50 tests over the money math
-  auth/             accounts
-    validate.ts     credential checks and the copy for what the server says
-    AuthProvider.tsx  session state, including the offline grant
-    AuthGate.tsx    app, or the way in
-    __tests__/      19 tests over the validation and error copy
-  sync/             the server half
-    rows.ts         documents to rows and back — the whole translation
-    diff.ts         what the server holds that the phone no longer does
-    remote.ts       push, pull, and the one reconcile at sign-in
-    merge-shared.ts folding other phones' scores back in
-    useDataSync.ts  debounced push, never on the path of an edit
-    types.ts        a mutation is one addressable cell, not a document
-    merge.ts        per-cell last-write-wins
-    engine.ts       durable queue, coalescing flush, backoff
-    fake-transport.ts  an in-memory server that can fail on demand
-    supabase.ts     the real wire, plus join-by-code
-    __tests__/      61 tests, including losing signal mid-round
-  store/            AsyncStorage persistence + React context
-  components/       primitives, floating tab bar, screen chrome, sign-in
-  theme/tokens.ts   design tokens; ink re-derived to meet WCAG AA
-  theme/contrast.ts WCAG contrast measurement, used by the token test
-  app/              expo-router routes
-    (tabs)/         index · format · score · settle
-    roster · courses · course/[id] · sides · new-round · history · settings
-    new-outing · outing · field-games · groups · join
-supabase/
-  migrations/       the schema, applied with `npm run db:push`
-  ci/               a stand-in for Supabase, and the RLS assertions
-scripts/
-  generate-icons.py the icon and splash art, drawn from theme/tokens.ts
-```
-
-The mark is a flagstick in the cup, in the app's own paper-white and green.
-Every asset in `assets/` — the iOS icon, the splash, the three Android
-adaptive layers and the favicon — comes out of `scripts/generate-icons.py`, so
-they are one shape at different sizes rather than six files to keep in step.
-Re-run it (`pip install Pillow && python3 scripts/generate-icons.py`) after
-changing the mark or the palette.
-
-The engine is deliberately free of React. `settleRound(round, course, roster)`
-takes plain data and returns a settlement, which is why the whole thing is
-testable without rendering anything.
-
-### Money is integer cents
-
-Every amount inside the engine is a whole number of cents. Dollars-as-floats
-drift the moment you halve a team stake or multiply Vegas points, and a bet
-that is off by a penny is an argument. `splitEvenly` guarantees the parts sum
-back to the whole, and `Ledger.paySides` rotates the odd cent between winners
-so two partners never end a match a cent apart.
-
-## What the nine formats do
-
-| Format | Settles | Notes |
-|---|---|---|
-| Nassau | Front, back and total, every pair | Presses run to the end of the nine they were fired on |
-| Skins | Low net, ties carry | Skins still riding at the end are dead money, reported not paid |
-| Junk | Birdies, eagles (2×), albatross (3×), greenies, sandies, chip-ins, polies | Pays as soon as that player has a score |
-| Stableford | High net points takes the pot | Winner-takes-all, so an unbroken tie pushes |
-| Four-ball | Best ball of two, match play between sides | Each loser ends down exactly the stake |
-| Wolf | Per hole, wolf's side vs the rest | Partner picked on the Score screen; lone wolf is a separate bet against each opponent |
-| Vegas | Paired net scores as a number, difference × stake | Birdie flips the opposing number; configurable |
-| Match play | Straight 1v1 over the round | Defaults to round robin; pick specific rivals in Sides |
-| Stroke play | Low net total | Settles only when every score is in |
-
-Formats that need setup say so instead of silently paying nothing: four-ball and
-Vegas report "can't pay until the sides are set", and Wolf names how many played
-holes have no pick.
-
-## Where this departs from the original prototype
-
-Press started as an interactive HTML prototype — a working demo with four
-hardcoded players, one hardcoded course and a hardcoded season. Making it a real
-app meant changing some things on purpose:
-
-- **Nothing is hardcoded.** Players, courses (par, stroke index and yards per
-  hole), tee order, stakes, pops, teams and rivals are all editable and persisted.
-- **Presses are symmetric.** The prototype hardcoded the presser to player 0 and
-  compared the current nine while the press itself ran to hole 18. Here any
-  player can press any opponent, and the press covers the nine it was fired on.
-- **Max exposure is computed per format.** The prototype used flat multipliers
-  (`nassau × 3, skins × 18, everything else × 6`) that don't correspond to any
-  format's actual worst case. This version derives it, and the screen says what
-  the number assumes — Vegas has no theoretical cap, so it is quoted at ten
-  points a hole.
-- **Pops work above 18.** The prototype's `pops >= strokeIndex` check silently
-  caps at one stroke per hole. A 20 handicap now gets a shot everywhere plus a
-  second on stroke index 1 and 2.
-- **Wolf and Vegas are built, not stubbed.** Wolf gets a per-hole partner picker
-  on the Score screen; Vegas and four-ball share one set of sides, because groups
-  who split 2v2 play both games with the same partners.
-- **Winner-takes-all pots push on a tie** rather than paying a joint winner.
-- **The Score screen opens on the hole you're standing on**, not hole 1.
+The project is already linked to EAS; do not run `eas build:configure`. The
+preview profile produces an installable Android APK or an internally
+distributed iOS build. iOS device distribution requires an Apple Developer
+account and registered devices. Native projects are generated through
+Continuous Native Generation, so `ios/` and `android/` are not committed or
+edited by hand.
+
+## Project guides
+
+- [Development and configuration](docs/development.md) — prerequisites,
+  commands, Supabase setup, migrations, and EAS profiles.
+- [Architecture and game rules](docs/architecture.md) — domain engine, storage,
+  sync boundaries, repository layout, and settlement behavior.
+- [Testing and CI](docs/testing-and-ci.md) — local checks, coverage gates,
+  protected-branch checks, native smoke tests, and deployment controls.
+- [Accessibility](docs/accessibility.md) — automated guarantees, iOS validation,
+  the manual regression pass, and the open Android follow-up.
+- [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
+
+## Demo and live data
+
+`EXPO_PUBLIC_DEMO_MODE` controls the build-time default. Preview and native
+smoke-test builds enable it; production builds disable it. The user can switch
+datasets later under **Settings → Demo data**.
+
+Demo and live data use separate AsyncStorage namespaces (`press:demo:*` and
+`press:live:*`). Demo data is never uploaded. With demo mode off and no
+Supabase configuration, Press remains a fully usable single-device app.
+
+## Current validation
+
+As of September 2026:
+
+- 22 Jest suites and 310 tests pass. Repository coverage is 93.22% statements,
+  90.19% branches, 87.10% functions, and 94.22% lines; enforced thresholds live
+  in `package.json`.
+- CI exports production Metro bundles for Android and iOS and verifies every
+  database migration plus 24 row-level-security assertions against Postgres 16.
+- A scheduled and manually runnable Maestro workflow builds release apps for
+  both platforms and completes a demo round through scoring, settlement, and
+  posting to the ledger on an Android emulator and iOS simulator.
+- Maximum Dynamic Type and a complete VoiceOver flow were validated on iOS
+  hardware: sign in, start a round, enter scores, settle, and post to the
+  ledger.
+
+Android hardware validation at maximum font size and with TalkBack remains
+open in [issue #22](https://github.com/jwh3times/PressGolf/issues/22). Passing
+the Android emulator smoke test does not replace that device accessibility
+pass.
 
 ## Known limits
 
-- **No second phone has joined an outing yet.** Hosting publishes a code and
-  guests can score against it, and the whole boundary is proven against a real
-  Postgres 16 — a guest reads the shared day and nothing else, can write scores
-  and junk, and is refused when it tries to change a stake or touch a private
-  round. But one phone has been through it, not four.
-- **Changes from another phone arrive on the next push, not instantly.** The
-  cycle is push-then-pull every couple of seconds while the app is open. The
-  `mutations` table and its realtime publication are there for a live feed and
-  are not yet wired to one.
-- **One phone, one round of testing.** It runs on an iPhone through Expo Go
-  and writes to a real project — see
-  [What has and has not been verified](#what-has-and-has-not-been-verified)
-  for the paths that still have not been exercised on hardware.
-- **No presence or activity feed yet.** You can see that a group is `THRU 12`,
-  but not who is typing right now or who entered a given score.
-- **Web is for previewing only.** `react-native-web` is installed and the app
-  runs in a browser, but `Alert`-based confirmations (post to ledger, delete
-  player, switch datasets) are no-ops there. They work on iOS and Android.
-- **Dark theme only**, as designed. It is used outdoors with the brightness up.
-- **Contrast meets AA; the rest of accessibility is unmeasured.** Every ink
-  level clears WCAG AA for body text and `theme/__tests__/contrast.test.ts`
-  holds them there on every surface. Type size is a separate question the test
-  says nothing about — the smallest labels are 8.5px — and no VoiceOver or
-  TalkBack pass has been made on a device.
+- The active app uses locally persisted snapshots for backup and shared outing
+  sync. It pushes after local changes and then pulls shared data; a passive
+  device does not yet receive another phone's edit immediately. The mutation
+  queue and realtime transport exist in `src/sync/`, but are not connected to
+  `AppStore` yet.
+- Joining and row-level-security boundaries are automated, but a full round
+  scored concurrently by multiple physical phones has not been field-tested.
+- Remote pruning after local deletion and adopting an existing season on a
+  fresh physical device are covered by tests, not by a live-device pass.
+- Web is a preview target. Native `Alert` confirmations do not provide the full
+  workflow in a browser.
+- The app currently ships one dark, outdoor-oriented theme.
+
+Track planned work and additional limitations in the
+[issue tracker](https://github.com/jwh3times/PressGolf/issues).
 
 ## License
 
