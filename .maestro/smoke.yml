@@ -22,5 +22,5 @@ name: Complete a demo round
       text: Post to the season ledger
     direction: DOWN
 - tapOn: Post to the season ledger
-- tapOn: Post it
+- tapOn: 'Post it|POST IT'
 - assertVisible: Season ledger
