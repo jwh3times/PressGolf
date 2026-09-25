@@ -39,7 +39,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       - run: npm ci
 
@@ -78,6 +77,9 @@ jobs:
     name: iOS native smoke
     runs-on: macos-latest
     timeout-minutes: 60
+    env:
+      # Cold GitHub-hosted simulators can take several minutes to start XCTest.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -119,4 +121,4 @@ jobs:
           app_path="$(find "$RUNNER_TEMP/press-ios" -maxdepth 2 -name '*.app' -print -quit)"
           test -n "$app_path"
           xcrun simctl install "$device_id" "$app_path"
-          maestro test --format JUNIT --output maestro-ios.xml .maestro/smoke.yml
+          maestro --device="$device_id" test --format JUNIT --output maestro-ios.xml .maestro/smoke.yml
