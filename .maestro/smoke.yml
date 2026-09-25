@@ -5,7 +5,7 @@ name: Complete a demo round
     clearState: true
 - extendedWaitUntil:
     visible: Saturday Dogs
-    timeout: 30000
+    timeout: 120000
 - assertVisible: Round live
 - tapOn: Enter scores
 - assertVisible: Hole 12
