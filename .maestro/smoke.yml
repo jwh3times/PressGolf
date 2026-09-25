@@ -1,0 +1,22 @@
+appId: com.press.golf
+name: Complete a demo round
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Saturday Dogs
+    timeout: 30000
+- assertVisible: Round live
+- tapOn: Enter scores
+- assertVisible: Hole 12
+- tapOn: Increase score for Marcus
+- assertVisible: net 3 · par
+- tapOn: See the damage so far →
+- assertVisible: Settlement.*
+- scrollUntilVisible:
+    element:
+      text: Post to the season ledger
+    direction: DOWN
+- tapOn: Post to the season ledger
+- tapOn: Post it
+- assertVisible: Season ledger

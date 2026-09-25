@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 # A second push to the same branch makes the first one irrelevant — except on
 # main, where a run may be applying migrations and must be left alone.
 concurrency:
@@ -15,10 +18,14 @@ jobs:
   checks:
     name: Tests, types, lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Patch coverage compares the pull request with its merge base.
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
           cache: npm
@@ -27,6 +34,10 @@ jobs:
 
       - name: Tests
         run: npm run test:coverage
+
+      - name: New code is covered
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-patch-coverage.mjs "origin/${{ github.base_ref }}" 90
 
       - name: Types
         run: npx tsc --noEmit
@@ -40,9 +51,33 @@ jobs:
       - name: Expo SDK agrees with itself
         run: npx expo-doctor
 
+  bundle:
+    name: Expo production bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: true
+      EXPO_NO_TELEMETRY: 1
+      EXPO_PUBLIC_DEMO_MODE: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # TypeScript cannot catch Metro resolution, Babel, asset, or production
+      # transform failures. Export the same native bundles EAS will consume.
+      - name: Export Android and iOS bundles
+        run: npx expo export --platform all --output-dir "$RUNNER_TEMP/expo-export"
+
   database:
     name: Migrations and row-level security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     # The migrations are applied to a throwaway database on every pull request,
     # so a broken one is caught here rather than against real rounds.
@@ -64,7 +99,7 @@ jobs:
       PSQL: psql -h localhost -U postgres -d press -v ON_ERROR_STOP=1
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install the Postgres client
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
@@ -90,13 +125,15 @@ jobs:
     name: Apply migrations to Supabase
     # Only once the tests and the throwaway database both agree, and only for
     # something that actually landed on main.
-    needs: [checks, database]
+    needs: [checks, bundle, database]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
           cache: npm
@@ -112,3 +149,16 @@ jobs:
           npx supabase db push \
             --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
             --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Reject newly introduced vulnerable dependencies
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
