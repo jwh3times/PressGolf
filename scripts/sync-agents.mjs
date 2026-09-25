@@ -1,21 +1,24 @@
-// Generates the non-Claude harness copies of the agent instructions, and Claude Code's own copy
-// of the skill instructions. Two independent directions, because the two trees have different
-// authored sources:
+#!/usr/bin/env node
+// Keeps the Claude Code and Codex copies of the agent instructions from drifting. Two independent
+// directions, because the two trees have different authored sources:
 //
-//   .claude/agents/  (authored) --> .codex/agents/*.toml   (generated, for Codex)
-//   .agents/skills/  (authored) --> .claude/skills/         (generated, for Claude Code)
+//   .claude/agents/*.md  (authored) --> .codex/agents/*.toml  (generated, for Codex)
+//   .agents/skills/**    (authored) --> .claude/skills/**     (generated, for Claude Code)
 //
-// `.agents/skills/` is authored because that's where the third-party skills installer writes —
-// installing or updating a skill has to stay a one-way operation with no manual copying back into
-// `.claude/`. Neither generated tree is hand-maintained: both are derived here so the instructions
-// cannot drift apart. CI runs this with `--check`, so a change to an authored tree that skips the
-// regen fails the build.
+// `.agents/skills/` is authored because Codex reads it directly and the skills installer writes
+// there, so installing or updating a skill stays a one-way operation. Generated files are committed
+// so a fresh clone works in both harnesses; CI runs this with `--check` and fails on drift.
 //
-//   node scripts/sync-agents.mjs          # rewrite the mirrors
-//   node scripts/sync-agents.mjs --check  # verify only; exit 1 if stale
+//   node scripts/sync-agents.mjs          # rewrite the generated trees
+//   node scripts/sync-agents.mjs --check  # verify only; exit 1 if anything is stale
+//   node scripts/sync-agents.mjs --hook   # Claude Code PostToolUse hook: sync only when an
+//                                         # authored file was just edited (payload on stdin)
+//
+// This file is shared verbatim across repositories. Change it in one, copy it to all.
 
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -27,144 +30,214 @@ import { fileURLToPath } from "node:url";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultRoot = path.resolve(path.dirname(scriptPath), "..");
+const regenerateCommand = "node scripts/sync-agents.mjs";
 
 const agentSourceDir = ".claude/agents";
-const codexAgentDir = ".codex/agents";
-
+const agentTargetDir = ".codex/agents";
 const skillSourceDir = ".agents/skills";
 const skillTargetDir = ".claude/skills";
+
+// Claude Code tools that can change files. An agent whose `tools:` list names none of them is
+// read-only, and Codex is told so; an agent with no `tools:` line inherits every tool.
+const writingTools = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 
 function normalizeNewlines(value) {
   return value.replaceAll("\r\n", "\n");
 }
 
+// --- Frontmatter ---------------------------------------------------------------------------------
+
+function unquote(raw, file, key) {
+  const value = raw.trim();
+  if (value.startsWith('"')) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      throw new Error(`${file}: '${key}' has an unterminated or invalid double-quoted value`);
+    }
+  }
+  if (value.startsWith("'")) {
+    if (!value.endsWith("'") || value.length < 2) {
+      throw new Error(`${file}: '${key}' has an unterminated single-quoted value`);
+    }
+    return value.slice(1, -1).replaceAll("''", "'");
+  }
+  return value;
+}
+
+// A deliberately small YAML subset: `key: value` scalars (plain, single- or double-quoted), plain
+// scalars continued on indented lines, and `- item` lists. Anything else is an error rather than a
+// silent misread, because a misread description or tool list ships straight to another harness.
 export function splitFrontmatter(raw, file) {
-  const match = /^---\n([\s\S]*?)\n---\n?/.exec(normalizeNewlines(raw));
+  const normalized = normalizeNewlines(raw);
+  const match = /^---\n([\s\S]*?)\n---(?:\n|$)/.exec(normalized);
   if (!match) {
     throw new Error(`${file}: expected YAML frontmatter delimited by '---'`);
   }
 
   const data = new Map();
+  let lastKey = null;
   for (const line of match[1].split("\n")) {
-    const field = /^([A-Za-z][\w-]*):\s*(.*)$/.exec(line);
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+
+    const field = /^([A-Za-z][\w-]*):(?:\s+(.*))?$/.exec(line);
     if (field) {
-      data.set(field[1], field[2].trim());
+      const [, key, rest = ""] = field;
+      if (/^[|>][+-]?\d*$/.test(rest.trim())) {
+        throw new Error(`${file}: '${key}' uses a block scalar; write it on one line`);
+      }
+      data.set(key, rest.trim() === "" ? [] : unquote(rest, file, key));
+      lastKey = key;
+      continue;
+    }
+
+    const item = /^\s+-\s+(.*)$/.exec(line);
+    if (item && lastKey && Array.isArray(data.get(lastKey))) {
+      data.get(lastKey).push(unquote(item[1], file, lastKey));
+      continue;
+    }
+
+    const continuation = /^\s+(\S.*)$/.exec(line);
+    if (continuation && lastKey && typeof data.get(lastKey) === "string") {
+      data.set(lastKey, `${data.get(lastKey)} ${continuation[1].trim()}`);
+      continue;
+    }
+
+    throw new Error(`${file}: cannot parse frontmatter line: ${JSON.stringify(line)}`);
+  }
+
+  for (const [key, value] of data) {
+    const text = Array.isArray(value) ? value.join(",") : value;
+    // Tab is fine; every other control character would corrupt a TOML string or a banner.
+    if (/[\u0000-\u0008\u000a-\u001f\u007f]/.test(text)) {
+      throw new Error(`${file}: '${key}' contains a control character`);
     }
   }
 
-  return { data, body: normalizeNewlines(raw).slice(match[0].length).trim() };
+  return { data, body: normalized.slice(match[0].length).trim() };
 }
 
-// TOML basic string. JSON's escape set (\" \\ \b \t \n \f \r \uXXXX) is a subset of TOML's, so
-// stringify produces a valid TOML basic string for any scalar these frontmatters can hold.
+function toolList(value) {
+  if (value === undefined) return null;
+  const items = Array.isArray(value)
+    ? value
+    : value.replace(/^\[|\]$/g, "").split(",");
+  return items.map((tool) => tool.trim()).filter(Boolean);
+}
+
+// --- Codex agents --------------------------------------------------------------------------------
+
+// TOML basic string. JSON's escape set is a subset of TOML's, so stringify is valid TOML.
 function tomlBasicString(value) {
   return JSON.stringify(value);
 }
 
-// TOML *literal* multi-line string. Literal strings perform no escape processing, which is what
-// the instruction bodies need: they are full of C# raw-string literals (`"""`), shell line
-// continuations (`\`), and Windows-ish paths that a basic `"""` string would mangle silently.
-export function tomlLiteralMultiline(body, file, field) {
-  if (body.includes("'''")) {
-    throw new Error(
-      `${file}: '${field}' contains ''' which cannot appear in a TOML literal string. ` +
-        `Reword the source in ${agentSourceDir}/.`,
-    );
+// Instruction bodies are full of backslashes, quotes, and code fences, so they go in a TOML
+// *literal* multi-line string, which performs no escape processing. The rare body a literal string
+// cannot hold (one containing ''' or ending in a quote) falls back to an escaped basic string.
+export function tomlMultiline(body) {
+  if (!body.includes("'''") && !body.endsWith("'")) {
+    return `'''\n${body}'''`;
   }
-  if (body.endsWith("'")) {
-    throw new Error(
-      `${file}: '${field}' ends with a quote, which would extend the delimiter`,
+  const escaped = body
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, (c) =>
+      `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
     );
-  }
-  // A newline directly after the opening delimiter is trimmed by TOML, so the body round-trips.
-  return `'''\n${body}'''`;
+  return `"""\n${escaped}"""`;
 }
 
-function renderCodexAgent(sourceFile, raw) {
+export function renderCodexAgent(sourceFile, raw) {
   const { data, body } = splitFrontmatter(raw, sourceFile);
 
   for (const field of ["name", "description"]) {
-    if (!data.get(field)) {
+    if (typeof data.get(field) !== "string" || !data.get(field)) {
       throw new Error(`${sourceFile}: frontmatter is missing '${field}'`);
     }
+  }
+  const expected = path.basename(sourceFile, ".md");
+  if (data.get("name") !== expected) {
+    throw new Error(
+      `${sourceFile}: frontmatter name '${data.get("name")}' must match the filename '${expected}'`,
+    );
   }
   if (!body) {
     throw new Error(`${sourceFile}: instruction body is empty`);
   }
 
-  // `model` and `tools` are deliberately dropped: they name Claude Code's model ids and tool
-  // registry, neither of which transfers to another harness.
+  // `model`, `color`, and the tool list itself are dropped: they name Claude Code's model ids and
+  // tool registry, neither of which transfers. Only the read-only fact survives, as a sandbox.
+  const tools = toolList(data.get("tools"));
+  const readOnly = tools !== null && !tools.some((tool) => writingTools.has(tool));
+
   return [
-    `# Generated from ${sourceFile} by scripts/sync-agents.mjs — do not edit by hand.`,
+    `# GENERATED — do not edit. Source: ${sourceFile} — regenerate with '${regenerateCommand}'.`,
     `name = ${tomlBasicString(data.get("name"))}`,
     `description = ${tomlBasicString(data.get("description"))}`,
-    `developer_instructions = ${tomlLiteralMultiline(body, sourceFile, "developer_instructions")}`,
+    ...(readOnly ? ['sandbox_mode = "read-only"'] : []),
+    `developer_instructions = ${tomlMultiline(body)}`,
     "",
   ].join("\n");
 }
 
+// --- Claude skills -------------------------------------------------------------------------------
+
 const skillBannerPattern = /^# GENERATED — do not edit\.[^\n]*\n/;
 
-// Injects a YAML-comment banner as line 2, directly after the frontmatter's opening '---', so the
-// frontmatter block still parses as valid YAML/whatever the skill loader expects.
+// The banner is a YAML comment on line 2, directly after the opening '---', so the frontmatter
+// still parses for the skill loader.
 export function injectSkillBanner(sourceFile, raw) {
   const normalized = normalizeNewlines(raw);
-  const match = /^---\n/.exec(normalized);
-  if (!match) {
-    throw new Error(`${sourceFile}: expected SKILL.md to open with '---\\n'`);
+  if (!normalized.startsWith("---\n")) {
+    throw new Error(`${sourceFile}: expected SKILL.md to open with '---'`);
   }
-  const banner = `# GENERATED — do not edit. Source: ${sourceFile} — regenerate with 'node scripts/sync-agents.mjs'.\n`;
-  return (
-    normalized.slice(0, match[0].length) +
-    banner +
-    normalized.slice(match[0].length)
-  );
+  const banner = `# GENERATED — do not edit. Source: ${sourceFile} — regenerate with '${regenerateCommand}'.\n`;
+  return `---\n${banner}${normalized.slice(4)}`;
 }
 
-// Strips a previously-injected banner, e.g. when adopting a generated file as the new authored
-// source. No-op if the banner isn't present.
+// Removes an injected banner, e.g. when adopting a generated file as a new authored source.
 export function stripSkillBanner(raw) {
   const normalized = normalizeNewlines(raw);
-  const match = /^---\n/.exec(normalized);
-  if (!match) return normalized;
-  const rest = normalized.slice(match[0].length);
-  const bannerMatch = skillBannerPattern.exec(rest);
-  return bannerMatch
-    ? normalized.slice(0, match[0].length) + rest.slice(bannerMatch[0].length)
-    : normalized;
+  if (!normalized.startsWith("---\n")) return normalized;
+  return `---\n${normalized.slice(4).replace(skillBannerPattern, "")}`;
 }
 
-// Recursively lists files under `dir` (relative to `root`), returning POSIX-style relative paths.
-// Uses withFileTypes + isDirectory()/isFile() explicitly — a stray symlink (e.g. left over from a
-// prior installer run) is neither, and is skipped rather than silently treated as either. This is
-// the fix for the failure mode where a directory-walking generator filters on entry.isDirectory()
-// and a symlinked skill directory reports as neither a directory nor a file, vanishing from the
-// source listing entirely.
-//
-// Pass `strays` to collect those skipped entries instead of dropping them: in a generated tree a
-// symlink is never legitimate output, so it is reported and pruned like any other orphan.
-function listFilesRecursive(root, dir, strays) {
+// --- Tree walking --------------------------------------------------------------------------------
+
+// Lists regular files under `dir` as POSIX paths relative to `root`. Symlinks are never followed:
+// `withFileTypes` reports a link (or Windows junction) as neither file nor directory. In an authored
+// tree a link is an error — git stores it as a copy where `core.symlinks` is false. In a generated
+// tree it is collected into `strays` so it can be reported and removed like any other orphan.
+function listFiles(root, dir, { strays, authored = false } = {}) {
   const absolute = path.join(root, dir);
   if (!existsSync(absolute)) return [];
+  if (lstatSync(absolute).isSymbolicLink()) {
+    if (authored) throw new Error(`${dir}: authored tree must not be a symlink`);
+    strays?.push(dir);
+    return [];
+  }
+
   const results = [];
   for (const entry of readdirSync(absolute, { withFileTypes: true })) {
     const relPath = `${dir}/${entry.name}`;
+    if (entry.name === ".DS_Store") continue;
     if (entry.isDirectory()) {
-      results.push(...listFilesRecursive(root, relPath, strays));
+      results.push(...listFiles(root, relPath, { strays, authored }));
     } else if (entry.isFile()) {
       results.push(relPath);
-    } else if (strays) {
-      strays.push(relPath);
+    } else if (authored) {
+      throw new Error(`${relPath}: symlinks are not allowed in an authored tree; copy the files`);
+    } else {
+      strays?.push(relPath);
     }
   }
-  return results;
+  return results.sort();
 }
 
-// Removes directories under `dir` left empty by orphan pruning, so a deleted skill does not linger
-// in the generated tree as an empty folder the harness still lists.
 function pruneEmptyDirs(root, dir) {
   const absolute = path.join(root, dir);
-  if (!existsSync(absolute)) return;
+  if (!existsSync(absolute) || !lstatSync(absolute).isDirectory()) return;
   for (const entry of readdirSync(absolute, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const child = `${dir}/${entry.name}`;
@@ -175,60 +248,54 @@ function pruneEmptyDirs(root, dir) {
   }
 }
 
-// Skills are mirrored as a whole directory tree, not a single file: references, scripts/*.sh, and
-// per-harness agents/*.yaml all need to be drift-controlled, not just SKILL.md. SKILL.md gets the
-// generated-banner treatment (text, LF-normalized); everything else is copied as raw bytes so a
-// CRLF/encoding quirk in a non-markdown asset can never silently diverge from its source.
-function buildSkillMirrors(root) {
-  const mirrors = new Map();
-  for (const sourceRel of listFilesRecursive(root, skillSourceDir)) {
-    const targetRel = skillTargetDir + sourceRel.slice(skillSourceDir.length);
-    const absolute = path.join(root, sourceRel);
-    if (path.basename(sourceRel) === "SKILL.md") {
-      mirrors.set(
-        targetRel,
-        injectSkillBanner(sourceRel, readFileSync(absolute, "utf8")),
-      );
-    } else {
-      mirrors.set(targetRel, readFileSync(absolute));
-    }
-  }
-  return mirrors;
-}
+// --- Sync ----------------------------------------------------------------------------------------
 
 export function buildMirrors(root = defaultRoot) {
   const mirrors = new Map();
 
-  // No specialist agents yet is a valid state; the skills direction still has to run.
-  const sourceDir = path.join(root, agentSourceDir);
-  const agentFiles = existsSync(sourceDir)
-    ? readdirSync(sourceDir)
-        .filter((file) => file.endsWith(".md"))
-        .sort()
-    : [];
-
-  for (const file of agentFiles) {
-    const sourceFile = `${agentSourceDir}/${file}`;
-    const raw = readFileSync(path.join(sourceDir, file), "utf8");
-    const target = `${codexAgentDir}/${file.replace(/\.md$/, ".toml")}`;
-    mirrors.set(target, renderCodexAgent(sourceFile, raw));
+  for (const sourceRel of listFiles(root, agentSourceDir, { authored: true })) {
+    if (!sourceRel.endsWith(".md")) continue;
+    const targetRel =
+      agentTargetDir + sourceRel.slice(agentSourceDir.length).replace(/\.md$/, ".toml");
+    mirrors.set(
+      targetRel,
+      renderCodexAgent(sourceRel, readFileSync(path.join(root, sourceRel), "utf8")),
+    );
   }
 
-  for (const [target, content] of buildSkillMirrors(root)) {
-    mirrors.set(target, content);
+  // Whole skill directories are mirrored — references, scripts, and agents/*.yaml drift too.
+  // SKILL.md gets the banner; every other file is copied as raw bytes so a binary asset or an
+  // encoding quirk can never be rewritten.
+  for (const sourceRel of listFiles(root, skillSourceDir, { authored: true })) {
+    const targetRel = skillTargetDir + sourceRel.slice(skillSourceDir.length);
+    const absolute = path.join(root, sourceRel);
+    mirrors.set(
+      targetRel,
+      path.basename(sourceRel) === "SKILL.md"
+        ? injectSkillBanner(sourceRel, readFileSync(absolute, "utf8"))
+        : readFileSync(absolute),
+    );
   }
 
   return mirrors;
 }
 
-// Generated files with no surviving source — an agent or skill file that was renamed or deleted
-// upstream. Walked recursively so a whole removed skill directory is caught, not just top-level
-// entries.
+// Text is compared with CRLF folded to LF, so a Windows checkout with core.autocrlf is not "stale".
+// A buffer containing a NUL byte is treated as binary and compared exactly.
+function sameContent(current, content) {
+  if (typeof content === "string") {
+    return normalizeNewlines(current.toString("utf8")) === content;
+  }
+  if (current.equals(content)) return true;
+  if (content.includes(0) || current.includes(0)) return false;
+  return normalizeNewlines(current.toString("utf8")) === normalizeNewlines(content.toString("utf8"));
+}
+
 function findOrphans(root, mirrors) {
   const orphans = [];
-  for (const dir of [codexAgentDir, skillTargetDir]) {
+  for (const dir of [agentTargetDir, skillTargetDir]) {
     const strays = [];
-    for (const target of listFilesRecursive(root, dir, strays)) {
+    for (const target of listFiles(root, dir, { strays })) {
       if (!mirrors.has(target)) orphans.push(target);
     }
     orphans.push(...strays);
@@ -242,23 +309,14 @@ export function syncMirrors(root = defaultRoot, { check = false } = {}) {
 
   for (const [target, content] of mirrors) {
     const absolute = path.join(root, target);
-    const isBinary = Buffer.isBuffer(content);
-    const current = existsSync(absolute)
-      ? isBinary
-        ? readFileSync(absolute)
-        : normalizeNewlines(readFileSync(absolute, "utf8"))
-      : null;
-
-    const matches =
-      current !== null &&
-      (isBinary ? current.equals(content) : current === content);
-    if (matches) continue;
+    const exists = existsSync(absolute) && lstatSync(absolute).isFile();
+    if (exists && sameContent(readFileSync(absolute), content)) continue;
 
     if (check) {
-      stale.push(current === null ? `${target} (missing)` : target);
+      stale.push(exists ? target : `${target} (missing)`);
       continue;
     }
-
+    if (existsSync(absolute) && !exists) rmSync(absolute, { recursive: true, force: true });
     mkdirSync(path.dirname(absolute), { recursive: true });
     writeFileSync(absolute, content);
   }
@@ -267,45 +325,82 @@ export function syncMirrors(root = defaultRoot, { check = false } = {}) {
   if (check) {
     stale.push(...orphans.map((target) => `${target} (orphaned)`));
   } else {
+    // rmSync on a link removes the link itself, never the tree it points into.
     for (const target of orphans) {
       rmSync(path.join(root, target), { recursive: true, force: true });
     }
-    for (const dir of [codexAgentDir, skillTargetDir]) {
-      pruneEmptyDirs(root, dir);
-    }
+    for (const dir of [agentTargetDir, skillTargetDir]) pruneEmptyDirs(root, dir);
   }
 
-  return {
-    stale,
-    count: mirrors.size,
-  };
+  return { stale, count: mirrors.size };
+}
+
+// True when a Claude Code PostToolUse payload names a file under an authored tree.
+export function hookTouchesAuthoredTree(payload, root = defaultRoot) {
+  const input = payload?.tool_input ?? {};
+  const files = [input.file_path, input.notebook_path, ...(input.file_paths ?? [])].filter(
+    (file) => typeof file === "string",
+  );
+  return files.some((file) => {
+    const rel = path.relative(root, path.resolve(root, file)).split(path.sep).join("/");
+    return [agentSourceDir, skillSourceDir].some((dir) => rel.startsWith(`${dir}/`));
+  });
+}
+
+function readStdin() {
+  try {
+    return readFileSync(0, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function main(argv) {
+  const check = argv.includes("--check");
+
+  if (argv.includes("--hook")) {
+    let payload = null;
+    try {
+      payload = JSON.parse(readStdin() || "null");
+    } catch {
+      return 0;
+    }
+    if (!hookTouchesAuthoredTree(payload)) return 0;
+    syncMirrors(defaultRoot);
+    return 0;
+  }
+
+  const { stale, count } = syncMirrors(defaultRoot, { check });
+
+  if (!check) {
+    console.log(`Synced ${count} generated file(s) (.codex/agents, .claude/skills).`);
+    return 0;
+  }
+  if (stale.length === 0) {
+    console.log(`All ${count} generated file(s) match their authored sources.`);
+    return 0;
+  }
+
+  console.error("Generated agent files are out of date:");
+  for (const file of stale) console.error(`  ${file}`);
+  console.error(
+    `\n.codex/agents is generated from .claude/agents; .claude/skills from .agents/skills.\n` +
+      `Run '${regenerateCommand}' and commit the result.`,
+  );
+  if (process.env.GITHUB_ACTIONS === "true") {
+    for (const file of stale) {
+      const target = file.replace(/ \((missing|orphaned)\)$/, "");
+      console.log(`::error file=${target}::Stale generated file. Run '${regenerateCommand}'.`);
+    }
+  }
+  return 1;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
-  const check = process.argv.includes("--check");
-
   try {
-    const { stale, count } = syncMirrors(defaultRoot, { check });
-
-    if (!check) {
-      console.log(
-        `Synced ${count} harness mirror(s) (.codex/agents from .claude/agents, .claude/skills from .agents/skills).`,
-      );
-    } else if (stale.length > 0) {
-      console.error("Harness mirrors are out of date:");
-      for (const file of stale) console.error(`  ${file}`);
-      console.error(
-        "\n.codex/agents is generated from .claude/agents; .claude/skills is generated from " +
-          ".agents/skills. Run 'node scripts/sync-agents.mjs' and commit the result.",
-      );
-      process.exit(1);
-    } else {
-      console.log(
-        `All ${count} harness mirror(s) match their authored sources (.claude/agents, .agents/skills).`,
-      );
-    }
+    process.exitCode = main(process.argv.slice(2));
   } catch (error) {
     console.error(`sync-agents: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
