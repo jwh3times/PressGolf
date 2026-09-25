@@ -50,6 +50,22 @@ Do not install a different React, React Native, or Expo package version merely
 because npm reports a newer release. An SDK upgrade is a deliberate change and
 must follow the matching Expo upgrade guide.
 
+Two pins exist only because SDK 57 fixes React at 19.2:
+
+- `test-renderer` stays on `~1.2.0`. Version 1.3 depends on
+  `react-reconciler@0.34`, which requires React 19.3 and causes an `ERESOLVE`
+  peer warning. Lift the pin when the SDK moves to React 19.3.
+- `overrides.uuid` forces `^11.1.1` under `xcode` (used by config plugins at
+  prebuild time) to clear GHSA-w5hq-g745-h8pq. Remove it once
+  `@expo/config-plugins` no longer resolves an older `uuid`.
+
+As of 2026-09-25, `npm ci` still reports deprecation warnings from Jest 29 and
+jsdom 20 (`glob@7`, `inflight`, `abab`, `domexception`, `whatwg-encoding`), and
+`npm audit` reports decode-uri-component GHSA-vcc3-ghjq-m6fr through
+`expo-router` → `query-string@7`. The patched `decode-uri-component` is
+ESM-only, so it cannot be overridden. Never run `npm audit fix --force`; it
+proposes downgrading Expo.
+
 This project uses Continuous Native Generation. Configure native behavior in
 `app.json` or a config plugin. Generated `ios/` and `android/` folders are
 ignored and must not be committed or edited as source.
