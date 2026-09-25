@@ -62,6 +62,12 @@ updates:
       - dependency-name: "@types/jest"
         update-types: [version-update:semver-major]
 
+      # test-renderer 1.3 depends on react-reconciler 0.34, which wants React
+      # 19.3 — a React the SDK does not ship. 1.2 is the line built for 19.2.
+      # Patches within it still come through; the rest waits for the SDK.
+      - dependency-name: test-renderer
+        update-types: [version-update:semver-minor, version-update:semver-major]
+
       # Expo's own packages move within an SDK constantly and those are welcome.
       # A major is the SDK upgrade itself — a deliberate act, with a changelog to
       # read first, not something to meet at 05:00 as an open pull request.
