@@ -94,6 +94,7 @@ export function makeRound(
     pops,
     scores,
     junk: {},
+    pickups: {},
     presses: [],
     wolfPicks: [],
     games: defaultGames(),

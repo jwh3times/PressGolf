@@ -41,6 +41,9 @@ export interface OutingSpec {
   holeCount?: number;
   groupSize?: number;
   pops?: number[];
+  /** Pick-ups across the field, keyed `${holeIndex}:${playerId}`. */
+  pickups?: Record<string, true>;
+  maxScore?: Outing['maxScore'];
   /** Per-foursome games. Off by default so field pots can be tested alone. */
   games?: Partial<Record<GameKey, { on: boolean; stake: number }>>;
   fieldGames?: Partial<
@@ -93,6 +96,9 @@ export function makeTestOuting(spec: OutingSpec): {
       pops,
       scores,
       junk: {},
+      pickups: Object.fromEntries(
+        Object.entries(spec.pickups ?? {}).filter(([key]) => ids.includes(key.split(':')[1])),
+      ),
       presses: [],
       wolfPicks: [],
       games: { ...games },
@@ -124,6 +130,7 @@ export function makeTestOuting(spec: OutingSpec): {
     name: 'Test Outing',
     date: 0,
     teeFormat: 'sequential',
+    maxScore: spec.maxScore ?? 'off',
     field,
     fieldGames,
     roundIds: rounds.map((r) => r.id),

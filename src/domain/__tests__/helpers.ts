@@ -51,6 +51,7 @@ export interface RoundSpec {
   games?: Partial<Record<GameKey, { on: boolean; stake: number }>>;
   options?: Partial<Round['options']>;
   junk?: Record<string, true>;
+  pickups?: Record<string, true>;
   presses?: Round['presses'];
   wolfPicks?: Round['wolfPicks'];
   playerCount?: number;
@@ -88,6 +89,7 @@ export function makeTestRound(spec: RoundSpec): Round {
     pops,
     scores,
     junk: spec.junk ?? {},
+    pickups: spec.pickups ?? {},
     presses: spec.presses ?? [],
     wolfPicks: spec.wolfPicks ?? [],
     games,

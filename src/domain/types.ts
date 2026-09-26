@@ -101,8 +101,15 @@ export interface GamesConfig {
   stroke: GameConfig;
 }
 
+/**
+ * The most a player can take on a hole. `double_bogey` is par + 2;
+ * `net_double_bogey` is the WHS rule, par + 2 + the strokes received there.
+ */
+export type MaxScoreRule = 'off' | 'double_bogey' | 'net_double_bogey';
+
 /** Extra settings that only some formats need. */
 export interface GameOptions {
+  maxScore: MaxScoreRule;
   /** Sides for four-ball and Vegas. Empty until the group sets them. */
   teams: Team[];
   /** 1v1 match play pairings. Defaults to every pair (round robin). */
@@ -124,6 +131,9 @@ export type AutoJunkKind = 'birdie' | 'eagle';
 
 /** Key format: `${holeIndex}:${playerId}:${kind}` */
 export type JunkMap = Record<string, true>;
+
+/** Holes a player picked up on. Key format: `${holeIndex}:${playerId}` */
+export type PickupMap = Record<string, true>;
 
 export interface Press {
   id: string;
@@ -175,6 +185,8 @@ export interface Round {
   /** `scores[playerId][holeIndex]`, null when not yet entered. */
   scores: Record<PlayerId, (number | null)[]>;
   junk: JunkMap;
+  /** A pick-up counts as the max score, or sits the player out when there is none. */
+  pickups: PickupMap;
   presses: Press[];
   wolfPicks: WolfPick[];
   games: GamesConfig;
@@ -247,6 +259,8 @@ export interface Outing {
   name: string;
   date: number;
   teeFormat: TeeFormat;
+  /** One rule for the whole day, so field pots compare like with like. Every round in it inherits this. */
+  maxScore: MaxScoreRule;
   /** Everybody playing today, whether or not they are in a pot. */
   field: PlayerId[];
   fieldGames: FieldGames;

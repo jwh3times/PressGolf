@@ -47,11 +47,30 @@ export class RoundContext {
     return this.player(id)?.initials ?? '??';
   }
 
+  /** The score that counts: as written, held to the round's max-score rule. */
   gross(id: PlayerId, hole: number): number | null {
     const row = this.round.scores[id];
     if (!row) return null;
     const v = row[hole];
-    return v == null ? null : v;
+    const max = this.maxScore(id, hole);
+    if (v == null) return this.pickedUp(id, hole) ? max : null;
+    return max == null ? v : Math.min(v, max);
+  }
+
+  pickedUp(id: PlayerId, hole: number): boolean {
+    return this.round.pickups[`${hole}:${id}`] === true;
+  }
+
+  /** The most this rule lets anyone take on the hole, or null when uncapped. */
+  maxScore(id: PlayerId, hole: number): number | null {
+    switch (this.round.options.maxScore) {
+      case 'double_bogey':
+        return this.par(hole) + 2;
+      case 'net_double_bogey':
+        return this.par(hole) + 2 + this.strokes(id, hole);
+      default:
+        return null;
+    }
   }
 
   /**

@@ -362,3 +362,35 @@ describe('a whole outing', () => {
     expect(result.transfers.reduce((s, t) => s + t.amount, 0)).toBe(owed);
   });
 });
+
+describe('max score across the field', () => {
+  // p00 takes hole 1 outright; p05, in the second foursome, picks up there.
+  const cards = () => {
+    const c = flatField(8, 5);
+    c[0][0] = 4;
+    c[5][0] = null as unknown as number;
+    return c;
+  };
+
+  it('counts a pick-up as the outing’s max so the hole resolves', () => {
+    const result = settle({
+      cards: cards(),
+      pickups: { '0:p05': true },
+      maxScore: 'double_bogey',
+      fieldGames: { fieldSkins: { on: true, buyIn: 2000 } },
+    });
+    const skins = result.fieldGames[0];
+    expect(skins.pendingHoles).toBe(0);
+    expect(skins.payouts['p00']).toBe(16000);
+    expectBalanced(result);
+  });
+
+  it('keeps waiting on a pick-up when the outing plays no max', () => {
+    const result = settle({
+      cards: cards(),
+      pickups: { '0:p05': true },
+      fieldGames: { fieldSkins: { on: true, buyIn: 2000 } },
+    });
+    expect(result.fieldGames[0].pendingHoles).toBe(1);
+  });
+});
