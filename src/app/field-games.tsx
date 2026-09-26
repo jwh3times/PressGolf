@@ -17,6 +17,7 @@ import { FIELD_FORMATS } from '../domain/formats';
 import { FIELD_GAME_KEYS } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
+import { MaxScorePicker } from '../components/MaxScorePicker';
 
 /**
  * The pots everybody plays, and who is in them.
@@ -58,6 +59,8 @@ export default function FieldGamesScreen() {
         Everyone in a pot puts up the same buy-in and the pot comes back out to whoever won holes.
         Each foursome’s own games are set separately, on the Format tab.
       </Body>
+
+      <MaxScorePicker value={outing.maxScore} onChange={(maxScore) => store.updateOuting({ maxScore })} />
 
       {FIELD_GAME_KEYS.map((key) => {
         const meta = FIELD_FORMATS[key];
