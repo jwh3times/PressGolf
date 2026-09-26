@@ -45,6 +45,27 @@ are distributed deterministically rather than lost to floating-point rounding.
 Pops continue above 18: a 20-handicap player gets one stroke on every hole and
 a second on stroke-index holes 1 and 2.
 
+### Max score and pick-ups
+
+A round carries a max-score rule in its options:
+
+| Rule | Most a player can take on a hole |
+|---|---|
+| Off | No limit |
+| Double bogey | Par + 2 |
+| Net double bogey | Par + 2 + the pops received on that hole (the WHS rule) |
+
+The card stores scores as written. `RoundContext.gross()` applies the cap when
+the engine reads a score, so changing the rule or the pops re-settles
+correctly. A pick-up is a flag on its box (`Round.pickups`, keyed
+`${hole}:${playerId}`). With a max, a pick-up counts as the max and the hole
+settles. With no max, it is treated like an empty box: the player sits out the
+hole, and games that need every score wait.
+
+A group's rule is its default: new rounds and outings copy it. After that,
+each round's own copy governs. Changing the group default never rewrites a
+settled round.
+
 ## Outings and field pots
 
 An outing is one field divided into playing groups. Each group can choose its
@@ -59,8 +80,12 @@ Field games are buy-in pots rather than per-opponent bets:
 | Tied hole | No winner | Carries as the rabbit |
 | Distribution | Pot split by skins won | Pot split into per-hole shares |
 
+An outing has one max-score rule, set on the Field pots screen. Every group in
+the outing follows it, and the Format tab shows it as locked, so field pots
+compare like with like.
+
 A field hole remains unresolved until every entrant has posted a score for that
-hole. Contributions are shown immediately, so standings can be temporarily
+hole, and under a max a pick-up counts as a posted score. Contributions are shown immediately, so standings can be temporarily
 negative or fail to sum to zero while part of a pot is still unresolved.
 
 ## Local data and demo isolation
