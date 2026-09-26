@@ -31,6 +31,8 @@ export interface Group {
   youId: PlayerId | null;
   /** Default home course for new rounds. */
   defaultCourseId: CourseId | null;
+  /** The group's house rule, copied onto each new round and outing. */
+  maxScore: MaxScoreRule;
   /** Free text shown under the group name on Home, e.g. "Pine Hollow · 7:40 tee". */
   subtitle: string;
   createdAt: number;

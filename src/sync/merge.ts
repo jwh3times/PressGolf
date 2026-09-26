@@ -40,12 +40,15 @@ export function collapse(mutations: Mutation[]): Mutation[] {
 export function applyMutation(round: Round, mutation: Mutation): Round {
   switch (mutation.kind) {
     case 'score': {
-      const { playerId, hole, strokes } = mutation.value as ScoreValue;
+      const { playerId, hole, strokes, pickedUp } = mutation.value as ScoreValue;
       if (!round.scores[playerId]) return round;
       const row = round.scores[playerId].slice();
       if (hole < 0 || hole >= row.length) return round;
       row[hole] = strokes;
-      return { ...round, scores: { ...round.scores, [playerId]: row } };
+      const pickups = { ...round.pickups };
+      if (pickedUp) pickups[`${hole}:${playerId}`] = true;
+      else delete pickups[`${hole}:${playerId}`];
+      return { ...round, scores: { ...round.scores, [playerId]: row }, pickups };
     }
     case 'junk': {
       const { playerId, hole, kind, on } = mutation.value as JunkValue;

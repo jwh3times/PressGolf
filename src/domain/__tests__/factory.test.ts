@@ -93,4 +93,16 @@ describe('domain factories', () => {
     expect(reconciled.scores[players[2].id]).toBeUndefined();
     expect(reconciled.pops[players[2].id]).toBeUndefined();
   });
+
+  it('copies the group’s max-score rule onto new rounds and outings, and the outing’s onto its groups', () => {
+    const group = { ...makeGroup('Society', [makePlayer('Ann', 0), makePlayer('Ben', 1)]), maxScore: 'double_bogey' as const };
+    const course = makeCourse('Home');
+
+    expect(makeGroup('New').maxScore).toBe('off');
+    expect(makeRound(group, course).options.maxScore).toBe('double_bogey');
+    expect(makeOuting(group, course).maxScore).toBe('double_bogey');
+    expect(makeRound(group, course, undefined, { outingId: 'o1', maxScore: 'net_double_bogey' }).options.maxScore).toBe(
+      'net_double_bogey',
+    );
+  });
 });

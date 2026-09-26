@@ -1,5 +1,5 @@
 import { defaultFieldGames, defaultGames, defaultOptions } from './formats';
-import type { Course, Group, Hole, Outing, Player, PlayerId, Round, TeeFormat } from './types';
+import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, TeeFormat } from './types';
 
 /** Avatar colours, handed out in order so a new group looks deliberate. */
 export const PLAYER_COLORS = [
@@ -48,6 +48,7 @@ export function makeGroup(name: string, players: Player[] = []): Group {
     players,
     youId: players[0]?.id ?? null,
     defaultCourseId: null,
+    maxScore: 'off',
     subtitle: '',
     createdAt: Date.now(),
   };
@@ -74,7 +75,8 @@ export function makeRound(
   group: Group,
   course: Course,
   playerIds?: PlayerId[],
-  extras: { outingId?: string; name?: string; teeTime?: string | null } = {},
+  /** Inside an outing, pass the outing's `maxScore`: the whole field plays one rule. */
+  extras: { outingId?: string; name?: string; teeTime?: string | null; maxScore?: MaxScoreRule } = {},
 ): Round {
   const ids = playerIds ?? group.players.map((p) => p.id);
   const pops: Record<PlayerId, number> = {};
@@ -98,7 +100,7 @@ export function makeRound(
     presses: [],
     wolfPicks: [],
     games: defaultGames(),
-    options: defaultOptions(),
+    options: { ...defaultOptions(), maxScore: extras.maxScore ?? group.maxScore },
     status: 'active',
     startedAt: Date.now(),
     completedAt: null,
@@ -137,6 +139,7 @@ export function makeOuting(
     name: options.name ?? `${course.name} outing`,
     date: options.date ?? Date.now(),
     teeFormat: options.teeFormat ?? 'sequential',
+    maxScore: group.maxScore,
     field,
     fieldGames: defaultFieldGames(),
     roundIds: [],

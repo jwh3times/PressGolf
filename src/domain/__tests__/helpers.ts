@@ -38,6 +38,7 @@ export function makeTestGroup(count = 4): Group {
     players,
     youId: players[0].id,
     defaultCourseId: 'course1',
+    maxScore: 'off',
     subtitle: '',
     createdAt: 0,
   };

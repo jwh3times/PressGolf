@@ -29,6 +29,7 @@ export function makeFieldGroup(count = 20): Group {
     players,
     youId: players[0].id,
     defaultCourseId: 'course1',
+    maxScore: 'off',
     subtitle: '',
     createdAt: 0,
   };

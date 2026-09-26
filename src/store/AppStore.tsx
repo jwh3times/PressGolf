@@ -420,6 +420,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           players: [],
           youId: null,
           defaultCourseId: null,
+          maxScore: 'off',
           subtitle: '',
           createdAt: Date.now(),
         };

@@ -59,6 +59,7 @@ export function demoGroup(): Group {
     players: DEMO_PLAYERS.map((p) => ({ ...p })),
     youId: 'demo_p1',
     defaultCourseId: DEMO_COURSE_ID,
+    maxScore: 'off',
     subtitle: 'Pine Hollow · 7:40 tee',
     createdAt: 0,
   };
@@ -216,6 +217,7 @@ export function demoSociety(): Group {
     players,
     youId: players[0].id,
     defaultCourseId: DEMO_COURSE_ID,
+    maxScore: 'off',
     subtitle: 'Twenty out · five groups · first tee 8:00',
     createdAt: 0,
   };
@@ -290,6 +292,7 @@ export function demoOuting(
     name: 'Society Saturday',
     date: now,
     teeFormat: 'sequential',
+    maxScore: 'off',
     field: [...ids],
     fieldGames,
     roundIds: rounds.map((r) => r.id),
