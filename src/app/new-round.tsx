@@ -1,6 +1,7 @@
-import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ModalHeader, Screen } from '../components/Screen';
 import {
   Avatar,
@@ -21,6 +22,14 @@ export default function NewRoundScreen() {
   const store = useStore();
   const router = useRouter();
   const group = store.group;
+  // A finished paper card goes in beside the live round, dated the day it was played.
+  const cardMode = useLocalSearchParams<{ mode?: string }>().mode === 'card';
+  const [playedOn, setPlayedOn] = useState(() => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    return today;
+  });
+  const [pickingDate, setPickingDate] = useState(false);
 
   const [courseId, setCourseId] = useState<string | null>(
     group?.defaultCourseId ?? store.courses[0]?.id ?? null,
@@ -51,16 +60,56 @@ export default function NewRoundScreen() {
     if (!course) return;
     // Keep tee order as the group's roster order, not the order of tapping.
     const ordered = group.players.filter((p) => selected.includes(p.id)).map((p) => p.id);
-    const round = makeRound(group, course, ordered);
-    store.startRound(round);
+    if (cardMode) {
+      store.startCard(makeRound(group, course, ordered, { entry: 'card', playedOn: playedOn.getTime() }));
+    } else {
+      store.startRound(makeRound(group, course, ordered));
+    }
     router.replace('/format');
   };
 
   return (
     <Screen floatingTabBar={false}>
-      <ModalHeader eyebrow={group.name} title="New round" onClose={() => router.back()} />
+      <ModalHeader
+        eyebrow={group.name}
+        title={cardMode ? 'Enter a finished card' : 'New round'}
+        onClose={() => router.back()}
+      />
 
-      {activeRound ? (
+      {cardMode ? (
+        <View style={{ gap: 10 }}>
+          <Eyebrow>Played on</Eyebrow>
+          <Card style={{ padding: 14, gap: 10 }}>
+            <Text style={styles.name}>
+              {playedOn.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Text>
+            {Platform.OS === 'android' && !pickingDate ? (
+              <GhostButton label="Change the date" onPress={() => setPickingDate(true)} />
+            ) : null}
+            {Platform.OS === 'ios' || pickingDate ? (
+              <DateTimePicker
+                value={playedOn}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'compact' : 'default'}
+                maximumDate={new Date()}
+                onChange={(event, date) => {
+                  setPickingDate(false);
+                  if (event.type === 'set' && date) {
+                    const noon = new Date(date);
+                    noon.setHours(12, 0, 0, 0);
+                    setPlayedOn(noon);
+                  }
+                }}
+              />
+            ) : null}
+            <Body style={{ color: ink.soft, lineHeight: 18 }}>
+              Any round that is going stays as it is. The card lands in History once it is saved.
+            </Body>
+          </Card>
+        </View>
+      ) : null}
+
+      {activeRound && !cardMode ? (
         <Card style={styles.notice}>
           <Body style={{ color: colors.gold, lineHeight: 18 }}>
             There is already a round going. Starting a new one leaves the old one unfinished — you
@@ -146,7 +195,7 @@ export default function NewRoundScreen() {
             ? 'Pick at least two players'
             : !course
               ? 'Pick a course'
-              : `Start · ${selected.length} players at ${course.name}`
+              : `${cardMode ? 'Enter the card' : 'Start'} · ${selected.length} players at ${course.name}`
         }
         disabled={!canStart}
         onPress={start}

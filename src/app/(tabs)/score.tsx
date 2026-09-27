@@ -2,7 +2,8 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { CardGrid } from '../../components/CardGrid';
 import { Screen } from '../../components/Screen';
 import {
   Avatar,
@@ -37,6 +38,8 @@ export default function ScoreScreen() {
   );
 
   const [hole, setHole] = useState(0);
+  // Hole by hole on the course; the whole card for typing one in. A card round opens on the card.
+  const [view, setView] = useState<'hole' | 'card' | null>(null);
 
   // Open on the hole the group is actually standing on, not hole 1. This cannot
   // be a lazy useState initialiser: on first render the store is still loading
@@ -76,8 +79,33 @@ export default function ScoreScreen() {
   const skinsGame = settlement.games.find((g) => g.key === 'skins');
   const carry = skinsGame?.carry ?? 1;
 
+  const mode = view ?? (round.entry === 'card' ? 'card' : 'hole');
+  const modeBar = (
+    <View style={{ gap: 10 }}>
+      {round.entry === 'card' ? <CardActions /> : null}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Chip label="Hole by hole" active={mode === 'hole'} color={colors.accent} onPress={() => setView('hole')} />
+        <Chip label="Whole card" active={mode === 'card'} color={colors.accent} onPress={() => setView('card')} />
+      </View>
+    </View>
+  );
+
+  if (mode === 'card') {
+    return (
+      <Screen contentStyle={{ gap: 14 }}>
+        {modeBar}
+        <CardGrid
+          ctx={ctx}
+          onScore={(playerId, h, value) => store.setScore(playerId, h, value)}
+          onPickUp={(playerId, h) => store.setPickedUp(playerId, h, true)}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen contentStyle={{ gap: 14 }}>
+      {modeBar}
       <View style={styles.holeNav}>
         <RoundButton label="‹" onPress={() => setHole(Math.max(0, current - 1))} />
         <View style={{ alignItems: 'center' }}>
@@ -524,7 +552,76 @@ function RoundButton({ label, onPress }: { label: string; onPress: () => void })
   );
 }
 
+/** Save or throw away the card being typed in. The live round is never touched either way. */
+function CardActions() {
+  const store = useStore();
+  const router = useRouter();
+  const round = store.round!;
+
+  let empty = 0;
+  for (const id of round.playerIds) {
+    (round.scores[id] ?? []).forEach((score, hole) => {
+      if (score == null && !round.pickups[`${hole}:${id}`]) empty++;
+    });
+  }
+
+  const finish = (markBlanksPickedUp: boolean) => {
+    store.saveCard(markBlanksPickedUp);
+    router.replace('/history');
+  };
+
+  const save = () => {
+    if (empty === 0) {
+      finish(false);
+      return;
+    }
+    const undercount =
+      round.options.maxScore === 'off'
+        ? ' With no max score, a pick-up sits out the hole, so stroke play and Stableford will undercount.'
+        : '';
+    Alert.alert('Empty boxes', `Mark ${empty} empty boxes as picked up?${undercount}`, [
+      { text: 'Go back', style: 'cancel' },
+      { text: 'Mark and save', onPress: () => finish(true) },
+    ]);
+  };
+
+  const discard = () =>
+    Alert.alert('Discard this card?', 'Nothing typed in so far is kept.', [
+      { text: 'Keep it', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => {
+          store.discardCard();
+          router.replace('/');
+        },
+      },
+    ]);
+
+  return (
+    <View style={styles.cardBanner}>
+      <Eyebrow>Entering a finished card</Eyebrow>
+      <Text style={styles.cardBannerText}>
+        {empty === 0 ? 'Every box is filled.' : `${empty} empty ${empty === 1 ? 'box' : 'boxes'} left.`}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        <PrimaryButton label="Save card" onPress={save} />
+        <GhostButton label="Discard card" onPress={discard} />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  cardBanner: {
+    gap: 8,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.accentSoft,
+    borderRadius: radius.card,
+    backgroundColor: colors.cardActive,
+  },
+  cardBannerText: { fontFamily: fonts.sans, fontSize: 13, color: ink.soft },
   stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
   fullWidth: { flex: 0, width: '100%' },
   holeNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
