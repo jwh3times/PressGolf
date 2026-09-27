@@ -1,5 +1,5 @@
 import { defaultFieldGames, defaultGames, defaultOptions } from './formats';
-import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, TeeFormat } from './types';
+import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, RoundEntry, TeeFormat } from './types';
 
 /** Avatar colours, handed out in order so a new group looks deliberate. */
 export const PLAYER_COLORS = [
@@ -76,8 +76,20 @@ export function makeRound(
   course: Course,
   playerIds?: PlayerId[],
   /** Inside an outing, pass the outing's `maxScore`: the whole field plays one rule. */
-  extras: { outingId?: string; name?: string; teeTime?: string | null; maxScore?: MaxScoreRule } = {},
+  extras: {
+    outingId?: string;
+    name?: string;
+    teeTime?: string | null;
+    maxScore?: MaxScoreRule;
+    /** A card round is typed in afterwards; `playedOn` dates it to the day it was played. */
+    entry?: RoundEntry;
+    playedOn?: number;
+  } = {},
 ): Round {
+  const entry = extras.entry ?? 'live';
+  const games = defaultGames();
+  // Wolf is picked hole by hole on the tee, so a finished card cannot say who went with whom.
+  if (entry === 'card') games.wolf = { ...games.wolf, on: false };
   const ids = playerIds ?? group.players.map((p) => p.id);
   const pops: Record<PlayerId, number> = {};
   const scores: Record<PlayerId, (number | null)[]> = {};
@@ -97,13 +109,13 @@ export function makeRound(
     scores,
     junk: {},
     pickups: {},
-    entry: 'live',
+    entry,
     presses: [],
     wolfPicks: [],
-    games: defaultGames(),
+    games,
     options: { ...defaultOptions(), maxScore: extras.maxScore ?? group.maxScore },
     status: 'active',
-    startedAt: Date.now(),
+    startedAt: extras.playedOn ?? Date.now(),
     completedAt: null,
   };
 }

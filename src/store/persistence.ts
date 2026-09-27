@@ -14,12 +14,14 @@ interface StoredPayload {
   activeGroupId: string | null;
   activeRoundId: string | null;
   activeOutingId: string | null;
+  cardRoundId: string | null;
 }
 
 export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeGroupId: null;
   activeRoundId: null;
   activeOutingId: null;
+  cardRoundId: null;
 } = {
   groups: [],
   courses: [],
@@ -28,6 +30,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeGroupId: null,
   activeRoundId: null,
   activeOutingId: null,
+  cardRoundId: null,
 };
 
 function dataKey(demoMode: boolean): string {
@@ -61,6 +64,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     activeGroupId: parsed.activeGroupId ?? null,
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,
+    cardRoundId: parsed.cardRoundId ?? null,
   };
 }
 

@@ -315,6 +315,7 @@ export function buildDemoDataset(now = Date.now()): {
   activeGroupId: string;
   activeRoundId: string;
   activeOutingId: string | null;
+  cardRoundId: string | null;
 } {
   const society = demoSociety();
   const outing = demoOuting(now, society);
@@ -326,5 +327,6 @@ export function buildDemoDataset(now = Date.now()): {
     activeGroupId: DEMO_GROUP_ID,
     activeRoundId: DEMO_ROUND_ID,
     activeOutingId: null,
+    cardRoundId: null,
   };
 }
