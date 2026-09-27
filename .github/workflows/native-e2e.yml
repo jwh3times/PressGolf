@@ -82,7 +82,7 @@ jobs:
           disable-animations: true
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
-            maestro --device=emulator-5554 test --format JUNIT --output maestro-android.xml --test-output-dir "${{ runner.temp }}/maestro-android" .maestro/smoke.yml
+            sh .maestro/run.sh emulator-5554 "${{ runner.temp }}/maestro-android" maestro-android.xml
 
       # Screenshots and Maestro's own log of each step: the only way to see what
       # was on screen when a step could not find its element.
@@ -145,7 +145,7 @@ jobs:
           app_path="$(find "$RUNNER_TEMP/press-ios" -maxdepth 2 -name '*.app' -print -quit)"
           test -n "$app_path"
           xcrun simctl install "$device_id" "$app_path"
-          maestro --device="$device_id" test --format JUNIT --output maestro-ios.xml --test-output-dir "$RUNNER_TEMP/maestro-ios" .maestro/smoke.yml
+          sh .maestro/run.sh "$device_id" "$RUNNER_TEMP/maestro-ios" maestro-ios.xml
 
       - name: Keep the Maestro output
         if: failure()

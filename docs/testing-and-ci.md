@@ -69,6 +69,12 @@ gate.
 - Flow: open demo data, start a round, enter scores, settle, and post the result
   to the season ledger.
 
+`.maestro/run.sh` runs the flow, and runs it once more if the first attempt
+fails. A hosted simulator can stall Maestro's own driver (seen as "Timed out
+while requesting screenshot"), which fails a run for reasons unrelated to the
+app. A real regression fails both attempts, and a first-attempt failure is
+still reported as a warning on the run.
+
 When a run fails, the job uploads Maestro's output (a screenshot and log for
 each step, plus the JUnit report) as a `maestro-android` or `maestro-ios`
 artifact, kept for 14 days.
