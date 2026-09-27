@@ -39,7 +39,8 @@ function dataKey(demoMode: boolean): string {
  *
  * Version 1 had no outings, and every Round was implicitly a standalone group.
  * Those rounds are still perfectly good — they just need the fields that came
- * with outings, defaulted to "this was its own thing".
+ * with outings, defaulted to "this was its own thing". Data saved before max
+ * scores gets no max and no pick-ups, so nothing it already settled moves.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -47,13 +48,15 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     outingId: round.outingId ?? null,
     name: round.name ?? 'Our group',
     teeTime: round.teeTime ?? null,
+    pickups: round.pickups ?? {},
+    options: { ...round.options, maxScore: round.options?.maxScore ?? 'off' },
   }));
   return {
     version: STORAGE_VERSION,
-    groups: parsed.groups ?? [],
+    groups: (parsed.groups ?? []).map((group) => ({ ...group, maxScore: group.maxScore ?? 'off' })),
     courses: parsed.courses ?? [],
     rounds,
-    outings: parsed.outings ?? [],
+    outings: (parsed.outings ?? []).map((outing) => ({ ...outing, maxScore: outing.maxScore ?? 'off' })),
     activeGroupId: parsed.activeGroupId ?? null,
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,

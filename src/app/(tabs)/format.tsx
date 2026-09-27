@@ -22,6 +22,7 @@ import { GAME_KEYS, type GameKey } from '../../domain/types';
 import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
+import { MaxScorePicker } from '../../components/MaxScorePicker';
 
 export default function FormatScreen() {
   const store = useStore();
@@ -152,6 +153,16 @@ export default function FormatScreen() {
           label="Edit the roster"
           onPress={() => router.push('/roster')}
           style={{ marginTop: 10 }}
+        />
+      </Card>
+
+      <Card style={{ padding: 16 }}>
+        <MaxScorePicker
+          value={round.options.maxScore}
+          onChange={(maxScore) => store.setOptions({ maxScore })}
+          lockedReason={
+            round.outingId ? 'Set for the whole outing, on the Field pots screen, so every group plays one rule.' : undefined
+          }
         />
       </Card>
 

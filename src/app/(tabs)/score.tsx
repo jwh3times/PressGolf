@@ -122,6 +122,9 @@ export default function ScoreScreen() {
         const net = ctx.net(player.id, current);
         const strokes = ctx.strokes(player.id, current);
         const rel = gross == null ? null : gross - holeInfo.par;
+        const pickedUp = ctx.pickedUp(player.id, current);
+        const max = ctx.maxScore(player.id, current);
+        const atMax = gross != null && max != null && gross === max;
         return (
           <View
             key={player.id}
@@ -142,9 +145,13 @@ export default function ScoreScreen() {
                     ) : null}
                   </View>
                   <Text style={styles.playerSub}>
-                    {gross == null
-                      ? 'no score yet'
-                      : `net ${net} · ${rel === 0 ? 'par' : rel! > 0 ? `+${rel}` : rel}`}
+                    {pickedUp
+                      ? gross == null
+                        ? 'picked up · sits out'
+                        : `picked up · counts ${gross}`
+                      : gross == null
+                        ? 'no score yet'
+                        : `net ${net} · ${rel === 0 ? 'par' : rel! > 0 ? `+${rel}` : rel}${atMax ? ' · max' : ''}`}
                   </Text>
                 </View>
               </View>
@@ -202,7 +209,12 @@ export default function ScoreScreen() {
                   onPress={() => store.toggleJunk(current, player.id, kind as JunkKind)}
                 />
               ))}
-              {gross != null ? (
+              <Chip
+                label="PICK UP"
+                active={pickedUp}
+                onPress={() => store.setPickedUp(player.id, current, !pickedUp)}
+              />
+              {gross != null || pickedUp ? (
                 <Chip label="CLEAR" onPress={() => store.setScore(player.id, current, null)} />
               ) : null}
             </View>

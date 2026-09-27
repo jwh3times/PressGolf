@@ -525,3 +525,72 @@ describe('settlement', () => {
     expect(Object.values(result.net).every((v) => Number.isInteger(v))).toBe(true);
   });
 });
+
+describe('max score per hole', () => {
+  // Alice cards a 9 on the par-4 1st; Bob drops a shot on three other holes.
+  const blowUp = (maxScore?: 'off' | 'double_bogey' | 'net_double_bogey') =>
+    makeTestRound({
+      scores: [
+        [9, ...flat(4).slice(1)],
+        flat(4).map((s, h) => ([2, 5, 8].includes(h) ? 5 : s)),
+      ],
+      games: { stroke: { on: true, stake: 1000 } },
+      options: maxScore ? { maxScore } : {},
+    });
+
+  it('counts a blow-up hole as double bogey when the group plays that max', () => {
+    // Uncapped Alice is +5 to Bob's +3; capped at 6 she is +2 and wins.
+    expect(settle(blowUp('double_bogey')).net['a']).toBe(1000);
+  });
+
+  it('leaves every score as written when the rule is off', () => {
+    expect(settle(blowUp('off')).net['b']).toBe(1000);
+    expect(settle(blowUp()).net['b']).toBe(1000);
+  });
+});
+
+describe('net double bogey', () => {
+  // 20 pops on 18 holes: one everywhere, a second on stroke index 1 and 2.
+  const round = makeTestRound({
+    scores: [[11, 11, 11], [11, 11, 11]],
+    pops: [20, 0],
+    options: { maxScore: 'net_double_bogey' },
+  });
+  const ctx = new RoundContext(round, course, players);
+
+  it('adds the strokes a player receives on the hole to par plus two', () => {
+    expect(ctx.gross('a', 1)).toBe(9); // par 5, SI 1: two pops
+    expect(ctx.gross('a', 0)).toBe(7); // par 4, SI 7: one pop
+  });
+
+  it('is plain double bogey for a player with no pops', () => {
+    expect(ctx.gross('b', 1)).toBe(7);
+    expect(ctx.gross('b', 0)).toBe(6);
+  });
+});
+
+describe('pick-ups', () => {
+  // Alice picks up on the par-4 1st; Bob drops a shot on three other holes.
+  const pickedUp = (maxScore: 'off' | 'double_bogey') =>
+    makeTestRound({
+      scores: [
+        [null, ...flat(4).slice(1)],
+        flat(4).map((s, h) => ([2, 5, 8].includes(h) ? 5 : s)),
+      ],
+      pickups: { '0:a': true },
+      games: { stroke: { on: true, stake: 1000 } },
+      options: { maxScore },
+    });
+
+  it('counts a pick-up as the max, so the round still settles', () => {
+    const result = settle(pickedUp('double_bogey'));
+    expect(result.thru).toBe(18);
+    expect(result.net['a']).toBe(1000);
+  });
+
+  it('sits the player out of the hole when there is no max', () => {
+    const result = settle(pickedUp('off'));
+    expect(result.thru).toBe(17);
+    expect(Object.values(result.net).every((v) => v === 0)).toBe(true);
+  });
+});

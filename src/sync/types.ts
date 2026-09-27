@@ -50,6 +50,8 @@ export interface ScoreValue {
   playerId: PlayerId;
   hole: number;
   strokes: number | null;
+  /** A pick-up rides on the same cell, so a score and a pick-up can never both stand. */
+  pickedUp?: boolean;
 }
 
 export interface JunkValue {

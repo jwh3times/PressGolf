@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
-import { settleOuting, settleRound } from '../domain/engine';
+import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import type {
   Course,
@@ -109,7 +109,10 @@ export interface AppStore extends AppState {
 
   // Live round edits
   setScore(playerId: PlayerId, hole: number, value: number | null): void;
+  /** Stops at the round's max score, when it has one. */
   bumpScore(playerId: PlayerId, hole: number, delta: number): void;
+  /** A pick-up empties the box; a score in the box clears the pick-up. */
+  setPickedUp(playerId: PlayerId, hole: number, on: boolean): void;
   setPops(playerId: PlayerId, pops: number): void;
   toggleJunk(hole: number, playerId: PlayerId, kind: JunkKind): void;
   toggleGame(key: GameKey): void;
@@ -132,6 +135,16 @@ const EMPTY_STATE: AppState = {
   activeRoundId: null,
   activeOutingId: null,
 };
+
+/** Writes one box of the card. A score and a pick-up can never both stand in it. */
+function withCell(round: Round, playerId: PlayerId, hole: number, value: number | null, pickedUp: boolean): Round {
+  const row = (round.scores[playerId] ?? []).slice();
+  row[hole] = value;
+  const pickups = { ...round.pickups };
+  if (pickedUp) pickups[`${hole}:${playerId}`] = true;
+  else delete pickups[`${hole}:${playerId}`];
+  return { ...round, scores: { ...round.scores, [playerId]: row }, pickups };
+}
 
 const StoreContext = createContext<AppStore | null>(null);
 
@@ -329,7 +342,20 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             null,
         })),
       setActiveOuting: (id) => commit((prev) => ({ ...prev, activeOutingId: id })),
-      updateOuting: (patch) => patchOuting((o) => ({ ...o, ...patch })),
+      updateOuting: (patch) =>
+        commit((prev) => {
+          const current = prev.outings.find((o) => o.id === prev.activeOutingId);
+          if (!current) return prev;
+          const updated = { ...current, ...patch };
+          // The whole field plays one max-score rule, so every group follows the outing's.
+          const rounds =
+            patch.maxScore === undefined
+              ? prev.rounds
+              : prev.rounds.map((r) =>
+                  r.outingId === current.id ? { ...r, options: { ...r.options, maxScore: updated.maxScore } } : r,
+                );
+          return { ...prev, outings: prev.outings.map((o) => (o.id === current.id ? updated : o)), rounds };
+        }),
       setFieldGame: (key, patch) =>
         patchOuting((o) => ({
           ...o,
@@ -420,6 +446,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           players: [],
           youId: null,
           defaultCourseId: null,
+          maxScore: 'off',
           subtitle: '',
           createdAt: Date.now(),
         };
@@ -534,22 +561,19 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           activeRoundId: prev.activeRoundId === id ? null : prev.activeRoundId,
         })),
 
-      setScore: (playerId, hole, value) =>
-        patchRound((r) => {
-          const row = (r.scores[playerId] ?? []).slice();
-          row[hole] = value;
-          return { ...r, scores: { ...r.scores, [playerId]: row } };
-        }),
+      setScore: (playerId, hole, value) => patchRound((r) => withCell(r, playerId, hole, value, false)),
       bumpScore: (playerId, hole, delta) =>
         patchRound((r) => {
-          const row = (r.scores[playerId] ?? []).slice();
-          const current = row[hole];
+          const current = r.scores[playerId]?.[hole];
           // First tap from blank lands on par, not on 1 or 13.
           const par = course?.holes[hole]?.par ?? 4;
           const base = current == null ? par - delta : current;
-          row[hole] = Math.max(1, Math.min(20, base + delta));
-          return { ...r, scores: { ...r.scores, [playerId]: row } };
+          const max = course ? new RoundContext(r, course, []).maxScore(playerId, hole) : null;
+          const next = Math.max(1, Math.min(max ?? 20, base + delta));
+          return withCell(r, playerId, hole, next, false);
         }),
+      setPickedUp: (playerId, hole, on) =>
+        patchRound((r) => withCell(r, playerId, hole, on ? null : (r.scores[playerId]?.[hole] ?? null), on)),
       setPops: (playerId, pops) =>
         patchRound((r) => ({
           ...r,

@@ -16,6 +16,7 @@ import { PLAYER_COLORS, deriveInitials, makePlayer } from '../domain/factory';
 import type { Player } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { colors, fonts, ink, radius } from '../theme/tokens';
+import { MaxScorePicker } from '../components/MaxScorePicker';
 
 export default function RosterScreen() {
   const store = useStore();
@@ -93,6 +94,12 @@ export default function RosterScreen() {
         hint="Shown under the group name on the home screen."
         value={group.subtitle}
         onChangeText={(text) => store.updateGroup(group.id, { subtitle: text })}
+      />
+
+      <MaxScorePicker
+        title="House max score"
+        value={group.maxScore}
+        onChange={(maxScore) => store.updateGroup(group.id, { maxScore })}
       />
 
       <View style={{ gap: 10 }}>

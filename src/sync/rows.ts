@@ -27,6 +27,7 @@ import {
   type Group,
   type Outing,
   type Round,
+  type MaxScoreRule,
   type RoundStatus,
   type TeeFormat,
   type UnclaimedRule,
@@ -39,6 +40,8 @@ export interface GroupRow {
   name: string;
   you_id: string | null;
   default_course_id: string | null;
+  /** Absent on a server that predates the max-score migration; read as 'off'. */
+  max_score?: MaxScoreRule;
   subtitle: string;
   created_at: number;
 }
@@ -90,6 +93,8 @@ export interface ScoreRow {
   player_id: string;
   hole: number;
   strokes: number | null;
+  /** Absent on a server that predates the max-score migration. */
+  picked_up?: boolean;
 }
 
 export interface JunkRow {
@@ -125,6 +130,8 @@ export interface RoundGameRow {
 
 export interface RoundOptionsRow {
   round_id: string;
+  /** Absent on a server that predates the max-score migration; read as 'off'. */
+  max_score?: MaxScoreRule;
   wolf_lone_multiplier: number;
   vegas_flip_on_birdie: boolean;
   stableford_eagle_or_better: number;
@@ -148,6 +155,8 @@ export interface OutingRow {
   name: string;
   date: number;
   tee_format: TeeFormat;
+  /** Absent on a server that predates the max-score migration; read as 'off'. */
+  max_score?: MaxScoreRule;
   status: RoundStatus;
   started_at: number;
   completed_at: number | null;
@@ -261,6 +270,7 @@ export function toRows(documents: Documents): Snapshot {
       name: group.name,
       you_id: group.youId,
       default_course_id: group.defaultCourseId,
+      max_score: group.maxScore,
       subtitle: group.subtitle,
       created_at: group.createdAt,
     });
@@ -311,7 +321,13 @@ export function toRows(documents: Documents): Snapshot {
       });
       const card = round.scores[playerId] ?? [];
       card.forEach((strokes, hole) => {
-        out.scores.push({ round_id: round.id, player_id: playerId, hole, strokes });
+        out.scores.push({
+          round_id: round.id,
+          player_id: playerId,
+          hole,
+          strokes,
+          picked_up: round.pickups[`${hole}:${playerId}`] === true,
+        });
       });
     });
 
@@ -363,6 +379,7 @@ export function toRows(documents: Documents): Snapshot {
     const options = round.options;
     out.round_options.push({
       round_id: round.id,
+      max_score: options.maxScore,
       wolf_lone_multiplier: options.wolfLoneMultiplier,
       vegas_flip_on_birdie: options.vegasFlipOnBirdie,
       stableford_eagle_or_better: options.stablefordPoints.eagleOrBetter,
@@ -388,6 +405,7 @@ export function toRows(documents: Documents): Snapshot {
       name: outing.name,
       date: outing.date,
       tee_format: outing.teeFormat,
+      max_score: outing.maxScore,
       status: outing.status,
       started_at: outing.startedAt,
       completed_at: outing.completedAt,
@@ -457,6 +475,7 @@ export function fromRows(snapshot: Snapshot): Documents {
     })),
     youId: row.you_id,
     defaultCourseId: row.default_course_id,
+    maxScore: row.max_score ?? 'off',
     subtitle: row.subtitle,
     createdAt: row.created_at,
   }));
@@ -481,11 +500,13 @@ export function fromRows(snapshot: Snapshot): Documents {
     // Rebuild each card at the length the rows imply, so an all-empty card
     // still comes back eighteen boxes wide rather than as an empty array.
     const card: Record<string, (number | null)[]> = {};
+    const pickups: Record<string, true> = {};
     for (const playerId of playerIds) card[playerId] = [];
     for (const score of scores.get(row.id) ?? []) {
       const list = (card[score.player_id] ??= []);
       while (list.length <= score.hole) list.push(null);
       list[score.hole] = score.strokes;
+      if (score.picked_up) pickups[`${score.hole}:${score.player_id}`] = true;
     }
 
     const junkMap: Record<string, true> = {};
@@ -503,6 +524,7 @@ export function fromRows(snapshot: Snapshot): Documents {
 
     const opt = optionsByRound.get(row.id);
     const options: GameOptions = {
+      maxScore: opt?.max_score ?? 'off',
       teams: (teams.get(row.id) ?? [])
         .slice()
         .sort((a, b) => a.slot - b.slot)
@@ -533,6 +555,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       pops,
       scores: card,
       junk: junkMap,
+      pickups,
       presses: (presses.get(row.id) ?? []).map((p) => ({
         id: p.id,
         by: p.by_player,
@@ -574,6 +597,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       name: row.name,
       date: row.date,
       teeFormat: row.tee_format,
+      maxScore: row.max_score ?? 'off',
       field: (field.get(row.id) ?? []).slice().sort(byOrder).map((f) => f.player_id),
       fieldGames: { fieldSkins: config('fieldSkins'), scats: config('scats') },
       roundIds: [],

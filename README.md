@@ -73,11 +73,11 @@ Supabase configuration, Press remains a fully usable single-device app.
 
 As of September 2026:
 
-- 22 Jest suites and 310 tests pass. Repository coverage is 93.22% statements,
-  90.19% branches, 87.10% functions, and 94.22% lines; enforced thresholds live
+- 22 Jest suites and 324 tests pass. Repository coverage is 93.30% statements,
+  90.55% branches, 87.35% functions, and 94.36% lines; enforced thresholds live
   in `package.json`.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 24 row-level-security assertions against Postgres 16.
+  database migration plus 25 row-level-security assertions against Postgres 16.
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
   posting to the ledger on an Android emulator and iOS simulator.

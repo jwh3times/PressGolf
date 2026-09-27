@@ -29,8 +29,10 @@ function demoDocuments(): Documents {
             { hole: 0, wolf: round.playerIds[0], partner: round.playerIds[2] },
             { hole: 1, wolf: round.playerIds[1], partner: null },
           ],
+          pickups: { [`3:${round.playerIds[1]}`]: true as const },
           options: {
             ...round.options,
+            maxScore: 'net_double_bogey' as const,
             matchPairings: [
               [round.playerIds[0], round.playerIds[3]] as [string, string],
               [round.playerIds[1], round.playerIds[2]] as [string, string],
@@ -39,7 +41,9 @@ function demoDocuments(): Documents {
         }
       : round,
   );
-  return { groups: data.groups, courses: data.courses, rounds, outings: data.outings };
+  const groups = data.groups.map((g, i) => (i === 0 ? { ...g, maxScore: 'double_bogey' as const } : g));
+  const outings = data.outings.map((o) => ({ ...o, maxScore: 'double_bogey' as const }));
+  return { groups, courses: data.courses, rounds, outings };
 }
 
 describe('toRows / fromRows round trip', () => {
@@ -180,14 +184,18 @@ describe('snapshot helpers', () => {
 
     const documents = fromRows(rows);
     expect(documents.groups[0].players).toEqual([]);
+    expect(documents.groups[0].maxScore).toBe('off');
+    expect(documents.outings[0].maxScore).toBe('off');
     expect(documents.courses[0].holes).toEqual([]);
     expect(documents.rounds[0]).toMatchObject({
       playerIds: [],
       scores: {},
       junk: {},
+      pickups: {},
       presses: [],
       wolfPicks: [],
       options: {
+        maxScore: 'off',
         teams: [],
         matchPairings: [],
         wolfLoneMultiplier: 1,

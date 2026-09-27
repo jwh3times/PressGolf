@@ -166,6 +166,7 @@ export function defaultFieldGames(): FieldGames {
 
 export function defaultOptions(): GameOptions {
   return {
+    maxScore: 'off',
     teams: [],
     matchPairings: [],
     wolfLoneMultiplier: 2,

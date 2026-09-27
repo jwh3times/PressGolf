@@ -109,6 +109,19 @@ describe('conflict resolution', () => {
 });
 
 describe('mutation kinds', () => {
+  it('marks a pick-up and clears it when a score lands in the same box', () => {
+    const pickedUp = applyMutation(
+      baseRound(),
+      mutation({ value: { playerId: 'a', hole: 0, strokes: null, pickedUp: true } }),
+    );
+    expect(pickedUp.pickups['0:a']).toBe(true);
+    expect(pickedUp.scores['a'][0]).toBeNull();
+
+    const scored = applyMutation(pickedUp, mutation({ value: { playerId: 'a', hole: 0, strokes: 7 } }));
+    expect(scored.pickups['0:a']).toBeUndefined();
+    expect(scored.scores['a'][0]).toBe(7);
+  });
+
   it('toggles junk on and off', () => {
     const on = mutation({
       kind: 'junk',

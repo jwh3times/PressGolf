@@ -348,4 +348,38 @@ describe('AppStoreProvider', () => {
     await change(() => store.setRoundPlayers(noCourse.playerIds));
     expect(store.course).toBeNull();
   });
+
+  it('holds the stepper at the max, records pick-ups, and keeps an outing on one rule', async () => {
+    await mount();
+    const round = store.round!;
+    const playerId = round.playerIds[0];
+    const par = store.course!.holes[0].par;
+
+    await change(() => store.setOptions({ maxScore: 'double_bogey' }));
+    await change(() => store.setScore(playerId, 0, par + 1));
+    await change(() => store.bumpScore(playerId, 0, 1));
+    await change(() => store.bumpScore(playerId, 0, 1));
+    expect(store.round!.scores[playerId][0]).toBe(par + 2);
+
+    await change(() => store.setPickedUp(playerId, 0, true));
+    expect(store.round!.pickups[`0:${playerId}`]).toBe(true);
+    expect(store.round!.scores[playerId][0]).toBeNull();
+    await change(() => store.setScore(playerId, 0, par));
+    expect(store.round!.pickups[`0:${playerId}`]).toBeUndefined();
+    await change(() => store.setPickedUp(playerId, 0, true));
+    // A tap on the stepper from a pick-up starts from par again, like a blank box.
+    await change(() => store.bumpScore(playerId, 0, -1));
+    expect(store.round!.pickups[`0:${playerId}`]).toBeUndefined();
+    expect(store.round!.scores[playerId][0]).toBe(par);
+    await change(() => store.setPickedUp(playerId, 0, false));
+    expect(store.round!.scores[playerId][0]).toBe(par);
+
+    await change(() => store.setActiveOuting(store.outings[0].id));
+    const outing = store.outing!;
+    await change(() => store.updateOuting({ maxScore: 'net_double_bogey' }));
+    const inOuting = store.rounds.filter((r) => r.outingId === outing.id);
+    expect(inOuting.length).toBeGreaterThan(0);
+    expect(inOuting.every((r) => r.options.maxScore === 'net_double_bogey')).toBe(true);
+  });
 });
+

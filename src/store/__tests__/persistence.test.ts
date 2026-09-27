@@ -48,6 +48,31 @@ describe('dataset persistence', () => {
     expect(loaded).toMatchObject({ courses: [], outings: [], activeGroupId: null, activeRoundId: null, activeOutingId: null });
   });
 
+  it('gives data saved before max scores no max and no pick-ups', async () => {
+    const dataset = buildDemoDataset(123);
+    const strip = <T extends object>(value: T, key: string) => {
+      const copy = { ...value } as Record<string, unknown>;
+      delete copy[key];
+      return copy;
+    };
+    const round = strip(dataset.rounds[0], 'pickups');
+    round.options = strip(dataset.rounds[0].options, 'maxScore');
+    storage.getItem.mockResolvedValueOnce(
+      JSON.stringify({
+        groups: [strip(dataset.groups[0], 'maxScore')],
+        rounds: [round],
+        outings: [strip(dataset.outings[0], 'maxScore')],
+      }),
+    );
+
+    const loaded = await loadDataset(true);
+
+    expect(loaded.groups[0].maxScore).toBe('off');
+    expect(loaded.rounds[0].pickups).toEqual({});
+    expect(loaded.rounds[0].options.maxScore).toBe('off');
+    expect(loaded.outings[0].maxScore).toBe('off');
+  });
+
   it.each(['null', '42', '{broken'])('treats corrupt payload %s as empty', async (raw) => {
     storage.getItem.mockResolvedValueOnce(raw);
     await expect(loadDataset(false)).resolves.toEqual(expect.objectContaining(EMPTY_DATA));

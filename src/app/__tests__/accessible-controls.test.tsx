@@ -108,6 +108,7 @@ const actions = {
   deleteRound: jest.fn(),
   setScore: jest.fn(),
   bumpScore: jest.fn(),
+  setPickedUp: jest.fn(),
   setPops: jest.fn(),
   toggleJunk: jest.fn(),
   toggleGame: jest.fn(),
@@ -1069,5 +1070,67 @@ describe('management screen state matrices', () => {
     await user.press(screen.getByRole('button', { name: 'Clear' }));
     await user.press(screen.getByRole('switch', { name: 'Flip on a birdie' }));
     expect(actions.setOptions).toHaveBeenCalled();
+  });
+});
+
+describe('max score and pick-ups', () => {
+  const ids = group.players.map((player) => player.id);
+  const par = course.holes[0].par;
+  const cappedRound = (maxScore: 'off' | 'double_bogey') =>
+    ({
+      ...round,
+      options: { ...round.options, maxScore },
+      scores: Object.fromEntries(
+        ids.map((id, index) => [
+          id,
+          [index === 0 ? par + 4 : index === 1 ? null : par, ...Array(course.holes.length - 1).fill(null)],
+        ]),
+      ),
+      pickups: { [`0:${ids[1]}`]: true },
+    }) as typeof round;
+
+  it('shows the counted score at the max, what a pick-up counts, and marks pick-ups', async () => {
+    const user = userEvent.setup();
+    useStoreValue({ round: cappedRound('double_bogey') });
+    let view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.getByText(/max/)).toBeOnTheScreen();
+    expect(screen.getByText(new RegExp(`picked up · counts ${par + 2}`))).toBeOnTheScreen();
+    const pickUps = screen.getAllByRole('button', { name: 'PICK UP' });
+    expect(pickUps[1]).toBeSelected();
+    await user.press(pickUps[1]);
+    expect(actions.setPickedUp).toHaveBeenCalledWith(ids[1], 0, false);
+    await user.press(pickUps[2]);
+    expect(actions.setPickedUp).toHaveBeenCalledWith(ids[2], 0, true);
+    await view.unmount();
+
+    useStoreValue({ round: cappedRound('off') });
+    view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.getByText(/picked up · sits out/)).toBeOnTheScreen();
+  });
+
+  it('sets the rule for a round, for the group, and once for a whole outing', async () => {
+    const user = userEvent.setup();
+    let view = await render(<FormatScreen />);
+    await user.press(screen.getByRole('button', { name: 'Double bogey' }));
+    expect(actions.setOptions).toHaveBeenCalledWith({ maxScore: 'double_bogey' });
+    await view.unmount();
+
+    mockUseStore.mockReturnValue(outingStore);
+    view = await render(<FormatScreen />);
+    expect(screen.getByText(/Set for the whole outing/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Net double bogey' })).toBeDisabled();
+    await view.unmount();
+
+    view = await render(<FieldGamesScreen />);
+    await user.press(screen.getByRole('button', { name: 'Net double bogey' }));
+    expect(actions.updateOuting).toHaveBeenCalledWith({ maxScore: 'net_double_bogey' });
+    await view.unmount();
+
+    mockUseStore.mockReturnValue(roundStore);
+    view = await render(<RosterScreen />);
+    await user.press(screen.getByRole('button', { name: 'Double bogey' }));
+    expect(actions.updateGroup).toHaveBeenCalledWith(group.id, { maxScore: 'double_bogey' });
   });
 });

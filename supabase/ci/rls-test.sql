@@ -90,6 +90,9 @@ insert into scores (round_id, player_id, hole, strokes) values ('r1', 'p2', 0, 5
 update scores set strokes = 6 where round_id = 'r1' and player_id = 'p1' and hole = 0;
 select expect('guest scored the shared card',
   (select count(*) from scores where round_id = 'r1' and player_id = 'p2'), 1);
+update scores set strokes = null, picked_up = true where round_id = 'r1' and player_id = 'p2' and hole = 0;
+select expect('guest marked a pick-up on the shared card',
+  (select count(*) from scores where round_id = 'r1' and player_id = 'p2' and picked_up), 1);
 
 -- ── What a guest may not ────────────────────────────────────────────────────
 

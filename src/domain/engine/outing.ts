@@ -96,6 +96,7 @@ export function buildFieldContext(
   const pops: Record<PlayerId, number> = {};
   const scores: Record<PlayerId, (number | null)[]> = {};
   const junk: Record<string, true> = {};
+  const pickups: Record<string, true> = {};
 
   for (const round of rounds) {
     for (const id of round.playerIds) {
@@ -103,6 +104,7 @@ export function buildFieldContext(
       scores[id] = (round.scores[id] ?? []).slice();
     }
     Object.assign(junk, round.junk);
+    Object.assign(pickups, round.pickups);
   }
 
   // Anyone in the field but not yet in a group still gets a blank card, so the
@@ -127,12 +129,13 @@ export function buildFieldContext(
     pops,
     scores,
     junk,
+    pickups,
     presses: [],
     wolfPicks: [],
     // Field pots do not use the per-foursome formats; this context exists only
     // to resolve scores, pops and par.
     games: rounds[0]?.games ?? ({} as Round['games']),
-    options: rounds[0]?.options ?? ({} as Round['options']),
+    options: { ...(rounds[0]?.options ?? ({} as Round['options'])), maxScore: outing.maxScore },
     status: outing.status,
     startedAt: outing.startedAt,
     completedAt: outing.completedAt,

@@ -70,6 +70,7 @@ export default function NewOutingScreen() {
     const rounds = chunks.map((ids, i) =>
       makeRound(group, course, ids, {
         outingId: outing.id,
+        maxScore: outing.maxScore,
         name: `Group ${i + 1}`,
         teeTime: teeFormat === 'sequential' ? `${8 + Math.floor(i / 6)}:${String((i * 10) % 60).padStart(2, '0')}` : null,
       }),
