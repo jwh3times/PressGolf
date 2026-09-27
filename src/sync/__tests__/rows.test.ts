@@ -30,6 +30,7 @@ function demoDocuments(): Documents {
             { hole: 1, wolf: round.playerIds[1], partner: null },
           ],
           pickups: { [`3:${round.playerIds[1]}`]: true as const },
+          entry: 'card' as const,
           options: {
             ...round.options,
             maxScore: 'net_double_bogey' as const,
@@ -191,6 +192,7 @@ describe('snapshot helpers', () => {
       playerIds: [],
       scores: {},
       junk: {},
+      entry: 'live',
       pickups: {},
       presses: [],
       wolfPicks: [],

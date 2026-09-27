@@ -66,6 +66,21 @@ A group's rule is its default: new rounds and outings copy it. After that,
 each round's own copy governs. Changing the group default never rewrites a
 settled round.
 
+### Card entry
+
+A round's `entry` is `live` (scored hole by hole on the course) or `card`
+(typed in afterwards from a finished paper card). A card round is dated the
+day it was played: `startedAt` and `completedAt` are both the Played-on date.
+
+Presses and Wolf picks are called live, so a card round starts with Wolf off
+and the store ignores presses and Wolf picks on it. Junk still pays birdies
+and eagles, which come from the scores on the card. Greenies, sandies, chip-ins
+and polies are tapped live, so they are not offered.
+
+Saving a card with empty boxes can mark them as pick-ups. With no max score, a
+pick-up sits out the hole, so the app warns that stroke play and Stableford
+will undercount.
+
 ## Outings and field pots
 
 An outing is one field divided into playing groups. Each group can choose its
@@ -91,7 +106,10 @@ negative or fail to sum to zero while part of a pot is still unresolved.
 ## Local data and demo isolation
 
 `AppStore` writes the active dataset to AsyncStorage and renders from local
-state. Server availability is never on the path of score entry. Demo and live
+state. A card being typed in lives in its own slot (`cardRoundId`) beside the
+active round. While it is open, `store.round` is the card and edits land on
+it. The live round is untouched, and returns when the card is saved or
+discarded. Server availability is never on the path of score entry. Demo and live
 datasets have separate namespaces and demo data is excluded from sync.
 
 The demo seed contains an in-progress Saturday Dogs round and prior completed

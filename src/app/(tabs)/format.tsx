@@ -67,8 +67,19 @@ export default function FormatScreen() {
         </Body>
       </View>
 
+      {round.entry === 'card' ? (
+        <Card style={{ padding: 14, gap: 4 }}>
+          <Eyebrow>Entering a finished card</Eyebrow>
+          <Body style={{ color: ink.soft, lineHeight: 18 }}>
+            Presses, Wolf and tapped junk are called live on the course, so they are off for a
+            card. Everything that settles from the numbers on the card is here.
+          </Body>
+        </Card>
+      ) : null}
+
       {GAME_KEYS.map((key) => {
         const meta = FORMATS[key];
+        const liveOnly = round.entry === 'card' && key === 'wolf';
         const config = round.games[key];
         const on = config.on;
         return (
@@ -90,9 +101,17 @@ export default function FormatScreen() {
                     <Text style={styles.tagText}>{meta.tag}</Text>
                   </View>
                 </View>
-                <Text style={styles.blurb}>{meta.blurb}</Text>
+                <Text style={styles.blurb}>
+                  {liveOnly
+                    ? 'Off for a card: Wolf partners are picked on the tee, hole by hole, and a card does not record them.'
+                    : round.entry === 'card' && key === 'junk'
+                      ? 'Pays birdies and eagles off the card. Greenies, sandies, chip-ins and polies are tapped live, so not here.'
+                      : meta.blurb}
+                </Text>
               </View>
-              <Switch on={on} onToggle={() => store.toggleGame(key)} label={meta.name} />
+              {liveOnly ? null : (
+                <Switch on={on} onToggle={() => store.toggleGame(key)} label={meta.name} />
+              )}
             </View>
 
             {on ? (

@@ -40,6 +40,8 @@ interface Dataset {
   activeGroupId: string | null;
   activeRoundId: string | null;
   activeOutingId: string | null;
+  /** A finished card being typed in. While set it stands in for the live round, which is left alone. */
+  cardRoundId: string | null;
 }
 
 interface AppState extends Dataset {
@@ -107,6 +109,12 @@ export interface AppStore extends AppState {
   reopenRound(id: string): void;
   deleteRound(id: string): void;
 
+  // Card entry: a finished paper card, typed in beside whatever round is live
+  startCard(round: Round): void;
+  /** Completes the card on the day it was played. Empty boxes become pick-ups when asked. */
+  saveCard(markBlanksPickedUp: boolean): void;
+  discardCard(): void;
+
   // Live round edits
   setScore(playerId: PlayerId, hole: number, value: number | null): void;
   /** Stops at the round's max score, when it has one. */
@@ -134,6 +142,7 @@ const EMPTY_STATE: AppState = {
   activeGroupId: null,
   activeRoundId: null,
   activeOutingId: null,
+  cardRoundId: null,
 };
 
 /** Writes one box of the card. A score and a pick-up can never both stand in it. */
@@ -144,6 +153,36 @@ function withCell(round: Round, playerId: PlayerId, hole: number, value: number 
   if (pickedUp) pickups[`${hole}:${playerId}`] = true;
   else delete pickups[`${hole}:${playerId}`];
   return { ...round, scores: { ...round.scores, [playerId]: row }, pickups };
+}
+
+/** Points the store at a round: a card round opens in the card slot, a live one as the active round. */
+function focusRound(state: AppState, id: string | null): AppState {
+  const round = state.rounds.find((r) => r.id === id);
+  if (round?.entry === 'card') return { ...state, cardRoundId: round.id };
+  return { ...state, activeRoundId: id };
+}
+
+/** Finishes a round. A card is dated the day it was played, not the day it was typed in. */
+function completeIn(state: AppState, id: string, markBlanksPickedUp: boolean): AppState {
+  const rounds = state.rounds.map((r) => {
+    if (r.id !== id) return r;
+    const pickups = { ...r.pickups };
+    if (markBlanksPickedUp) {
+      for (const playerId of r.playerIds) {
+        (r.scores[playerId] ?? []).forEach((score, hole) => {
+          if (score == null) pickups[`${hole}:${playerId}`] = true;
+        });
+      }
+    }
+    const completedAt = r.entry === 'card' ? r.startedAt : Date.now();
+    return { ...r, pickups, status: 'completed' as const, completedAt };
+  });
+  return {
+    ...state,
+    rounds,
+    activeRoundId: state.activeRoundId === id ? null : state.activeRoundId,
+    cardRoundId: state.cardRoundId === id ? null : state.cardRoundId,
+  };
 }
 
 const StoreContext = createContext<AppStore | null>(null);
@@ -164,6 +203,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         activeGroupId: next.activeGroupId,
         activeRoundId: next.activeRoundId,
         activeOutingId: next.activeOutingId,
+        cardRoundId: next.cardRoundId,
       });
     }, 250);
   }, []);
@@ -269,7 +309,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   const store = useMemo<AppStore>(() => {
     const group = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;
-    const round = state.rounds.find((r) => r.id === state.activeRoundId) ?? null;
+    const round =
+      state.rounds.find((r) => r.id === state.cardRoundId) ??
+      state.rounds.find((r) => r.id === state.activeRoundId) ??
+      null;
     const course = round ? state.courses.find((c) => c.id === round.courseId) ?? null : null;
     const outing = state.outings.find((o) => o.id === state.activeOutingId) ?? null;
     const outingCourse = outing ? state.courses.find((c) => c.id === outing.courseId) ?? null : null;
@@ -299,8 +342,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     /** Applies a patch to the active round. No active round means the call is a no-op. */
     const patchRound = (fn: (r: Round) => Round) =>
       commit((prev) => {
-        if (!prev.activeRoundId) return prev;
-        const idx = prev.rounds.findIndex((r) => r.id === prev.activeRoundId);
+        let idx = prev.rounds.findIndex((r) => r.id === prev.cardRoundId);
+        if (idx < 0) idx = prev.rounds.findIndex((r) => r.id === prev.activeRoundId);
         if (idx < 0) return prev;
         const rounds = prev.rounds.slice();
         rounds[idx] = fn(rounds[idx]);
@@ -434,6 +477,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
               activeGroupId: null,
               activeRoundId: null,
               activeOutingId: null,
+              cardRoundId: null,
             }));
           }
         })();
@@ -537,29 +581,44 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           activeRoundId: created.id,
           activeGroupId: created.groupId,
         })),
-      setActiveRound: (id) => commit((prev) => ({ ...prev, activeRoundId: id })),
-      completeRound: (id) =>
-        commit((prev) => ({
-          ...prev,
-          rounds: prev.rounds.map((r) =>
-            r.id === id ? { ...r, status: 'completed' as const, completedAt: Date.now() } : r,
-          ),
-          activeRoundId: prev.activeRoundId === id ? null : prev.activeRoundId,
-        })),
+      // A card round opens in the card slot, never as the live round.
+      setActiveRound: (id) => commit((prev) => focusRound(prev, id)),
+      completeRound: (id) => commit((prev) => completeIn(prev, id, false)),
       reopenRound: (id) =>
-        commit((prev) => ({
-          ...prev,
-          rounds: prev.rounds.map((r) =>
-            r.id === id ? { ...r, status: 'active' as const, completedAt: null } : r,
+        commit((prev) =>
+          focusRound(
+            {
+              ...prev,
+              rounds: prev.rounds.map((r) =>
+                r.id === id ? { ...r, status: 'active' as const, completedAt: null } : r,
+              ),
+            },
+            id,
           ),
-          activeRoundId: id,
-        })),
+        ),
       deleteRound: (id) =>
         commit((prev) => ({
           ...prev,
           rounds: prev.rounds.filter((r) => r.id !== id),
           activeRoundId: prev.activeRoundId === id ? null : prev.activeRoundId,
+          cardRoundId: prev.cardRoundId === id ? null : prev.cardRoundId,
         })),
+
+      startCard: (created) =>
+        commit((prev) => ({
+          ...prev,
+          rounds: [...prev.rounds, created],
+          cardRoundId: created.id,
+          activeGroupId: created.groupId,
+        })),
+      saveCard: (markBlanksPickedUp) =>
+        commit((prev) => (prev.cardRoundId ? completeIn(prev, prev.cardRoundId, markBlanksPickedUp) : prev)),
+      discardCard: () =>
+        commit((prev) =>
+          prev.cardRoundId
+            ? { ...prev, rounds: prev.rounds.filter((r) => r.id !== prev.cardRoundId), cardRoundId: null }
+            : prev,
+        ),
 
       setScore: (playerId, hole, value) => patchRound((r) => withCell(r, playerId, hole, value, false)),
       bumpScore: (playerId, hole, delta) =>
@@ -605,8 +664,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           games: { ...r.games, [key]: { ...r.games[key], stake: Math.max(0, Math.round(cents)) } },
         })),
       setOptions: (patch) => patchRound((r) => ({ ...r, options: { ...r.options, ...patch } })),
+      // Presses and Wolf picks are called on the course; a finished card cannot carry them.
       addPress: (by, against, startHole, endHole, stake) =>
-        patchRound((r) => ({
+        patchRound((r) => r.entry === 'card' ? r : ({
           ...r,
           presses: [...r.presses, { id: makeId('press'), by, against, startHole, endHole, stake }],
         })),
@@ -614,6 +674,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         patchRound((r) => ({ ...r, presses: r.presses.filter((p) => p.id !== pressId) })),
       setWolfPick: (hole, wolf, partner) =>
         patchRound((r) => {
+          if (r.entry === 'card') return r;
           const picks = r.wolfPicks.filter((p) => p.hole !== hole);
           return { ...r, wolfPicks: [...picks, { hole, wolf, partner }].sort((a, b) => a.hole - b.hole) };
         }),
@@ -657,6 +718,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     activeGroupId: stored.activeGroupId,
     activeRoundId: stored.activeRoundId,
     activeOutingId: stored.activeOutingId,
+    cardRoundId: stored.cardRoundId,
   };
 }
 

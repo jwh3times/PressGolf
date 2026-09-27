@@ -203,6 +203,13 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
+      {players.length >= 2 ? (
+        <GhostButton
+          label="Enter a finished card"
+          onPress={() => router.push({ pathname: '/new-round', params: { mode: 'card' } })}
+        />
+      ) : null}
+
       {season ? (
         <View style={{ gap: 6 }}>
           <View style={[styles.seasonHeader, largeText ? styles.stackRow : null]}>

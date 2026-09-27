@@ -75,7 +75,8 @@ For a control, typography, or layout change:
 
 1. Run `npm run test:coverage`.
 2. Set the platform text size to its maximum accessibility setting.
-3. Check Home, Format, Score, Settle, Settings, and Outing in portrait.
+3. Check Home, Format, Score (both Hole by hole and Whole card), Settle,
+   Settings, and Outing in portrait.
 4. Confirm important text reflows rather than truncates, score entry remains
    possible, settlement amounts remain readable, and the tab bar does not cover
    content.

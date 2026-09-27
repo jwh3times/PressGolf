@@ -162,6 +162,9 @@ export interface WolfPick {
 
 export type RoundStatus = 'active' | 'completed';
 
+/** How the scores arrived: hole by hole on the course, or typed from a finished paper card. */
+export type RoundEntry = 'live' | 'card';
+
 export type OutingId = string;
 
 export interface Round {
@@ -194,6 +197,8 @@ export interface Round {
   games: GamesConfig;
   options: GameOptions;
   status: RoundStatus;
+  /** A card round has no presses, Wolf or tapped junk — those are called live. */
+  entry: RoundEntry;
   startedAt: number;
   completedAt: number | null;
 }

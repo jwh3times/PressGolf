@@ -59,6 +59,7 @@ function stored(data: Dataset) {
     activeGroupId: data.activeGroupId,
     activeRoundId: data.activeRoundId,
     activeOutingId: data.activeOutingId,
+    cardRoundId: data.cardRoundId,
   };
 }
 
@@ -144,6 +145,7 @@ describe('AppStoreProvider', () => {
       activeGroupId: null,
       activeRoundId: null,
       activeOutingId: null,
+      cardRoundId: null,
     };
     await mount(empty, true);
     expect(store.groups.length).toBeGreaterThan(0);
@@ -380,6 +382,62 @@ describe('AppStoreProvider', () => {
     const inOuting = store.rounds.filter((r) => r.outingId === outing.id);
     expect(inOuting.length).toBeGreaterThan(0);
     expect(inOuting.every((r) => r.options.maxScore === 'net_double_bogey')).toBe(true);
+  });
+
+  it('enters a finished card beside the live round, then saves or discards it', async () => {
+    await mount();
+    const liveId = store.activeRoundId!;
+    const group = store.group!;
+    const course = store.courses[0];
+    const saturday = new Date(2026, 8, 19, 12).getTime();
+    const ids = group.players.slice(0, 2).map((p) => p.id);
+    const card = makeRound(group, course, ids, { entry: 'card', playedOn: saturday });
+
+    await change(() => store.startCard(card));
+    expect(store.round!.id).toBe(card.id);
+    expect(store.activeRoundId).toBe(liveId);
+
+    await change(() => store.setScore(ids[0], 0, 5));
+    await change(() => store.addPress(ids[0], ids[1], 0, 8, 500));
+    await change(() => store.setWolfPick(0, ids[0], null));
+    expect(store.round!.presses).toEqual([]);
+    expect(store.round!.wolfPicks).toEqual([]);
+    expect(store.rounds.find((r) => r.id === liveId)!.scores[ids[0]]?.[0]).not.toBe(5);
+
+    await change(() => store.saveCard(true));
+    const saved = store.rounds.find((r) => r.id === card.id)!;
+    expect(saved).toMatchObject({ status: 'completed', completedAt: saturday });
+    expect(saved.pickups[`0:${ids[1]}`]).toBe(true);
+    expect(saved.pickups[`0:${ids[0]}`]).toBeUndefined();
+    expect(Object.keys(saved.pickups)).toHaveLength(course.holes.length * 2 - 1);
+    expect(store.cardRoundId).toBeNull();
+    expect(store.round!.id).toBe(liveId);
+
+    const second = makeRound(group, course, ids, { entry: 'card', playedOn: saturday });
+    await change(() => store.startCard(second));
+    await change(() => store.setActiveRound(liveId));
+    await change(() => store.setActiveRound(second.id));
+    expect(store.cardRoundId).toBe(second.id);
+    expect(store.activeRoundId).toBe(liveId);
+    await change(() => store.saveCard(false));
+    expect(store.rounds.find((r) => r.id === second.id)!.pickups).toEqual({});
+
+    const third = makeRound(group, course, ids, { entry: 'card', playedOn: saturday });
+    await change(() => store.startCard(third));
+    await change(() => store.completeRound(third.id));
+    expect(store.rounds.find((r) => r.id === third.id)!.completedAt).toBe(saturday);
+    expect(store.cardRoundId).toBeNull();
+
+    const fourth = makeRound(group, course, ids, { entry: 'card', playedOn: saturday });
+    await change(() => store.startCard(fourth));
+    await change(() => store.discardCard());
+    expect(store.rounds.some((r) => r.id === fourth.id)).toBe(false);
+    expect(store.round!.id).toBe(liveId);
+    await change(() => store.saveCard(true));
+    await change(() => store.discardCard());
+    await waitFor(() =>
+      expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ cardRoundId: null })),
+    );
   });
 });
 

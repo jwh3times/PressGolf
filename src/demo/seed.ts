@@ -143,6 +143,7 @@ export function demoHistory(now: number): Round[] {
       scores,
       junk,
       pickups: {},
+      entry: 'live',
       presses: [],
       wolfPicks: [],
       games,
@@ -176,6 +177,7 @@ export function demoLiveRound(now: number): Round {
     scores: Object.fromEntries(Object.entries(LIVE_SCORES).map(([k, v]) => [k, v.slice()])),
     junk: {},
     pickups: {},
+    entry: 'live',
     presses: [],
     wolfPicks: [],
     games,
@@ -270,6 +272,7 @@ export function demoOuting(
       scores,
       junk: {},
       pickups: {},
+      entry: 'live',
       presses: [],
       wolfPicks: [],
       games,
@@ -312,6 +315,7 @@ export function buildDemoDataset(now = Date.now()): {
   activeGroupId: string;
   activeRoundId: string;
   activeOutingId: string | null;
+  cardRoundId: string | null;
 } {
   const society = demoSociety();
   const outing = demoOuting(now, society);
@@ -323,5 +327,6 @@ export function buildDemoDataset(now = Date.now()): {
     activeGroupId: DEMO_GROUP_ID,
     activeRoundId: DEMO_ROUND_ID,
     activeOutingId: null,
+    cardRoundId: null,
   };
 }

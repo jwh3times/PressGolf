@@ -37,11 +37,27 @@ const mockRouter = {
 };
 
 let mockCourseId = '';
+let mockParams: Record<string, string> = {};
 
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({ id: mockCourseId }),
+  useLocalSearchParams: () => ({ id: mockCourseId, ...mockParams }),
   useRouter: () => mockRouter,
 }));
+
+// The native picker is a platform control; here it is one button that picks Friday 18 September.
+jest.mock('@react-native-community/datetimepicker', () => {
+  const { Pressable } = jest.requireActual('react-native');
+  return {
+    __esModule: true,
+    default: ({ onChange }: { onChange: (event: { type: string }, date?: Date) => void }) => (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Pick Friday"
+        onPress={() => onChange({ type: 'set' }, new Date(2026, 8, 18, 12))}
+      />
+    ),
+  };
+});
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -108,6 +124,9 @@ const actions = {
   deleteRound: jest.fn(),
   setScore: jest.fn(),
   bumpScore: jest.fn(),
+  startCard: jest.fn(),
+  saveCard: jest.fn(),
+  discardCard: jest.fn(),
   setPickedUp: jest.fn(),
   setPops: jest.fn(),
   toggleJunk: jest.fn(),
@@ -178,6 +197,7 @@ function expectEveryControlToHaveAName() {
 beforeEach(() => {
   jest.clearAllMocks();
   mockCourseId = course.id;
+  mockParams = {};
   mockUseStore.mockReturnValue(roundStore);
   mockUseLargeText.mockReturnValue(false);
   mockUseAccessibilityControlScale.mockReturnValue(1);
@@ -1134,3 +1154,122 @@ describe('max score and pick-ups', () => {
     expect(actions.updateGroup).toHaveBeenCalledWith(group.id, { maxScore: 'double_bogey' });
   });
 });
+
+describe('entering a finished card', () => {
+  it('starts from Home, dates the card, and leaves the live round alone', async () => {
+    const user = userEvent.setup();
+    let view = await render(<HomeScreen />);
+    await user.press(screen.getByRole('button', { name: 'Enter a finished card' }));
+    expect(mockRouter.push).toHaveBeenLastCalledWith({ pathname: '/new-round', params: { mode: 'card' } });
+    await view.unmount();
+
+    mockParams = { mode: 'card' };
+    view = await render(<NewRoundScreen />);
+    expect(screen.getByText('Enter a finished card')).toBeOnTheScreen();
+    expect(screen.queryByText(/already a round going/)).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Pick Friday' }));
+    await user.press(screen.getByRole('button', { name: /Enter the card · 4 players/ }));
+    expect(actions.startRound).not.toHaveBeenCalled();
+    const card = (actions.startCard as jest.Mock).mock.calls[0][0];
+    expect(card).toMatchObject({ entry: 'card', startedAt: new Date(2026, 8, 18, 12).getTime() });
+    expect(mockRouter.replace).toHaveBeenCalledWith('/format');
+  });
+
+  it('explains on the Format tab why Wolf and tapped junk are off', async () => {
+    useStoreValue({ round: { ...round, entry: 'card' } as typeof round });
+    await render(<FormatScreen />);
+    expect(screen.getByText(/Entering a finished card/)).toBeOnTheScreen();
+    expect(screen.getByText(/Wolf partners are picked on the tee/)).toBeOnTheScreen();
+    expect(screen.queryByRole('switch', { name: 'Wolf' })).toBeNull();
+    expect(screen.getByText(/birdies and eagles off the card/i)).toBeOnTheScreen();
+  });
+
+  it('fills the card box by box, flags pick-ups, and saves with a prompt for empty boxes', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const user = userEvent.setup();
+    const ids = round.playerIds;
+    const names = ids.map((id) => group.players.find((p) => p.id === id)!.name);
+    const par = course.holes[0].par;
+    const card = {
+      ...round,
+      entry: 'card',
+      options: { ...round.options, maxScore: 'double_bogey' },
+      scores: Object.fromEntries(
+        ids.map((id, i) => [id, [i === 0 ? par + 4 : null, ...Array(course.holes.length - 1).fill(null)]]),
+      ),
+      pickups: { [`0:${ids[1]}`]: true },
+    } as unknown as typeof round;
+    useStoreValue({ round: card });
+    await render(<ScoreScreen />);
+
+    expect(screen.getByRole('button', { name: `Hole 1, ${names[0]}, ${par + 4}, counts ${par + 2}` })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: `Hole 1, ${names[1]}, picked up` })).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: `Hole 1, ${names[2]}, empty` }));
+    await user.press(screen.getByRole('button', { name: 'Enter 5' }));
+    expect(actions.setScore).toHaveBeenLastCalledWith(ids[2], 0, 5);
+    expect(screen.getByRole('button', { name: `Hole 2, ${names[2]}, empty` })).toBeSelected();
+
+    await user.press(screen.getByRole('button', { name: 'Ten or more' }));
+    expect(actions.setScore).toHaveBeenLastCalledWith(ids[2], 1, 10);
+    await user.press(screen.getByRole('button', { name: 'One more' }));
+    expect(actions.setScore).toHaveBeenLastCalledWith(ids[2], 1, 11);
+    await user.press(screen.getByRole('button', { name: 'Next box' }));
+    await user.press(screen.getByRole('button', { name: 'Pick up' }));
+    expect(actions.setPickedUp).toHaveBeenLastCalledWith(ids[2], 2, true);
+
+    const empty = ids.length * course.holes.length - 2;
+    await user.press(screen.getByRole('button', { name: 'Save card' }));
+    expect(alert).toHaveBeenLastCalledWith(
+      'Empty boxes',
+      expect.stringContaining(`Mark ${empty} empty boxes as picked up?`),
+      expect.any(Array),
+    );
+    const saveButtons = alert.mock.calls.at(-1)![2]!;
+    saveButtons.find((b) => b.text === 'Mark and save')!.onPress!();
+    expect(actions.saveCard).toHaveBeenCalledWith(true);
+    expect(mockRouter.replace).toHaveBeenCalledWith('/history');
+
+    await user.press(screen.getByRole('button', { name: 'Discard card' }));
+    alert.mock.calls.at(-1)![2]!.find((b) => b.text === 'Discard')!.onPress!();
+    expect(actions.discardCard).toHaveBeenCalled();
+    alert.mockRestore();
+  });
+
+  it('warns that pick-ups undercount with no max, saves a full card straight away, and gives live rounds the grid too', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const user = userEvent.setup();
+    const blankCard = {
+      ...round,
+      entry: 'card',
+      options: { ...round.options, maxScore: 'off' },
+      scores: Object.fromEntries(round.playerIds.map((id) => [id, Array(course.holes.length).fill(null)])),
+      pickups: {},
+    } as unknown as typeof round;
+    useStoreValue({ round: blankCard });
+    let view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Save card' }));
+    expect(alert.mock.calls.at(-1)![1]).toMatch(/stroke play and Stableford will undercount/);
+    await view.unmount();
+
+    const fullCard = {
+      ...blankCard,
+      scores: Object.fromEntries(round.playerIds.map((id) => [id, Array(course.holes.length).fill(4)])),
+    } as unknown as typeof round;
+    useStoreValue({ round: fullCard });
+    view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Save card' }));
+    expect(actions.saveCard).toHaveBeenCalledWith(false);
+    await view.unmount();
+
+    useStoreValue({});
+    await render(<ScoreScreen />);
+    expect(screen.queryByRole('button', { name: 'Save card' })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Whole card' }));
+    expect(screen.getAllByRole('button', { name: /^Hole 1, / }).length).toBe(round.playerIds.length);
+    await user.press(screen.getByRole('button', { name: 'Hole by hole' }));
+    expect(screen.getByRole('button', { name: 'Go to hole 1' })).toBeOnTheScreen();
+    alert.mockRestore();
+  });
+});
+

@@ -73,8 +73,8 @@ Supabase configuration, Press remains a fully usable single-device app.
 
 As of September 2026:
 
-- 22 Jest suites and 324 tests pass. Repository coverage is 93.30% statements,
-  90.55% branches, 87.35% functions, and 94.36% lines; enforced thresholds live
+- 22 Jest suites and 331 tests pass. Repository coverage is 93.35% statements,
+  90.60% branches, 87.66% functions, and 94.38% lines; enforced thresholds live
   in `package.json`.
 - CI exports production Metro bundles for Android and iOS and verifies every
   database migration plus 25 row-level-security assertions against Postgres 16.
@@ -102,7 +102,8 @@ pass.
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full
-  workflow in a browser.
+  workflow in a browser, and the native date picker for a card's Played-on
+  date does not render there, so a card entered on web is dated today.
 - The app currently ships one dark, outdoor-oriented theme.
 
 Track planned work and additional limitations in the

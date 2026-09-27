@@ -130,6 +130,7 @@ export function buildFieldContext(
     scores,
     junk,
     pickups,
+    entry: 'live',
     presses: [],
     wolfPicks: [],
     // Field pots do not use the per-foursome formats; this context exists only
