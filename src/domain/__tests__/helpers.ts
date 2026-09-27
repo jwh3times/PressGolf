@@ -91,6 +91,7 @@ export function makeTestRound(spec: RoundSpec): Round {
     scores,
     junk: spec.junk ?? {},
     pickups: spec.pickups ?? {},
+    entry: 'live',
     presses: spec.presses ?? [],
     wolfPicks: spec.wolfPicks ?? [],
     games,

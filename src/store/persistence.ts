@@ -49,6 +49,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     name: round.name ?? 'Our group',
     teeTime: round.teeTime ?? null,
     pickups: round.pickups ?? {},
+    entry: round.entry ?? 'live',
     options: { ...round.options, maxScore: round.options?.maxScore ?? 'off' },
   }));
   return {

@@ -73,6 +73,15 @@ describe('dataset persistence', () => {
     expect(loaded.outings[0].maxScore).toBe('off');
   });
 
+  it('treats rounds saved before card entry as scored live', async () => {
+    const dataset = buildDemoDataset(123);
+    const round = { ...dataset.rounds[0] } as Record<string, unknown>;
+    delete round.entry;
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ rounds: [round] }));
+
+    expect((await loadDataset(true)).rounds[0].entry).toBe('live');
+  });
+
   it.each(['null', '42', '{broken'])('treats corrupt payload %s as empty', async (raw) => {
     storage.getItem.mockResolvedValueOnce(raw);
     await expect(loadDataset(false)).resolves.toEqual(expect.objectContaining(EMPTY_DATA));

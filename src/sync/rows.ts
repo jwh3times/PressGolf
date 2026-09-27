@@ -28,6 +28,7 @@ import {
   type Outing,
   type Round,
   type MaxScoreRule,
+  type RoundEntry,
   type RoundStatus,
   type TeeFormat,
   type UnclaimedRule,
@@ -77,6 +78,8 @@ export interface RoundRow {
   name: string;
   tee_time: string | null;
   status: RoundStatus;
+  /** Absent on a server that predates the card-entry migration; read as 'live'. */
+  entry?: RoundEntry;
   started_at: number;
   completed_at: number | null;
 }
@@ -308,6 +311,7 @@ export function toRows(documents: Documents): Snapshot {
       name: round.name,
       tee_time: round.teeTime,
       status: round.status,
+      entry: round.entry,
       started_at: round.startedAt,
       completed_at: round.completedAt,
     });
@@ -571,6 +575,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       games: gamesConfig,
       options,
       status: row.status,
+      entry: row.entry ?? 'live',
       startedAt: row.started_at,
       completedAt: row.completed_at,
     };

@@ -97,6 +97,7 @@ export function makeRound(
     scores,
     junk: {},
     pickups: {},
+    entry: 'live',
     presses: [],
     wolfPicks: [],
     games: defaultGames(),
