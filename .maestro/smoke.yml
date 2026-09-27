@@ -3,24 +3,39 @@ name: Complete a demo round
 ---
 - launchApp:
     clearState: true
+# A cold emulator can take minutes to load the first JS bundle.
 - extendedWaitUntil:
     visible: Saturday Dogs
-    timeout: 120000
+    timeout: 240000
 - assertVisible: Round live
 - tapOn: Enter scores
 - assertVisible: Hole 12
 - tapOn: Increase score for Marcus
 - assertVisible: net 3 · par
+# The tab bar floats over the bottom of every tab screen. "Visible" to Maestro
+# includes the strip under it, so a button that scrolls in at the bottom edge
+# can be covered and the tap lands on the tab bar. Centring the button keeps
+# the tap on it.
 - scrollUntilVisible:
     element:
       text: See the damage so far →
     direction: DOWN
+    centerElement: true
+    timeout: 40000
 - tapOn: See the damage so far →
 - assertVisible: Settlement.*
 - scrollUntilVisible:
     element:
       text: Post to the season ledger
     direction: DOWN
+    centerElement: true
+    timeout: 40000
 - tapOn: Post to the season ledger
+# The confirmation is a native alert; wait for it instead of racing it.
+- extendedWaitUntil:
+    visible: 'Post it|POST IT'
+    timeout: 15000
 - tapOn: 'Post it|POST IT'
-- assertVisible: Season ledger
+- extendedWaitUntil:
+    visible: Season ledger
+    timeout: 15000

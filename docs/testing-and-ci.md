@@ -69,6 +69,16 @@ gate.
 - Flow: open demo data, start a round, enter scores, settle, and post the result
   to the season ledger.
 
+When a run fails, the job uploads Maestro's output (a screenshot and log for
+each step, plus the JUnit report) as a `maestro-android` or `maestro-ios`
+artifact, kept for 14 days.
+
+The flow waits on what is on screen rather than on timing. It centres each
+button it scrolls to, because a button that scrolls in at the bottom edge can
+sit under the floating tab bar, where Maestro still counts it as visible and
+the tap lands on the bar. It also waits for the native Post it alert before
+tapping it.
+
 The workflow catches native compilation, installation, startup, navigation,
 and the core round flow. It does not replace physical-device checks for safe
 areas, outdoor touch use, Dynamic Type, VoiceOver, or TalkBack.
