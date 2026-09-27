@@ -69,6 +69,22 @@ gate.
 - Flow: open demo data, start a round, enter scores, settle, and post the result
   to the season ledger.
 
+`.maestro/run.sh` runs the flow, and runs it once more if the first attempt
+fails. A hosted simulator can stall Maestro's own driver (seen as "Timed out
+while requesting screenshot"), which fails a run for reasons unrelated to the
+app. A real regression fails both attempts, and a first-attempt failure is
+still reported as a warning on the run.
+
+When a run fails, the job uploads Maestro's output (a screenshot and log for
+each step, plus the JUnit report) as a `maestro-android` or `maestro-ios`
+artifact, kept for 14 days.
+
+The flow waits on what is on screen rather than on timing. It centres each
+button it scrolls to, because a button that scrolls in at the bottom edge can
+sit under the floating tab bar, where Maestro still counts it as visible and
+the tap lands on the bar. It also waits for the native Post it alert before
+tapping it.
+
 The workflow catches native compilation, installation, startup, navigation,
 and the core round flow. It does not replace physical-device checks for safe
 areas, outdoor touch use, Dynamic Type, VoiceOver, or TalkBack.
