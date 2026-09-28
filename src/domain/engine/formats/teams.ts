@@ -104,7 +104,7 @@ export function vegasNumber(low: number, high: number): number {
 function sideHasBirdie(ctx: RoundContext, team: Team, hole: number): boolean {
   return team.some((id) => {
     const net = ctx.net(id, hole);
-    return net != null && net < ctx.par(hole);
+    return net != null && net < ctx.par(hole, id);
   });
 }
 

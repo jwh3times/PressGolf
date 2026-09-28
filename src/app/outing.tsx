@@ -58,7 +58,7 @@ export default function OutingScreen() {
   }
 
   const player = (id: PlayerId) => outingGroup.players.find((p) => p.id === id);
-  const holeCount = outingCourse.holes.length;
+  const holeCount = outingCourse.tees[0].holes.length;
   const potTotal = outingSettlement.fieldGames.reduce((sum, g) => sum + g.pot, 0);
 
   const standings = outing.field

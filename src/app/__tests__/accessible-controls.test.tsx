@@ -116,6 +116,11 @@ const actions = {
   createCourse: jest.fn(),
   updateCourse: jest.fn(),
   updateHole: jest.fn(),
+  addTee: jest.fn(),
+  updateTee: jest.fn(),
+  deleteTee: jest.fn(),
+  setRoundTee: jest.fn(),
+  setPlayerTee: jest.fn(),
   deleteCourse: jest.fn(),
   startRound: jest.fn(),
   setActiveRound: jest.fn(),
@@ -532,7 +537,7 @@ describe('high-branch screen state matrices', () => {
     mockUseAccessibilityControlScale.mockReturnValue(2.25);
     const ids = group.players.map((player) => player.id);
     const scores = Object.fromEntries(
-      ids.map((id, index) => [id, [index + 1, ...Array(course.holes.length - 1).fill(null)]]),
+      ids.map((id, index) => [id, [index + 1, ...Array(course.tees[0].holes.length - 1).fill(null)]]),
     );
     const games = Object.fromEntries(
       Object.entries(round.games).map(([key, config]) => [key, { ...config, on: true }]),
@@ -565,7 +570,7 @@ describe('high-branch screen state matrices', () => {
     await view.unmount();
 
     const tiedScores = Object.fromEntries(
-      ids.map((id) => [id, [4, ...Array(course.holes.length - 1).fill(null)]]),
+      ids.map((id) => [id, [4, ...Array(course.tees[0].holes.length - 1).fill(null)]]),
     );
     useStoreValue({
       round: {
@@ -1000,16 +1005,21 @@ describe('management screen state matrices', () => {
 
     const duplicate = {
       ...course,
-      holes: course.holes.map((hole, index) => ({
-        ...hole,
-        strokeIndex: index < 2 ? 1 : hole.strokeIndex,
-        yards: index === 0 ? 0 : hole.yards,
-      })),
+      tees: [
+        {
+          ...course.tees[0],
+          holes: course.tees[0].holes.map((hole, index) => ({
+            ...hole,
+            strokeIndex: index < 2 ? 1 : hole.strokeIndex,
+            yards: index === 0 ? 0 : hole.yards,
+          })),
+        },
+      ],
     };
     mockCourseId = duplicate.id;
     useStoreValue({ courses: [duplicate] });
     view = await render(<CourseScreen />);
-    expect(screen.getByText(/Two holes share a stroke index/)).toBeOnTheScreen();
+    expect(screen.getByText(/share a stroke index/)).toBeOnTheScreen();
     const user = userEvent.setup();
     await user.clear(screen.getByDisplayValue(duplicate.name));
     await user.type(screen.getByDisplayValue(''), 'Renamed');
@@ -1039,12 +1049,12 @@ describe('management screen state matrices', () => {
       ...course,
       id: 'default-indexes',
       name: 'Default Index Course',
-      holes: course.holes.map((hole, index) => ({ ...hole, strokeIndex: index + 1 })),
+      tees: [{ ...course.tees[0], holes: course.tees[0].holes.map((hole, index) => ({ ...hole, strokeIndex: index + 1 })) }],
     };
     const realIndexes = {
       ...course,
       name: 'Real Index Course',
-      holes: course.holes.map((hole) => ({ ...hole, strokeIndex: 19 - hole.number })),
+      tees: [{ ...course.tees[0], holes: course.tees[0].holes.map((hole) => ({ ...hole, strokeIndex: 19 - hole.number })) }],
     };
     useStoreValue({ courses: [defaultIndexes, realIndexes] });
     view = await render(<CoursesScreen />);
@@ -1095,7 +1105,7 @@ describe('management screen state matrices', () => {
 
 describe('max score and pick-ups', () => {
   const ids = group.players.map((player) => player.id);
-  const par = course.holes[0].par;
+  const par = course.tees[0].holes[0].par;
   const cappedRound = (maxScore: 'off' | 'double_bogey') =>
     ({
       ...round,
@@ -1103,7 +1113,7 @@ describe('max score and pick-ups', () => {
       scores: Object.fromEntries(
         ids.map((id, index) => [
           id,
-          [index === 0 ? par + 4 : index === 1 ? null : par, ...Array(course.holes.length - 1).fill(null)],
+          [index === 0 ? par + 4 : index === 1 ? null : par, ...Array(course.tees[0].holes.length - 1).fill(null)],
         ]),
       ),
       pickups: { [`0:${ids[1]}`]: true },
@@ -1189,13 +1199,13 @@ describe('entering a finished card', () => {
     const user = userEvent.setup();
     const ids = round.playerIds;
     const names = ids.map((id) => group.players.find((p) => p.id === id)!.name);
-    const par = course.holes[0].par;
+    const par = course.tees[0].holes[0].par;
     const card = {
       ...round,
       entry: 'card',
       options: { ...round.options, maxScore: 'double_bogey' },
       scores: Object.fromEntries(
-        ids.map((id, i) => [id, [i === 0 ? par + 4 : null, ...Array(course.holes.length - 1).fill(null)]]),
+        ids.map((id, i) => [id, [i === 0 ? par + 4 : null, ...Array(course.tees[0].holes.length - 1).fill(null)]]),
       ),
       pickups: { [`0:${ids[1]}`]: true },
     } as unknown as typeof round;
@@ -1218,7 +1228,7 @@ describe('entering a finished card', () => {
     await user.press(screen.getByRole('button', { name: 'Pick up' }));
     expect(actions.setPickedUp).toHaveBeenLastCalledWith(ids[2], 2, true);
 
-    const empty = ids.length * course.holes.length - 2;
+    const empty = ids.length * course.tees[0].holes.length - 2;
     await user.press(screen.getByRole('button', { name: 'Save card' }));
     expect(alert).toHaveBeenLastCalledWith(
       'Empty boxes',
@@ -1243,7 +1253,7 @@ describe('entering a finished card', () => {
       ...round,
       entry: 'card',
       options: { ...round.options, maxScore: 'off' },
-      scores: Object.fromEntries(round.playerIds.map((id) => [id, Array(course.holes.length).fill(null)])),
+      scores: Object.fromEntries(round.playerIds.map((id) => [id, Array(course.tees[0].holes.length).fill(null)])),
       pickups: {},
     } as unknown as typeof round;
     useStoreValue({ round: blankCard });
@@ -1254,7 +1264,7 @@ describe('entering a finished card', () => {
 
     const fullCard = {
       ...blankCard,
-      scores: Object.fromEntries(round.playerIds.map((id) => [id, Array(course.holes.length).fill(4)])),
+      scores: Object.fromEntries(round.playerIds.map((id) => [id, Array(course.tees[0].holes.length).fill(4)])),
     } as unknown as typeof round;
     useStoreValue({ round: fullCard });
     view = await render(<ScoreScreen />);
@@ -1270,6 +1280,77 @@ describe('entering a finished card', () => {
     await user.press(screen.getByRole('button', { name: 'Hole by hole' }));
     expect(screen.getByRole('button', { name: 'Go to hole 1' })).toBeOnTheScreen();
     alert.mockRestore();
+  });
+});
+
+describe('tee sets', () => {
+  const [blue, red] = course.tees;
+
+  it('edits each tee’s card, slope and rating, adds a copy, and refuses a tee in use', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const user = userEvent.setup();
+    await render(<CourseScreen />);
+
+    expect(screen.getByRole('button', { name: 'Blue tee' })).toBeSelected();
+    await user.press(screen.getByRole('button', { name: 'Red tee' }));
+    expect(screen.getByRole('button', { name: 'Red tee' })).toBeSelected();
+    await user.type(screen.getByLabelText('Yards for hole 1'), '5');
+    expect(actions.updateHole).toHaveBeenLastCalledWith(course.id, red.id, 0, expect.any(Object));
+    await user.press(screen.getByRole('button', { name: 'Raise par on hole 1' }));
+    expect(actions.updateHole).toHaveBeenLastCalledWith(course.id, red.id, 0, { par: Math.min(6, red.holes[0].par + 1) });
+
+    await user.clear(screen.getByLabelText('Slope'));
+    await user.type(screen.getByLabelText('Slope'), '120');
+    expect(actions.updateTee).toHaveBeenLastCalledWith(course.id, red.id, { slope: 120 });
+    await user.clear(screen.getByLabelText('Course rating'));
+    await user.type(screen.getByLabelText('Course rating'), '69.8');
+    expect(actions.updateTee).toHaveBeenLastCalledWith(course.id, red.id, { rating: 69.8 });
+    await user.clear(screen.getByLabelText('Tee name'));
+    await user.type(screen.getByLabelText('Tee name'), 'Forward');
+    expect(actions.updateTee).toHaveBeenCalledWith(course.id, red.id, { name: expect.any(String) });
+
+    (actions.addTee as jest.Mock).mockReturnValueOnce({ ...red, id: 'gold', name: 'Red copy' });
+    await user.press(screen.getByRole('button', { name: 'New tee from Red' }));
+    expect(actions.addTee).toHaveBeenCalledWith(course.id, red.id, 'Red copy');
+
+    // The editor moves to a new tee once it exists; this store mock never adds it, so pick Red again.
+    await user.press(screen.getByRole('button', { name: 'Red tee' }));
+    (actions.deleteTee as jest.Mock).mockReturnValueOnce(false);
+    await user.press(screen.getByRole('button', { name: 'Delete the Red tee' }));
+    alert.mock.calls.at(-1)![2]!.find((b) => b.text === 'Delete')!.onPress!();
+    expect(actions.deleteTee).toHaveBeenCalledWith(course.id, red.id);
+    expect(alert).toHaveBeenLastCalledWith('Can’t delete this tee', expect.stringMatching(/round/));
+    alert.mockRestore();
+  });
+
+  it('starts a round on the tee the group last played, and lets it be changed', async () => {
+    const user = userEvent.setup();
+    const lastOnRed = { ...round, id: 'last', teeId: red.id, startedAt: Date.now() };
+    useStoreValue({ rounds: [...dataset.rounds, lastOnRed] });
+    await render(<NewRoundScreen />);
+    expect(screen.getByRole('button', { name: 'Red tee' })).toBeSelected();
+    await user.press(screen.getByRole('button', { name: 'Blue tee' }));
+    await user.press(screen.getByRole('button', { name: /Start · 4 players/ }));
+    expect((actions.startRound as jest.Mock).mock.calls[0][0].teeId).toBe(blue.id);
+  });
+
+  it('puts one player on another tee from the Format tab, and shows their own par on Score', async () => {
+    const user = userEvent.setup();
+    const ids = round.playerIds;
+    const name = group.players.find((p) => p.id === ids[1])!.name;
+    await render(<FormatScreen />);
+    await user.press(screen.getByRole('button', { name: `${name} plays Red` }));
+    expect(actions.setPlayerTee).toHaveBeenCalledWith(ids[1], red.id);
+    await user.press(screen.getAllByRole('button', { name: 'Round tee Red' })[0]);
+    expect(actions.setRoundTee).toHaveBeenCalledWith(red.id);
+
+    // The hole where Red plays a different par from Blue.
+    const hole = red.holes.findIndex((h, i) => h.par !== blue.holes[i].par);
+    useStoreValue({ round: { ...round, playerTees: { [ids[1]]: red.id } } as typeof round });
+    const view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: `Go to hole ${hole + 1}` }));
+    expect(screen.getByText(`RED · PAR ${red.holes[hole].par} · SI ${red.holes[hole].strokeIndex}`)).toBeOnTheScreen();
+    await view.unmount();
   });
 });
 

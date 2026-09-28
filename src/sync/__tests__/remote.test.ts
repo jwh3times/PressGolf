@@ -71,9 +71,9 @@ describe('pullSnapshot', () => {
 
   it('adds the table name to read failures', async () => {
     mockGetSupabase.mockReturnValue({
-      from: jest.fn((table: string) => query({ data: null, error: table === 'holes' ? { message: 'down' } : null })),
+      from: jest.fn((table: string) => query({ data: null, error: table === 'tee_holes' ? { message: 'down' } : null })),
     } as never);
-    await expect(pullSnapshot()).rejects.toThrow('holes: down');
+    await expect(pullSnapshot()).rejects.toThrow('tee_holes: down');
   });
 });
 
@@ -102,7 +102,8 @@ describe('pullSharedOutings', () => {
       players: [{ id: 'p1' }],
       groups: [{ id: 'g1' }],
       courses: [{ id: 'c1' }],
-      holes: [{ course_id: 'c1' }],
+      tees: [{ id: 't1', course_id: 'c1' }],
+      tee_holes: [{ tee_id: 't1', course_id: 'c1' }],
     };
     const from = jest.fn((table: keyof Snapshot | 'outing_members') => query({ data: rows[table] ?? [], error: null }));
     mockGetSupabase.mockReturnValue({ from } as never);
@@ -113,6 +114,8 @@ describe('pullSharedOutings', () => {
       outings: [expect.objectContaining({ id: 'o1' })],
       rounds: [expect.objectContaining({ id: 'r1' })],
       players: [expect.objectContaining({ id: 'p1' })],
+      tees: [expect.objectContaining({ id: 't1' })],
+      tee_holes: [expect.objectContaining({ tee_id: 't1' })],
     });
 
     rows.outing_field = [];

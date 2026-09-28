@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_VERSION, storageNamespace } from '../config/flags';
-import type { AppData, AppSettings } from '../domain/types';
+import type { AppData, AppSettings, Course, Hole } from '../domain/types';
 
 /** Where the demo/live preference lives — outside both datasets, so it survives switching. */
 const SETTINGS_KEY = 'press:settings';
@@ -53,12 +53,14 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     teeTime: round.teeTime ?? null,
     pickups: round.pickups ?? {},
     entry: round.entry ?? 'live',
+    teeId: round.teeId ?? null,
+    playerTees: round.playerTees ?? {},
     options: { ...round.options, maxScore: round.options?.maxScore ?? 'off' },
   }));
   return {
     version: STORAGE_VERSION,
     groups: (parsed.groups ?? []).map((group) => ({ ...group, maxScore: group.maxScore ?? 'off' })),
-    courses: parsed.courses ?? [],
+    courses: (parsed.courses ?? []).map(withTees),
     rounds,
     outings: (parsed.outings ?? []).map((outing) => ({ ...outing, maxScore: outing.maxScore ?? 'off' })),
     activeGroupId: parsed.activeGroupId ?? null,
@@ -66,6 +68,13 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     activeOutingId: parsed.activeOutingId ?? null,
     cardRoundId: parsed.cardRoundId ?? null,
   };
+}
+
+/** A course saved before tees had one card; it becomes the course's Default tee. */
+function withTees(course: Course & { holes?: Hole[] }): Course {
+  if (course.tees?.length) return course;
+  const { holes = [], ...rest } = course;
+  return { ...rest, tees: [{ id: `${course.id}_default`, name: 'Default', slope: null, rating: null, holes }] };
 }
 
 /** Reads the dataset for the given mode. A corrupt blob is treated as empty, not fatal. */

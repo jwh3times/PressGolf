@@ -6,6 +6,7 @@ import {
   Avatar,
   Body,
   Card,
+  Chip,
   Display,
   EmptyState,
   Eyebrow,
@@ -53,6 +54,7 @@ export default function FormatScreen() {
   }
 
   const roster = group.players.filter((p) => round.playerIds.includes(p.id));
+  const roundTee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
   const exposure = maxExposure(round, course, group.players);
   /** Stake steps scale with the bet so a $100 match isn't 100 taps from $1. */
   const step = (cents: number) => (cents >= 5000 ? 1000 : cents >= 2000 ? 500 : 100);
@@ -141,6 +143,45 @@ export default function FormatScreen() {
         );
       })}
 
+      {course.tees.length > 1 ? (
+        <Card style={{ padding: 16, gap: 12 }}>
+          <Eyebrow>Tees</Eyebrow>
+          <View style={styles.teeRow}>
+            <Text style={styles.teeLabel}>Round</Text>
+            {course.tees.map((tee) => (
+              <Chip
+                key={tee.id}
+                label={tee.name}
+                accessibilityLabel={`Round tee ${tee.name}`}
+                active={roundTee.id === tee.id}
+                color={colors.accent}
+                onPress={() => store.setRoundTee(tee.id)}
+              />
+            ))}
+          </View>
+          {roster.map((player) => {
+            const own = round.playerTees[player.id] ?? roundTee.id;
+            return (
+              <View key={player.id} style={styles.teeRow}>
+                <Text style={styles.teeLabel} numberOfLines={1}>
+                  {player.name}
+                </Text>
+                {course.tees.map((tee) => (
+                  <Chip
+                    key={tee.id}
+                    label={tee.name}
+                    accessibilityLabel={`${player.name} plays ${tee.name}`}
+                    active={own === tee.id}
+                    color={colors.accent}
+                    onPress={() => store.setPlayerTee(player.id, tee.id)}
+                  />
+                ))}
+              </View>
+            );
+          })}
+        </Card>
+      ) : null}
+
       <Card style={{ padding: 16, gap: 4 }}>
         <View style={[styles.popsHeader, largeText ? styles.stackRow : null]}>
           <Eyebrow>Pops</Eyebrow>
@@ -154,7 +195,7 @@ export default function FormatScreen() {
                 <Avatar initials={player.initials} color={player.color} size={30} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.popsName}>{player.name}</Text>
-                  <Text style={styles.popsHint}>{popsHint(pops, course.holes.length)}</Text>
+                  <Text style={styles.popsHint}>{popsHint(pops, course.tees[0].holes.length)}</Text>
                 </View>
               </View>
               <Stepper
@@ -277,6 +318,8 @@ function popsHint(pops: number, holeCount: number): string {
 }
 
 const styles = StyleSheet.create({
+  teeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  teeLabel: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full, width: 88 },
   stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
   flexCopy: { flex: 1, minWidth: 0 },
   fullWidth: { flex: 0, width: '100%' },

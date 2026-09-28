@@ -73,6 +73,26 @@ describe('dataset persistence', () => {
     expect(loaded.outings[0].maxScore).toBe('off');
   });
 
+  it('puts courses saved before tees onto a Default tee', async () => {
+    const dataset = buildDemoDataset(123);
+    const holes = dataset.courses[0].tees[0].holes;
+    const oldCourse = { id: 'old', name: 'Old Course', holes, createdAt: 1 };
+    const oldRound = { ...dataset.rounds[0] } as Record<string, unknown>;
+    delete oldRound.teeId;
+    delete oldRound.playerTees;
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ courses: [oldCourse], rounds: [oldRound] }));
+
+    const loaded = await loadDataset(true);
+
+    expect(loaded.courses[0]).toEqual({
+      id: 'old',
+      name: 'Old Course',
+      tees: [{ id: 'old_default', name: 'Default', slope: null, rating: null, holes }],
+      createdAt: 1,
+    });
+    expect(loaded.rounds[0]).toMatchObject({ teeId: null, playerTees: {} });
+  });
+
   it('treats rounds saved before card entry as scored live', async () => {
     const dataset = buildDemoDataset(123);
     const round = { ...dataset.rounds[0] } as Record<string, unknown>;

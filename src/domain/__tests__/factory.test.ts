@@ -8,6 +8,7 @@ import {
   makeOuting,
   makePlayer,
   makeRound,
+  lastUsedTee,
   reconcileRound,
   splitIntoGroups,
 } from '../factory';
@@ -56,8 +57,8 @@ describe('domain factories', () => {
       date: 123,
     });
 
-    expect(nine.holes).toHaveLength(9);
-    expect(nine.holes[0]).toEqual({ number: 1, par: 4, strokeIndex: 1, yards: 0 });
+    expect(nine.tees[0].holes).toHaveLength(9);
+    expect(nine.tees[0].holes[0]).toEqual({ number: 1, par: 4, strokeIndex: 1, yards: 0 });
     expect(standard).toMatchObject({ playerIds: players.map((p) => p.id), outingId: null, name: 'Our group' });
     expect(standard.scores[players[0].id]).toEqual(Array(9).fill(null));
     expect(selected).toMatchObject({ playerIds: [players[1].id], outingId: 'outing', name: 'Back group' });
@@ -117,6 +118,27 @@ describe('domain factories', () => {
     // Junk stays: birdies and eagles come off the card. Only tapped junk is live-only.
     expect(card.games.junk.on).toBe(true);
     expect(makeRound(group, makeCourse('Home')).entry).toBe('live');
+  });
+
+  it('starts a course on one Default tee, and a round on the tee the group last played there', () => {
+    const course = makeCourse('Home', 9);
+    expect(course.tees).toHaveLength(1);
+    expect(course.tees[0]).toMatchObject({ name: 'Default', slope: null, rating: null });
+    expect(course.tees[0].holes).toHaveLength(9);
+
+    const withRed = { ...course, tees: [...course.tees, { ...course.tees[0], id: 'red', name: 'Red' }] };
+    const group = makeGroup('Society', [makePlayer('Ann', 0), makePlayer('Ben', 1)]);
+    expect(lastUsedTee([], group.id, withRed)).toBe(course.tees[0].id);
+
+    const older = { ...makeRound(group, withRed), teeId: 'red', startedAt: 1 };
+    const newer = { ...makeRound(group, withRed), teeId: course.tees[0].id, startedAt: 2 };
+    const elsewhere = { ...makeRound(group, makeCourse('Away')), teeId: 'gone', startedAt: 3 };
+    expect(lastUsedTee([newer, older, elsewhere], group.id, withRed)).toBe(course.tees[0].id);
+    expect(lastUsedTee([older, elsewhere], group.id, withRed)).toBe('red');
+    // A tee deleted since then is no use: fall back to the first.
+    expect(lastUsedTee([{ ...older, teeId: 'deleted' }], group.id, withRed)).toBe(course.tees[0].id);
+
+    expect(makeRound(group, withRed, undefined, { teeId: 'red' }).teeId).toBe('red');
   });
 });
 

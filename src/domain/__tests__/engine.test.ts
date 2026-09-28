@@ -10,6 +10,7 @@ import {
   makeTestRound,
   P,
   TEST_SI,
+  withTee,
 } from './helpers';
 
 const course = makeTestCourse();
@@ -44,7 +45,7 @@ describe('RoundContext edge cases', () => {
     const round = makeTestRound({ scores: [], playerCount: 1 });
     delete round.scores.a;
     delete round.pops.a;
-    const ctx = new RoundContext(round, { ...course, holes: [] }, players);
+    const ctx = new RoundContext(round, { ...course, tees: [{ ...course.tees[0], holes: [] }] }, players);
     expect(ctx.name('missing')).toBe('Unknown');
     expect(ctx.shortName('missing')).toBe('Unknown');
     expect(ctx.initials('missing')).toBe('??');
@@ -108,7 +109,7 @@ describe('exposure and pot totals', () => {
         wolfLoneMultiplier: 3,
       },
     });
-    expect(maxExposure(round, { ...course, holes: course.holes.slice(0, 9) }, players)).toBeGreaterThan(0);
+    expect(maxExposure(round, { ...course, tees: [{ ...course.tees[0], holes: course.tees[0].holes.slice(0, 9) }] }, players)).toBeGreaterThan(0);
     expect(maxExposure({ ...round, options: { ...round.options, matchPairings: [] } }, course, players)).toBeGreaterThan(0);
   });
 
@@ -247,17 +248,17 @@ describe('skins', () => {
 
 describe('junk', () => {
   it('pays birdies once and eagles double', () => {
-    const par = course.holes[0].par; // 4
+    const par = course.tees[0].holes[0].par; // 4
     const a = Array(18).fill(null);
     const rest = () => Array(18).fill(null);
     a[0] = par - 1; // birdie
-    a[1] = course.holes[1].par - 2; // eagle
+    a[1] = course.tees[0].holes[1].par - 2; // eagle
     const b = rest();
     const c = rest();
     const d = rest();
     [b, c, d].forEach((row) => {
-      row[0] = course.holes[0].par;
-      row[1] = course.holes[1].par;
+      row[0] = course.tees[0].holes[0].par;
+      row[1] = course.tees[0].holes[1].par;
     });
     const round = makeTestRound({ scores: [a, b, c, d], games: { junk: { on: true, stake: 200 } } });
     const result = settle(round);
@@ -268,7 +269,7 @@ describe('junk', () => {
 
   it('pays tapped greenies', () => {
     const rows = [Array(18).fill(null), Array(18).fill(null), Array(18).fill(null), Array(18).fill(null)];
-    rows.forEach((row) => (row[3] = course.holes[3].par));
+    rows.forEach((row) => (row[3] = course.tees[0].holes[3].par));
     const round = makeTestRound({
       scores: rows,
       junk: { '3:a:greenie': true },
@@ -351,7 +352,7 @@ describe('vegas', () => {
   });
 
   it('flips the opposing number on a birdie', () => {
-    const par = course.holes[0].par;
+    const par = course.tees[0].holes[0].par;
     const rows = [Array(18).fill(null), Array(18).fill(null), Array(18).fill(null), Array(18).fill(null)];
     rows[0][0] = par - 1; // a birdies
     rows[1][0] = par;
@@ -594,3 +595,41 @@ describe('pick-ups', () => {
     expect(Object.values(result.net).every((v) => v === 0)).toBe(true);
   });
 });
+
+describe('mixed tees', () => {
+  // Red plays the par-4 1st as a par 5, and swaps the stroke index of the 1st and 2nd.
+  const twoTees = withTee(course, 'red', (hole, i) =>
+    i === 0 ? { par: 5, strokeIndex: 1 } : i === 1 ? { strokeIndex: 7 } : {},
+  );
+
+  it('reads par and stroke index from each player’s own tee', () => {
+    const round = makeTestRound({ scores: [[], []], pops: [1, 1], playerTees: { b: 'red' } });
+    const ctx = new RoundContext(round, twoTees, players);
+    expect(ctx.par(0, 'a')).toBe(4);
+    expect(ctx.par(0, 'b')).toBe(5);
+    // One pop lands on stroke index 1: the 2nd from white, the 1st from red.
+    expect([ctx.strokes('a', 0), ctx.strokes('a', 1)]).toEqual([0, 1]);
+    expect([ctx.strokes('b', 0), ctx.strokes('b', 1)]).toEqual([1, 0]);
+  });
+
+  it('caps and pays off the player’s own par', () => {
+    const round = makeTestRound({
+      scores: [[4, ...flat(4).slice(1)], [9, ...flat(4).slice(1)]],
+      playerTees: { b: 'red' },
+      options: { maxScore: 'double_bogey' },
+      games: { junk: { on: true, stake: 100 } },
+    });
+    const ctx = new RoundContext(round, twoTees, players);
+    expect(ctx.gross('b', 0)).toBe(7); // red par 5 + 2
+    expect(ctx.gross('a', 0)).toBe(4);
+    // A 4 is par for Alice on white; the same 4 would be a birdie for Bob on red.
+    const birdie = makeTestRound({ scores: [flat(4), [4, ...flat(4).slice(1)]], playerTees: { b: 'red' }, games: { junk: { on: true, stake: 100 } } });
+    expect(settleRound(birdie, twoTees, players).net['b']).toBe(100);
+  });
+
+  it('plays the course’s first tee for anyone without one', () => {
+    const round = makeTestRound({ scores: [[]], pops: [0] });
+    expect(new RoundContext(round, twoTees, players).par(0, 'a')).toBe(4);
+  });
+});
+

@@ -34,7 +34,7 @@ export function junkEvents(ctx: RoundContext): JunkEvent[] {
     for (const id of ctx.ids) {
       const gross = ctx.gross(id, h);
       if (gross == null) continue;
-      const auto = autoJunk(gross, ctx.par(h));
+      const auto = autoJunk(gross, ctx.par(h, id));
       if (auto) out.push({ hole: h, playerId: id, label: auto.label, multiplier: auto.multiplier, manual: false });
       for (const { kind, label } of MANUAL_JUNK) {
         if (ctx.hasJunk(h, id, kind)) {

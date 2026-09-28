@@ -48,8 +48,38 @@ function pineHollowHoles(): Hole[] {
   }));
 }
 
+export const DEMO_TEE_BLUE = 'demo_tee_blue';
+export const DEMO_TEE_RED = 'demo_tee_red';
+
+/**
+ * Red, the forward tee: shorter throughout, and like many forward tees it plays
+ * the longest par 4 as a par 5 and rates the two hardest holes the other way
+ * round. That is what makes a mixed-tee round worth showing.
+ */
+function pineHollowRed(): Hole[] {
+  const blue = pineHollowHoles();
+  const longestFour = blue.reduce((best, hole, i) =>
+    hole.par === 4 && hole.yards > blue[best].yards ? i : best, blue.findIndex((h) => h.par === 4));
+  const hardest = blue.findIndex((h) => h.strokeIndex === 1);
+  const next = blue.findIndex((h) => h.strokeIndex === 2);
+  return blue.map((hole, i) => ({
+    ...hole,
+    yards: Math.round((hole.yards * 0.82) / 5) * 5,
+    par: i === longestFour ? 5 : hole.par,
+    strokeIndex: i === hardest ? 2 : i === next ? 1 : hole.strokeIndex,
+  }));
+}
+
 export function demoCourse(): Course {
-  return { id: DEMO_COURSE_ID, name: 'Pine Hollow', holes: pineHollowHoles(), createdAt: 0 };
+  return {
+    id: DEMO_COURSE_ID,
+    name: 'Pine Hollow',
+    tees: [
+      { id: DEMO_TEE_BLUE, name: 'Blue', slope: 131, rating: 71.8, holes: pineHollowHoles() },
+      { id: DEMO_TEE_RED, name: 'Red', slope: 118, rating: 70.1, holes: pineHollowRed() },
+    ],
+    createdAt: 0,
+  };
 }
 
 export function demoGroup(): Group {
@@ -143,6 +173,8 @@ export function demoHistory(now: number): Round[] {
       scores,
       junk,
       pickups: {},
+      teeId: null,
+      playerTees: {},
       entry: 'live',
       presses: [],
       wolfPicks: [],
@@ -177,6 +209,8 @@ export function demoLiveRound(now: number): Round {
     scores: Object.fromEntries(Object.entries(LIVE_SCORES).map(([k, v]) => [k, v.slice()])),
     junk: {},
     pickups: {},
+    teeId: null,
+    playerTees: {},
     entry: 'live',
     presses: [],
     wolfPicks: [],
@@ -272,6 +306,8 @@ export function demoOuting(
       scores,
       junk: {},
       pickups: {},
+      teeId: null,
+      playerTees: {},
       entry: 'live',
       presses: [],
       wolfPicks: [],

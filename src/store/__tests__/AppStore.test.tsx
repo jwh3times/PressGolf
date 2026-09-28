@@ -219,8 +219,8 @@ describe('AppStoreProvider', () => {
     await change(() => store.createCourse(createdCourse));
     await change(() => store.updateCourse(createdCourse.id, { name: 'Renamed course' }));
     await change(() => store.updateCourse('missing', { name: 'Ignored' }));
-    await change(() => store.updateHole(createdCourse.id, 0, { par: 5 }));
-    await change(() => store.updateHole('missing', 0, { par: 3 }));
+    await change(() => store.updateHole(createdCourse.id, createdCourse.tees[0].id, 0, { par: 5 }));
+    await change(() => store.updateHole('missing', 'missing', 0, { par: 3 }));
     await change(() => store.deleteCourse(createdCourse.id));
     await change(() => store.deleteCourse('missing'));
 
@@ -355,7 +355,7 @@ describe('AppStoreProvider', () => {
     await mount();
     const round = store.round!;
     const playerId = round.playerIds[0];
-    const par = store.course!.holes[0].par;
+    const par = store.course!.tees[0].holes[0].par;
 
     await change(() => store.setOptions({ maxScore: 'double_bogey' }));
     await change(() => store.setScore(playerId, 0, par + 1));
@@ -409,7 +409,7 @@ describe('AppStoreProvider', () => {
     expect(saved).toMatchObject({ status: 'completed', completedAt: saturday });
     expect(saved.pickups[`0:${ids[1]}`]).toBe(true);
     expect(saved.pickups[`0:${ids[0]}`]).toBeUndefined();
-    expect(Object.keys(saved.pickups)).toHaveLength(course.holes.length * 2 - 1);
+    expect(Object.keys(saved.pickups)).toHaveLength(course.tees[0].holes.length * 2 - 1);
     expect(store.cardRoundId).toBeNull();
     expect(store.round!.id).toBe(liveId);
 
@@ -438,6 +438,49 @@ describe('AppStoreProvider', () => {
     await waitFor(() =>
       expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ cardRoundId: null })),
     );
+  });
+
+  it('adds, edits and deletes tees, and puts the round and a player on one', async () => {
+    await mount();
+    const course = store.course!;
+    const blue = course.tees[0];
+    const red = course.tees[1];
+
+    let copy: ReturnType<AppStore['addTee']> = null;
+    await change(() => {
+      copy = store.addTee(course.id, blue.id, 'Gold');
+    });
+    const gold = store.courses.find((c) => c.id === course.id)!.tees.find((t) => t.name === 'Gold')!;
+    expect(copy).toEqual(gold);
+    expect(gold.id).not.toBe(blue.id);
+    expect(gold.holes).toEqual(blue.holes);
+    expect(store.addTee('missing', blue.id, 'X')).toBeNull();
+
+    await change(() => store.updateTee(course.id, gold.id, { slope: 140, rating: 73.4 }));
+    await change(() => store.updateHole(course.id, gold.id, 0, { par: 5 }));
+    const edited = store.courses.find((c) => c.id === course.id)!.tees.find((t) => t.id === gold.id)!;
+    expect(edited).toMatchObject({ slope: 140, rating: 73.4 });
+    expect(edited.holes[0].par).toBe(5);
+    expect(store.courses.find((c) => c.id === course.id)!.tees[0].holes[0].par).toBe(blue.holes[0].par);
+
+    const playerId = store.round!.playerIds[0];
+    await change(() => store.setRoundTee(red.id));
+    await change(() => store.setPlayerTee(playerId, gold.id));
+    expect(store.round).toMatchObject({ teeId: red.id, playerTees: { [playerId]: gold.id } });
+    await change(() => store.setPlayerTee(playerId, red.id));
+    expect(store.round!.playerTees).toEqual({});
+
+    // A tee a saved round plays from cannot go; neither can a course's last tee.
+    expect(store.deleteTee(course.id, red.id)).toBe(false);
+    let deleted = false;
+    await change(() => {
+      deleted = store.deleteTee(course.id, gold.id);
+    });
+    expect(deleted).toBe(true);
+    expect(store.courses.find((c) => c.id === course.id)!.tees.map((t) => t.id)).toEqual([blue.id, red.id]);
+    const solo = makeCourse('Solo');
+    await change(() => store.createCourse(solo));
+    expect(store.deleteTee(solo.id, solo.tees[0].id)).toBe(false);
   });
 });
 

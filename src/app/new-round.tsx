@@ -7,13 +7,14 @@ import {
   Avatar,
   Body,
   Card,
+  Chip,
   EmptyState,
   Eyebrow,
   GhostButton,
   Mono,
   PrimaryButton,
 } from '../components/primitives';
-import { makeRound } from '../domain/factory';
+import { lastUsedTee, makeRound } from '../domain/factory';
 import type { PlayerId } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { colors, fonts, ink, line, radius } from '../theme/tokens';
@@ -30,6 +31,8 @@ export default function NewRoundScreen() {
     return today;
   });
   const [pickingDate, setPickingDate] = useState(false);
+  // Null follows the course: the tee this group last played there.
+  const [chosenTee, setChosenTee] = useState<string | null>(null);
 
   const [courseId, setCourseId] = useState<string | null>(
     group?.defaultCourseId ?? store.courses[0]?.id ?? null,
@@ -51,6 +54,12 @@ export default function NewRoundScreen() {
 
   const activeRound = store.rounds.find((r) => r.id === store.activeRoundId && r.status === 'active');
   const course = store.courses.find((c) => c.id === courseId) ?? null;
+  const teeId =
+    course && chosenTee && course.tees.some((t) => t.id === chosenTee)
+      ? chosenTee
+      : course
+        ? lastUsedTee(store.rounds, group.id, course)
+        : null;
   const canStart = course != null && selected.length >= 2;
 
   const toggle = (id: PlayerId) =>
@@ -61,9 +70,9 @@ export default function NewRoundScreen() {
     // Keep tee order as the group's roster order, not the order of tapping.
     const ordered = group.players.filter((p) => selected.includes(p.id)).map((p) => p.id);
     if (cardMode) {
-      store.startCard(makeRound(group, course, ordered, { entry: 'card', playedOn: playedOn.getTime() }));
+      store.startCard(makeRound(group, course, ordered, { entry: 'card', playedOn: playedOn.getTime(), teeId }));
     } else {
-      store.startRound(makeRound(group, course, ordered));
+      store.startRound(makeRound(group, course, ordered, { teeId }));
     }
     router.replace('/format');
   };
@@ -142,7 +151,8 @@ export default function NewRoundScreen() {
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.name}>{c.name}</Text>
                   <Text style={styles.meta}>
-                    {c.holes.length} holes · par {c.holes.reduce((s, h) => s + h.par, 0)}
+                    {c.tees[0].holes.length} holes · par {c.tees[0].holes.reduce((s, h) => s + h.par, 0)}
+                    {c.tees.length > 1 ? ` · ${c.tees.length} tees` : ''}
                   </Text>
                 </View>
                 <View style={[styles.check, on ? styles.checkOn : null]}>
@@ -152,6 +162,21 @@ export default function NewRoundScreen() {
             );
           })
         )}
+        {course && course.tees.length > 1 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <Text style={styles.meta}>Tee</Text>
+            {course.tees.map((tee) => (
+              <Chip
+                key={tee.id}
+                label={tee.name}
+                accessibilityLabel={`${tee.name} tee`}
+                active={teeId === tee.id}
+                color={colors.accent}
+                onPress={() => setChosenTee(tee.id)}
+              />
+            ))}
+          </View>
+        ) : null}
         {store.courses.length > 0 ? (
           <GhostButton dashed label="Manage courses" onPress={() => router.push('/courses')} />
         ) : null}

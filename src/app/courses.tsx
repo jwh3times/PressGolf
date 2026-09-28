@@ -52,8 +52,9 @@ export default function CoursesScreen() {
           </Card>
         ) : (
           store.courses.map((course) => {
-            const par = course.holes.reduce((sum, h) => sum + h.par, 0);
-            const needsIndex = hasDefaultIndexes(course.holes);
+            const holes = course.tees[0].holes;
+            const par = holes.reduce((sum, h) => sum + h.par, 0);
+            const needsIndex = course.tees.some((t) => hasDefaultIndexes(t.holes));
             return (
               <Pressable
                 key={course.id}
@@ -65,7 +66,8 @@ export default function CoursesScreen() {
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.name}>{course.name}</Text>
                   <Text style={styles.meta}>
-                    {course.holes.length} holes · par {par}
+                    {holes.length} holes · par {par}
+                    {course.tees.length > 1 ? ` · ${course.tees.length} tees` : ''}
                     {needsIndex ? ' · stroke index not set' : ''}
                   </Text>
                 </View>

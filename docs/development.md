@@ -155,7 +155,9 @@ npm run db:push
 The initial migration is intentionally safe to reapply because it adopted a
 schema that existed before migration history. New migrations should be normal,
 single-application migrations and must not imitate that baseline unless there
-is a specific reason.
+is a specific reason. Because CI re-applies the baseline to prove it is
+repeatable, tables a later migration dropped (such as `holes`, replaced by
+`tees` and `tee_holes`) reappear, empty, in that throwaway database only.
 
 CI applies every migration to Postgres 16 and runs the RLS assertions before a
 merge can reach production. On `main`, the migration job uses secrets from the

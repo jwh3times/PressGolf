@@ -1,6 +1,6 @@
 import { buildDemoDataset } from '../../demo/seed';
 import { GAME_KEYS } from '../../domain/types';
-import { makeTestCourse, makeTestGroup, makeTestRound, flat } from '../../domain/__tests__/helpers';
+import { makeTestCourse, makeTestGroup, makeTestRound, flat, withTee } from '../../domain/__tests__/helpers';
 import { countRows, emptySnapshot, fromRows, toRows, TABLES, type Documents } from '../rows';
 
 /** The demo dataset is the broadest real data there is: two groups, a
@@ -31,6 +31,8 @@ function demoDocuments(): Documents {
           ],
           pickups: { [`3:${round.playerIds[1]}`]: true as const },
           entry: 'card' as const,
+          teeId: 'demo_tee_blue',
+          playerTees: { [round.playerIds[2]]: 'demo_tee_red' },
           options: {
             ...round.options,
             maxScore: 'net_double_bogey' as const,
@@ -99,12 +101,13 @@ describe('toRows / fromRows round trip', () => {
     expect(back.groups[0].players.map((p) => p.id)).toEqual(group.players.map((p) => p.id));
   });
 
-  it('keeps holes in card order even when the rows arrive shuffled', () => {
-    const course = makeTestCourse();
+  it('keeps tees and holes in card order even when the rows arrive shuffled', () => {
+    const course = withTee(makeTestCourse(), 'red', () => ({ yards: 320 }));
     const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [] });
-    rows.holes.reverse();
+    rows.tees.reverse();
+    rows.tee_holes.reverse();
     const back = fromRows(rows);
-    expect(back.courses[0].holes).toEqual(course.holes);
+    expect(back.courses[0].tees).toEqual(course.tees);
   });
 
   it('round-trips a junk key whose player id contains a colon', () => {
@@ -165,6 +168,7 @@ describe('snapshot helpers', () => {
       group_id: 'group',
       course_id: 'course',
       outing_id: 'outing',
+      tee_id: null,
       name: 'Round',
       tee_time: null,
       status: 'active',
@@ -187,12 +191,17 @@ describe('snapshot helpers', () => {
     expect(documents.groups[0].players).toEqual([]);
     expect(documents.groups[0].maxScore).toBe('off');
     expect(documents.outings[0].maxScore).toBe('off');
-    expect(documents.courses[0].holes).toEqual([]);
+    // A course always has a tee; one with none on the server comes back with an empty Default.
+    expect(documents.courses[0].tees).toEqual([
+      { id: 'course_default', name: 'Default', slope: null, rating: null, holes: [] },
+    ]);
     expect(documents.rounds[0]).toMatchObject({
       playerIds: [],
       scores: {},
       junk: {},
       entry: 'live',
+      teeId: null,
+      playerTees: {},
       pickups: {},
       presses: [],
       wolfPicks: [],

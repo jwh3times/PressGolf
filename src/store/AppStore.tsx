@@ -26,6 +26,8 @@ import type {
   PlayerId,
   Round,
   Settlement,
+  Tee,
+  TeeId,
 } from '../domain/types';
 import { useAuth } from '../auth/AuthProvider';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
@@ -99,7 +101,12 @@ export interface AppStore extends AppState {
   // Courses
   createCourse(course: Course): void;
   updateCourse(id: string, patch: Partial<Course>): void;
-  updateHole(courseId: string, holeIndex: number, patch: Partial<Hole>): void;
+  updateHole(courseId: string, teeId: TeeId, holeIndex: number, patch: Partial<Hole>): void;
+  /** Copies an existing tee's card under a new name. Null when the course is unknown. */
+  addTee(courseId: string, fromTeeId: TeeId, name: string): Tee | null;
+  updateTee(courseId: string, teeId: TeeId, patch: Partial<Pick<Tee, 'name' | 'slope' | 'rating'>>): void;
+  /** False — and nothing changes — when it is the course's last tee or a saved round plays from it. */
+  deleteTee(courseId: string, teeId: TeeId): boolean;
   deleteCourse(id: string): void;
 
   // Rounds
@@ -130,6 +137,9 @@ export interface AppStore extends AppState {
   removePress(pressId: string): void;
   setWolfPick(hole: number, wolf: PlayerId, partner: PlayerId | null): void;
   setRoundPlayers(playerIds: PlayerId[]): void;
+  setRoundTee(teeId: TeeId): void;
+  /** A player on the round's own tee needs no entry, so choosing it clears theirs. */
+  setPlayerTee(playerId: PlayerId, teeId: TeeId): void;
 }
 
 const EMPTY_STATE: AppState = {
@@ -419,7 +429,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           if (outingIdx < 0) return prev;
           const current = prev.outings[outingIdx];
           const holeCount =
-            prev.courses.find((c) => c.id === current.courseId)?.holes.length ?? 18;
+            prev.courses.find((c) => c.id === current.courseId)?.tees[0]?.holes.length ?? 18;
 
           // Existing groups keep their cards and bets; only the make-up changes.
           const byId = new Map(prev.rounds.map((r) => [r.id, r]));
@@ -543,7 +553,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             if (r.groupId !== groupId || r.status === 'completed' || !r.playerIds.includes(playerId)) return r;
             const playerIds = r.playerIds.filter((id) => id !== playerId);
             const roundCourse = prev.courses.find((c) => c.id === r.courseId);
-            return reconcileRound({ ...r, playerIds }, roundCourse?.holes.length ?? 18);
+            return reconcileRound({ ...r, playerIds }, roundCourse?.tees[0]?.holes.length ?? 18);
           });
           return { ...prev, groups, rounds };
         }),
@@ -555,16 +565,54 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           courses: prev.courses.map((c) => (c.id === id ? { ...c, ...patch } : c)),
         })),
-      updateHole: (courseId, holeIndex, patch) =>
+      updateHole: (courseId, teeId, holeIndex, patch) =>
         commit((prev) => ({
           ...prev,
-          courses: prev.courses.map((c) => {
-            if (c.id !== courseId) return c;
-            const holes = c.holes.slice();
-            holes[holeIndex] = { ...holes[holeIndex], ...patch };
-            return { ...c, holes };
-          }),
+          courses: prev.courses.map((c) =>
+            c.id !== courseId
+              ? c
+              : {
+                  ...c,
+                  tees: c.tees.map((t) => {
+                    if (t.id !== teeId) return t;
+                    const holes = t.holes.slice();
+                    holes[holeIndex] = { ...holes[holeIndex], ...patch };
+                    return { ...t, holes };
+                  }),
+                },
+          ),
         })),
+      addTee: (courseId, fromTeeId, name) => {
+        const from = state.courses.find((c) => c.id === courseId)?.tees.find((t) => t.id === fromTeeId);
+        if (!from) return null;
+        const created: Tee = { ...from, id: makeId('t'), name, holes: from.holes.map((h) => ({ ...h })) };
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, tees: [...c.tees, created] } : c)),
+        }));
+        return created;
+      },
+      updateTee: (courseId, teeId, patch) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) =>
+            c.id === courseId ? { ...c, tees: c.tees.map((t) => (t.id === teeId ? { ...t, ...patch } : t)) } : c,
+          ),
+        })),
+      deleteTee: (courseId, teeId) => {
+        const target = state.courses.find((c) => c.id === courseId);
+        const inUse = state.rounds.some(
+          (r) => r.teeId === teeId || Object.values(r.playerTees).includes(teeId),
+        );
+        if (!target || target.tees.length < 2 || inUse) return false;
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) =>
+            c.id === courseId ? { ...c, tees: c.tees.filter((t) => t.id !== teeId) } : c,
+          ),
+        }));
+        return true;
+      },
       deleteCourse: (id) =>
         commit((prev) => ({
           ...prev,
@@ -625,7 +673,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         patchRound((r) => {
           const current = r.scores[playerId]?.[hole];
           // First tap from blank lands on par, not on 1 or 13.
-          const par = course?.holes[hole]?.par ?? 4;
+          const par = course ? new RoundContext(r, course, []).par(hole, playerId) : 4;
           const base = current == null ? par - delta : current;
           const max = course ? new RoundContext(r, course, []).maxScore(playerId, hole) : null;
           const next = Math.max(1, Math.min(max ?? 20, base + delta));
@@ -678,8 +726,17 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const picks = r.wolfPicks.filter((p) => p.hole !== hole);
           return { ...r, wolfPicks: [...picks, { hole, wolf, partner }].sort((a, b) => a.hole - b.hole) };
         }),
+      setRoundTee: (teeId) => patchRound((r) => ({ ...r, teeId })),
+      setPlayerTee: (playerId, teeId) =>
+        patchRound((r) => {
+          const playerTees = { ...r.playerTees };
+          const roundTee = r.teeId ?? course?.tees[0]?.id ?? null;
+          if (teeId === roundTee) delete playerTees[playerId];
+          else playerTees[playerId] = teeId;
+          return { ...r, playerTees };
+        }),
       setRoundPlayers: (playerIds) =>
-        patchRound((r) => reconcileRound({ ...r, playerIds }, course?.holes.length ?? 18)),
+        patchRound((r) => reconcileRound({ ...r, playerIds }, course?.tees[0]?.holes.length ?? 18)),
     };
   }, [state, sync, commit, setDemoMode]);
 

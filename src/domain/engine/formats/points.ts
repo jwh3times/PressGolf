@@ -19,7 +19,7 @@ export function stablefordTotals(ctx: RoundContext, options: GameOptions): Recor
     for (const id of ctx.ids) {
       const net = ctx.net(id, h);
       if (net == null) continue;
-      totals[id] += stablefordPoints(net - ctx.par(h), options.stablefordPoints);
+      totals[id] += stablefordPoints(net - ctx.par(h, id), options.stablefordPoints);
     }
   }
   return totals;
