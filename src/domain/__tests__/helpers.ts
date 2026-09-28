@@ -1,21 +1,32 @@
 import { defaultGames, defaultOptions } from '../formats';
-import type { Course, GameKey, Group, Player, PlayerId, Round } from '../types';
+import type { Course, GameKey, Group, Hole, Player, PlayerId, Round } from '../types';
 
 export const TEST_PAR = [4, 5, 4, 3, 4, 4, 5, 3, 4, 4, 4, 3, 5, 4, 4, 3, 4, 5];
 export const TEST_SI = [7, 1, 11, 17, 3, 13, 5, 15, 9, 8, 2, 12, 18, 4, 14, 16, 6, 10];
 
+export function makeTestHoles(holeCount = 18): Hole[] {
+  return Array.from({ length: holeCount }, (_, i) => ({
+    number: i + 1,
+    par: TEST_PAR[i % 18],
+    strokeIndex: TEST_SI[i % 18],
+    yards: 400,
+  }));
+}
+
+/** One tee, 'white'. Tests that need more add them with `withTee`. */
 export function makeTestCourse(holeCount = 18): Course {
   return {
     id: 'course1',
     name: 'Test Links',
-    holes: Array.from({ length: holeCount }, (_, i) => ({
-      number: i + 1,
-      par: TEST_PAR[i % 18],
-      strokeIndex: TEST_SI[i % 18],
-      yards: 400,
-    })),
+    tees: [{ id: 'white', name: 'White', slope: null, rating: null, holes: makeTestHoles(holeCount) }],
     createdAt: 0,
   };
+}
+
+/** Adds a tee whose holes are the first tee's, with `change` applied to each. */
+export function withTee(course: Course, id: string, change: (hole: Hole, index: number) => Partial<Hole>): Course {
+  const holes = course.tees[0].holes.map((hole, index) => ({ ...hole, ...change(hole, index) }));
+  return { ...course, tees: [...course.tees, { id, name: id, slope: null, rating: null, holes }] };
 }
 
 export const P: PlayerId[] = ['a', 'b', 'c', 'd'];
@@ -56,6 +67,8 @@ export interface RoundSpec {
   presses?: Round['presses'];
   wolfPicks?: Round['wolfPicks'];
   playerCount?: number;
+  /** Tee per player, by id. Anyone left out plays the course's first tee. */
+  playerTees?: Record<PlayerId, string>;
 }
 
 export function makeTestRound(spec: RoundSpec): Round {
@@ -91,6 +104,8 @@ export function makeTestRound(spec: RoundSpec): Round {
     scores,
     junk: spec.junk ?? {},
     pickups: spec.pickups ?? {},
+    teeId: null,
+    playerTees: spec.playerTees ?? {},
     entry: 'live',
     presses: spec.presses ?? [],
     wolfPicks: spec.wolfPicks ?? [],

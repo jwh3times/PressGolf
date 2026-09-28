@@ -109,6 +109,8 @@ export function makeRound(
     scores,
     junk: {},
     pickups: {},
+    teeId: null,
+    playerTees: {},
     entry,
     presses: [],
     wolfPicks: [],

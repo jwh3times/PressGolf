@@ -47,10 +47,28 @@ export interface Hole {
   yards: number;
 }
 
+export type TeeId = string;
+
+/**
+ * One set of tees. Par and stroke index can differ between tees — forward tees
+ * often play a par 5 as a par 4 — so each tee carries its own card. Every tee
+ * on a course has the same number of holes.
+ */
+export interface Tee {
+  id: TeeId;
+  name: string;
+  /** Slope rating, 55–155. Null until someone enters it. */
+  slope: number | null;
+  /** Course rating, e.g. 71.2. Null until someone enters it. */
+  rating: number | null;
+  holes: Hole[];
+}
+
 export interface Course {
   id: CourseId;
   name: string;
-  holes: Hole[];
+  /** Never empty. The first tee is the fallback for anyone without one. */
+  tees: Tee[];
   createdAt: number;
 }
 
@@ -185,6 +203,10 @@ export interface Round {
   teeTime: string | null;
   /** Snapshot of who actually teed it up, in tee order. Wolf rotates through this. */
   playerIds: PlayerId[];
+  /** The round's tee: what the hole header and card show. Null means the course's first tee. */
+  teeId: TeeId | null;
+  /** Each player's tee when it differs from the round's. */
+  playerTees: Record<PlayerId, TeeId>;
   /** Pops (strokes received) per player, applied to the lowest stroke indexes first. */
   pops: Record<PlayerId, number>;
   /** `scores[playerId][holeIndex]`, null when not yet entered. */

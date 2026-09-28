@@ -106,7 +106,8 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   await add('groups', 'id', [...new Set(snapshot.outings.map((o) => o.group_id))]);
   const courseIds = [...new Set(snapshot.outings.map((o) => o.course_id))];
   await add('courses', 'id', courseIds);
-  await add('holes', 'course_id', courseIds);
+  await add('tees', 'course_id', courseIds);
+  await add('tee_holes', 'course_id', courseIds);
 
   return snapshot;
 }

@@ -97,11 +97,15 @@ export function buildFieldContext(
   const scores: Record<PlayerId, (number | null)[]> = {};
   const junk: Record<string, true> = {};
   const pickups: Record<string, true> = {};
+  // Each player keeps the tee their own group put them on, so field pots use their par.
+  const playerTees: Record<PlayerId, string> = {};
 
   for (const round of rounds) {
     for (const id of round.playerIds) {
       pops[id] = round.pops[id] ?? 0;
       scores[id] = (round.scores[id] ?? []).slice();
+      const tee = round.playerTees[id] ?? round.teeId;
+      if (tee) playerTees[id] = tee;
     }
     Object.assign(junk, round.junk);
     Object.assign(pickups, round.pickups);
@@ -112,7 +116,7 @@ export function buildFieldContext(
   for (const id of outing.field) {
     if (!scores[id]) {
       pops[id] = 0;
-      scores[id] = Array(course.holes.length).fill(null);
+      scores[id] = Array(course.tees[0].holes.length).fill(null);
     }
   }
 
@@ -130,6 +134,8 @@ export function buildFieldContext(
     scores,
     junk,
     pickups,
+    teeId: null,
+    playerTees,
     entry: 'live',
     presses: [],
     wolfPicks: [],

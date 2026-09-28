@@ -1,4 +1,4 @@
-import type { Cents, Course, Hole, Player, PlayerId, Round } from '../types';
+import type { Cents, Course, Hole, Player, PlayerId, Round, Tee } from '../types';
 
 /**
  * Everything the format calculators need, resolved once so each of them isn't
@@ -10,6 +10,9 @@ export class RoundContext {
   /** In tee order. Wolf rotation and Vegas pairing both depend on this order. */
   readonly players: Player[];
   readonly ids: PlayerId[];
+  /** The round's tee — what the hole header and card show. */
+  readonly tee: Tee;
+  /** The round tee's holes. Every tee has the same count, so this also gives the hole count. */
   readonly holes: Hole[];
 
   private readonly netCache = new Map<string, number | null>();
@@ -17,7 +20,8 @@ export class RoundContext {
   constructor(round: Round, course: Course, roster: Player[]) {
     this.round = round;
     this.course = course;
-    this.holes = course.holes;
+    this.tee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
+    this.holes = this.tee?.holes ?? [];
     // Only players actually in the round, ordered as the round recorded them.
     const byId = new Map(roster.map((p) => [p.id, p]));
     this.players = round.playerIds
@@ -65,9 +69,9 @@ export class RoundContext {
   maxScore(id: PlayerId, hole: number): number | null {
     switch (this.round.options.maxScore) {
       case 'double_bogey':
-        return this.par(hole) + 2;
+        return this.par(hole, id) + 2;
       case 'net_double_bogey':
-        return this.par(hole) + 2 + this.strokes(id, hole);
+        return this.par(hole, id) + 2 + this.strokes(id, hole);
       default:
         return null;
     }
@@ -86,7 +90,7 @@ export class RoundContext {
     if (n === 0) return 0;
     const base = Math.floor(pops / n);
     const remainder = pops % n;
-    const si = this.holes[hole]?.strokeIndex ?? n;
+    const si = this.strokeIndex(hole, id);
     return base + (si <= remainder ? 1 : 0);
   }
 
@@ -100,8 +104,22 @@ export class RoundContext {
     return v;
   }
 
-  par(hole: number): number {
-    return this.holes[hole]?.par ?? 4;
+  /** The tee a player is on: their own, else the round's. */
+  teeFor(id: PlayerId): Tee {
+    const own = this.round.playerTees?.[id];
+    return (own && this.course.tees.find((t) => t.id === own)) || this.tee;
+  }
+
+  /** Par from the player's own tee, or the round's tee when no player is given. */
+  par(hole: number, id?: PlayerId): number {
+    const tee = id ? this.teeFor(id) : this.tee;
+    return tee?.holes[hole]?.par ?? 4;
+  }
+
+  /** Stroke index from the player's own tee, or the round's tee when no player is given. */
+  strokeIndex(hole: number, id?: PlayerId): number {
+    const tee = id ? this.teeFor(id) : this.tee;
+    return tee?.holes[hole]?.strokeIndex ?? this.holeCount;
   }
 
   /** A hole only settles once every player in the round has a score on it. */
@@ -150,7 +168,7 @@ export class RoundContext {
     for (let h = 0; h < this.holeCount; h++) {
       const g = this.gross(id, h);
       if (g == null) continue;
-      diff += g - this.par(h);
+      diff += g - this.par(h, id);
     }
     return diff;
   }

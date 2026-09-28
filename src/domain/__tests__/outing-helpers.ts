@@ -101,6 +101,8 @@ export function makeTestOuting(spec: OutingSpec): {
         Object.entries(spec.pickups ?? {}).filter(([key]) => ids.includes(key.split(':')[1])),
       ),
       entry: 'live',
+      teeId: null,
+      playerTees: {},
       presses: [],
       wolfPicks: [],
       games: { ...games },

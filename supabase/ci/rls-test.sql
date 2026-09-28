@@ -38,7 +38,8 @@ insert into players (id, group_id, name, initials, color) values
   ('p1', 'g1', 'Jerry', 'JH', '#8BE0AE'),
   ('p2', 'g1', 'Sam',   'SM', '#E8C46A');
 insert into courses (id, name, created_at) values ('c1', 'Pine Hollow', 1);
-insert into holes (course_id, number, par, stroke_index, yards) values ('c1', 1, 4, 5, 410);
+insert into tees (id, course_id, name, slope, rating) values ('t1', 'c1', 'Blue', 131, 71.8);
+insert into tee_holes (tee_id, course_id, number, par, stroke_index, yards) values ('t1', 'c1', 1, 4, 5, 410);
 insert into outings (id, group_id, course_id, name, date, started_at, join_code)
   values ('o1', 'g1', 'c1', 'Saturday', 1, 1, 'ABC234');
 insert into outing_field (outing_id, player_id) values ('o1', 'p1'), ('o1', 'p2');
@@ -65,6 +66,8 @@ select expect('stranger sees no players',  (select count(*) from players), 0);
 select expect('stranger sees no rounds',   (select count(*) from rounds), 0);
 select expect('stranger sees no scores',   (select count(*) from scores), 0);
 select expect('stranger sees no courses',  (select count(*) from courses), 0);
+select expect('stranger sees no tees',     (select count(*) from tees), 0);
+select expect('stranger sees no card',     (select count(*) from tee_holes), 0);
 
 -- ── The same stranger, now holding the code ─────────────────────────────────
 
@@ -74,7 +77,8 @@ select expect('guest sees the shared outing',  (select count(*) from outings whe
 select expect('guest sees the shared round',   (select count(*) from rounds where id = 'r1'), 1);
 select expect('guest sees the shared scores',  (select count(*) from scores where round_id = 'r1'), 1);
 select expect('guest sees the course',         (select count(*) from courses where id = 'c1'), 1);
-select expect('guest sees the holes',          (select count(*) from holes), 1);
+select expect('guest sees the tees',           (select count(*) from tees), 1);
+select expect('guest sees the card',           (select count(*) from tee_holes), 1);
 select expect('guest sees the field',          (select count(*) from players), 2);
 select expect('guest sees the organiser group',(select count(*) from groups where id = 'g1'), 1);
 
@@ -101,8 +105,12 @@ update scores set strokes = 99 where round_id = 'r9';
 delete from rounds where id = 'r9';
 delete from rounds where id = 'r1';
 delete from outings where id = 'o1';
+update tee_holes set par = 3 where tee_id = 't1';
+update tees set slope = 155 where id = 't1';
 
 set request.jwt.claim.sub = :'alice';
+select expect('shared card untouched',  (select par from tee_holes where tee_id = 't1' and number = 1), 4);
+select expect('shared tee untouched',   (select slope from tees where id = 't1'), 131);
 select expect('stake untouched',        (select stake from round_games where round_id = 'r1'), 500);
 select expect('private score untouched',(select strokes from scores where round_id = 'r9'), 3);
 select expect('private round survived', (select count(*) from rounds where id = 'r9'), 1);

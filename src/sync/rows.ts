@@ -30,6 +30,7 @@ import {
   type MaxScoreRule,
   type RoundEntry,
   type RoundStatus,
+  type Tee,
   type TeeFormat,
   type UnclaimedRule,
 } from '../domain/types';
@@ -62,7 +63,18 @@ export interface CourseRow {
   created_at: number;
 }
 
-export interface HoleRow {
+export interface TeeRow {
+  id: string;
+  course_id: string;
+  name: string;
+  slope: number | null;
+  rating: number | null;
+  sort_order: number;
+}
+
+/** A hole as one tee plays it. course_id rides along so outing guests can read the card. */
+export interface TeeHoleRow {
+  tee_id: string;
   course_id: string;
   number: number;
   par: number;
@@ -80,6 +92,8 @@ export interface RoundRow {
   status: RoundStatus;
   /** Absent on a server that predates the card-entry migration; read as 'live'. */
   entry?: RoundEntry;
+  /** The round's tee. Null means the course's first. */
+  tee_id: string | null;
   started_at: number;
   completed_at: number | null;
 }
@@ -89,6 +103,8 @@ export interface RoundPlayerRow {
   player_id: string;
   tee_order: number;
   pops: number;
+  /** Set only when the player's tee differs from the round's. */
+  tee_id: string | null;
 }
 
 export interface ScoreRow {
@@ -192,7 +208,8 @@ export interface Snapshot {
   groups: GroupRow[];
   players: PlayerRow[];
   courses: CourseRow[];
-  holes: HoleRow[];
+  tees: TeeRow[];
+  tee_holes: TeeHoleRow[];
   rounds: RoundRow[];
   round_players: RoundPlayerRow[];
   scores: ScoreRow[];
@@ -222,7 +239,8 @@ export const TABLES: (keyof Snapshot)[] = [
   'groups',
   'players',
   'courses',
-  'holes',
+  'tees',
+  'tee_holes',
   'outings',
   'outing_field',
   'outing_field_games',
@@ -244,7 +262,8 @@ export function emptySnapshot(): Snapshot {
     groups: [],
     players: [],
     courses: [],
-    holes: [],
+    tees: [],
+    tee_holes: [],
     rounds: [],
     round_players: [],
     scores: [],
@@ -291,15 +310,26 @@ export function toRows(documents: Documents): Snapshot {
 
   for (const course of documents.courses) {
     out.courses.push({ id: course.id, name: course.name, created_at: course.createdAt });
-    for (const hole of course.holes) {
-      out.holes.push({
+    course.tees.forEach((tee, index) => {
+      out.tees.push({
+        id: tee.id,
         course_id: course.id,
-        number: hole.number,
-        par: hole.par,
-        stroke_index: hole.strokeIndex,
-        yards: hole.yards,
+        name: tee.name,
+        slope: tee.slope,
+        rating: tee.rating,
+        sort_order: index,
       });
-    }
+      for (const hole of tee.holes) {
+        out.tee_holes.push({
+          tee_id: tee.id,
+          course_id: course.id,
+          number: hole.number,
+          par: hole.par,
+          stroke_index: hole.strokeIndex,
+          yards: hole.yards,
+        });
+      }
+    });
   }
 
   for (const round of documents.rounds) {
@@ -312,6 +342,7 @@ export function toRows(documents: Documents): Snapshot {
       tee_time: round.teeTime,
       status: round.status,
       entry: round.entry,
+      tee_id: round.teeId,
       started_at: round.startedAt,
       completed_at: round.completedAt,
     });
@@ -322,6 +353,7 @@ export function toRows(documents: Documents): Snapshot {
         player_id: playerId,
         tee_order: index,
         pops: round.pops[playerId] ?? 0,
+        tee_id: round.playerTees[playerId] ?? null,
       });
       const card = round.scores[playerId] ?? [];
       card.forEach((strokes, hole) => {
@@ -452,9 +484,30 @@ function groupBy<T, K extends string>(rows: T[], key: (row: T) => K): Map<K, T[]
 
 const byOrder = <T extends { sort_order: number }>(a: T, b: T) => a.sort_order - b.sort_order;
 
+/** A course's tees in order, each with its card. A course always has one: an empty Default if the server has none. */
+function courseTees(courseId: string, rows: TeeRow[], holesByTee: Map<string, TeeHoleRow[]>): Tee[] {
+  if (rows.length === 0) {
+    return [{ id: `${courseId}_default`, name: 'Default', slope: null, rating: null, holes: [] }];
+  }
+  return rows
+    .slice()
+    .sort(byOrder)
+    .map((tee) => ({
+      id: tee.id,
+      name: tee.name,
+      slope: tee.slope,
+      rating: tee.rating,
+      holes: (holesByTee.get(tee.id) ?? [])
+        .slice()
+        .sort((x, y) => x.number - y.number)
+        .map((h) => ({ number: h.number, par: h.par, strokeIndex: h.stroke_index, yards: h.yards })),
+    }));
+}
+
 export function fromRows(snapshot: Snapshot): Documents {
   const playersByGroup = groupBy(snapshot.players, (r) => r.group_id);
-  const holesByCourse = groupBy(snapshot.holes, (r) => r.course_id);
+  const teesByCourse = groupBy(snapshot.tees, (r) => r.course_id);
+  const holesByTee = groupBy(snapshot.tee_holes, (r) => r.tee_id);
   const roundPlayers = groupBy(snapshot.round_players, (r) => r.round_id);
   const scores = groupBy(snapshot.scores, (r) => r.round_id);
   const junk = groupBy(snapshot.junk, (r) => r.round_id);
@@ -487,10 +540,7 @@ export function fromRows(snapshot: Snapshot): Documents {
   const courses: Course[] = snapshot.courses.map((row) => ({
     id: row.id,
     name: row.name,
-    holes: (holesByCourse.get(row.id) ?? [])
-      .slice()
-      .sort((a, b) => a.number - b.number)
-      .map((h) => ({ number: h.number, par: h.par, strokeIndex: h.stroke_index, yards: h.yards })),
+    tees: courseTees(row.id, teesByCourse.get(row.id) ?? [], holesByTee),
     createdAt: row.created_at,
   }));
 
@@ -499,7 +549,11 @@ export function fromRows(snapshot: Snapshot): Documents {
     const playerIds = entries.map((e) => e.player_id);
 
     const pops: Record<string, number> = {};
-    for (const entry of entries) pops[entry.player_id] = entry.pops;
+    const playerTees: Record<string, string> = {};
+    for (const entry of entries) {
+      pops[entry.player_id] = entry.pops;
+      if (entry.tee_id) playerTees[entry.player_id] = entry.tee_id;
+    }
 
     // Rebuild each card at the length the rows imply, so an all-empty card
     // still comes back eighteen boxes wide rather than as an empty array.
@@ -576,6 +630,8 @@ export function fromRows(snapshot: Snapshot): Documents {
       options,
       status: row.status,
       entry: row.entry ?? 'live',
+      teeId: row.tee_id ?? null,
+      playerTees,
       startedAt: row.started_at,
       completedAt: row.completed_at,
     };

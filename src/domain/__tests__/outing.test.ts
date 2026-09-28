@@ -3,7 +3,7 @@ import { splitEvenly } from '../engine/ledger';
 import { splitIntoGroups } from '../factory';
 import type { OutingSettlement } from '../types';
 import { flatField, makeTestOuting } from './outing-helpers';
-import { TEST_PAR } from './helpers';
+import { TEST_PAR, withTee } from './helpers';
 
 const settle = (spec: Parameters<typeof makeTestOuting>[0]) => {
   const { outing, rounds, course, roster } = makeTestOuting(spec);
@@ -392,5 +392,23 @@ describe('max score across the field', () => {
       fieldGames: { fieldSkins: { on: true, buyIn: 2000 } },
     });
     expect(result.fieldGames[0].pendingHoles).toBe(1);
+  });
+});
+
+describe('mixed tees across the field', () => {
+  it('gives each player their strokes from the tee their group put them on', () => {
+    const { outing, rounds, course, roster } = makeTestOuting({
+      cards: flatField(8, 5),
+      pops: [0, 0, 0, 0, 0, 1, 0, 0],
+      fieldGames: { fieldSkins: { on: true, buyIn: 2000 } },
+    });
+    // Red swaps the stroke index of the 1st and 2nd, so p05's one pop moves to the 1st.
+    const twoTees = withTee(course, 'red', (_, i) => (i === 0 ? { strokeIndex: 1 } : i === 1 ? { strokeIndex: 7 } : {}));
+    const redRounds = rounds.map((r) => (r.playerIds.includes('p05') ? { ...r, playerTees: { p05: 'red' } } : r));
+
+    const onRed = settleOuting(outing, redRounds, twoTees, roster).fieldGames[0];
+    const onWhite = settleOuting(outing, rounds, twoTees, roster).fieldGames[0];
+    expect(onRed.holes[0].winner).toBe('p05');
+    expect(onWhite.holes[1].winner).toBe('p05');
   });
 });
