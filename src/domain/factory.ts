@@ -1,5 +1,5 @@
 import { defaultFieldGames, defaultGames, defaultOptions } from './formats';
-import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, RoundEntry, TeeFormat } from './types';
+import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, RoundEntry, TeeFormat, TeeId } from './types';
 
 /** Avatar colours, handed out in order so a new group looks deliberate. */
 export const PLAYER_COLORS = [
@@ -68,7 +68,26 @@ export function makeCourse(name: string, holeCount: 9 | 18 = 18): Course {
     strokeIndex: i + 1,
     yards: 0,
   }));
-  return { id: makeId('c'), name, holes, createdAt: Date.now() };
+  const id = makeId('c');
+  return {
+    id,
+    name,
+    tees: [{ id: makeId('t'), name: 'Default', slope: null, rating: null, holes }],
+    createdAt: Date.now(),
+  };
+}
+
+/**
+ * The tee a group last played at this course, so the next round starts there.
+ * Falls back to the course's first tee when the group has not played it, or
+ * that tee has since been deleted.
+ */
+export function lastUsedTee(rounds: Round[], groupId: string, course: Course): TeeId {
+  const latest = rounds
+    .filter((r) => r.groupId === groupId && r.courseId === course.id && r.teeId != null)
+    .reduce<Round | null>((best, r) => (best == null || r.startedAt > best.startedAt ? r : best), null);
+  const known = latest?.teeId && course.tees.some((t) => t.id === latest.teeId);
+  return known ? latest!.teeId! : course.tees[0].id;
 }
 
 export function makeRound(
@@ -84,6 +103,8 @@ export function makeRound(
     /** A card round is typed in afterwards; `playedOn` dates it to the day it was played. */
     entry?: RoundEntry;
     playedOn?: number;
+    /** The round's tee — see lastUsedTee. Null plays the course's first. */
+    teeId?: TeeId | null;
   } = {},
 ): Round {
   const entry = extras.entry ?? 'live';
@@ -95,7 +116,7 @@ export function makeRound(
   const scores: Record<PlayerId, (number | null)[]> = {};
   for (const id of ids) {
     pops[id] = 0;
-    scores[id] = Array(course.holes.length).fill(null);
+    scores[id] = Array(course.tees[0].holes.length).fill(null);
   }
   return {
     id: makeId('r'),
@@ -109,7 +130,7 @@ export function makeRound(
     scores,
     junk: {},
     pickups: {},
-    teeId: null,
+    teeId: extras.teeId ?? null,
     playerTees: {},
     entry,
     presses: [],
