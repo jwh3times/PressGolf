@@ -38,6 +38,9 @@ updates:
       - dependency-name: react-dom
       - dependency-name: react-native
       - dependency-name: "@react-native-async-storage/*"
+      # Not matched by react-native-* below: it lives under a scope. Expo pins it
+      # exactly, and 9.1.0 to 9.2.1 failed expo-doctor (#45).
+      - dependency-name: "@react-native-community/datetimepicker"
 
       # Pinned with `~` to a minor instead, so a patch inside that minor is
       # exactly what the SDK expects and is left to come through. Covers
@@ -104,6 +107,7 @@ updates:
           - react-native
           - react-native-*
           - "@react-native-async-storage/*"
+          - "@react-native-community/datetimepicker"
           - "@types/react"
 
       # Everything that only affects the build, never the app people carry
@@ -124,6 +128,7 @@ updates:
           - react-dom
           - react-native
           - react-native-*
+          - "@react-native-community/datetimepicker"
           - "@types/react"
         update-types:
           - minor
