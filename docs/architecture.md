@@ -45,6 +45,28 @@ are distributed deterministically rather than lost to floating-point rounding.
 Pops continue above 18: a 20-handicap player gets one stroke on every hole and
 a second on stroke-index holes 1 and 2.
 
+### Courses and tees
+
+A course has one or more tees. Each tee has a name, a slope and a course
+rating (both optional until entered), and its own card: par, stroke index and
+yards for every hole. Every tee on a course has the same number of holes.
+Forward tees often play a hole at a different par or stroke index, which is why
+the card belongs to the tee.
+
+A round records its tee (`teeId`), and a player can play a different one
+(`playerTees`). Anyone without a tee plays the round's tee, and a round without
+one plays the course's first tee. New rounds and outings start on the tee the
+group last played at that course.
+
+`RoundContext.par(hole, playerId)` and `strokeIndex(hole, playerId)` read the
+player's own tee. Pops allocation, the max score, Stableford, birdie detection,
+Vegas's birdie flip and field pots all go through them, so players on different
+tees are scored against their own card. Without a player, they read the round's
+tee, which is what the hole header and the card grid show.
+
+A tee that a saved round was played from cannot be deleted, and neither can a
+course's last tee.
+
 ### Max score and pick-ups
 
 A round carries a max-score rule in its options:
@@ -113,7 +135,9 @@ discarded. Server availability is never on the path of score entry. Demo and liv
 datasets have separate namespaces and demo data is excluded from sync.
 
 The demo seed contains an in-progress Saturday Dogs round and prior completed
-rounds generated from a fixed seed. Its season ledger is calculated by the same
+rounds generated from a fixed seed. Its Pine Hollow course has two tees: Blue,
+and a forward Red tee that plays one par 4 as a par 5 and swaps the two
+hardest stroke indexes. Its season ledger is calculated by the same
 engine as live data.
 
 ## Active server synchronization
