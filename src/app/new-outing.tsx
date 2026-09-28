@@ -13,7 +13,7 @@ import {
   Mono,
   PrimaryButton,
 } from '../components/primitives';
-import { makeOuting, makeRound, splitIntoGroups } from '../domain/factory';
+import { lastUsedTee, makeOuting, makeRound, splitIntoGroups } from '../domain/factory';
 import type { PlayerId, TeeFormat } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { colors, fonts, ink, line, radius } from '../theme/tokens';
@@ -71,6 +71,7 @@ export default function NewOutingScreen() {
       makeRound(group, course, ids, {
         outingId: outing.id,
         maxScore: outing.maxScore,
+        teeId: lastUsedTee(store.rounds, group.id, course),
         name: `Group ${i + 1}`,
         teeTime: teeFormat === 'sequential' ? `${8 + Math.floor(i / 6)}:${String((i * 10) % 60).padStart(2, '0')}` : null,
       }),
@@ -118,7 +119,8 @@ export default function NewOutingScreen() {
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.name}>{c.name}</Text>
                   <Text style={styles.meta}>
-                    {c.holes.length} holes · par {c.holes.reduce((s, h) => s + h.par, 0)}
+                    {c.tees[0].holes.length} holes · par {c.tees[0].holes.reduce((s, h) => s + h.par, 0)}
+                    {c.tees.length > 1 ? ` · ${c.tees.length} tees` : ''}
                   </Text>
                 </View>
                 <Check on={on} />

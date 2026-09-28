@@ -168,6 +168,7 @@ describe('snapshot helpers', () => {
       group_id: 'group',
       course_id: 'course',
       outing_id: 'outing',
+      tee_id: null,
       name: 'Round',
       tee_time: null,
       status: 'active',

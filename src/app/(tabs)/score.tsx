@@ -72,7 +72,8 @@ export default function ScoreScreen() {
 
   const holeCount = ctx.holeCount;
   const current = Math.min(hole, holeCount - 1);
-  const holeInfo = course.holes[current];
+  // The round's tee: what the header shows. A player on another tee sees their own par on their row.
+  const holeInfo = ctx.holes[current];
   const roster = ctx.players;
   const youId = group.youId;
 
@@ -149,7 +150,14 @@ export default function ScoreScreen() {
         const gross = ctx.gross(player.id, current);
         const net = ctx.net(player.id, current);
         const strokes = ctx.strokes(player.id, current);
-        const rel = gross == null ? null : gross - holeInfo.par;
+        const par = ctx.par(current, player.id);
+        const rel = gross == null ? null : gross - par;
+        const ownTee = ctx.teeFor(player.id);
+        const ownHole = ownTee.holes[current];
+        const teeDiffers =
+          ownTee.id !== ctx.tee.id &&
+          ownHole != null &&
+          (ownHole.par !== holeInfo.par || ownHole.strokeIndex !== holeInfo.strokeIndex);
         const pickedUp = ctx.pickedUp(player.id, current);
         const max = ctx.maxScore(player.id, current);
         const atMax = gross != null && max != null && gross === max;
@@ -172,6 +180,11 @@ export default function ScoreScreen() {
                       </View>
                     ) : null}
                   </View>
+                  {teeDiffers ? (
+                    <Mono size={10} style={{ color: ink.soft, marginTop: 2 }}>
+                      {`${ownTee.name.toUpperCase()} · PAR ${ownHole.par} · SI ${ownHole.strokeIndex}`}
+                    </Mono>
+                  ) : null}
                   <Text style={styles.playerSub}>
                     {pickedUp
                       ? gross == null
@@ -221,9 +234,9 @@ export default function ScoreScreen() {
             </View>
 
             <View style={styles.chipRow}>
-              {gross != null && gross < holeInfo.par ? (
+              {gross != null && gross < par ? (
                 <Chip
-                  label={gross <= holeInfo.par - 2 ? 'EAGLE' : 'BIRDIE'}
+                  label={gross <= par - 2 ? 'EAGLE' : 'BIRDIE'}
                   active
                   color={colors.accent}
                   disabled

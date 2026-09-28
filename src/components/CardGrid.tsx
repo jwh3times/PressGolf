@@ -118,7 +118,7 @@ export function CardGrid({
       </ScrollView>
 
       <Text style={styles.cursorText}>
-        {at.name} · hole {holes[cursor.hole].number} · par {holes[cursor.hole].par}
+        {at.name} · hole {holes[cursor.hole].number} · par {ctx.par(cursor.hole, at.id)}
       </Text>
 
       {big != null ? (

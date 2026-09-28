@@ -410,12 +410,15 @@ export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => v
 /** Small tappable mono pill — junk, partner picks, filters. */
 export function Chip({
   label,
+  accessibilityLabel,
   active,
   color = colors.clay,
   onPress,
   disabled,
 }: {
   label: string;
+  /** When the visible label alone is ambiguous, e.g. a tee name repeated for every player. */
+  accessibilityLabel?: string;
   active?: boolean;
   color?: string;
   onPress?: () => void;
@@ -424,6 +427,7 @@ export function Chip({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: !!active, disabled: !!disabled }}
       onPress={disabled ? undefined : onPress}
       hitSlop={6}

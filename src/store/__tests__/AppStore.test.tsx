@@ -219,8 +219,8 @@ describe('AppStoreProvider', () => {
     await change(() => store.createCourse(createdCourse));
     await change(() => store.updateCourse(createdCourse.id, { name: 'Renamed course' }));
     await change(() => store.updateCourse('missing', { name: 'Ignored' }));
-    await change(() => store.updateHole(createdCourse.id, 0, { par: 5 }));
-    await change(() => store.updateHole('missing', 0, { par: 3 }));
+    await change(() => store.updateHole(createdCourse.id, createdCourse.tees[0].id, 0, { par: 5 }));
+    await change(() => store.updateHole('missing', 'missing', 0, { par: 3 }));
     await change(() => store.deleteCourse(createdCourse.id));
     await change(() => store.deleteCourse('missing'));
 
