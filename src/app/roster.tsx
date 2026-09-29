@@ -142,9 +142,7 @@ export default function RosterScreen() {
                     ) : null}
                   </View>
                   <Text style={styles.sub}>
-                    {open
-                      ? 'tap to close'
-                      : `${player.handicapIndex == null ? '' : `index ${formatIndex(player.handicapIndex)} · `}tap to edit`}
+                    {open ? 'tap to close' : `${indexSummary(player)}tap to edit`}
                   </Text>
                 </View>
                 <Mono size={11} style={{ color: ink.quiet }}>
@@ -248,6 +246,17 @@ export default function RosterScreen() {
   );
 }
 
+/** "index 12.4 · Sep 1, 2026 · " — the index with the date it was entered, or nothing without one. */
+function indexSummary(player: Player): string {
+  if (player.handicapIndex == null) return '';
+  const date = player.handicapUpdatedAt == null ? '' : `${enteredOn(player.handicapUpdatedAt)} · `;
+  return `index ${formatIndex(player.handicapIndex)} · ${date}`;
+}
+
+function enteredOn(at: number): string {
+  return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 /** Kept as typed while editing, so "12." or "+" part-way through is not rewritten under the thumb. */
 function IndexField({
   player,
@@ -257,10 +266,7 @@ function IndexField({
   onChange: (patch: Pick<Player, 'handicapIndex' | 'handicapUpdatedAt'>) => void;
 }) {
   const [text, setText] = useState(player.handicapIndex == null ? '' : formatIndex(player.handicapIndex));
-  const updated =
-    player.handicapUpdatedAt == null
-      ? null
-      : new Date(player.handicapUpdatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const updated = player.handicapUpdatedAt == null ? null : enteredOn(player.handicapUpdatedAt);
   return (
     <Field
       label="Handicap index"

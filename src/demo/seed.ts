@@ -1,5 +1,8 @@
 import { defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
+import { withHandicaps } from '../domain/handicap';
 import type { Course, Group, Hole, Outing, Player, PlayerId, Round } from '../domain/types';
+
+const DAY = 24 * 60 * 60 * 1000;
 
 /**
  * The Saturday Dogs at Pine Hollow — the data the design prototype was built on.
@@ -84,11 +87,11 @@ export function demoCourse(): Course {
   };
 }
 
-export function demoGroup(): Group {
+export function demoGroup(now: number): Group {
   return {
     id: DEMO_GROUP_ID,
     name: 'Saturday Dogs',
-    players: DEMO_PLAYERS.map((p) => ({ ...p })),
+    players: DEMO_PLAYERS.map((p) => ({ ...p, handicapUpdatedAt: now - 12 * DAY })),
     youId: 'demo_p1',
     defaultCourseId: DEMO_COURSE_ID,
     maxScore: 'off',
@@ -242,8 +245,13 @@ const SOCIETY_COLORS = [
   '#9AD8D8', '#E8A0C8', '#D8C89A',
 ];
 
+/** A spread of ability across the society, so the pots have a real shape. Lower plays better. */
+function societySkill(position: number): number {
+  return 0.8 + (position % 7) * 0.22;
+}
+
 /** Twenty regulars who play in five foursomes. */
-export function demoSociety(): Group {
+export function demoSociety(now: number): Group {
   const players: Player[] = SOCIETY_NAMES.map((name, i) => ({
     id: `demo_s${String(i).padStart(2, '0')}`,
     name,
@@ -252,7 +260,9 @@ export function demoSociety(): Group {
         ? (name.split(' ')[0][0] + name.split(' ')[1][0]).toUpperCase()
         : name.slice(0, 2).toUpperCase(),
     color: SOCIETY_COLORS[i % SOCIETY_COLORS.length],
-    handicapIndex: null, handicapUpdatedAt: null,
+    // In step with the skill their cards are drawn from: 3.2 for the best, 24.3 for the worst.
+    handicapIndex: Math.round((societySkill(i) - 0.6) * 160) / 10,
+    handicapUpdatedAt: now - (5 + i) * DAY,
   }));
   return {
     id: DEMO_SOCIETY_ID,
@@ -292,9 +302,8 @@ export function demoOuting(
     const scores: Record<PlayerId, (number | null)[]> = {};
 
     groupIds.forEach((id, i) => {
-      pops[id] = [0, 4, 9, 14][i] ?? 0;
-      // A spread of ability across the society, so the pots have a real shape.
-      const card = generateCard(rng, id, 0.8 + ((g * 4 + i) % 7) * 0.22);
+      pops[id] = 0;
+      const card = generateCard(rng, id, societySkill(g * 4 + i));
       scores[id] = card.map((v, h) => (h < holesPlayed ? v : null));
     });
 
@@ -352,7 +361,8 @@ export function demoOuting(
     completedAt: null,
   };
 
-  return { outing, rounds };
+  // Pops from the society's indexes, off the low man in the whole field.
+  return { outing, rounds: withHandicaps(rounds, demoCourse(), society.players) };
 }
 
 export function buildDemoDataset(now = Date.now()): {
@@ -365,10 +375,10 @@ export function buildDemoDataset(now = Date.now()): {
   activeOutingId: string | null;
   cardRoundId: string | null;
 } {
-  const society = demoSociety();
+  const society = demoSociety(now);
   const outing = demoOuting(now, society);
   return {
-    groups: [demoGroup(), society],
+    groups: [demoGroup(now), society],
     courses: [demoCourse()],
     rounds: [...demoHistory(now), demoLiveRound(now), ...outing.rounds],
     outings: [outing.outing],

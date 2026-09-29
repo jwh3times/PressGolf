@@ -503,10 +503,19 @@ describe('AppStoreProvider', () => {
 
   it('gives the demo players indexes that recalculate to the pops the demo round already has', async () => {
     await mount();
-    expect(store.group!.players.every((p) => p.handicapIndex != null)).toBe(true);
+    const everyone = store.groups.flatMap((g) => g.players);
+    expect(everyone.every((p) => p.handicapIndex != null && p.handicapUpdatedAt != null)).toBe(true);
     const before = { ...store.round!.pops };
     await change(() => store.recalculatePops());
     expect(store.round!.pops).toEqual(before);
+
+    // The demo outing's groups are off the low man in the whole field.
+    const outing = store.outings[0];
+    await change(() => store.setActiveOuting(outing.id));
+    await change(() => store.setActiveRound(outing.roundIds[2]));
+    const inOuting = { ...store.round!.pops };
+    await change(() => store.recalculatePops());
+    expect(store.round!.pops).toEqual(inOuting);
   });
 
   it('flags a tee change instead of recalculating, until recalculated', async () => {

@@ -124,8 +124,10 @@ instead. Whenever a player's pops differ from what their handicap now gives
 off the low man".
 
 Data saved before handicaps plays off the low man at 100%, as the Format tab
-always said, and keeps its pops, so nothing already settled moves. The demo
-players carry indexes that work out to the demo round's stored pops.
+always said, and keeps its pops, so nothing already settled moves. Every demo
+player carries an index. The Saturday Dogs' indexes work out to the demo
+round's stored pops, and the demo outing's pops are worked out from the
+society's indexes across the whole field, so neither asks for a recalculation.
 
 ### Card entry
 

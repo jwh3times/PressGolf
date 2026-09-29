@@ -1343,6 +1343,20 @@ describe('handicaps', () => {
     expect(screen.queryByRole('button', { name: 'Recalculate from handicaps' })).toBeNull();
   });
 
+  it('shows each index with the date it was entered', async () => {
+    const dated = {
+      ...group,
+      players: group.players.map((p, i) => ({
+        ...p,
+        handicapIndex: i === 0 ? -1.4 : p.handicapIndex,
+        handicapUpdatedAt: new Date(2026, 8, 1, 12).getTime(),
+      })),
+    };
+    useStoreValue({ group: dated });
+    await render(<RosterScreen />);
+    expect(screen.getByText(/^index \+1\.4 · Sep 1, 2026 · tap to edit$/)).toBeOnTheScreen();
+  });
+
   it('enters an index on the roster, a plus one with a plus sign', async () => {
     const user = userEvent.setup();
     useStoreValue({ group: indexed });
