@@ -1,4 +1,4 @@
-import { calculatePops, describeWorking } from '../handicap';
+import { calculatePops, describeWorking, formatIndex, parseIndex } from '../handicap';
 import type { Hole, Tee } from '../types';
 
 /** A tee with the given slope and rating whose pars add up to `par`, using par 4s and par 3s. */
@@ -129,5 +129,27 @@ describe('the working shown on each pops row', () => {
   it('says so when there is no index', () => {
     const result = calculatePops([{ id: 'd', index: null, tee: blue }], { strokes: 'off_low', allowance: 100 });
     expect(describeWorking(result.d)).toBe('no index');
+  });
+});
+
+describe('typing an index', () => {
+  it('reads an index to the tenth, a plus one as negative', () => {
+    expect(parseIndex('12.4')).toBe(12.4);
+    expect(parseIndex(' 8.25 ')).toBe(8.3);
+    expect(parseIndex('+1.4')).toBe(-1.4);
+    expect(parseIndex('+0')).toBe(0);
+  });
+
+  it('reads a blank, junk or an index outside the WHS range as none', () => {
+    expect(parseIndex('')).toBeNull();
+    expect(parseIndex('+')).toBeNull();
+    expect(parseIndex('1.2.3')).toBeNull();
+    expect(parseIndex('54.1')).toBeNull();
+    expect(parseIndex('+20.1')).toBeNull();
+  });
+
+  it('writes an index back the way it is typed', () => {
+    expect(formatIndex(12)).toBe('12.0');
+    expect(formatIndex(-1.4)).toBe('+1.4');
   });
 });
