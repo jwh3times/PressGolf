@@ -1,4 +1,4 @@
-import { calculatePops } from '../handicap';
+import { calculatePops, describeWorking } from '../handicap';
 import type { Hole, Tee } from '../types';
 
 /** A tee with the given slope and rating whose pars add up to `par`, using par 4s and par 3s. */
@@ -92,5 +92,42 @@ describe('off the low man', () => {
     expect(result.a).toMatchObject({ pops: 0 });
     expect(result.c).toMatchObject({ pops: 9 });
     expect(result.d).toEqual({ noIndex: true });
+  });
+});
+
+describe('the working shown on each pops row', () => {
+  const white = tee('White', 120, 69.0, 70);
+  const blueNamed = { ...blue, name: 'Blue' };
+
+  it('reads index, tee, course handicap and what came off the low man', () => {
+    const result = calculatePops(
+      [
+        { id: 'a', index: 12.4, tee: blueNamed },
+        { id: 'b', index: 4.0, tee: white },
+      ],
+      { strokes: 'off_low', allowance: 100 },
+    );
+    expect(describeWorking(result.a)).toBe('12.4 · Blue 128/71.2 → 15 · 3 off the low man');
+    expect(describeWorking(result.b)).toBe('4.0 · White 120/69.0 → 3 · the low man');
+  });
+
+  it('shows the allowance, a plus index and an unrated tee', () => {
+    const unrated: Tee = { ...tee('Gold', 113, 72, 72), slope: null, rating: null };
+    const result = calculatePops(
+      [
+        { id: 'a', index: 11.8, tee: blueNamed },
+        { id: 'p', index: -1.4, tee: unrated },
+      ],
+      { strokes: 'full', allowance: 90 },
+    );
+    // 11.8 × 128 / 113 + 1.2 = 14.57 → 15 shown; 90% of 14.57 = 13.1 → 13.
+    expect(describeWorking(result.a)).toBe('11.8 · Blue 128/71.2 → 15 · 90% → 13');
+    // −1.4 × 90% = −1.26 → +1.
+    expect(describeWorking(result.p)).toBe('+1.4 · Gold unrated → +1 · 90% → +1');
+  });
+
+  it('says so when there is no index', () => {
+    const result = calculatePops([{ id: 'd', index: null, tee: blue }], { strokes: 'off_low', allowance: 100 });
+    expect(describeWorking(result.d)).toBe('no index');
   });
 });
