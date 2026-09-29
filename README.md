@@ -6,9 +6,9 @@ hand-offs needed at the end of the round.
 
 It supports Nassau with presses, skins, junk, Stableford, four-ball, Wolf,
 Vegas, match play, and stroke play. Pops come from each player's Handicap Index
-and tee, in full or off the low man, or are typed in by hand. Outings can split a larger field into
-playing groups while settling field-wide skins or scats alongside each group's
-games.
+and tee, in full or off the low man, or are typed in by hand. Outings can split
+a larger field into playing groups while settling field-wide skins or scats
+alongside each group's games.
 
 ## Quick start
 
