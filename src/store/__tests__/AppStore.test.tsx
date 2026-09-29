@@ -84,6 +84,31 @@ async function change(run: () => void) {
   await act(async () => run());
 }
 
+/**
+ * Starts a round on a par-72 course rated 72.0 / 113, so each course handicap is
+ * the index itself: Ann 10.0, Bob 4.0, Cal no index. Returns their ids.
+ */
+async function startIndexedRound(): Promise<string[]> {
+  await mount();
+  const course = makeCourse('Handicap Links');
+  await change(() => store.createCourse(course));
+  await change(() => store.updateTee(course.id, course.tees[0].id, { slope: 113, rating: 72 }));
+  let group!: ReturnType<AppStore['createGroup']>;
+  await change(() => {
+    group = store.createGroup('Index men');
+  });
+  const players = [
+    makePlayer('Ann', 0, { handicapIndex: 10.0 }),
+    makePlayer('Bob', 1, { handicapIndex: 4.0 }),
+    makePlayer('Cal', 2, { handicapIndex: null }),
+  ];
+  for (const p of players) await change(() => store.addPlayer(group.id, p));
+  const withPlayers = store.groups.find((g) => g.id === group.id)!;
+  const saved = store.courses.find((c) => c.id === course.id)!;
+  await change(() => store.startRound(makeRound(withPlayers, saved)));
+  return players.map((p) => p.id);
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockUseAuth.mockReturnValue({
@@ -441,27 +466,72 @@ describe('AppStoreProvider', () => {
   });
 
   it('calculates pops from handicap indexes when a round starts', async () => {
+    const [ann, bob, cal] = await startIndexedRound();
+    // Off the low man: Ann 10 − 4, Bob is the low man, Cal has no index and keeps 0.
+    expect(store.round!.pops).toEqual({ [ann]: 6, [bob]: 0, [cal]: 0 });
+  });
+
+  it('keeps typed pops until the round is recalculated from handicaps', async () => {
+    const [ann, bob, cal] = await startIndexedRound();
+    await change(() => store.setPops(ann, 9));
+    await change(() => store.setPops(cal, 3));
+    await change(() => store.setOptions({ strokes: 'full' }));
+    expect(store.round!.pops).toEqual({ [ann]: 9, [bob]: 0, [cal]: 3 });
+
+    await change(() => store.recalculatePops());
+    // Full handicaps; Cal has no index and keeps the 3 typed in.
+    expect(store.round!.pops).toEqual({ [ann]: 10, [bob]: 4, [cal]: 3 });
+  });
+
+  it('lets typed pops go below zero only on full handicaps', async () => {
+    const [ann] = await startIndexedRound();
+    await change(() => store.setPops(ann, -2));
+    expect(store.round!.pops[ann]).toBe(0);
+    await change(() => store.setOptions({ strokes: 'full' }));
+    await change(() => store.setPops(ann, -2));
+    expect(store.round!.pops[ann]).toBe(-2);
+  });
+
+  it('takes an outing off the low man in the whole field, and locks its handicap rules', async () => {
     await mount();
-    const course = makeCourse('Handicap Links'); // par 72
+    const course = makeCourse('Handicap Links');
     await change(() => store.createCourse(course));
     await change(() => store.updateTee(course.id, course.tees[0].id, { slope: 113, rating: 72 }));
     let group!: ReturnType<AppStore['createGroup']>;
     await change(() => {
-      group = store.createGroup('Index men');
+      group = store.createGroup('Society');
     });
     const players = [
       makePlayer('Ann', 0, { handicapIndex: 10.0 }),
       makePlayer('Bob', 1, { handicapIndex: 4.0 }),
       makePlayer('Cal', 2, { handicapIndex: null }),
+      makePlayer('Dee', 3, { handicapIndex: 2.0 }),
     ];
     for (const p of players) await change(() => store.addPlayer(group.id, p));
+    const [ann, bob, cal, dee] = players.map((p) => p.id);
     const withPlayers = store.groups.find((g) => g.id === group.id)!;
     const saved = store.courses.find((c) => c.id === course.id)!;
+    const outing = makeOuting(withPlayers, saved);
+    const first = makeRound(withPlayers, saved, [ann, cal], { outingId: outing.id });
+    const second = makeRound(withPlayers, saved, [bob, dee], { outingId: outing.id });
+    outing.roundIds = [first.id, second.id];
 
-    await change(() => store.startRound(makeRound(withPlayers, saved)));
-    // Off the low man: Ann 10 − 4, Bob is the low man, Cal has no index and keeps 0.
-    const [ann, bob, cal] = players.map((p) => p.id);
-    expect(store.round!.pops).toEqual({ [ann]: 6, [bob]: 0, [cal]: 0 });
+    await change(() => store.startOuting(outing, [first, second]));
+    // Dee's 2 is the lowest in the field, so Ann gets 8 even though she is the low man in her own group.
+    const pops = () => Object.assign({}, ...store.rounds.filter((r) => r.outingId === outing.id).map((r) => r.pops));
+    expect(pops()).toEqual({ [ann]: 8, [cal]: 0, [bob]: 2, [dee]: 0 });
+
+    await change(() => store.setActiveOuting(outing.id));
+    await change(() => store.updateOuting({ allowance: 90 }));
+    const inOuting = store.rounds.filter((r) => r.outingId === outing.id);
+    expect(inOuting.every((r) => r.options.allowance === 90)).toBe(true);
+    // Changing the rule never recalculates by itself.
+    expect(pops()[ann]).toBe(8);
+
+    // Ann's group recalculates against the field: 90% of 10 is 9, less Dee's 90% of 2 (1.8 → 2).
+    expect(store.round!.id).toBe(first.id);
+    await change(() => store.recalculatePops());
+    expect(store.round!.pops).toEqual({ [ann]: 7, [cal]: 0 });
   });
 
   it('adds, edits and deletes tees, and puts the round and a player on one', async () => {

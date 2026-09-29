@@ -302,6 +302,9 @@ export interface Outing {
   teeFormat: TeeFormat;
   /** One rule for the whole day, so field pots compare like with like. Every round in it inherits this. */
   maxScore: MaxScoreRule;
+  /** Locked for the day like `maxScore`; off the low man means the lowest in the whole field. */
+  strokes: StrokesMode;
+  allowance: number;
   /** Everybody playing today, whether or not they are in a pot. */
   field: PlayerId[];
   fieldGames: FieldGames;

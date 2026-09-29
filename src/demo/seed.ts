@@ -337,6 +337,8 @@ export function demoOuting(
     date: now,
     teeFormat: 'sequential',
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     field: [...ids],
     fieldGames,
     roundIds: rounds.map((r) => r.id),

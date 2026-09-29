@@ -138,6 +138,8 @@ export function makeTestOuting(spec: OutingSpec): {
     date: 0,
     teeFormat: 'sequential',
     maxScore: spec.maxScore ?? 'off',
+    strokes: 'off_low',
+    allowance: 100,
     field,
     fieldGames,
     roundIds: rounds.map((r) => r.id),

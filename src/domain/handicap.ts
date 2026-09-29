@@ -1,5 +1,5 @@
 import { RoundContext } from './engine/context';
-import type { Course, Player, PlayerId, Round, StrokesMode, Tee } from './types';
+import type { Course, Player, PlayerId, Round, RoundId, StrokesMode, Tee } from './types';
 
 export interface HandicapSettings {
   strokes: StrokesMode;
@@ -46,18 +46,29 @@ export function calculatePops(
 }
 
 /**
- * The round's pops recalculated from each player's index and own tee, under the
- * round's strokes mode and allowance. A player with no index keeps what they have.
+ * Pops recalculated for each round from every player's index and own tee, under
+ * the rounds' strokes mode and allowance. Pass every round in an outing together:
+ * off the low man then means the lowest in the whole field. A player with no
+ * index keeps what they have.
  */
-export function roundPops(round: Round, course: Course, roster: Player[]): Round['pops'] {
-  const ctx = new RoundContext(round, course, roster);
+export function handicapPops(rounds: Round[], course: Course, roster: Player[]): Map<RoundId, Round['pops']> {
+  const out = new Map<RoundId, Round['pops']>();
+  if (rounds.length === 0) return out;
+  const contexts = rounds.map((round) => new RoundContext(round, course, roster));
+  const { strokes, allowance } = rounds[0].options;
   const worked = calculatePops(
-    ctx.players.map((p) => ({ id: p.id, index: p.handicapIndex, tee: ctx.teeFor(p.id) })),
-    { strokes: round.options.strokes, allowance: round.options.allowance },
+    contexts.flatMap((ctx) => ctx.players.map((p) => ({ id: p.id, index: p.handicapIndex, tee: ctx.teeFor(p.id) }))),
+    { strokes, allowance },
   );
-  const pops = { ...round.pops };
-  for (const [id, w] of Object.entries(worked)) if ('pops' in w) pops[id] = w.pops;
-  return pops;
+  for (const round of rounds) {
+    const pops = { ...round.pops };
+    for (const id of round.playerIds) {
+      const w = worked[id];
+      if (w && 'pops' in w) pops[id] = w.pops;
+    }
+    out.set(round.id, pops);
+  }
+  return out;
 }
 
 /**

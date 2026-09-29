@@ -664,6 +664,8 @@ export function fromRows(snapshot: Snapshot): Documents {
       date: row.date,
       teeFormat: row.tee_format,
       maxScore: row.max_score ?? 'off',
+      strokes: 'off_low',
+      allowance: 100,
       field: (field.get(row.id) ?? []).slice().sort(byOrder).map((f) => f.player_id),
       fieldGames: { fieldSkins: config('fieldSkins'), scats: config('scats') },
       roundIds: [],

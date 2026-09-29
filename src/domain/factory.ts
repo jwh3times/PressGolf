@@ -184,6 +184,8 @@ export function makeOuting(
     date: options.date ?? Date.now(),
     teeFormat: options.teeFormat ?? 'sequential',
     maxScore: group.maxScore,
+    strokes: group.strokes,
+    allowance: group.allowance,
     field,
     fieldGames: defaultFieldGames(),
     roundIds: [],
