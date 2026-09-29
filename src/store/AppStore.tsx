@@ -687,7 +687,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       startCard: (created) =>
         commit((prev) => ({
           ...prev,
-          rounds: [...prev.rounds, created],
+          rounds: [...prev.rounds, ...withHandicapPops(prev, [created])],
           cardRoundId: created.id,
           activeGroupId: created.groupId,
         })),

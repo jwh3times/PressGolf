@@ -472,6 +472,14 @@ describe('AppStoreProvider', () => {
     expect(store.round!.pops).toEqual({ [ann]: 6, [bob]: 0, [cal]: 0 });
   });
 
+  it('calculates pops for a finished card as well', async () => {
+    const [ann, bob, cal] = await startIndexedRound();
+    const card = makeRound(store.group!, store.course!, undefined, { entry: 'card', playedOn: 1_700_000_000_000 });
+    await change(() => store.startCard(card));
+    const saved = store.rounds.find((r) => r.id === card.id)!;
+    expect(saved.pops).toEqual({ [ann]: 6, [bob]: 0, [cal]: 0 });
+  });
+
   it('keeps typed pops until the round is recalculated from handicaps', async () => {
     const [ann, bob, cal] = await startIndexedRound();
     await change(() => store.setPops(ann, 9));
