@@ -17,11 +17,13 @@ export const DEMO_GROUP_ID = 'demo_group';
 export const DEMO_COURSE_ID = 'demo_course';
 export const DEMO_ROUND_ID = 'demo_round_live';
 
+// Indexes that work out, off the low man on Blue, to exactly DEMO_POPS, so
+// recalculating the demo round moves nothing.
 const DEMO_PLAYERS: Player[] = [
-  { id: 'demo_p1', name: 'Marcus', initials: 'MB', color: '#8BE0AE', handicapIndex: null, handicapUpdatedAt: null },
-  { id: 'demo_p2', name: 'Dev', initials: 'DP', color: '#E8C46A', handicapIndex: null, handicapUpdatedAt: null },
-  { id: 'demo_p3', name: 'T.J.', initials: 'TJ', color: '#7FB6E8', handicapIndex: null, handicapUpdatedAt: null },
-  { id: 'demo_p4', name: 'Big Ray', initials: 'BR', color: '#E89A7F', handicapIndex: null, handicapUpdatedAt: null },
+  { id: 'demo_p1', name: 'Marcus', initials: 'MB', color: '#8BE0AE', handicapIndex: 2.1, handicapUpdatedAt: null },
+  { id: 'demo_p2', name: 'Dev', initials: 'DP', color: '#E8C46A', handicapIndex: 4.6, handicapUpdatedAt: null },
+  { id: 'demo_p3', name: 'T.J.', initials: 'TJ', color: '#7FB6E8', handicapIndex: 7.2, handicapUpdatedAt: null },
+  { id: 'demo_p4', name: 'Big Ray', initials: 'BR', color: '#E89A7F', handicapIndex: 11.5, handicapUpdatedAt: null },
 ];
 
 const DEMO_POPS: Record<PlayerId, number> = {

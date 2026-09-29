@@ -493,6 +493,14 @@ describe('AppStoreProvider', () => {
     expect(store.round!.pops[ann]).toBe(-2);
   });
 
+  it('gives the demo players indexes that recalculate to the pops the demo round already has', async () => {
+    await mount();
+    expect(store.group!.players.every((p) => p.handicapIndex != null)).toBe(true);
+    const before = { ...store.round!.pops };
+    await change(() => store.recalculatePops());
+    expect(store.round!.pops).toEqual(before);
+  });
+
   it('flags a tee change instead of recalculating, until recalculated', async () => {
     const [ann, bob] = await startIndexedRound();
     const course = store.course!;

@@ -1324,6 +1324,7 @@ describe('handicaps', () => {
   });
 
   it('offers no recalculation when nobody has an index', async () => {
+    useStoreValue({ group: { ...group, players: group.players.map((p) => ({ ...p, handicapIndex: null })) } });
     await render(<FormatScreen />);
     expect(screen.queryByRole('button', { name: 'Recalculate from handicaps' })).toBeNull();
   });
