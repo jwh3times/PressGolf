@@ -19,6 +19,7 @@ export function makeFieldPlayers(count = 20): Player[] {
     initials: `P${i}`,
     color: '#8BE0AE',
     handicapIndex: null,
+    handicapUpdatedAt: null,
   }));
 }
 

@@ -23,6 +23,8 @@ export interface Player {
   color: string;
   /** WHS Handicap Index; a plus index is negative. Null when the player has none. */
   handicapIndex: number | null;
+  /** When the index was last entered, shown beside it. */
+  handicapUpdatedAt: number | null;
 }
 
 export interface Group {

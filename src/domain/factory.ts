@@ -38,6 +38,7 @@ export function makePlayer(name: string, index: number, overrides: Partial<Playe
     initials: deriveInitials(name),
     color: PLAYER_COLORS[index % PLAYER_COLORS.length],
     handicapIndex: null,
+    handicapUpdatedAt: null,
     ...overrides,
   };
 }

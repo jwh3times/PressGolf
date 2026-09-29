@@ -71,7 +71,11 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
       maxScore: group.maxScore ?? 'off',
       strokes: group.strokes ?? 'off_low',
       allowance: group.allowance ?? 100,
-      players: (group.players ?? []).map((p) => ({ ...p, handicapIndex: p.handicapIndex ?? null })),
+      players: (group.players ?? []).map((p) => ({
+        ...p,
+        handicapIndex: p.handicapIndex ?? null,
+        handicapUpdatedAt: p.handicapUpdatedAt ?? null,
+      })),
     })),
     courses: (parsed.courses ?? []).map(withTees),
     rounds,

@@ -11,7 +11,9 @@
 
 -- A plus index is stored negative. Null means the player has none.
 alter table players
-  add column handicap_index numeric(3, 1) check (handicap_index between -20.0 and 54.0);
+  add column handicap_index numeric(3, 1) check (handicap_index between -20.0 and 54.0),
+  -- When it was last entered, in epoch milliseconds like created_at elsewhere.
+  add column handicap_updated_at bigint;
 
 alter table groups
   add column strokes text not null default 'off_low' check (strokes in ('full', 'off_low')),

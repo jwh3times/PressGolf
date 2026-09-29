@@ -39,6 +39,7 @@ export function makeTestPlayers(count = 4): Player[] {
     initials: names[i].slice(0, 2).toUpperCase(),
     color: '#8BE0AE',
     handicapIndex: null,
+    handicapUpdatedAt: null,
   }));
 }
 

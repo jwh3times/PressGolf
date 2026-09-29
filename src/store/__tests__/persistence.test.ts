@@ -81,7 +81,7 @@ describe('dataset persistence', () => {
       return copy;
     };
     const group = strip(dataset.groups[0], 'strokes', 'allowance');
-    group.players = dataset.groups[0].players.map((p) => strip(p, 'handicapIndex'));
+    group.players = dataset.groups[0].players.map((p) => strip(p, 'handicapIndex', 'handicapUpdatedAt'));
     const round = strip(dataset.rounds[0], 'handicapTees');
     round.options = strip(dataset.rounds[0].options, 'strokes', 'allowance');
     storage.getItem.mockResolvedValueOnce(
@@ -91,7 +91,7 @@ describe('dataset persistence', () => {
     const loaded = await loadDataset(true);
 
     expect(loaded.groups[0]).toMatchObject({ strokes: 'off_low', allowance: 100 });
-    expect(loaded.groups[0].players.every((p) => p.handicapIndex === null)).toBe(true);
+    expect(loaded.groups[0].players.every((p) => p.handicapIndex === null && p.handicapUpdatedAt === null)).toBe(true);
     expect(loaded.rounds[0].options).toMatchObject({ strokes: 'off_low', allowance: 100 });
     expect(loaded.rounds[0].handicapTees).toEqual({});
     expect(loaded.rounds[0].pops).toEqual(dataset.rounds[0].pops);

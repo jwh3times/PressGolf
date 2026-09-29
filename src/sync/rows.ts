@@ -60,6 +60,7 @@ export interface PlayerRow {
   color: string;
   /** Absent on a server that predates the handicaps migration; read as no index. */
   handicap_index?: number | null;
+  handicap_updated_at?: number | null;
   sort_order: number;
 }
 
@@ -320,6 +321,7 @@ export function toRows(documents: Documents): Snapshot {
         initials: player.initials,
         color: player.color,
         handicap_index: player.handicapIndex,
+        handicap_updated_at: player.handicapUpdatedAt,
         sort_order: index,
       });
     });
@@ -552,6 +554,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       initials: p.initials,
       color: p.color,
       handicapIndex: p.handicap_index ?? null,
+      handicapUpdatedAt: p.handicap_updated_at ?? null,
     })),
     youId: row.you_id,
     defaultCourseId: row.default_course_id,

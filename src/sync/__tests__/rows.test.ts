@@ -57,7 +57,11 @@ function demoDocuments(): Documents {
           maxScore: 'double_bogey' as const,
           strokes: 'full' as const,
           allowance: 85,
-          players: g.players.map((p, j) => ({ ...p, handicapIndex: indexes[j] ?? null })),
+          players: g.players.map((p, j) => ({
+            ...p,
+            handicapIndex: indexes[j] ?? null,
+            handicapUpdatedAt: indexes[j] == null ? null : 1_750_000_000_000 + j,
+          })),
         }
       : g,
   );
