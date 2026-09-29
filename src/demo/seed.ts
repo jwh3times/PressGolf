@@ -1,4 +1,4 @@
-import { defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
+import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
 import { withHandicaps } from '../domain/handicap';
 import type { Course, Group, Hole, Outing, Player, PlayerId, Round } from '../domain/types';
 
@@ -94,9 +94,7 @@ export function demoGroup(now: number): Group {
     players: DEMO_PLAYERS.map((p) => ({ ...p, handicapUpdatedAt: now - 12 * DAY })),
     youId: 'demo_p1',
     defaultCourseId: DEMO_COURSE_ID,
-    maxScore: 'off',
-    strokes: 'off_low',
-    allowance: 100,
+    ...DEFAULT_HOUSE_RULES,
     subtitle: 'Pine Hollow · 7:40 tee',
     createdAt: 0,
   };
@@ -270,9 +268,7 @@ export function demoSociety(now: number): Group {
     players,
     youId: players[0].id,
     defaultCourseId: DEMO_COURSE_ID,
-    maxScore: 'off',
-    strokes: 'off_low',
-    allowance: 100,
+    ...DEFAULT_HOUSE_RULES,
     subtitle: 'Twenty out · five groups · first tee 8:00',
     createdAt: 0,
   };
@@ -350,9 +346,7 @@ export function demoOuting(
     name: 'Society Saturday',
     date: now,
     teeFormat: 'sequential',
-    maxScore: 'off',
-    strokes: 'off_low',
-    allowance: 100,
+    ...DEFAULT_HOUSE_RULES,
     field: [...ids],
     fieldGames,
     roundIds: rounds.map((r) => r.id),

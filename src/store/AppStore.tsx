@@ -11,6 +11,7 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
+import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
 import { withHandicaps } from '../domain/handicap';
 import type {
   Course,
@@ -420,22 +421,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const current = prev.outings.find((o) => o.id === prev.activeOutingId);
           if (!current) return prev;
           const updated = { ...current, ...patch };
-          // The whole field plays one max-score and handicap rule, so every group follows the outing's.
-          const locked = patch.maxScore !== undefined || patch.strokes !== undefined || patch.allowance !== undefined;
-          const rounds = locked
-            ? prev.rounds.map((r) =>
-                r.outingId === current.id
-                  ? {
-                      ...r,
-                      options: {
-                        ...r.options,
-                        maxScore: updated.maxScore,
-                        strokes: updated.strokes,
-                        allowance: updated.allowance,
-                      },
-                    }
-                  : r,
-              )
+          // The whole field plays one set of house rules, so every group follows the outing's.
+          const rules = houseRules(updated);
+          const rulesChanged = (Object.keys(rules) as (keyof typeof rules)[]).some((key) => patch[key] !== undefined);
+          const rounds = rulesChanged
+            ? prev.rounds.map((r) => (r.outingId === current.id ? { ...r, options: { ...r.options, ...rules } } : r))
             : prev.rounds;
           return { ...prev, outings: prev.outings.map((o) => (o.id === current.id ? updated : o)), rounds };
         }),
@@ -530,9 +520,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           players: [],
           youId: null,
           defaultCourseId: null,
-          maxScore: 'off',
-          strokes: 'off_low',
-          allowance: 100,
+          ...DEFAULT_HOUSE_RULES,
           subtitle: '',
           createdAt: Date.now(),
         };

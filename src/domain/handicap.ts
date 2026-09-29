@@ -1,11 +1,8 @@
 import { RoundContext } from './engine/context';
-import type { Course, Player, PlayerId, Round, StrokesMode, Tee } from './types';
+import type { Course, HouseRules, Player, PlayerId, Round, Tee } from './types';
 
-export interface HandicapSettings {
-  strokes: StrokesMode;
-  /** Percentage of the course handicap each player plays off, e.g. 100. */
-  allowance: number;
-}
+/** The house rules that decide pops. */
+export type HandicapSettings = Pick<HouseRules, 'strokes' | 'allowance'>;
 
 export interface HandicapEntry {
   id: PlayerId;
@@ -111,12 +108,11 @@ function handicapText(value: number, digits = 0): string {
  */
 export function handicapWorking(rounds: Round[], course: Course, roster: Player[]): Record<PlayerId, PopsWorking> {
   if (rounds.length === 0) return {};
-  const { strokes, allowance } = rounds[0].options;
   const entries = rounds.flatMap((round) => {
     const ctx = new RoundContext(round, course, roster);
     return ctx.players.map((p) => ({ id: p.id, index: p.handicapIndex, tee: ctx.teeFor(p.id) }));
   });
-  return calculatePops(entries, { strokes, allowance });
+  return calculatePops(entries, rounds[0].options);
 }
 
 /**

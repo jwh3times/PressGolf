@@ -16,6 +16,7 @@
  * what preserves the shape of the card — how many holes it has — when it comes
  * back down.
  */
+import { houseRulesOrDefault } from '../domain/formats';
 import {
   FIELD_GAME_KEYS,
   GAME_KEYS,
@@ -558,9 +559,7 @@ export function fromRows(snapshot: Snapshot): Documents {
     })),
     youId: row.you_id,
     defaultCourseId: row.default_course_id,
-    maxScore: row.max_score ?? 'off',
-    strokes: row.strokes ?? 'off_low',
-    allowance: row.allowance ?? 100,
+    ...houseRulesOrDefault({ maxScore: row.max_score, strokes: row.strokes, allowance: row.allowance }),
     subtitle: row.subtitle,
     createdAt: row.created_at,
   }));
@@ -612,9 +611,7 @@ export function fromRows(snapshot: Snapshot): Documents {
 
     const opt = optionsByRound.get(row.id);
     const options: GameOptions = {
-      maxScore: opt?.max_score ?? 'off',
-      strokes: opt?.strokes ?? 'off_low',
-      allowance: opt?.allowance ?? 100,
+      ...houseRulesOrDefault({ maxScore: opt?.max_score, strokes: opt?.strokes, allowance: opt?.allowance }),
       teams: (teams.get(row.id) ?? [])
         .slice()
         .sort((a, b) => a.slot - b.slot)
@@ -691,9 +688,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       name: row.name,
       date: row.date,
       teeFormat: row.tee_format,
-      maxScore: row.max_score ?? 'off',
-      strokes: row.strokes ?? 'off_low',
-      allowance: row.allowance ?? 100,
+      ...houseRulesOrDefault({ maxScore: row.max_score, strokes: row.strokes, allowance: row.allowance }),
       field: (field.get(row.id) ?? []).slice().sort(byOrder).map((f) => f.player_id),
       fieldGames: { fieldSkins: config('fieldSkins'), scats: config('scats') },
       roundIds: [],

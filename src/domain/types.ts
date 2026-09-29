@@ -27,7 +27,19 @@ export interface Player {
   handicapUpdatedAt: number | null;
 }
 
-export interface Group {
+/**
+ * The group's house rules. A group sets them as its default, each new round and
+ * outing copies them, and an outing locks them for every group in it.
+ */
+export interface HouseRules {
+  maxScore: MaxScoreRule;
+  /** How pops are taken from handicaps. */
+  strokes: StrokesMode;
+  /** Percentage of each course handicap played off, e.g. 100. */
+  allowance: number;
+}
+
+export interface Group extends HouseRules {
   id: GroupId;
   name: string;
   players: Player[];
@@ -35,12 +47,6 @@ export interface Group {
   youId: PlayerId | null;
   /** Default home course for new rounds. */
   defaultCourseId: CourseId | null;
-  /** The group's house rule, copied onto each new round and outing. */
-  maxScore: MaxScoreRule;
-  /** How pops are taken from handicaps, copied like `maxScore`. */
-  strokes: StrokesMode;
-  /** Percentage of each course handicap played off, copied like `maxScore`. */
-  allowance: number;
   /** Free text shown under the group name on Home, e.g. "Pine Hollow · 7:40 tee". */
   subtitle: string;
   createdAt: number;
@@ -138,12 +144,8 @@ export type MaxScoreRule = 'off' | 'double_bogey' | 'net_double_bogey';
 /** Full handicaps, or everyone off the lowest in the round (or the whole field in an outing). */
 export type StrokesMode = 'full' | 'off_low';
 
-/** Extra settings that only some formats need. */
-export interface GameOptions {
-  maxScore: MaxScoreRule;
-  strokes: StrokesMode;
-  /** Percentage, e.g. 100. */
-  allowance: number;
+/** The round's copy of the house rules, plus extra settings that only some formats need. */
+export interface GameOptions extends HouseRules {
   /** Sides for four-ball and Vegas. Empty until the group sets them. */
   teams: Team[];
   /** 1v1 match play pairings. Defaults to every pair (round robin). */
@@ -296,19 +298,18 @@ export type TeeFormat = 'sequential' | 'shotgun';
  * A normal foursome round does not need one of these — a Round with a null
  * outingId stands on its own. An Outing exists when field-wide money is in
  * play, or when more than one group is out at once.
+ *
+ * It has one set of house rules for the whole day, so field pots compare like
+ * with like: every round in it inherits them, and off the low man means the
+ * lowest in the whole field.
  */
-export interface Outing {
+export interface Outing extends HouseRules {
   id: OutingId;
   groupId: GroupId;
   courseId: CourseId;
   name: string;
   date: number;
   teeFormat: TeeFormat;
-  /** One rule for the whole day, so field pots compare like with like. Every round in it inherits this. */
-  maxScore: MaxScoreRule;
-  /** Locked for the day like `maxScore`; off the low man means the lowest in the whole field. */
-  strokes: StrokesMode;
-  allowance: number;
   /** Everybody playing today, whether or not they are in a pot. */
   field: PlayerId[];
   fieldGames: FieldGames;

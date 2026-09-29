@@ -1,4 +1,4 @@
-import type { FieldGameKey, FieldGames, GameKey, GameOptions, GamesConfig } from './types';
+import type { FieldGameKey, FieldGames, GameKey, GameOptions, GamesConfig, HouseRules } from './types';
 
 export interface FormatMeta {
   name: string;
@@ -164,11 +164,26 @@ export function defaultFieldGames(): FieldGames {
   };
 }
 
+/** A new group's house rules: no max score, off the low man at 100%, which is what the Format tab always said. */
+export const DEFAULT_HOUSE_RULES: HouseRules = { maxScore: 'off', strokes: 'off_low', allowance: 100 };
+
+/** Just the house rules of a group, an outing or a round's options, to copy them on. */
+export function houseRules(from: HouseRules): HouseRules {
+  return { maxScore: from.maxScore, strokes: from.strokes, allowance: from.allowance };
+}
+
+/** House rules from data that may predate some of them: an older save, or an older server's rows. */
+export function houseRulesOrDefault(from: Partial<HouseRules> | undefined): HouseRules {
+  return {
+    maxScore: from?.maxScore ?? DEFAULT_HOUSE_RULES.maxScore,
+    strokes: from?.strokes ?? DEFAULT_HOUSE_RULES.strokes,
+    allowance: from?.allowance ?? DEFAULT_HOUSE_RULES.allowance,
+  };
+}
+
 export function defaultOptions(): GameOptions {
   return {
-    maxScore: 'off',
-    strokes: 'off_low',
-    allowance: 100,
+    ...DEFAULT_HOUSE_RULES,
     teams: [],
     matchPairings: [],
     wolfLoneMultiplier: 2,

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_VERSION, storageNamespace } from '../config/flags';
+import { houseRulesOrDefault } from '../domain/formats';
 import type { AppData, AppSettings, Course, Hole } from '../domain/types';
 
 /** Where the demo/live preference lives — outside both datasets, so it survives switching. */
@@ -57,20 +58,13 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     teeId: round.teeId ?? null,
     playerTees: round.playerTees ?? {},
     handicapTees: round.handicapTees ?? {},
-    options: {
-      ...round.options,
-      maxScore: round.options?.maxScore ?? 'off',
-      strokes: round.options?.strokes ?? 'off_low',
-      allowance: round.options?.allowance ?? 100,
-    },
+    options: { ...round.options, ...houseRulesOrDefault(round.options) },
   }));
   return {
     version: STORAGE_VERSION,
     groups: (parsed.groups ?? []).map((group) => ({
       ...group,
-      maxScore: group.maxScore ?? 'off',
-      strokes: group.strokes ?? 'off_low',
-      allowance: group.allowance ?? 100,
+      ...houseRulesOrDefault(group),
       players: (group.players ?? []).map((p) => ({
         ...p,
         handicapIndex: p.handicapIndex ?? null,
@@ -79,12 +73,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     })),
     courses: (parsed.courses ?? []).map(withTees),
     rounds,
-    outings: (parsed.outings ?? []).map((outing) => ({
-      ...outing,
-      maxScore: outing.maxScore ?? 'off',
-      strokes: outing.strokes ?? 'off_low',
-      allowance: outing.allowance ?? 100,
-    })),
+    outings: (parsed.outings ?? []).map((outing) => ({ ...outing, ...houseRulesOrDefault(outing) })),
     activeGroupId: parsed.activeGroupId ?? null,
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,

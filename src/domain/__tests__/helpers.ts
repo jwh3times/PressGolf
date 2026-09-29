@@ -1,4 +1,4 @@
-import { defaultGames, defaultOptions } from '../formats';
+import { DEFAULT_HOUSE_RULES, defaultGames, defaultOptions } from '../formats';
 import type { Course, GameKey, Group, Hole, Player, PlayerId, Round } from '../types';
 
 export const TEST_PAR = [4, 5, 4, 3, 4, 4, 5, 3, 4, 4, 4, 3, 5, 4, 4, 3, 4, 5];
@@ -51,9 +51,7 @@ export function makeTestGroup(count = 4): Group {
     players,
     youId: players[0].id,
     defaultCourseId: 'course1',
-    maxScore: 'off',
-    strokes: 'off_low',
-    allowance: 100,
+    ...DEFAULT_HOUSE_RULES,
     subtitle: '',
     createdAt: 0,
   };
