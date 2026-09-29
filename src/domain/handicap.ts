@@ -1,5 +1,5 @@
 import { RoundContext } from './engine/context';
-import type { Course, Player, PlayerId, Round, RoundId, StrokesMode, Tee } from './types';
+import type { Course, Player, PlayerId, Round, StrokesMode, Tee } from './types';
 
 export interface HandicapSettings {
   strokes: StrokesMode;
@@ -46,29 +46,40 @@ export function calculatePops(
 }
 
 /**
- * Pops recalculated for each round from every player's index and own tee, under
- * the rounds' strokes mode and allowance. Pass every round in an outing together:
- * off the low man then means the lowest in the whole field. A player with no
- * index keeps what they have.
+ * Rounds with pops recalculated from every player's index and own tee, under the
+ * rounds' strokes mode and allowance, noting the tee each was worked out from.
+ * Pass every round in an outing together: off the low man then means the lowest
+ * in the whole field. A player with no index keeps what they have.
  */
-export function handicapPops(rounds: Round[], course: Course, roster: Player[]): Map<RoundId, Round['pops']> {
-  const out = new Map<RoundId, Round['pops']>();
-  if (rounds.length === 0) return out;
+export function withHandicaps(rounds: Round[], course: Course, roster: Player[]): Round[] {
+  if (rounds.length === 0) return rounds;
   const contexts = rounds.map((round) => new RoundContext(round, course, roster));
   const { strokes, allowance } = rounds[0].options;
   const worked = calculatePops(
     contexts.flatMap((ctx) => ctx.players.map((p) => ({ id: p.id, index: p.handicapIndex, tee: ctx.teeFor(p.id) }))),
     { strokes, allowance },
   );
-  for (const round of rounds) {
+  return contexts.map((ctx) => {
+    const { round } = ctx;
     const pops = { ...round.pops };
+    const handicapTees = { ...round.handicapTees };
     for (const id of round.playerIds) {
       const w = worked[id];
-      if (w && 'pops' in w) pops[id] = w.pops;
+      if (!w || !('pops' in w)) continue;
+      pops[id] = w.pops;
+      handicapTees[id] = ctx.teeFor(id).id;
     }
-    out.set(round.id, pops);
-  }
-  return out;
+    return { ...round, pops, handicapTees };
+  });
+}
+
+/** Players whose tee has changed since their pops were worked out from their index. */
+export function teesChanged(round: Round, course: Course): PlayerId[] {
+  const ctx = new RoundContext(round, course, []);
+  return round.playerIds.filter((id) => {
+    const worked = round.handicapTees[id];
+    return worked != null && worked !== ctx.teeFor(id).id;
+  });
 }
 
 /**

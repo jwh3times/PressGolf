@@ -11,7 +11,7 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
-import { handicapPops } from '../domain/handicap';
+import { withHandicaps } from '../domain/handicap';
 import type {
   Course,
   FieldGameConfig,
@@ -182,8 +182,7 @@ function withHandicapPops(state: AppState, rounds: Round[]): Round[] {
   const others = first.outingId
     ? state.rounds.filter((r) => r.outingId === first.outingId && !ids.has(r.id))
     : [];
-  const pops = handicapPops([...rounds, ...others], course, roster);
-  return rounds.map((r) => ({ ...r, pops: pops.get(r.id) ?? r.pops }));
+  return withHandicaps([...rounds, ...others], course, roster).slice(0, rounds.length);
 }
 
 /** Points the store at a round: a card round opens in the card slot, a live one as the active round. */

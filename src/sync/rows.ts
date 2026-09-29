@@ -616,6 +616,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       teeTime: row.tee_time,
       playerIds,
       pops,
+      handicapTees: {},
       scores: card,
       junk: junkMap,
       pickups,

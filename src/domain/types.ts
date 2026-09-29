@@ -221,6 +221,8 @@ export interface Round {
   playerTees: Record<PlayerId, TeeId>;
   /** Pops (strokes received) per player, applied to the lowest stroke indexes first. */
   pops: Record<PlayerId, number>;
+  /** The tee each player's pops were last worked out from, so a tee change can ask for a recalculation. */
+  handicapTees: Record<PlayerId, TeeId>;
   /** `scores[playerId][holeIndex]`, null when not yet entered. */
   scores: Record<PlayerId, (number | null)[]>;
   junk: JunkMap;

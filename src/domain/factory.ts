@@ -130,6 +130,7 @@ export function makeRound(
     teeTime: extras.teeTime ?? null,
     playerIds: ids,
     pops,
+    handicapTees: {},
     scores,
     junk: {},
     pickups: {},

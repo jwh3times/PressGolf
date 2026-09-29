@@ -98,6 +98,7 @@ export function makeTestOuting(spec: OutingSpec): {
       teeTime: `8:${String(g * 10).padStart(2, '0')}`,
       playerIds: ids,
       pops,
+      handicapTees: {},
       scores,
       junk: {},
       pickups: Object.fromEntries(

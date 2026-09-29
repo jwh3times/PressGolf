@@ -13,6 +13,7 @@ import {
   saveSettings,
 } from '../persistence';
 import { AppStoreProvider, useStore, type AppStore } from '../AppStore';
+import { teesChanged } from '../../domain/handicap';
 
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('../../sync/useDataSync', () => ({ useDataSync: jest.fn() }));
@@ -490,6 +491,26 @@ describe('AppStoreProvider', () => {
     await change(() => store.setOptions({ strokes: 'full' }));
     await change(() => store.setPops(ann, -2));
     expect(store.round!.pops[ann]).toBe(-2);
+  });
+
+  it('flags a tee change instead of recalculating, until recalculated', async () => {
+    const [ann, bob] = await startIndexedRound();
+    const course = store.course!;
+    let red!: ReturnType<AppStore['addTee']>;
+    await change(() => {
+      red = store.addTee(course.id, course.tees[0].id, 'Red');
+    });
+    await change(() => store.updateTee(course.id, red!.id, { slope: 113, rating: 70 }));
+    expect(teesChanged(store.round!, store.course!)).toEqual([]);
+
+    await change(() => store.setPlayerTee(ann, red!.id));
+    expect(store.round!.pops[ann]).toBe(6);
+    expect(teesChanged(store.round!, store.course!)).toEqual([ann]);
+
+    await change(() => store.recalculatePops());
+    // Red plays two shots easier: Ann 10 − 2 = 8, less Bob's 4.
+    expect(store.round!.pops).toMatchObject({ [ann]: 4, [bob]: 0 });
+    expect(teesChanged(store.round!, store.course!)).toEqual([]);
   });
 
   it('takes an outing off the low man in the whole field, and locks its handicap rules', async () => {

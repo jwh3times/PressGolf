@@ -104,6 +104,7 @@ export function makeTestRound(spec: RoundSpec): Round {
     teeTime: null,
     playerIds: ids,
     pops,
+    handicapTees: {},
     scores,
     junk: spec.junk ?? {},
     pickups: spec.pickups ?? {},
