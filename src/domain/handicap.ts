@@ -84,14 +84,15 @@ export function formatIndex(index: number): string {
 }
 
 /**
- * Reads a typed Handicap Index, "+1.4" being a plus index. Null for a blank or
+ * Reads a typed Handicap Index, "+1.4" being a plus index. A leading minus is
+ * read as plus too, since no ordinary index is negative. Null for a blank or
  * anything outside the WHS range (up to 54.0, or +20.0 either side of scratch).
  */
 export function parseIndex(text: string): number | null {
   const trimmed = text.trim();
   if (!/[0-9]/.test(trimmed)) return null;
   const value = Number(trimmed.replace(/[^0-9.]/g, ''));
-  const plus = trimmed.startsWith('+');
+  const plus = /^[+\-−]/.test(trimmed);
   if (!Number.isFinite(value) || value > (plus ? 20 : 54)) return null;
   const tenth = Math.round(value * 10) / 10;
   return plus && tenth > 0 ? -tenth : tenth;

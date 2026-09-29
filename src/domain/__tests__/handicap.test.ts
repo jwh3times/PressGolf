@@ -140,6 +140,11 @@ describe('typing an index', () => {
     expect(parseIndex('+0')).toBe(0);
   });
 
+  it('reads a minus sign as a plus index too, never as strokes received', () => {
+    expect(parseIndex('-1.4')).toBe(-1.4);
+    expect(parseIndex('−2')).toBe(-2);
+  });
+
   it('reads a blank, junk or an index outside the WHS range as none', () => {
     expect(parseIndex('')).toBeNull();
     expect(parseIndex('+')).toBeNull();
