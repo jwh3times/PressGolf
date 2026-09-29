@@ -134,6 +134,7 @@ const actions = {
   discardCard: jest.fn(),
   setPickedUp: jest.fn(),
   setPops: jest.fn(),
+  recalculatePops: jest.fn(),
   toggleJunk: jest.fn(),
   toggleGame: jest.fn(),
   setStake: jest.fn(),
@@ -1149,7 +1150,7 @@ describe('max score and pick-ups', () => {
 
     mockUseStore.mockReturnValue(outingStore);
     view = await render(<FormatScreen />);
-    expect(screen.getByText(/Set for the whole outing/)).toBeOnTheScreen();
+    expect(screen.getByText(/Set for the whole outing.*every group plays one rule/)).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Net double bogey' })).toBeDisabled();
     await view.unmount();
 
@@ -1280,6 +1281,91 @@ describe('entering a finished card', () => {
     await user.press(screen.getByRole('button', { name: 'Hole by hole' }));
     expect(screen.getByRole('button', { name: 'Go to hole 1' })).toBeOnTheScreen();
     alert.mockRestore();
+  });
+});
+
+describe('handicaps', () => {
+  const [blue, red] = course.tees;
+  const ids = round.playerIds;
+  const indexes: Record<string, number | null> = { [ids[0]]: 12.4, [ids[1]]: 4.0, [ids[2]]: null, [ids[3]]: -1.4 };
+  const indexed = {
+    ...group,
+    players: group.players.map((p) => ({ ...p, handicapIndex: indexes[p.id] ?? null, handicapUpdatedAt: null })),
+  };
+  const nameOf = (id: string) => group.players.find((p) => p.id === id)!.name;
+
+  it('shows each player’s working, flags no index and a changed tee, and recalculates', async () => {
+    const user = userEvent.setup();
+    useStoreValue({
+      group: indexed,
+      round: {
+        ...round,
+        options: { ...round.options, strokes: 'off_low', allowance: 100 },
+        // Worked out from Blue, but the second player has since moved to Red.
+        handicapTees: { [ids[0]]: blue.id, [ids[1]]: blue.id, [ids[3]]: blue.id },
+        playerTees: { [ids[1]]: red.id },
+      } as typeof round,
+    });
+    await render(<FormatScreen />);
+
+    // 12.4 × 131 / 113 + (71.8 − par) on Blue, off the +1.4 low man.
+    expect(screen.getByText(/^12\.4 · Blue 131\/71\.8 → \d+ · \+\d off the low man$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^\+1\.4 · Blue 131\/71\.8 → \+\d · the low man$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^no index/)).toBeOnTheScreen();
+    expect(screen.getByText(/tee changed · recalculate\?/)).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Recalculate from handicaps' }));
+    expect(actions.recalculatePops).toHaveBeenCalled();
+    await user.press(screen.getByRole('button', { name: 'Full handicaps' }));
+    expect(actions.setOptions).toHaveBeenCalledWith({ strokes: 'full' });
+    await user.press(screen.getByRole('button', { name: 'Lower the allowance' }));
+    expect(actions.setOptions).toHaveBeenCalledWith({ allowance: 95 });
+    expectEveryControlToHaveAName();
+  });
+
+  it('offers no recalculation when nobody has an index', async () => {
+    await render(<FormatScreen />);
+    expect(screen.queryByRole('button', { name: 'Recalculate from handicaps' })).toBeNull();
+  });
+
+  it('enters an index on the roster, a plus one with a plus sign', async () => {
+    const user = userEvent.setup();
+    useStoreValue({ group: indexed });
+    await render(<RosterScreen />);
+    await user.press(screen.getByRole('button', { name: new RegExp(nameOf(ids[2])) }));
+    const field = screen.getByLabelText(`Handicap index for ${nameOf(ids[2])}`);
+    await user.type(field, '+2.1');
+    expect(actions.updatePlayer).toHaveBeenLastCalledWith(group.id, ids[2], {
+      handicapIndex: -2.1,
+      handicapUpdatedAt: expect.any(Number),
+    });
+    await user.clear(field);
+    expect(actions.updatePlayer).toHaveBeenLastCalledWith(group.id, ids[2], {
+      handicapIndex: null,
+      handicapUpdatedAt: null,
+    });
+  });
+
+  it('sets the handicap rule for the group, and once for a whole outing', async () => {
+    const user = userEvent.setup();
+    let view = await render(<RosterScreen />);
+    await user.press(screen.getByRole('button', { name: 'Full handicaps' }));
+    expect(actions.updateGroup).toHaveBeenCalledWith(group.id, { strokes: 'full' });
+    await user.press(screen.getByRole('button', { name: 'Lower the allowance' }));
+    expect(actions.updateGroup).toHaveBeenCalledWith(group.id, { allowance: 95 });
+    await view.unmount();
+
+    mockUseStore.mockReturnValue(outingStore);
+    view = await render(<FormatScreen />);
+    expect(screen.getByText(/Set for the whole outing.*lowest in the whole field/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Full handicaps' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Raise the allowance' })).toBeDisabled();
+    await view.unmount();
+
+    view = await render(<FieldGamesScreen />);
+    await user.press(screen.getByRole('button', { name: 'Full handicaps' }));
+    expect(actions.updateOuting).toHaveBeenCalledWith({ strokes: 'full' });
+    await view.unmount();
   });
 });
 

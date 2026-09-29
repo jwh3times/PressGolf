@@ -78,6 +78,25 @@ export function describeWorking(working: PopsWorking): string {
   return parts.join(' · ');
 }
 
+/** A Handicap Index as golfers write it: 12.4, or +1.4 for a plus index (stored as −1.4). */
+export function formatIndex(index: number): string {
+  return handicapText(index, 1);
+}
+
+/**
+ * Reads a typed Handicap Index, "+1.4" being a plus index. Null for a blank or
+ * anything outside the WHS range (up to 54.0, or +20.0 either side of scratch).
+ */
+export function parseIndex(text: string): number | null {
+  const trimmed = text.trim();
+  if (!/[0-9]/.test(trimmed)) return null;
+  const value = Number(trimmed.replace(/[^0-9.]/g, ''));
+  const plus = trimmed.startsWith('+');
+  if (!Number.isFinite(value) || value > (plus ? 20 : 54)) return null;
+  const tenth = Math.round(value * 10) / 10;
+  return plus && tenth > 0 ? -tenth : tenth;
+}
+
 /** A plus handicap reads with a plus sign: −1.4 is "+1.4". */
 function handicapText(value: number, digits = 0): string {
   const text = Math.abs(value).toFixed(digits);

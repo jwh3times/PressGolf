@@ -18,6 +18,7 @@ import { FIELD_GAME_KEYS } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
 import { MaxScorePicker } from '../components/MaxScorePicker';
+import { HandicapPicker } from '../components/HandicapPicker';
 
 /**
  * The pots everybody plays, and who is in them.
@@ -61,6 +62,12 @@ export default function FieldGamesScreen() {
       </Body>
 
       <MaxScorePicker value={outing.maxScore} onChange={(maxScore) => store.updateOuting({ maxScore })} />
+
+      <HandicapPicker
+        strokes={outing.strokes}
+        allowance={outing.allowance}
+        onChange={(patch) => store.updateOuting(patch)}
+      />
 
       {FIELD_GAME_KEYS.map((key) => {
         const meta = FIELD_FORMATS[key];

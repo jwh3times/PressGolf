@@ -17,6 +17,8 @@ import type { Player } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { colors, fonts, ink, radius } from '../theme/tokens';
 import { MaxScorePicker } from '../components/MaxScorePicker';
+import { HandicapPicker } from '../components/HandicapPicker';
+import { formatIndex, parseIndex } from '../domain/handicap';
 
 export default function RosterScreen() {
   const store = useStore();
@@ -102,6 +104,13 @@ export default function RosterScreen() {
         onChange={(maxScore) => store.updateGroup(group.id, { maxScore })}
       />
 
+      <HandicapPicker
+        title="House handicaps"
+        strokes={group.strokes}
+        allowance={group.allowance}
+        onChange={(patch) => store.updateGroup(group.id, patch)}
+      />
+
       <View style={{ gap: 10 }}>
         <Eyebrow>Players</Eyebrow>
         {group.players.length === 0 ? (
@@ -132,7 +141,11 @@ export default function RosterScreen() {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.sub}>{open ? 'tap to close' : 'tap to edit'}</Text>
+                  <Text style={styles.sub}>
+                    {open
+                      ? 'tap to close'
+                      : `${player.handicapIndex == null ? '' : `index ${formatIndex(player.handicapIndex)} · `}tap to edit`}
+                  </Text>
                 </View>
                 <Mono size={11} style={{ color: ink.quiet }}>
                   {index + 1}
@@ -163,6 +176,10 @@ export default function RosterScreen() {
                     onChangeText={(text) =>
                       store.updatePlayer(group.id, player.id, { initials: text.toUpperCase() })
                     }
+                  />
+                  <IndexField
+                    player={player}
+                    onChange={(patch) => store.updatePlayer(group.id, player.id, patch)}
                   />
                   <View style={{ gap: 6 }}>
                     <Text style={styles.fieldLabel}>Colour</Text>
@@ -228,6 +245,36 @@ export default function RosterScreen() {
         </View>
       </View>
     </Screen>
+  );
+}
+
+/** Kept as typed while editing, so "12." or "+" part-way through is not rewritten under the thumb. */
+function IndexField({
+  player,
+  onChange,
+}: {
+  player: Player;
+  onChange: (patch: Pick<Player, 'handicapIndex' | 'handicapUpdatedAt'>) => void;
+}) {
+  const [text, setText] = useState(player.handicapIndex == null ? '' : formatIndex(player.handicapIndex));
+  const updated =
+    player.handicapUpdatedAt == null
+      ? null
+      : new Date(player.handicapUpdatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return (
+    <Field
+      label="Handicap index"
+      accessibilityLabel={`Handicap index for ${player.name}`}
+      placeholder="None"
+      keyboardType="numbers-and-punctuation"
+      value={text}
+      hint={`${updated ? `Updated ${updated}. ` : ''}A plus index starts with +, e.g. +1.4. Leave blank for none.`}
+      onChangeText={(next) => {
+        setText(next);
+        const index = parseIndex(next);
+        onChange({ handicapIndex: index, handicapUpdatedAt: index == null ? null : Date.now() });
+      }}
+    />
   );
 }
 

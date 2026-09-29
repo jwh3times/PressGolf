@@ -24,6 +24,8 @@ import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
 import { MaxScorePicker } from '../../components/MaxScorePicker';
+import { HandicapPicker } from '../../components/HandicapPicker';
+import { describeWorking, handicapWorking, teesChanged } from '../../domain/handicap';
 
 export default function FormatScreen() {
   const store = useStore();
@@ -56,6 +58,10 @@ export default function FormatScreen() {
   const roster = group.players.filter((p) => round.playerIds.includes(p.id));
   const roundTee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
   const exposure = maxExposure(round, course, group.players);
+  // An outing's low man is the lowest in the whole field, so the working looks across every group.
+  const working = handicapWorking(round.outingId ? store.outingRounds : [round], course, group.players);
+  const teeChanged = new Set(teesChanged(round, course));
+  const anyIndex = roster.some((p) => p.handicapIndex != null);
   /** Stake steps scale with the bet so a $100 match isn't 100 taps from $1. */
   const step = (cents: number) => (cents >= 5000 ? 1000 : cents >= 2000 ? 500 : 100);
 
@@ -185,17 +191,26 @@ export default function FormatScreen() {
       <Card style={{ padding: 16, gap: 4 }}>
         <View style={[styles.popsHeader, largeText ? styles.stackRow : null]}>
           <Eyebrow>Pops</Eyebrow>
-          <Text style={styles.popsMeta}>strokes off the low man</Text>
+          <Text style={styles.popsMeta}>
+            {round.options.strokes === 'full' ? 'full handicaps' : 'strokes off the low man'}
+            {round.options.allowance === 100 ? '' : ` · ${round.options.allowance}%`}
+          </Text>
         </View>
         {roster.map((player) => {
           const pops = round.pops[player.id] ?? 0;
+          const hint = popsHint(pops, course.tees[0].holes.length);
+          const w = working[player.id];
           return (
             <View key={player.id} style={[styles.popsRow, largeText ? styles.stackRow : null]}>
               <View style={[styles.popsIdentity, largeText ? styles.fullWidth : null]}>
                 <Avatar initials={player.initials} color={player.color} size={30} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.popsName}>{player.name}</Text>
-                  <Text style={styles.popsHint}>{popsHint(pops, course.tees[0].holes.length)}</Text>
+                  <Text style={styles.popsHint}>{anyIndex && w ? describeWorking(w) : hint}</Text>
+                  {anyIndex && w ? <Text style={styles.popsHint}>{hint}</Text> : null}
+                  {teeChanged.has(player.id) ? (
+                    <Text style={[styles.popsHint, { color: colors.accent }]}>tee changed · recalculate?</Text>
+                  ) : null}
                 </View>
               </View>
               <Stepper
@@ -208,11 +223,31 @@ export default function FormatScreen() {
             </View>
           );
         })}
+        {anyIndex ? (
+          <GhostButton
+            label="Recalculate from handicaps"
+            onPress={() => store.recalculatePops()}
+            style={{ marginTop: 10 }}
+          />
+        ) : null}
         <GhostButton
           dashed
           label="Edit the roster"
           onPress={() => router.push('/roster')}
           style={{ marginTop: 10 }}
+        />
+      </Card>
+
+      <Card style={{ padding: 16 }}>
+        <HandicapPicker
+          strokes={round.options.strokes}
+          allowance={round.options.allowance}
+          onChange={(patch) => store.setOptions(patch)}
+          lockedReason={
+            round.outingId
+              ? 'Set for the whole outing, on the Field pots screen: pops come off the lowest in the whole field.'
+              : undefined
+          }
         />
       </Card>
 
@@ -309,6 +344,12 @@ function FormatRequirement({
 
 function popsHint(pops: number, holeCount: number): string {
   if (pops === 0) return 'scratch in this group';
+  if (pops < 0) {
+    // A plus handicap gives strokes back from the easiest hole.
+    const back = -pops;
+    if (back >= holeCount) return 'gives a stroke back on every hole';
+    return back === 1 ? `gives a stroke back on SI ${holeCount}` : `gives strokes back on SI ${holeCount - back + 1}–${holeCount}`;
+  }
   if (pops >= holeCount) {
     const extra = pops - holeCount;
     if (extra === 0) return 'a stroke on every hole';
