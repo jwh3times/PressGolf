@@ -25,7 +25,7 @@ import { useStore } from '../../store/AppStore';
 import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
 import { MaxScorePicker } from '../../components/MaxScorePicker';
 import { HandicapPicker } from '../../components/HandicapPicker';
-import { describeWorking, handicapWorking, teesChanged } from '../../domain/handicap';
+import { describeWorking, teesChanged, workingsFor } from '../../domain/handicap';
 
 export default function FormatScreen() {
   const store = useStore();
@@ -59,7 +59,7 @@ export default function FormatScreen() {
   const roundTee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
   const exposure = maxExposure(round, course, group.players);
   // An outing's low man is the lowest in the whole field, so the working looks across every group.
-  const working = handicapWorking(round.outingId ? store.outingRounds : [round], course, group.players);
+  const workings = workingsFor(round.outingId ? store.outingRounds : [round], course, group.players);
   const teeChanged = new Set(teesChanged(round, course));
   const anyIndex = roster.some((p) => p.handicapIndex != null);
   /** Stake steps scale with the bet so a $100 match isn't 100 taps from $1. */
@@ -199,17 +199,17 @@ export default function FormatScreen() {
         {roster.map((player) => {
           const pops = round.pops[player.id] ?? 0;
           const hint = popsHint(pops, course.tees[0].holes.length);
-          const w = working[player.id];
+          const working = workings[player.id];
           // What the handicaps give now, which an override or a later index or rule change can leave behind.
-          const calculated = w && 'pops' in w ? w.pops : null;
+          const calculated = working && 'pops' in working ? working.pops : null;
           return (
             <View key={player.id} style={[styles.popsRow, largeText ? styles.stackRow : null]}>
               <View style={[styles.popsIdentity, largeText ? styles.fullWidth : null]}>
                 <Avatar initials={player.initials} color={player.color} size={30} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.popsName}>{player.name}</Text>
-                  <Text style={styles.popsHint}>{anyIndex && w ? describeWorking(w) : hint}</Text>
-                  {anyIndex && w ? <Text style={styles.popsHint}>{hint}</Text> : null}
+                  <Text style={styles.popsHint}>{anyIndex && working ? describeWorking(working) : hint}</Text>
+                  {anyIndex && working ? <Text style={styles.popsHint}>{hint}</Text> : null}
                   {teeChanged.has(player.id) ? (
                     <Text style={[styles.popsHint, { color: colors.accent }]}>tee changed · recalculate?</Text>
                   ) : calculated != null && calculated !== pops ? (

@@ -22,8 +22,8 @@ export type PopsWorking =
       courseHandicap: number;
       allowance: number;
       playingHandicap: number;
-      /** The low man's playing handicap taken off everyone, or null on full handicaps. */
-      low: number | null;
+      /** The low man's playing handicap, taken off everyone; null on full handicaps. */
+      lowMan: number | null;
     }
   | { noIndex: true };
 
@@ -49,16 +49,16 @@ export function calculatePops(
     const courseHandicap = playedIndex * ((tee.slope ?? 113) / 113) + ((tee.rating ?? par) - par);
     playing.push({ id, index, tee, courseHandicap, handicap: roundHalfUp((courseHandicap * settings.allowance) / 100) });
   }
-  const low = settings.strokes === 'off_low' ? Math.min(...playing.map((p) => p.handicap)) : null;
+  const lowMan = settings.strokes === 'off_low' ? Math.min(...playing.map((p) => p.handicap)) : null;
   for (const { id, index, tee, courseHandicap, handicap } of playing) {
     out[id] = {
-      pops: handicap - (low ?? 0),
+      pops: handicap - (lowMan ?? 0),
       index,
       tee,
       courseHandicap,
       allowance: settings.allowance,
       playingHandicap: handicap,
-      low,
+      lowMan,
     };
   }
   return out;
@@ -67,11 +67,11 @@ export function calculatePops(
 /** The working behind a player's pops, e.g. "12.4 · Blue 128/71.2 → 15 · 3 off the low man". */
 export function describeWorking(working: PopsWorking): string {
   if (!('pops' in working)) return 'no index';
-  const { index, tee, courseHandicap, allowance, playingHandicap, low } = working;
+  const { index, tee, courseHandicap, allowance, playingHandicap, lowMan } = working;
   const rated = tee.slope != null && tee.rating != null ? `${tee.slope}/${tee.rating.toFixed(1)}` : 'unrated';
-  const parts = [`${handicapText(index, 1)} · ${tee.name} ${rated} → ${handicapText(roundHalfUp(courseHandicap))}`];
+  const parts = [`${formatIndex(index)} · ${tee.name} ${rated} → ${handicapText(roundHalfUp(courseHandicap))}`];
   if (allowance !== 100) parts.push(`${allowance}% → ${handicapText(playingHandicap)}`);
-  if (low != null) parts.push(playingHandicap === low ? 'the low man' : `${handicapText(low)} off the low man`);
+  if (lowMan != null) parts.push(playingHandicap === lowMan ? 'the low man' : `${handicapText(lowMan)} off the low man`);
   return parts.join(' · ');
 }
 
@@ -79,6 +79,10 @@ export function describeWorking(working: PopsWorking): string {
 export function formatIndex(index: number): string {
   return handicapText(index, 1);
 }
+
+/** The WHS limit on a Handicap Index, and how far below scratch a plus index is accepted. */
+const MAX_INDEX = 54;
+const MAX_PLUS_INDEX = 20;
 
 /**
  * Reads a typed Handicap Index, "+1.4" being a plus index. A leading minus is
@@ -90,7 +94,7 @@ export function parseIndex(text: string): number | null {
   if (!/[0-9]/.test(trimmed)) return null;
   const value = Number(trimmed.replace(/[^0-9.]/g, ''));
   const plus = /^[+\-−]/.test(trimmed);
-  if (!Number.isFinite(value) || value > (plus ? 20 : 54)) return null;
+  if (!Number.isFinite(value) || value > (plus ? MAX_PLUS_INDEX : MAX_INDEX)) return null;
   const tenth = Math.round(value * 10) / 10;
   return plus && tenth > 0 ? -tenth : tenth;
 }
@@ -106,7 +110,7 @@ function handicapText(value: number, digits = 0): string {
  * mode and allowance, from their own tee. Pass every round in an outing
  * together: off the low man then means the lowest in the whole field.
  */
-export function handicapWorking(rounds: Round[], course: Course, roster: Player[]): Record<PlayerId, PopsWorking> {
+export function workingsFor(rounds: Round[], course: Course, roster: Player[]): Record<PlayerId, PopsWorking> {
   if (rounds.length === 0) return {};
   const entries = rounds.flatMap((round) => {
     const ctx = new RoundContext(round, course, roster);
@@ -116,20 +120,20 @@ export function handicapWorking(rounds: Round[], course: Course, roster: Player[
 }
 
 /**
- * Rounds with pops recalculated from every player's index (see handicapWorking),
+ * Rounds with pops recalculated from every player's index (see workingsFor),
  * noting the tee each was worked out from. A player with no index keeps what
  * they have.
  */
-export function withHandicaps(rounds: Round[], course: Course, roster: Player[]): Round[] {
-  const worked = handicapWorking(rounds, course, roster);
+export function withHandicapPops(rounds: Round[], course: Course, roster: Player[]): Round[] {
+  const workings = workingsFor(rounds, course, roster);
   return rounds.map((round) => {
     const pops = { ...round.pops };
     const handicapTees = { ...round.handicapTees };
     for (const id of round.playerIds) {
-      const w = worked[id];
-      if (!w || !('pops' in w)) continue;
-      pops[id] = w.pops;
-      handicapTees[id] = w.tee.id;
+      const working = workings[id];
+      if (!working || !('pops' in working)) continue;
+      pops[id] = working.pops;
+      handicapTees[id] = working.tee.id;
     }
     return { ...round, pops, handicapTees };
   });
@@ -138,8 +142,8 @@ export function withHandicaps(rounds: Round[], course: Course, roster: Player[])
 /** Players whose tee has changed since their pops were worked out from their index. */
 export function teesChanged(round: Round, course: Course): PlayerId[] {
   return round.playerIds.filter((id) => {
-    const worked = round.handicapTees[id];
-    return worked != null && worked !== playerTee(round, course, id).id;
+    const workedFrom = round.handicapTees[id];
+    return workedFrom != null && workedFrom !== playerTee(round, course, id).id;
   });
 }
 

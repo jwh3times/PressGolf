@@ -1,5 +1,5 @@
 import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
-import { withHandicaps } from '../domain/handicap';
+import { withHandicapPops } from '../domain/handicap';
 import type { Course, Group, Hole, Outing, Player, PlayerId, Round } from '../domain/types';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -356,7 +356,7 @@ export function demoOuting(
   };
 
   // Pops from the society's indexes, off the low man in the whole field.
-  return { outing, rounds: withHandicaps(rounds, demoCourse(), society.players) };
+  return { outing, rounds: withHandicapPops(rounds, demoCourse(), society.players) };
 }
 
 export function buildDemoDataset(now = Date.now()): {

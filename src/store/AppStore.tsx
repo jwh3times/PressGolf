@@ -12,7 +12,7 @@ import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
-import { withHandicaps } from '../domain/handicap';
+import { withHandicapPops } from '../domain/handicap';
 import type {
   Course,
   FieldGameConfig,
@@ -174,7 +174,7 @@ function withCell(round: Round, playerId: PlayerId, hole: number, value: number 
  * rounds are worked out against the whole field, including its rounds already
  * in the store.
  */
-function withHandicapPops(state: AppState, rounds: Round[]): Round[] {
+function withFieldHandicapPops(state: AppState, rounds: Round[]): Round[] {
   const first = rounds[0];
   const course = first && state.courses.find((c) => c.id === first.courseId);
   if (!course) return rounds;
@@ -183,7 +183,7 @@ function withHandicapPops(state: AppState, rounds: Round[]): Round[] {
   const others = first.outingId
     ? state.rounds.filter((r) => r.outingId === first.outingId && !ids.has(r.id))
     : [];
-  return withHandicaps([...rounds, ...others], course, roster).slice(0, rounds.length);
+  return withHandicapPops([...rounds, ...others], course, roster).slice(0, rounds.length);
 }
 
 /** Points the store at a round: a card round opens in the card slot, a live one as the active round. */
@@ -402,7 +402,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           outings: [...prev.outings, created],
-          rounds: [...prev.rounds, ...withHandicapPops(prev, groups)],
+          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, groups)],
           activeOutingId: created.id,
           activeGroupId: created.groupId,
           // Drop the phone straight into whichever group holds "you".
@@ -645,7 +645,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       startRound: (created) =>
         commit((prev) => ({
           ...prev,
-          rounds: [...prev.rounds, ...withHandicapPops(prev, [created])],
+          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])],
           activeRoundId: created.id,
           activeGroupId: created.groupId,
         })),
@@ -675,7 +675,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       startCard: (created) =>
         commit((prev) => ({
           ...prev,
-          rounds: [...prev.rounds, ...withHandicapPops(prev, [created])],
+          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])],
           cardRoundId: created.id,
           activeGroupId: created.groupId,
         })),
@@ -702,12 +702,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setPickedUp: (playerId, hole, on) =>
         patchRound((r) => withCell(r, playerId, hole, on ? null : (r.scores[playerId]?.[hole] ?? null), on)),
       setPops: (playerId, pops) =>
-        patchRound((r) => {
+        patchRound((r, prev) => {
           // A plus handicap gives strokes back, down to one on every hole; off the low man nobody is below zero.
-          const floor = r.options.strokes === 'full' ? -18 : 0;
+          const holes = prev.courses.find((c) => c.id === r.courseId)?.tees[0]?.holes.length ?? 18;
+          const floor = r.options.strokes === 'full' ? -holes : 0;
           return { ...r, pops: { ...r.pops, [playerId]: Math.max(floor, Math.min(54, Math.round(pops))) } };
         }),
-      recalculatePops: () => patchRound((r, prev) => withHandicapPops(prev, [r])[0]),
+      recalculatePops: () => patchRound((r, prev) => withFieldHandicapPops(prev, [r])[0]),
       toggleJunk: (hole, playerId, kind) =>
         patchRound((r) => {
           const key = `${hole}:${playerId}:${kind}`;
