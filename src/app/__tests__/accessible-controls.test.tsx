@@ -1323,6 +1323,20 @@ describe('handicaps', () => {
     expectEveryControlToHaveAName();
   });
 
+  it('says what the handicaps give when the pops no longer match them', async () => {
+    // The demo indexes give exactly the demo round's pops, so nothing is flagged.
+    let view = await render(<FormatScreen />);
+    expect(screen.queryByText(/handicaps give/)).toBeNull();
+    await view.unmount();
+
+    // An override on the stepper, or an index or rule changed since.
+    useStoreValue({ round: { ...round, pops: { ...round.pops, [ids[0]]: 5 } } as typeof round });
+    view = await render(<FormatScreen />);
+    expect(screen.getByText(`handicaps give ${round.pops[ids[0]]} · recalculate?`)).toBeOnTheScreen();
+    expect(screen.getAllByText(/handicaps give/)).toHaveLength(1);
+    await view.unmount();
+  });
+
   it('offers no recalculation when nobody has an index', async () => {
     useStoreValue({ group: { ...group, players: group.players.map((p) => ({ ...p, handicapIndex: null })) } });
     await render(<FormatScreen />);

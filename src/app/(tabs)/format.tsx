@@ -200,6 +200,8 @@ export default function FormatScreen() {
           const pops = round.pops[player.id] ?? 0;
           const hint = popsHint(pops, course.tees[0].holes.length);
           const w = working[player.id];
+          // What the handicaps give now, which an override or a later index or rule change can leave behind.
+          const calculated = w && 'pops' in w ? w.pops : null;
           return (
             <View key={player.id} style={[styles.popsRow, largeText ? styles.stackRow : null]}>
               <View style={[styles.popsIdentity, largeText ? styles.fullWidth : null]}>
@@ -210,6 +212,10 @@ export default function FormatScreen() {
                   {anyIndex && w ? <Text style={styles.popsHint}>{hint}</Text> : null}
                   {teeChanged.has(player.id) ? (
                     <Text style={[styles.popsHint, { color: colors.accent }]}>tee changed · recalculate?</Text>
+                  ) : calculated != null && calculated !== pops ? (
+                    <Text style={[styles.popsHint, { color: colors.accent }]}>
+                      {`handicaps give ${calculated} · recalculate?`}
+                    </Text>
                   ) : null}
                 </View>
               </View>

@@ -94,7 +94,7 @@ settled round.
 
 A player can carry a WHS Handicap Index (`Player.handicapIndex`, with the date
 it was entered). A plus index is stored negative and typed with its plus sign,
-e.g. +1.4. `src/domain/handicap.ts` works pops out from it in the order the
+e.g. +1.4; a typed minus sign is read as plus too. `src/domain/handicap.ts` works pops out from it in the order the
 2024 Rules of Handicapping set:
 
 1. **Course handicap** from the player's own tee: Index × (Slope ÷ 113) +
@@ -118,7 +118,9 @@ again. A player with no index keeps the pops typed in, is flagged "no index",
 and is left out when finding the low man. The round remembers the tee each
 player's pops came from (`Round.handicapTees`). A later tee change never
 recalculates by itself; the pops row says "tee changed · recalculate?"
-instead. Each pops row shows its working, e.g. "12.4 · Blue 128/71.2 → 15 · 3
+instead. Whenever a player's pops differ from what their handicap now gives
+(an override, or an index or rule changed since), the row says so, e.g.
+"handicaps give 12 · recalculate?". Each pops row shows its working, e.g. "12.4 · Blue 128/71.2 → 15 · 3
 off the low man".
 
 Data saved before handicaps plays off the low man at 100%, as the Format tab
