@@ -43,7 +43,8 @@ function dataKey(demoMode: boolean): string {
  * Version 1 had no outings, and every Round was implicitly a standalone group.
  * Those rounds are still perfectly good — they just need the fields that came
  * with outings, defaulted to "this was its own thing". Data saved before max
- * scores gets no max and no pick-ups, so nothing it already settled moves.
+ * scores gets no max and no pick-ups, and data saved before handicaps plays off
+ * the low man at 100% with its pops as typed, so nothing it already settled moves.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -55,14 +56,31 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     entry: round.entry ?? 'live',
     teeId: round.teeId ?? null,
     playerTees: round.playerTees ?? {},
-    options: { ...round.options, maxScore: round.options?.maxScore ?? 'off' },
+    handicapTees: round.handicapTees ?? {},
+    options: {
+      ...round.options,
+      maxScore: round.options?.maxScore ?? 'off',
+      strokes: round.options?.strokes ?? 'off_low',
+      allowance: round.options?.allowance ?? 100,
+    },
   }));
   return {
     version: STORAGE_VERSION,
-    groups: (parsed.groups ?? []).map((group) => ({ ...group, maxScore: group.maxScore ?? 'off' })),
+    groups: (parsed.groups ?? []).map((group) => ({
+      ...group,
+      maxScore: group.maxScore ?? 'off',
+      strokes: group.strokes ?? 'off_low',
+      allowance: group.allowance ?? 100,
+      players: (group.players ?? []).map((p) => ({ ...p, handicapIndex: p.handicapIndex ?? null })),
+    })),
     courses: (parsed.courses ?? []).map(withTees),
     rounds,
-    outings: (parsed.outings ?? []).map((outing) => ({ ...outing, maxScore: outing.maxScore ?? 'off' })),
+    outings: (parsed.outings ?? []).map((outing) => ({
+      ...outing,
+      maxScore: outing.maxScore ?? 'off',
+      strokes: outing.strokes ?? 'off_low',
+      allowance: outing.allowance ?? 100,
+    })),
     activeGroupId: parsed.activeGroupId ?? null,
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,
