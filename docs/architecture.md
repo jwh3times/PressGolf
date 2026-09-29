@@ -43,7 +43,9 @@ are distributed deterministically rather than lost to floating-point rounding.
 | Stroke play | Lowest complete net total |
 
 Pops continue above 18: a 20-handicap player gets one stroke on every hole and
-a second on stroke-index holes 1 and 2.
+a second on stroke-index holes 1 and 2. Negative pops are a plus handicap and
+give strokes back from the easiest hole: −2 gives one back on stroke-index
+holes 18 and 17.
 
 ### Courses and tees
 
@@ -87,6 +89,41 @@ hole, and games that need every score wait.
 A group's rule is its default: new rounds and outings copy it. After that,
 each round's own copy governs. Changing the group default never rewrites a
 settled round.
+
+### Handicaps
+
+A player can carry a WHS Handicap Index (`Player.handicapIndex`, with the date
+it was entered). A plus index is stored negative and typed with its plus sign,
+e.g. +1.4. `src/domain/handicap.ts` works pops out from it in the order the
+2024 Rules of Handicapping set:
+
+1. **Course handicap** from the player's own tee: Index × (Slope ÷ 113) +
+   (Rating − Par). On a 9-hole tee the index is halved and rounded to the
+   nearest tenth first (Rule 6.1b). An unrated tee counts as slope 113 and a
+   rating equal to par.
+2. **Playing handicap**: the allowance applied to the *unrounded* course
+   handicap, then rounded once, .5 upwards (Rule 6.2a). A plus handicap
+   therefore moves towards zero.
+3. **Off the low man**, when that is the rule: everyone's playing handicap less
+   the lowest. In an outing the low man is the lowest in the whole field.
+
+How pops are taken is a strokes mode (`full` or `off_low`) and an allowance
+(a percentage, one number for every game). They follow the max-score pattern:
+the group sets a default, each new round and outing copies it, the Format tab
+edits a round's copy, and an outing locks both for every group in it.
+
+Pops are worked out once, when a round, a card or an outing starts. After that
+the stepper overrides them, and **Recalculate from handicaps** works them out
+again. A player with no index keeps the pops typed in, is flagged "no index",
+and is left out when finding the low man. The round remembers the tee each
+player's pops came from (`Round.handicapTees`). A later tee change never
+recalculates by itself; the pops row says "tee changed · recalculate?"
+instead. Each pops row shows its working, e.g. "12.4 · Blue 128/71.2 → 15 · 3
+off the low man".
+
+Data saved before handicaps plays off the low man at 100%, as the Format tab
+always said, and keeps its pops, so nothing already settled moves. The demo
+players carry indexes that work out to the demo round's stored pops.
 
 ### Card entry
 
