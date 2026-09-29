@@ -11,6 +11,7 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
+import { roundPops } from '../domain/handicap';
 import type {
   Course,
   FieldGameConfig,
@@ -163,6 +164,13 @@ function withCell(round: Round, playerId: PlayerId, hole: number, value: number 
   if (pickedUp) pickups[`${hole}:${playerId}`] = true;
   else delete pickups[`${hole}:${playerId}`];
   return { ...round, scores: { ...round.scores, [playerId]: row }, pickups };
+}
+
+/** A new round with pops taken from its players' handicap indexes. */
+function withHandicapPops(state: AppState, round: Round): Round {
+  const course = state.courses.find((c) => c.id === round.courseId);
+  const roster = state.groups.find((g) => g.id === round.groupId)?.players ?? [];
+  return course ? { ...round, pops: roundPops(round, course, roster) } : round;
 }
 
 /** Points the store at a round: a card round opens in the card slot, a live one as the active round. */
@@ -501,6 +509,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           youId: null,
           defaultCourseId: null,
           maxScore: 'off',
+          strokes: 'off_low',
+          allowance: 100,
           subtitle: '',
           createdAt: Date.now(),
         };
@@ -625,7 +635,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       startRound: (created) =>
         commit((prev) => ({
           ...prev,
-          rounds: [...prev.rounds, created],
+          rounds: [...prev.rounds, withHandicapPops(prev, created)],
           activeRoundId: created.id,
           activeGroupId: created.groupId,
         })),

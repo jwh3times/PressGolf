@@ -18,10 +18,10 @@ export const DEMO_COURSE_ID = 'demo_course';
 export const DEMO_ROUND_ID = 'demo_round_live';
 
 const DEMO_PLAYERS: Player[] = [
-  { id: 'demo_p1', name: 'Marcus', initials: 'MB', color: '#8BE0AE' },
-  { id: 'demo_p2', name: 'Dev', initials: 'DP', color: '#E8C46A' },
-  { id: 'demo_p3', name: 'T.J.', initials: 'TJ', color: '#7FB6E8' },
-  { id: 'demo_p4', name: 'Big Ray', initials: 'BR', color: '#E89A7F' },
+  { id: 'demo_p1', name: 'Marcus', initials: 'MB', color: '#8BE0AE', handicapIndex: null },
+  { id: 'demo_p2', name: 'Dev', initials: 'DP', color: '#E8C46A', handicapIndex: null },
+  { id: 'demo_p3', name: 'T.J.', initials: 'TJ', color: '#7FB6E8', handicapIndex: null },
+  { id: 'demo_p4', name: 'Big Ray', initials: 'BR', color: '#E89A7F', handicapIndex: null },
 ];
 
 const DEMO_POPS: Record<PlayerId, number> = {
@@ -90,6 +90,8 @@ export function demoGroup(): Group {
     youId: 'demo_p1',
     defaultCourseId: DEMO_COURSE_ID,
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     subtitle: 'Pine Hollow · 7:40 tee',
     createdAt: 0,
   };
@@ -246,6 +248,7 @@ export function demoSociety(): Group {
         ? (name.split(' ')[0][0] + name.split(' ')[1][0]).toUpperCase()
         : name.slice(0, 2).toUpperCase(),
     color: SOCIETY_COLORS[i % SOCIETY_COLORS.length],
+    handicapIndex: null,
   }));
   return {
     id: DEMO_SOCIETY_ID,
@@ -254,6 +257,8 @@ export function demoSociety(): Group {
     youId: players[0].id,
     defaultCourseId: DEMO_COURSE_ID,
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     subtitle: 'Twenty out · five groups · first tee 8:00',
     createdAt: 0,
   };

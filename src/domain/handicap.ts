@@ -1,6 +1,5 @@
-import type { PlayerId, Tee } from './types';
-
-export type StrokesMode = 'full' | 'off_low';
+import { RoundContext } from './engine/context';
+import type { Course, Player, PlayerId, Round, StrokesMode, Tee } from './types';
 
 export interface HandicapSettings {
   strokes: StrokesMode;
@@ -44,6 +43,21 @@ export function calculatePops(
   const low = settings.strokes === 'off_low' ? Math.min(...playing.map((p) => p.handicap)) : 0;
   for (const { id, handicap } of playing) out[id] = { pops: handicap - low };
   return out;
+}
+
+/**
+ * The round's pops recalculated from each player's index and own tee, under the
+ * round's strokes mode and allowance. A player with no index keeps what they have.
+ */
+export function roundPops(round: Round, course: Course, roster: Player[]): Round['pops'] {
+  const ctx = new RoundContext(round, course, roster);
+  const worked = calculatePops(
+    ctx.players.map((p) => ({ id: p.id, index: p.handicapIndex, tee: ctx.teeFor(p.id) })),
+    { strokes: round.options.strokes, allowance: round.options.allowance },
+  );
+  const pops = { ...round.pops };
+  for (const [id, w] of Object.entries(worked)) if ('pops' in w) pops[id] = w.pops;
+  return pops;
 }
 
 /**

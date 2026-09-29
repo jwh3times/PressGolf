@@ -37,6 +37,7 @@ export function makePlayer(name: string, index: number, overrides: Partial<Playe
     name,
     initials: deriveInitials(name),
     color: PLAYER_COLORS[index % PLAYER_COLORS.length],
+    handicapIndex: null,
     ...overrides,
   };
 }
@@ -49,6 +50,8 @@ export function makeGroup(name: string, players: Player[] = []): Group {
     youId: players[0]?.id ?? null,
     defaultCourseId: null,
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     subtitle: '',
     createdAt: Date.now(),
   };
@@ -136,7 +139,12 @@ export function makeRound(
     presses: [],
     wolfPicks: [],
     games,
-    options: { ...defaultOptions(), maxScore: extras.maxScore ?? group.maxScore },
+    options: {
+      ...defaultOptions(),
+      maxScore: extras.maxScore ?? group.maxScore,
+      strokes: group.strokes,
+      allowance: group.allowance,
+    },
     status: 'active',
     startedAt: extras.playedOn ?? Date.now(),
     completedAt: null,

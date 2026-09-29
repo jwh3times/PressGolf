@@ -440,6 +440,30 @@ describe('AppStoreProvider', () => {
     );
   });
 
+  it('calculates pops from handicap indexes when a round starts', async () => {
+    await mount();
+    const course = makeCourse('Handicap Links'); // par 72
+    await change(() => store.createCourse(course));
+    await change(() => store.updateTee(course.id, course.tees[0].id, { slope: 113, rating: 72 }));
+    let group!: ReturnType<AppStore['createGroup']>;
+    await change(() => {
+      group = store.createGroup('Index men');
+    });
+    const players = [
+      makePlayer('Ann', 0, { handicapIndex: 10.0 }),
+      makePlayer('Bob', 1, { handicapIndex: 4.0 }),
+      makePlayer('Cal', 2, { handicapIndex: null }),
+    ];
+    for (const p of players) await change(() => store.addPlayer(group.id, p));
+    const withPlayers = store.groups.find((g) => g.id === group.id)!;
+    const saved = store.courses.find((c) => c.id === course.id)!;
+
+    await change(() => store.startRound(makeRound(withPlayers, saved)));
+    // Off the low man: Ann 10 − 4, Bob is the low man, Cal has no index and keeps 0.
+    const [ann, bob, cal] = players.map((p) => p.id);
+    expect(store.round!.pops).toEqual({ [ann]: 6, [bob]: 0, [cal]: 0 });
+  });
+
   it('adds, edits and deletes tees, and puts the round and a player on one', async () => {
     await mount();
     const course = store.course!;

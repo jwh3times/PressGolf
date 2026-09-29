@@ -167,6 +167,8 @@ export function defaultFieldGames(): FieldGames {
 export function defaultOptions(): GameOptions {
   return {
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     teams: [],
     matchPairings: [],
     wolfLoneMultiplier: 2,

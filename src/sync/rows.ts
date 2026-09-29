@@ -529,10 +529,13 @@ export function fromRows(snapshot: Snapshot): Documents {
       name: p.name,
       initials: p.initials,
       color: p.color,
+      handicapIndex: null,
     })),
     youId: row.you_id,
     defaultCourseId: row.default_course_id,
     maxScore: row.max_score ?? 'off',
+    strokes: 'off_low',
+    allowance: 100,
     subtitle: row.subtitle,
     createdAt: row.created_at,
   }));
@@ -583,6 +586,8 @@ export function fromRows(snapshot: Snapshot): Documents {
     const opt = optionsByRound.get(row.id);
     const options: GameOptions = {
       maxScore: opt?.max_score ?? 'off',
+      strokes: 'off_low',
+      allowance: 100,
       teams: (teams.get(row.id) ?? [])
         .slice()
         .sort((a, b) => a.slot - b.slot)

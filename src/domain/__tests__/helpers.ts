@@ -38,6 +38,7 @@ export function makeTestPlayers(count = 4): Player[] {
     name: names[i],
     initials: names[i].slice(0, 2).toUpperCase(),
     color: '#8BE0AE',
+    handicapIndex: null,
   }));
 }
 
@@ -50,6 +51,8 @@ export function makeTestGroup(count = 4): Group {
     youId: players[0].id,
     defaultCourseId: 'course1',
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     subtitle: '',
     createdAt: 0,
   };

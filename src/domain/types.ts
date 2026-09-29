@@ -21,6 +21,8 @@ export interface Player {
   initials: string;
   /** Hex colour used for the avatar ring and money figures. */
   color: string;
+  /** WHS Handicap Index; a plus index is negative. Null when the player has none. */
+  handicapIndex: number | null;
 }
 
 export interface Group {
@@ -33,6 +35,10 @@ export interface Group {
   defaultCourseId: CourseId | null;
   /** The group's house rule, copied onto each new round and outing. */
   maxScore: MaxScoreRule;
+  /** How pops are taken from handicaps, copied like `maxScore`. */
+  strokes: StrokesMode;
+  /** Percentage of each course handicap played off, copied like `maxScore`. */
+  allowance: number;
   /** Free text shown under the group name on Home, e.g. "Pine Hollow · 7:40 tee". */
   subtitle: string;
   createdAt: number;
@@ -127,9 +133,15 @@ export interface GamesConfig {
  */
 export type MaxScoreRule = 'off' | 'double_bogey' | 'net_double_bogey';
 
+/** Full handicaps, or everyone off the lowest in the round (or the whole field in an outing). */
+export type StrokesMode = 'full' | 'off_low';
+
 /** Extra settings that only some formats need. */
 export interface GameOptions {
   maxScore: MaxScoreRule;
+  strokes: StrokesMode;
+  /** Percentage, e.g. 100. */
+  allowance: number;
   /** Sides for four-ball and Vegas. Empty until the group sets them. */
   teams: Team[];
   /** 1v1 match play pairings. Defaults to every pair (round robin). */

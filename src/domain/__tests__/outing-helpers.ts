@@ -18,6 +18,7 @@ export function makeFieldPlayers(count = 20): Player[] {
     name: `Player ${i}`,
     initials: `P${i}`,
     color: '#8BE0AE',
+    handicapIndex: null,
   }));
 }
 
@@ -30,6 +31,8 @@ export function makeFieldGroup(count = 20): Group {
     youId: players[0].id,
     defaultCourseId: 'course1',
     maxScore: 'off',
+    strokes: 'off_low',
+    allowance: 100,
     subtitle: '',
     createdAt: 0,
   };

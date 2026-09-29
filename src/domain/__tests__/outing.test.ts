@@ -319,7 +319,7 @@ describe('a whole outing', () => {
     });
     // Somebody signed up but never got put in a foursome.
     outing.field.push('p99');
-    const extended = [...roster, { id: 'p99', name: 'Late Entry', initials: 'LE', color: '#fff' }];
+    const extended = [...roster, { id: 'p99', name: 'Late Entry', initials: 'LE', color: '#fff', handicapIndex: null }];
     outing.fieldGames.fieldSkins.entrants = [...outing.field];
 
     const result = settleOuting(outing, rounds, course, extended);
