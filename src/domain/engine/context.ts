@@ -82,16 +82,21 @@ export class RoundContext {
    *
    * Handles handicaps above the hole count: 20 pops on an 18-hole course is one
    * shot everywhere plus a second on stroke index 1 and 2.
+   *
+   * Negative pops are a plus handicap: strokes given back, from the easiest
+   * stroke index up, so -2 on 18 holes is one back on stroke index 18 and 17.
    */
   strokes(id: PlayerId, hole: number): number {
     const pops = this.round.pops[id] ?? 0;
-    if (pops <= 0) return 0;
     const n = this.holeCount;
-    if (n === 0) return 0;
-    const base = Math.floor(pops / n);
-    const remainder = pops % n;
+    if (pops === 0 || n === 0) return 0;
+    const count = Math.abs(pops);
+    const base = Math.floor(count / n);
+    const remainder = count % n;
     const si = this.strokeIndex(hole, id);
-    return base + (si <= remainder ? 1 : 0);
+    if (pops > 0) return base + (si <= remainder ? 1 : 0);
+    const back = base + (si > n - remainder ? 1 : 0);
+    return back === 0 ? 0 : -back;
   }
 
   net(id: PlayerId, hole: number): number | null {
