@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_VERSION, storageNamespace } from '../config/flags';
+import { houseRulesOrDefault } from '../domain/formats';
 import type { AppData, AppSettings, Course, Hole } from '../domain/types';
 
 /** Where the demo/live preference lives — outside both datasets, so it survives switching. */
@@ -43,7 +44,8 @@ function dataKey(demoMode: boolean): string {
  * Version 1 had no outings, and every Round was implicitly a standalone group.
  * Those rounds are still perfectly good — they just need the fields that came
  * with outings, defaulted to "this was its own thing". Data saved before max
- * scores gets no max and no pick-ups, so nothing it already settled moves.
+ * scores gets no max and no pick-ups, and data saved before handicaps plays off
+ * the low man at 100% with its pops as typed, so nothing it already settled moves.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -55,14 +57,23 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     entry: round.entry ?? 'live',
     teeId: round.teeId ?? null,
     playerTees: round.playerTees ?? {},
-    options: { ...round.options, maxScore: round.options?.maxScore ?? 'off' },
+    handicapTees: round.handicapTees ?? {},
+    options: { ...round.options, ...houseRulesOrDefault(round.options) },
   }));
   return {
     version: STORAGE_VERSION,
-    groups: (parsed.groups ?? []).map((group) => ({ ...group, maxScore: group.maxScore ?? 'off' })),
+    groups: (parsed.groups ?? []).map((group) => ({
+      ...group,
+      ...houseRulesOrDefault(group),
+      players: (group.players ?? []).map((p) => ({
+        ...p,
+        handicapIndex: p.handicapIndex ?? null,
+        handicapUpdatedAt: p.handicapUpdatedAt ?? null,
+      })),
+    })),
     courses: (parsed.courses ?? []).map(withTees),
     rounds,
-    outings: (parsed.outings ?? []).map((outing) => ({ ...outing, maxScore: outing.maxScore ?? 'off' })),
+    outings: (parsed.outings ?? []).map((outing) => ({ ...outing, ...houseRulesOrDefault(outing) })),
     activeGroupId: parsed.activeGroupId ?? null,
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,

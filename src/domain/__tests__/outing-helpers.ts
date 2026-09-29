@@ -1,4 +1,4 @@
-import { defaultFieldGames, defaultGames, defaultOptions } from '../formats';
+import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions } from '../formats';
 import type {
   Course,
   FieldGameKey,
@@ -18,6 +18,8 @@ export function makeFieldPlayers(count = 20): Player[] {
     name: `Player ${i}`,
     initials: `P${i}`,
     color: '#8BE0AE',
+    handicapIndex: null,
+    handicapUpdatedAt: null,
   }));
 }
 
@@ -29,7 +31,7 @@ export function makeFieldGroup(count = 20): Group {
     players,
     youId: players[0].id,
     defaultCourseId: 'course1',
-    maxScore: 'off',
+    ...DEFAULT_HOUSE_RULES,
     subtitle: '',
     createdAt: 0,
   };
@@ -95,6 +97,7 @@ export function makeTestOuting(spec: OutingSpec): {
       teeTime: `8:${String(g * 10).padStart(2, '0')}`,
       playerIds: ids,
       pops,
+      handicapTees: {},
       scores,
       junk: {},
       pickups: Object.fromEntries(
@@ -134,7 +137,8 @@ export function makeTestOuting(spec: OutingSpec): {
     name: 'Test Outing',
     date: 0,
     teeFormat: 'sequential',
-    maxScore: spec.maxScore ?? 'off',
+    ...DEFAULT_HOUSE_RULES,
+    maxScore: spec.maxScore ?? DEFAULT_HOUSE_RULES.maxScore,
     field,
     fieldGames,
     roundIds: rounds.map((r) => r.id),

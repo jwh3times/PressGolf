@@ -16,6 +16,7 @@
  * what preserves the shape of the card — how many holes it has — when it comes
  * back down.
  */
+import { houseRulesOrDefault } from '../domain/formats';
 import {
   FIELD_GAME_KEYS,
   GAME_KEYS,
@@ -28,6 +29,7 @@ import {
   type Outing,
   type Round,
   type MaxScoreRule,
+  type StrokesMode,
   type RoundEntry,
   type RoundStatus,
   type Tee,
@@ -44,6 +46,9 @@ export interface GroupRow {
   default_course_id: string | null;
   /** Absent on a server that predates the max-score migration; read as 'off'. */
   max_score?: MaxScoreRule;
+  /** Absent on a server that predates the handicaps migration; read as off the low man at 100%. */
+  strokes?: StrokesMode;
+  allowance?: number;
   subtitle: string;
   created_at: number;
 }
@@ -54,6 +59,9 @@ export interface PlayerRow {
   name: string;
   initials: string;
   color: string;
+  /** Absent on a server that predates the handicaps migration; read as no index. */
+  handicap_index?: number | null;
+  handicap_updated_at?: number | null;
   sort_order: number;
 }
 
@@ -105,6 +113,8 @@ export interface RoundPlayerRow {
   pops: number;
   /** Set only when the player's tee differs from the round's. */
   tee_id: string | null;
+  /** The tee their pops were last worked out from. Absent before the handicaps migration. */
+  handicap_tee_id?: string | null;
 }
 
 export interface ScoreRow {
@@ -151,6 +161,9 @@ export interface RoundOptionsRow {
   round_id: string;
   /** Absent on a server that predates the max-score migration; read as 'off'. */
   max_score?: MaxScoreRule;
+  /** Absent on a server that predates the handicaps migration; read as off the low man at 100%. */
+  strokes?: StrokesMode;
+  allowance?: number;
   wolf_lone_multiplier: number;
   vegas_flip_on_birdie: boolean;
   stableford_eagle_or_better: number;
@@ -176,6 +189,9 @@ export interface OutingRow {
   tee_format: TeeFormat;
   /** Absent on a server that predates the max-score migration; read as 'off'. */
   max_score?: MaxScoreRule;
+  /** Absent on a server that predates the handicaps migration; read as off the low man at 100%. */
+  strokes?: StrokesMode;
+  allowance?: number;
   status: RoundStatus;
   started_at: number;
   completed_at: number | null;
@@ -293,6 +309,8 @@ export function toRows(documents: Documents): Snapshot {
       you_id: group.youId,
       default_course_id: group.defaultCourseId,
       max_score: group.maxScore,
+      strokes: group.strokes,
+      allowance: group.allowance,
       subtitle: group.subtitle,
       created_at: group.createdAt,
     });
@@ -303,6 +321,8 @@ export function toRows(documents: Documents): Snapshot {
         name: player.name,
         initials: player.initials,
         color: player.color,
+        handicap_index: player.handicapIndex,
+        handicap_updated_at: player.handicapUpdatedAt,
         sort_order: index,
       });
     });
@@ -354,6 +374,7 @@ export function toRows(documents: Documents): Snapshot {
         tee_order: index,
         pops: round.pops[playerId] ?? 0,
         tee_id: round.playerTees[playerId] ?? null,
+        handicap_tee_id: round.handicapTees[playerId] ?? null,
       });
       const card = round.scores[playerId] ?? [];
       card.forEach((strokes, hole) => {
@@ -416,6 +437,8 @@ export function toRows(documents: Documents): Snapshot {
     out.round_options.push({
       round_id: round.id,
       max_score: options.maxScore,
+      strokes: options.strokes,
+      allowance: options.allowance,
       wolf_lone_multiplier: options.wolfLoneMultiplier,
       vegas_flip_on_birdie: options.vegasFlipOnBirdie,
       stableford_eagle_or_better: options.stablefordPoints.eagleOrBetter,
@@ -442,6 +465,8 @@ export function toRows(documents: Documents): Snapshot {
       date: outing.date,
       tee_format: outing.teeFormat,
       max_score: outing.maxScore,
+      strokes: outing.strokes,
+      allowance: outing.allowance,
       status: outing.status,
       started_at: outing.startedAt,
       completed_at: outing.completedAt,
@@ -529,10 +554,12 @@ export function fromRows(snapshot: Snapshot): Documents {
       name: p.name,
       initials: p.initials,
       color: p.color,
+      handicapIndex: p.handicap_index ?? null,
+      handicapUpdatedAt: p.handicap_updated_at ?? null,
     })),
     youId: row.you_id,
     defaultCourseId: row.default_course_id,
-    maxScore: row.max_score ?? 'off',
+    ...houseRulesOrDefault({ maxScore: row.max_score, strokes: row.strokes, allowance: row.allowance }),
     subtitle: row.subtitle,
     createdAt: row.created_at,
   }));
@@ -550,9 +577,11 @@ export function fromRows(snapshot: Snapshot): Documents {
 
     const pops: Record<string, number> = {};
     const playerTees: Record<string, string> = {};
+    const handicapTees: Record<string, string> = {};
     for (const entry of entries) {
       pops[entry.player_id] = entry.pops;
       if (entry.tee_id) playerTees[entry.player_id] = entry.tee_id;
+      if (entry.handicap_tee_id) handicapTees[entry.player_id] = entry.handicap_tee_id;
     }
 
     // Rebuild each card at the length the rows imply, so an all-empty card
@@ -582,7 +611,7 @@ export function fromRows(snapshot: Snapshot): Documents {
 
     const opt = optionsByRound.get(row.id);
     const options: GameOptions = {
-      maxScore: opt?.max_score ?? 'off',
+      ...houseRulesOrDefault({ maxScore: opt?.max_score, strokes: opt?.strokes, allowance: opt?.allowance }),
       teams: (teams.get(row.id) ?? [])
         .slice()
         .sort((a, b) => a.slot - b.slot)
@@ -611,6 +640,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       teeTime: row.tee_time,
       playerIds,
       pops,
+      handicapTees,
       scores: card,
       junk: junkMap,
       pickups,
@@ -658,7 +688,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       name: row.name,
       date: row.date,
       teeFormat: row.tee_format,
-      maxScore: row.max_score ?? 'off',
+      ...houseRulesOrDefault({ maxScore: row.max_score, strokes: row.strokes, allowance: row.allowance }),
       field: (field.get(row.id) ?? []).slice().sort(byOrder).map((f) => f.player_id),
       fieldGames: { fieldSkins: config('fieldSkins'), scats: config('scats') },
       roundIds: [],
