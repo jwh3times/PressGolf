@@ -17,7 +17,7 @@ import {
   Switch,
 } from '../../components/primitives';
 import { maxExposure } from '../../domain/engine';
-import { money } from '../../domain/engine/context';
+import { money, popsSpread } from '../../domain/engine/context';
 import { FORMATS } from '../../domain/formats';
 import { GAME_KEYS, type GameKey } from '../../domain/types';
 import { useLargeText } from '../../hooks/useLargeText';
@@ -349,19 +349,18 @@ function FormatRequirement({
 }
 
 function popsHint(pops: number, holeCount: number): string {
-  if (pops === 0) return 'scratch in this group';
-  if (pops < 0) {
-    // A plus handicap gives strokes back from the easiest hole.
-    const back = -pops;
-    if (back >= holeCount) return 'gives a stroke back on every hole';
-    return back === 1 ? `gives a stroke back on SI ${holeCount}` : `gives strokes back on SI ${holeCount - back + 1}–${holeCount}`;
+  const spread = popsSpread(pops, holeCount);
+  if (!spread) return 'scratch in this group';
+  const { each, back } = spread;
+  const [from, to] = spread.extraOn;
+  const extra = to >= from;
+  if (back) {
+    if (each > 0) return 'gives a stroke back on every hole';
+    return from === to ? `gives a stroke back on SI ${to}` : `gives strokes back on SI ${from}–${to}`;
   }
-  if (pops >= holeCount) {
-    const extra = pops - holeCount;
-    if (extra === 0) return 'a stroke on every hole';
-    return `a stroke everywhere, two on SI 1–${extra}`;
-  }
-  return `strokes on SI 1–${pops}`;
+  if (each === 0) return `strokes on SI 1–${to}`;
+  if (each === 1) return extra ? `a stroke everywhere, two on SI 1–${to}` : 'a stroke on every hole';
+  return extra ? `${each} strokes everywhere, ${each + 1} on SI 1–${to}` : `${each} strokes on every hole`;
 }
 
 const styles = StyleSheet.create({

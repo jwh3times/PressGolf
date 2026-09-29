@@ -1,4 +1,4 @@
-import { RoundContext } from './engine/context';
+import { RoundContext, playerTee } from './engine/context';
 import type { Course, HouseRules, Player, PlayerId, Round, Tee } from './types';
 
 /** The house rules that decide pops. */
@@ -137,10 +137,9 @@ export function withHandicaps(rounds: Round[], course: Course, roster: Player[])
 
 /** Players whose tee has changed since their pops were worked out from their index. */
 export function teesChanged(round: Round, course: Course): PlayerId[] {
-  const ctx = new RoundContext(round, course, []);
   return round.playerIds.filter((id) => {
     const worked = round.handicapTees[id];
-    return worked != null && worked !== ctx.teeFor(id).id;
+    return worked != null && worked !== playerTee(round, course, id).id;
   });
 }
 
