@@ -131,6 +131,7 @@ export function buildFieldContext(
     teeTime: null,
     playerIds: fieldIds,
     pops,
+    handicapTees: {},
     scores,
     junk,
     pickups,

@@ -82,16 +82,17 @@ export class RoundContext {
    *
    * Handles handicaps above the hole count: 20 pops on an 18-hole course is one
    * shot everywhere plus a second on stroke index 1 and 2.
+   *
+   * Negative pops are a plus handicap: strokes given back, from the easiest
+   * stroke index up, so -2 on 18 holes is one back on stroke index 18 and 17.
    */
   strokes(id: PlayerId, hole: number): number {
-    const pops = this.round.pops[id] ?? 0;
-    if (pops <= 0) return 0;
-    const n = this.holeCount;
-    if (n === 0) return 0;
-    const base = Math.floor(pops / n);
-    const remainder = pops % n;
+    const spread = popsSpread(this.round.pops[id] ?? 0, this.holeCount);
+    if (!spread) return 0;
+    const [from, to] = spread.extraOn;
     const si = this.strokeIndex(hole, id);
-    return base + (si <= remainder ? 1 : 0);
+    const count = spread.each + (si >= from && si <= to ? 1 : 0);
+    return spread.back && count > 0 ? -count : count;
   }
 
   net(id: PlayerId, hole: number): number | null {
@@ -106,8 +107,7 @@ export class RoundContext {
 
   /** The tee a player is on: their own, else the round's. */
   teeFor(id: PlayerId): Tee {
-    const own = this.round.playerTees?.[id];
-    return (own && this.course.tees.find((t) => t.id === own)) || this.tee;
+    return playerTee(this.round, this.course, id);
   }
 
   /** Par from the player's own tee, or the round's tee when no player is given. */
@@ -172,6 +172,34 @@ export class RoundContext {
     }
     return diff;
   }
+}
+
+/** The tee a player is on: their own, else the round's, else the course's first. */
+export function playerTee(round: Round, course: Course, id: PlayerId): Tee {
+  const own = round.playerTees?.[id];
+  const roundTee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
+  return (own && course.tees.find((t) => t.id === own)) || roundTee;
+}
+
+/**
+ * Where a player's pops land on a card of `holeCount` holes: `each` on every
+ * hole, and one more on the stroke indexes in `extraOn` (inclusive). Pops are
+ * received from stroke index 1; negative pops, a plus handicap, are given
+ * `back` from the easiest hole. Null for no pops.
+ */
+export function popsSpread(
+  pops: number,
+  holeCount: number,
+): { each: number; extraOn: [number, number]; back: boolean } | null {
+  if (pops === 0 || holeCount === 0) return null;
+  const count = Math.abs(pops);
+  const extra = count % holeCount;
+  const back = pops < 0;
+  return {
+    each: Math.floor(count / holeCount),
+    extraOn: back ? [holeCount - extra + 1, holeCount] : [1, extra],
+    back,
+  };
 }
 
 /** Formats cents for display. Negative renders with a true minus sign, not a hyphen. */

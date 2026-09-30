@@ -1,4 +1,4 @@
-import { defaultGames, defaultOptions } from '../formats';
+import { DEFAULT_HOUSE_RULES, defaultGames, defaultOptions } from '../formats';
 import type { Course, GameKey, Group, Hole, Player, PlayerId, Round } from '../types';
 
 export const TEST_PAR = [4, 5, 4, 3, 4, 4, 5, 3, 4, 4, 4, 3, 5, 4, 4, 3, 4, 5];
@@ -38,6 +38,8 @@ export function makeTestPlayers(count = 4): Player[] {
     name: names[i],
     initials: names[i].slice(0, 2).toUpperCase(),
     color: '#8BE0AE',
+    handicapIndex: null,
+    handicapUpdatedAt: null,
   }));
 }
 
@@ -49,7 +51,7 @@ export function makeTestGroup(count = 4): Group {
     players,
     youId: players[0].id,
     defaultCourseId: 'course1',
-    maxScore: 'off',
+    ...DEFAULT_HOUSE_RULES,
     subtitle: '',
     createdAt: 0,
   };
@@ -101,6 +103,7 @@ export function makeTestRound(spec: RoundSpec): Round {
     teeTime: null,
     playerIds: ids,
     pops,
+    handicapTees: {},
     scores,
     junk: spec.junk ?? {},
     pickups: spec.pickups ?? {},

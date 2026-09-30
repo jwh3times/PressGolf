@@ -293,6 +293,9 @@ export function Stepper({
   size = 32,
   valueStyle,
   minWidth = 44,
+  decrementLabel,
+  incrementLabel,
+  disabled,
 }: {
   value: string;
   onDecrement: () => void;
@@ -300,6 +303,10 @@ export function Stepper({
   size?: number;
   valueStyle?: TextStyle;
   minWidth?: number;
+  /** Names for the buttons when "decrease" and "increase" alone would be ambiguous. */
+  decrementLabel?: string;
+  incrementLabel?: string;
+  disabled?: boolean;
 }) {
   const controlScale = useAccessibilityControlScale();
 
@@ -307,7 +314,13 @@ export function Stepper({
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
       {/* JSX string attributes are not escape-processed, so the minus sign has
           to come through an expression or it renders as literal backslash-u. */}
-      <StepperButton label={'−'} onPress={onDecrement} size={size} />
+      <StepperButton
+        label={'−'}
+        accessibilityLabel={decrementLabel}
+        onPress={onDecrement}
+        size={size}
+        disabled={disabled}
+      />
       <Text
         maxFontSizeMultiplier={MAX_CONTROL_SCALE}
         style={[
@@ -324,7 +337,13 @@ export function Stepper({
       >
         {value}
       </Text>
-      <StepperButton label="+" onPress={onIncrement} size={size} />
+      <StepperButton
+        label="+"
+        accessibilityLabel={incrementLabel}
+        onPress={onIncrement}
+        size={size}
+        disabled={disabled}
+      />
     </View>
   );
 }
@@ -334,11 +353,13 @@ export function StepperButton({
   accessibilityLabel,
   onPress,
   size = 32,
+  disabled,
 }: {
   label: string;
   accessibilityLabel?: string;
   onPress: () => void;
   size?: number;
+  disabled?: boolean;
 }) {
   const controlScale = useAccessibilityControlScale();
   const scaledSize = size * controlScale;
@@ -347,6 +368,8 @@ export function StepperButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (label === '+' ? 'increase' : 'decrease')}
+      accessibilityState={disabled ? { disabled: true } : undefined}
+      disabled={disabled}
       onPress={onPress}
       // Hit slop keeps these tappable with a glove on in February.
       hitSlop={6}
@@ -359,7 +382,7 @@ export function StepperButton({
         borderColor: line.control,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.6 : 1,
+        opacity: disabled ? 0.4 : pressed ? 0.6 : 1,
       })}
     >
       <Text

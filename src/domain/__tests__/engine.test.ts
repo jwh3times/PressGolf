@@ -140,6 +140,16 @@ describe('pops allocation', () => {
     expect(ctx.strokes('b', TEST_SI.indexOf(3))).toBe(1);
     expect(ctx.strokes('b', TEST_SI.indexOf(18))).toBe(1);
   });
+
+  it('gives strokes back from the easiest hole for a plus handicap', () => {
+    const round = makeTestRound({ scores: [flat(4), flat(4), flat(4), flat(4)], pops: [0, -2, 0, 0] });
+    const ctx = new RoundContext(round, course, players);
+    expect(ctx.strokes('b', TEST_SI.indexOf(18))).toBe(-1);
+    expect(ctx.strokes('b', TEST_SI.indexOf(17))).toBe(-1);
+    expect(ctx.strokes('b', TEST_SI.indexOf(16))).toBe(0);
+    expect(ctx.strokes('b', TEST_SI.indexOf(1))).toBe(0);
+    expect(ctx.net('b', TEST_SI.indexOf(18))).toBe(5);
+  });
 });
 
 describe('nassau', () => {

@@ -73,6 +73,31 @@ describe('dataset persistence', () => {
     expect(loaded.outings[0].maxScore).toBe('off');
   });
 
+  it('gives data saved before handicaps the off-the-low-man rule and keeps its pops', async () => {
+    const dataset = buildDemoDataset(123);
+    const strip = <T extends object>(value: T, ...keys: string[]) => {
+      const copy = { ...value } as Record<string, unknown>;
+      for (const key of keys) delete copy[key];
+      return copy;
+    };
+    const group = strip(dataset.groups[0], 'strokes', 'allowance');
+    group.players = dataset.groups[0].players.map((p) => strip(p, 'handicapIndex', 'handicapUpdatedAt'));
+    const round = strip(dataset.rounds[0], 'handicapTees');
+    round.options = strip(dataset.rounds[0].options, 'strokes', 'allowance');
+    storage.getItem.mockResolvedValueOnce(
+      JSON.stringify({ groups: [group], rounds: [round], outings: [strip(dataset.outings[0], 'strokes', 'allowance')] }),
+    );
+
+    const loaded = await loadDataset(true);
+
+    expect(loaded.groups[0]).toMatchObject({ strokes: 'off_low', allowance: 100 });
+    expect(loaded.groups[0].players.every((p) => p.handicapIndex === null && p.handicapUpdatedAt === null)).toBe(true);
+    expect(loaded.rounds[0].options).toMatchObject({ strokes: 'off_low', allowance: 100 });
+    expect(loaded.rounds[0].handicapTees).toEqual({});
+    expect(loaded.rounds[0].pops).toEqual(dataset.rounds[0].pops);
+    expect(loaded.outings[0]).toMatchObject({ strokes: 'off_low', allowance: 100 });
+  });
+
   it('puts courses saved before tees onto a Default tee', async () => {
     const dataset = buildDemoDataset(123);
     const holes = dataset.courses[0].tees[0].holes;

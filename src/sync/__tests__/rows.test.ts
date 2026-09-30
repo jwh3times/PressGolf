@@ -33,9 +33,13 @@ function demoDocuments(): Documents {
           entry: 'card' as const,
           teeId: 'demo_tee_blue',
           playerTees: { [round.playerIds[2]]: 'demo_tee_red' },
+          handicapTees: { [round.playerIds[0]]: 'demo_tee_blue', [round.playerIds[2]]: 'demo_tee_red' },
+          pops: { ...round.pops, [round.playerIds[0]]: -2 },
           options: {
             ...round.options,
             maxScore: 'net_double_bogey' as const,
+            strokes: 'full' as const,
+            allowance: 90,
             matchPairings: [
               [round.playerIds[0], round.playerIds[3]] as [string, string],
               [round.playerIds[1], round.playerIds[2]] as [string, string],
@@ -44,8 +48,24 @@ function demoDocuments(): Documents {
         }
       : round,
   );
-  const groups = data.groups.map((g, i) => (i === 0 ? { ...g, maxScore: 'double_bogey' as const } : g));
-  const outings = data.outings.map((o) => ({ ...o, maxScore: 'double_bogey' as const }));
+  // A plus index is negative; the last player has none.
+  const indexes = [-1.4, 12.4, 18.0, null];
+  const groups = data.groups.map((g, i) =>
+    i === 0
+      ? {
+          ...g,
+          maxScore: 'double_bogey' as const,
+          strokes: 'full' as const,
+          allowance: 85,
+          players: g.players.map((p, j) => ({
+            ...p,
+            handicapIndex: indexes[j] ?? null,
+            handicapUpdatedAt: indexes[j] == null ? null : 1_750_000_000_000 + j,
+          })),
+        }
+      : g,
+  );
+  const outings = data.outings.map((o) => ({ ...o, maxScore: 'double_bogey' as const, strokes: 'full' as const, allowance: 80 }));
   return { groups, courses: data.courses, rounds, outings };
 }
 
@@ -189,8 +209,8 @@ describe('snapshot helpers', () => {
 
     const documents = fromRows(rows);
     expect(documents.groups[0].players).toEqual([]);
-    expect(documents.groups[0].maxScore).toBe('off');
-    expect(documents.outings[0].maxScore).toBe('off');
+    expect(documents.groups[0]).toMatchObject({ maxScore: 'off', strokes: 'off_low', allowance: 100 });
+    expect(documents.outings[0]).toMatchObject({ maxScore: 'off', strokes: 'off_low', allowance: 100 });
     // A course always has a tee; one with none on the server comes back with an empty Default.
     expect(documents.courses[0].tees).toEqual([
       { id: 'course_default', name: 'Default', slope: null, rating: null, holes: [] },
@@ -205,8 +225,11 @@ describe('snapshot helpers', () => {
       pickups: {},
       presses: [],
       wolfPicks: [],
+      handicapTees: {},
       options: {
         maxScore: 'off',
+        strokes: 'off_low',
+        allowance: 100,
         teams: [],
         matchPairings: [],
         wolfLoneMultiplier: 1,

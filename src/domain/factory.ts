@@ -1,4 +1,4 @@
-import { defaultFieldGames, defaultGames, defaultOptions } from './formats';
+import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions, houseRules } from './formats';
 import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, RoundEntry, TeeFormat, TeeId } from './types';
 
 /** Avatar colours, handed out in order so a new group looks deliberate. */
@@ -37,6 +37,8 @@ export function makePlayer(name: string, index: number, overrides: Partial<Playe
     name,
     initials: deriveInitials(name),
     color: PLAYER_COLORS[index % PLAYER_COLORS.length],
+    handicapIndex: null,
+    handicapUpdatedAt: null,
     ...overrides,
   };
 }
@@ -48,7 +50,7 @@ export function makeGroup(name: string, players: Player[] = []): Group {
     players,
     youId: players[0]?.id ?? null,
     defaultCourseId: null,
-    maxScore: 'off',
+    ...DEFAULT_HOUSE_RULES,
     subtitle: '',
     createdAt: Date.now(),
   };
@@ -127,6 +129,7 @@ export function makeRound(
     teeTime: extras.teeTime ?? null,
     playerIds: ids,
     pops,
+    handicapTees: {},
     scores,
     junk: {},
     pickups: {},
@@ -136,7 +139,7 @@ export function makeRound(
     presses: [],
     wolfPicks: [],
     games,
-    options: { ...defaultOptions(), maxScore: extras.maxScore ?? group.maxScore },
+    options: { ...defaultOptions(), ...houseRules(group), maxScore: extras.maxScore ?? group.maxScore },
     status: 'active',
     startedAt: extras.playedOn ?? Date.now(),
     completedAt: null,
@@ -175,7 +178,7 @@ export function makeOuting(
     name: options.name ?? `${course.name} outing`,
     date: options.date ?? Date.now(),
     teeFormat: options.teeFormat ?? 'sequential',
-    maxScore: group.maxScore,
+    ...houseRules(group),
     field,
     fieldGames: defaultFieldGames(),
     roundIds: [],

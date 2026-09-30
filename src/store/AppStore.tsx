@@ -11,6 +11,8 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
+import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
+import { withHandicapPops } from '../domain/handicap';
 import type {
   Course,
   FieldGameConfig,
@@ -129,6 +131,8 @@ export interface AppStore extends AppState {
   /** A pick-up empties the box; a score in the box clears the pick-up. */
   setPickedUp(playerId: PlayerId, hole: number, on: boolean): void;
   setPops(playerId: PlayerId, pops: number): void;
+  /** Re-derives everyone's pops from their index, overwriting typed ones; anyone without an index keeps theirs. */
+  recalculatePops(): void;
   toggleJunk(hole: number, playerId: PlayerId, kind: JunkKind): void;
   toggleGame(key: GameKey): void;
   setStake(key: GameKey, cents: number): void;
@@ -163,6 +167,23 @@ function withCell(round: Round, playerId: PlayerId, hole: number, value: number 
   if (pickedUp) pickups[`${hole}:${playerId}`] = true;
   else delete pickups[`${hole}:${playerId}`];
   return { ...round, scores: { ...round.scores, [playerId]: row }, pickups };
+}
+
+/**
+ * Rounds with pops taken from their players' handicap indexes. An outing's
+ * rounds are worked out against the whole field, including its rounds already
+ * in the store.
+ */
+function withFieldHandicapPops(state: AppState, rounds: Round[]): Round[] {
+  const first = rounds[0];
+  const course = first && state.courses.find((c) => c.id === first.courseId);
+  if (!course) return rounds;
+  const roster = state.groups.find((g) => g.id === first.groupId)?.players ?? [];
+  const ids = new Set(rounds.map((r) => r.id));
+  const others = first.outingId
+    ? state.rounds.filter((r) => r.outingId === first.outingId && !ids.has(r.id))
+    : [];
+  return withHandicapPops([...rounds, ...others], course, roster).slice(0, rounds.length);
 }
 
 /** Points the store at a round: a card round opens in the card slot, a live one as the active round. */
@@ -350,13 +371,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       });
 
     /** Applies a patch to the active round. No active round means the call is a no-op. */
-    const patchRound = (fn: (r: Round) => Round) =>
+    const patchRound = (fn: (r: Round, prev: AppState) => Round) =>
       commit((prev) => {
         let idx = prev.rounds.findIndex((r) => r.id === prev.cardRoundId);
         if (idx < 0) idx = prev.rounds.findIndex((r) => r.id === prev.activeRoundId);
         if (idx < 0) return prev;
         const rounds = prev.rounds.slice();
-        rounds[idx] = fn(rounds[idx]);
+        rounds[idx] = fn(rounds[idx], prev);
         return { ...prev, rounds };
       });
 
@@ -381,7 +402,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           outings: [...prev.outings, created],
-          rounds: [...prev.rounds, ...groups],
+          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, groups)],
           activeOutingId: created.id,
           activeGroupId: created.groupId,
           // Drop the phone straight into whichever group holds "you".
@@ -400,13 +421,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const current = prev.outings.find((o) => o.id === prev.activeOutingId);
           if (!current) return prev;
           const updated = { ...current, ...patch };
-          // The whole field plays one max-score rule, so every group follows the outing's.
-          const rounds =
-            patch.maxScore === undefined
-              ? prev.rounds
-              : prev.rounds.map((r) =>
-                  r.outingId === current.id ? { ...r, options: { ...r.options, maxScore: updated.maxScore } } : r,
-                );
+          // The whole field plays one set of house rules, so every group follows the outing's.
+          const rules = houseRules(updated);
+          const rulesChanged = (Object.keys(rules) as (keyof typeof rules)[]).some((key) => patch[key] !== undefined);
+          const rounds = rulesChanged
+            ? prev.rounds.map((r) => (r.outingId === current.id ? { ...r, options: { ...r.options, ...rules } } : r))
+            : prev.rounds;
           return { ...prev, outings: prev.outings.map((o) => (o.id === current.id ? updated : o)), rounds };
         }),
       setFieldGame: (key, patch) =>
@@ -500,7 +520,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           players: [],
           youId: null,
           defaultCourseId: null,
-          maxScore: 'off',
+          ...DEFAULT_HOUSE_RULES,
           subtitle: '',
           createdAt: Date.now(),
         };
@@ -625,7 +645,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       startRound: (created) =>
         commit((prev) => ({
           ...prev,
-          rounds: [...prev.rounds, created],
+          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])],
           activeRoundId: created.id,
           activeGroupId: created.groupId,
         })),
@@ -655,7 +675,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       startCard: (created) =>
         commit((prev) => ({
           ...prev,
-          rounds: [...prev.rounds, created],
+          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])],
           cardRoundId: created.id,
           activeGroupId: created.groupId,
         })),
@@ -682,10 +702,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setPickedUp: (playerId, hole, on) =>
         patchRound((r) => withCell(r, playerId, hole, on ? null : (r.scores[playerId]?.[hole] ?? null), on)),
       setPops: (playerId, pops) =>
-        patchRound((r) => ({
-          ...r,
-          pops: { ...r.pops, [playerId]: Math.max(0, Math.min(54, Math.round(pops))) },
-        })),
+        patchRound((r, prev) => {
+          // A plus handicap gives strokes back, down to one on every hole; off the low man nobody is below zero.
+          const holes = prev.courses.find((c) => c.id === r.courseId)?.tees[0]?.holes.length ?? 18;
+          const floor = r.options.strokes === 'full' ? -holes : 0;
+          return { ...r, pops: { ...r.pops, [playerId]: Math.max(floor, Math.min(54, Math.round(pops))) } };
+        }),
+      recalculatePops: () => patchRound((r, prev) => withFieldHandicapPops(prev, [r])[0]),
       toggleJunk: (hole, playerId, kind) =>
         patchRound((r) => {
           const key = `${hole}:${playerId}:${kind}`;
