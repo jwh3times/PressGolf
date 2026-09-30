@@ -75,6 +75,10 @@ while requesting screenshot"), which fails a run for reasons unrelated to the
 app. A real regression fails both attempts, and a first-attempt failure is
 still reported as a warning on the run.
 
+Maestro gives its driver a startup window, set by `MAESTRO_DRIVER_STARTUP_TIMEOUT`
+in the workflow: 5 minutes on Android and 10 on iOS. XCTest on a cold hosted
+simulator can take close to four minutes to start even on a passing run.
+
 When a run fails, the job uploads Maestro's output (a screenshot and log for
 each step, plus the JUnit report) as a `maestro-android` or `maestro-ios`
 artifact, kept for 14 days.

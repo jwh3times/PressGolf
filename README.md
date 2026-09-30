@@ -5,9 +5,10 @@ Set the format, enter one scorecard, and the app calculates the fewest cash
 hand-offs needed at the end of the round.
 
 It supports Nassau with presses, skins, junk, Stableford, four-ball, Wolf,
-Vegas, match play, and stroke play. Outings can split a larger field into
-playing groups while settling field-wide skins or scats alongside each group's
-games.
+Vegas, match play, and stroke play. Pops come from each player's Handicap Index
+and tee, in full or off the low man, or are typed in by hand. Outings can split
+a larger field into playing groups while settling field-wide skins or scats
+alongside each group's games.
 
 ## Quick start
 
@@ -73,8 +74,8 @@ Supabase configuration, Press remains a fully usable single-device app.
 
 As of September 2026:
 
-- 22 Jest suites and 341 tests pass. Repository coverage is 93.56% statements,
-  90.41% branches, 88.51% functions, and 94.56% lines; enforced thresholds live
+- 23 Jest suites and 370 tests pass. Repository coverage is 93.64% statements,
+  90.57% branches, 88.9% functions, and 94.63% lines; enforced thresholds live
   in `package.json`.
 - CI exports production Metro bundles for Android and iOS and verifies every
   database migration plus 30 row-level-security assertions against Postgres 16.
@@ -104,6 +105,8 @@ pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full
   workflow in a browser, and the native date picker for a card's Played-on
   date does not render there, so a card entered on web is dated today.
+- Handicap indexes are typed in by hand. Keeping them in step with GHIN is
+  tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
 - The app currently ships one dark, outdoor-oriented theme.
 
 Track planned work and additional limitations in the
