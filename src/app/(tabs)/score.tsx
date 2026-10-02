@@ -331,7 +331,8 @@ function WolfPicker({ hole }: { hole: number }) {
         {pick ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => store.setWolfPick(hole, wolfId, null)}
+            accessibilityLabel={`Reset the Wolf pick on hole ${hole + 1}`}
+            onPress={() => store.clearWolfPick(hole)}
             hitSlop={8}
           >
             <Mono size={10} style={{ color: ink.soft }}>

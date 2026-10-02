@@ -142,6 +142,7 @@ const actions = {
   addPress: jest.fn(),
   removePress: jest.fn(),
   setWolfPick: jest.fn(),
+  clearWolfPick: jest.fn(),
   setRoundPlayers: jest.fn(),
 };
 
@@ -1228,6 +1229,13 @@ describe('entering a finished card', () => {
     expect(actions.setWolfPick).toHaveBeenLastCalledWith(2, ids[2], ids[0]);
     await user.press(screen.getByRole('button', { name: /LONE WOLF/ }));
     expect(actions.setWolfPick).toHaveBeenLastCalledWith(2, ids[2], null);
+
+    // Resetting clears the pick; it must not record a lone wolf (#59).
+    await user.press(screen.getByRole('button', { name: `Wolf, hole 1, ${player(ids[0]).name} with ${player(ids[1]).name}` }));
+    const picks = (actions.setWolfPick as jest.Mock).mock.calls.length;
+    await user.press(screen.getByRole('button', { name: 'Reset the Wolf pick on hole 1' }));
+    expect(actions.clearWolfPick).toHaveBeenLastCalledWith(0);
+    expect(actions.setWolfPick).toHaveBeenCalledTimes(picks);
   });
 
   it('records presses on the card from the hole under the cursor, and removes a mistyped one', async () => {

@@ -423,6 +423,15 @@ describe('AppStoreProvider', () => {
     ]);
   });
 
+  it('clears a hole’s Wolf pick rather than leaving a lone wolf behind', async () => {
+    await mount();
+    const [a, b] = store.round!.playerIds;
+    await change(() => store.setWolfPick(0, a, b));
+    await change(() => store.setWolfPick(1, b, null));
+    await change(() => store.clearWolfPick(0));
+    expect(store.round!.wolfPicks).toEqual([{ hole: 1, wolf: b, partner: null }]);
+  });
+
   it('settles a card with presses and Wolf picks exactly as the same round played live', async () => {
     await mount();
     const group = store.group!;
