@@ -100,6 +100,15 @@ export function vegasNumber(low: number, high: number): number {
   return Number(`${a}${b}`);
 }
 
+/**
+ * A net score as a Vegas digit. Two strokes on a hole can take a birdie to net
+ * 0 or below, which is no digit at all ("1-1" is not a number), so it reads as
+ * a 1. The birdie flip still looks at the true net against par.
+ */
+function vegasDigit(net: number | null): number | null {
+  return net == null ? null : Math.max(1, net);
+}
+
 /** True when anyone on the side beat par on this hole — that flips the opponents. */
 function sideHasBirdie(ctx: RoundContext, team: Team, hole: number): boolean {
   return team.some((id) => {
@@ -134,8 +143,8 @@ export function settleVegas(
 
       for (let h = 0; h < ctx.holeCount; h++) {
         if (!ctx.played(h)) continue;
-        const aNets = A.map((id) => ctx.net(id, h)).filter((n): n is number => n != null);
-        const bNets = B.map((id) => ctx.net(id, h)).filter((n): n is number => n != null);
+        const aNets = A.map((id) => vegasDigit(ctx.net(id, h))).filter((n): n is number => n != null);
+        const bNets = B.map((id) => vegasDigit(ctx.net(id, h))).filter((n): n is number => n != null);
         if (aNets.length < 2 || bNets.length < 2) continue;
         holesCounted++;
 

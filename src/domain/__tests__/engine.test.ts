@@ -384,6 +384,27 @@ describe('vegas', () => {
     expectBalanced(flipped.net);
   });
 
+  it('reads a net score below 1 as a 1, and still flips on the true net birdie', () => {
+    // Hole 1 is a par 4. Alice gets two strokes a hole (36 pops), so a gross 2 nets 0.
+    const vegas = (scores: number[]) => {
+      const rows = scores.map((s) => [s, ...Array(17).fill(null)]);
+      return settle(
+        makeTestRound({
+          scores: rows,
+          pops: [36, 0, 0, 0],
+          games: { vegas: { on: true, stake: 100 } },
+          options: { teams: [['a', 'b'], ['c', 'd']], vegasFlipOnBirdie: true },
+        }),
+      );
+    };
+    // Net 0 and 4 read 14, not 04. Alice's net birdie flips c+d's 5 and 6 to 65: 51 points.
+    expect(vegas([2, 4, 5, 6]).net['a']).toBe(5100);
+    // An ace nets −1 and reads as a 1. Both sides birdie, so both flip: a+b 41, c+d 53. 12 points.
+    const ace = vegas([1, 4, 3, 5]);
+    expect(ace.net['a']).toBe(1200);
+    expectBalanced(ace.net);
+  });
+
   it('charges the point difference to the losing side', () => {
     const rows = [Array(18).fill(null), Array(18).fill(null), Array(18).fill(null), Array(18).fill(null)];
     // Par 4 hole. a+b: 5 and 5 => 55. c+d: 6 and 6 => 66. No birdies, no flip.

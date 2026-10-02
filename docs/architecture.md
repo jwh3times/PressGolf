@@ -38,7 +38,7 @@ are distributed deterministically rather than lost to floating-point rounding.
 | Stableford | Highest net points wins the pot; an unbroken tie pushes |
 | Four-ball | Best ball of two in match play between configured sides |
 | Wolf | Per-hole wolf side against the field, including lone-wolf handling |
-| Vegas | Paired net scores form a number; the difference is multiplied by the stake |
+| Vegas | Paired net scores form a number; the difference is multiplied by the stake. A net below 1 reads as a 1 |
 | Match play | Head-to-head net match play; round robin or selected rivals |
 | Stroke play | Lowest complete net total |
 
