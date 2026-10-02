@@ -58,6 +58,17 @@ async function pushSeason(prefix: string): Promise<Documents> {
   return documents;
 }
 
+/** Resolves once the app's client has joined this realtime channel. */
+async function joined(topic: string, timeoutMs = 20_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const channel = getSupabase()!.getChannels().find((c) => c.topic === `realtime:${topic}`);
+    if (channel?.state === 'joined') return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`Realtime channel ${topic} did not join within ${timeoutMs / 1000} s`);
+}
+
 function byId(documents: Documents): Documents {
   const sorted = <T extends { id: string }>(items: T[]) => [...items].sort((a, b) => a.id.localeCompare(b.id));
   return {
@@ -191,33 +202,45 @@ describe('sync against a local Supabase stack', () => {
     await ben.auth.signUp({ email: benEmail, password: PASSWORD });
     await ben.rpc('join_outing', { code: joinCode, as_player: null, display: 'Ben' });
 
-    const received = new Promise<RemoteChanges>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('No realtime change within 15 s')), 15_000);
-      const unsubscribe = new SupabaseTransport().subscribe(outing.id, (changes) => {
-        clearTimeout(timer);
-        unsubscribe();
-        resolve(changes);
-      });
+    let delivered: RemoteChanges | null = null;
+    // Read through a function: the subscription callback sets it, not the loops.
+    const arrived = () => delivered !== null;
+    const unsubscribe = new SupabaseTransport().subscribe(outing.id, (changes) => {
+      delivered ??= changes;
     });
-    // Give the channel a moment to join before Ben writes.
-    await new Promise((r) => setTimeout(r, 1500));
-    const edit = mutation(outing.id, roundId, 9);
-    const { error } = await ben.from('mutations').insert({
-      id: edit.id,
-      outing_id: outing.id,
-      round_id: roundId,
-      kind: edit.kind,
-      key: edit.key,
-      value: edit.value,
-      at: edit.at,
-      device_id: 'bens-phone',
-      author_id: null,
-    });
-    expect(error).toBeNull();
+    await joined(`outing:${outing.id}`);
 
-    const changes = await received;
-    expect(changes.mutations.map((m) => m.id)).toEqual([edit.id]);
-    expect(changes.mutations[0].deviceId).toBe('bens-phone');
+    // A channel reports joined before a cold server's change feed is ready,
+    // and an edit written in that gap is never delivered live. The app does
+    // not depend on it (every phone also catches up from the log by cursor,
+    // as the test above proves), so this proves what realtime does promise:
+    // once the feed is up, another member's edit arrives on its own. Ben
+    // keeps scoring every two seconds until one does.
+    const written: string[] = [];
+    const deadline = Date.now() + 60_000;
+    while (!arrived() && Date.now() < deadline) {
+      const edit = mutation(outing.id, roundId, 100 + written.length);
+      const { error } = await ben.from('mutations').insert({
+        id: edit.id,
+        outing_id: outing.id,
+        round_id: roundId,
+        kind: edit.kind,
+        key: edit.key,
+        value: edit.value,
+        at: edit.at,
+        device_id: 'bens-phone',
+        author_id: null,
+      });
+      expect(error).toBeNull();
+      written.push(edit.id);
+      for (let waited = 0; !arrived() && waited < 2000; waited += 100) await new Promise((r) => setTimeout(r, 100));
+    }
+    unsubscribe();
+
+    expect(delivered).not.toBeNull();
+    const [change] = delivered!.mutations;
+    expect(written).toContain(change.id);
+    expect(change).toMatchObject({ deviceId: 'bens-phone', outingId: outing.id, value: 4 });
     ben.realtime.disconnect();
-  });
+  }, 90_000);
 });
