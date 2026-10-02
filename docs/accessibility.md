@@ -49,8 +49,10 @@ When it was introduced (October 2026), the web suite found:
 - **Switches and disabled buttons had no state on web.** react-native-web
   ignores `accessibilityState`. Switches now use `aria-checked`, and disabled
   buttons use `Pressable`'s `disabled` prop. Both work on native too.
-- **The Round live card overflows at 320 px:**
-  [issue #72](https://github.com/jwh3times/PressGolf/issues/72).
+- **The Round live card overflowed at 320 px.** Its row now wraps, so the
+  Enter scores button drops inside the card
+  ([issue #72](https://github.com/jwh3times/PressGolf/issues/72); checked on an
+  iPhone at a narrow display setting, October 2026).
 
 Selected state on chips and option buttons is still exposed through
 `accessibilityState` only. Native screen readers announce it, but web doesn't,
