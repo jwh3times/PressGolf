@@ -9,10 +9,19 @@ const mockRequireUserId = requireUserId as jest.MockedFunction<typeof requireUse
 
 type Result = { data?: unknown; error?: { message: string } | null };
 
-function query(initial: Result = { data: [], error: null }) {
+/**
+ * A chainable stand-in for a PostgREST query. Reads honour `.range()` and, like
+ * the real server's `max_rows`, never return more than `cap` rows at once.
+ */
+function query(initial: Result = { data: [], error: null }, cap = 1000) {
   let result = initial;
+  let range: [number, number] = [0, Infinity];
   const value: Record<string, jest.Mock> & { then?: Promise<Result>['then'] } = {};
-  for (const method of ['select', 'eq', 'in']) value[method] = jest.fn(() => value);
+  for (const method of ['select', 'eq', 'in', 'order']) value[method] = jest.fn(() => value);
+  value.range = jest.fn((from: number, to: number) => {
+    range = [from, to];
+    return value;
+  });
   value.upsert = jest.fn(() => {
     result = { error: null };
     return value;
@@ -21,7 +30,13 @@ function query(initial: Result = { data: [], error: null }) {
     result = { error: null };
     return value;
   });
-  value.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
+  value.then = (resolve, reject) => {
+    const [from, to] = range;
+    const page = Array.isArray(result.data)
+      ? { ...result, data: result.data.slice(from, Math.min(to + 1, from + cap)) }
+      : result;
+    return Promise.resolve(page).then(resolve, reject);
+  };
   value.setResult = jest.fn((next: Result) => {
     result = next;
   });
@@ -65,7 +80,8 @@ describe('pullSnapshot', () => {
 
     expect(result.groups).toHaveLength(1);
     expect(result.players).toEqual([]);
-    expect(from).toHaveBeenCalledTimes(TABLES.length);
+    // One read per table, plus the empty page that ends the one table with rows.
+    expect(from).toHaveBeenCalledTimes(TABLES.length + 1);
     expect(mockRequireUserId).toHaveBeenCalledTimes(1);
   });
 
@@ -74,6 +90,29 @@ describe('pullSnapshot', () => {
       from: jest.fn((table: string) => query({ data: null, error: table === 'tee_holes' ? { message: 'down' } : null })),
     } as never);
     await expect(pullSnapshot()).rejects.toThrow('tee_holes: down');
+  });
+});
+
+describe('paging past the server row cap', () => {
+  // Seven cells of a card against a server that hands out three rows at a time.
+  const cells = Array.from({ length: 7 }, (_, hole) => ({ round_id: 'r1', player_id: 'p1', hole, strokes: 4 }));
+
+  it('pulls every row of an owned table, however many requests it takes', async () => {
+    const from = jest.fn((table: keyof Snapshot) => query({ data: table === 'scores' ? cells : [], error: null }, 3));
+    mockGetSupabase.mockReturnValue({ from } as never);
+    expect((await pullSnapshot()).scores).toEqual(cells);
+  });
+
+  it("pulls every row of a shared outing's tables too", async () => {
+    const rows: Partial<Record<keyof Snapshot | 'outing_members', unknown[]>> = {
+      outing_members: [{ outing_id: 'o1' }],
+      outings: [{ id: 'o1', group_id: 'g1', course_id: 'c1' }],
+      rounds: [{ id: 'r1', outing_id: 'o1' }],
+      scores: cells,
+    };
+    const from = jest.fn((table: keyof Snapshot | 'outing_members') => query({ data: rows[table] ?? [], error: null }, 3));
+    mockGetSupabase.mockReturnValue({ from } as never);
+    expect((await pullSharedOutings()).scores).toEqual(cells);
   });
 });
 

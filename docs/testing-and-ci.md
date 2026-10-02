@@ -18,6 +18,14 @@ npm run test:scripts        # node:test suites for the repository scripts
 npm run sync:agents:check   # .claude/skills matches .agents/skills
 ```
 
+When a change touches `src/sync/` or `supabase/migrations/`, run the sync
+integration tests against a local Supabase stack (Docker required; see
+[development.md](development.md#sync-integration-tests)):
+
+```bash
+npm run test:integration    # needs `npx supabase start` first
+```
+
 When a change touches what a screen shows or how it is labelled, run the web
 UI suite (Docker required):
 
@@ -71,11 +79,13 @@ figures, are authoritative.
 | **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
+| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't |
 | **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 30 account-isolation assertions pass |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
-On a push to `main`, a fifth job applies pending migrations to the linked
-Supabase project only after the first three cross-platform checks pass. It uses
+On a push to `main`, another job applies pending migrations to the linked
+Supabase project. It runs only after the tests, the bundle, the throwaway
+database and the sync integration tests have all passed. It uses
 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and `SUPABASE_DB_PASSWORD` from
 the protected GitHub `production` environment. `supabase db push` is safe to
 run when there are no pending migrations.
@@ -168,7 +178,7 @@ areas, outdoor touch use, Dynamic Type, VoiceOver, or TalkBack.
 The active `Protect main` ruleset applies to the default branch. It:
 
 - requires pull requests and resolved review threads;
-- requires the five PR checks above against the latest `main`;
+- requires the six PR checks above against the latest `main`;
 - blocks force pushes and branch deletion; and
 - blocks merge on CodeQL errors or high-or-higher security alerts.
 

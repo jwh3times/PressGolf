@@ -16,10 +16,11 @@ import path from 'path';
 
 const SRC = path.join(__dirname, '..', '..');
 
+/** Code that ships in the bundle. Tests run in Node and never reach a device. */
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(full);
+    if (entry.isDirectory()) return entry.name === '__tests__' ? [] : sourceFiles(full);
     return /\.tsx?$/.test(entry.name) ? [full] : [];
   });
 }

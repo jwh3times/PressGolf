@@ -9,8 +9,11 @@ import { readFileSync } from 'node:fs';
 const { version } = JSON.parse(readFileSync('node_modules/@playwright/test/package.json', 'utf8'));
 const image = `mcr.microsoft.com/playwright:v${version}-noble`;
 
+// Windows needs a shell to find npx, and a shell splits arguments on spaces.
+const quote = (arg) => (process.platform === 'win32' && /\s/.test(arg) ? `"${arg}"` : arg);
+
 function run(command, args) {
-  const result = spawnSync(command, args, { stdio: 'inherit', shell: process.platform === 'win32' });
+  const result = spawnSync(command, args.map(quote), { stdio: 'inherit', shell: process.platform === 'win32' });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
