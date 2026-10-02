@@ -107,16 +107,14 @@ describe('domain factories', () => {
     );
   });
 
-  it('makes a card round dated the day it was played, with Wolf off', () => {
+  it('makes a card round dated the day it was played, with the same games as a live round', () => {
     const group = makeGroup('Society', [makePlayer('Ann', 0), makePlayer('Ben', 1)]);
     const saturday = new Date(2026, 8, 19, 12).getTime();
     const card = makeRound(group, makeCourse('Home'), undefined, { entry: 'card', playedOn: saturday });
 
     expect(card.entry).toBe('card');
     expect(card.startedAt).toBe(saturday);
-    expect(card.games.wolf.on).toBe(false);
-    // Junk stays: birdies and eagles come off the card. Only tapped junk is live-only.
-    expect(card.games.junk.on).toBe(true);
+    expect(card.games).toEqual(makeRound(group, makeCourse('Home')).games);
     expect(makeRound(group, makeCourse('Home')).entry).toBe('live');
   });
 

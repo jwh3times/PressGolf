@@ -111,8 +111,6 @@ export function makeRound(
 ): Round {
   const entry = extras.entry ?? 'live';
   const games = defaultGames();
-  // Wolf is picked hole by hole on the tee, so a finished card cannot say who went with whom.
-  if (entry === 'card') games.wolf = { ...games.wolf, on: false };
   const ids = playerIds ?? group.players.map((p) => p.id);
   const pops: Record<PlayerId, number> = {};
   const scores: Record<PlayerId, (number | null)[]> = {};

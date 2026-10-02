@@ -135,10 +135,13 @@ A round's `entry` is `live` (scored hole by hole on the course) or `card`
 (typed in afterwards from a finished paper card). A card round is dated the
 day it was played: `startedAt` and `completedAt` are both the Played-on date.
 
-Presses and Wolf picks are called live, so a card round starts with Wolf off
-and the store ignores presses and Wolf picks on it. Junk still pays birdies
-and eagles, which come from the scores on the card. Greenies, sandies, chip-ins
-and polies are tapped live, so they are not offered.
+A card starts with the same games as a live round and settles the same way.
+Under the card grid, a Wolf row takes each hole's partner (or a lone wolf),
+and a Presses section records who pressed whom from the hole under the
+cursor. `addPress` runs every press, live or card, to the end of the nine it
+started on, at the Nassau stake. Junk still pays birdies and eagles, which come
+from the scores on the card. Greenies, sandies, chip-ins and polies are tapped
+live, so they are not offered.
 
 Saving a card with empty boxes can mark them as pick-ups. With no max score, a
 pick-up sits out the hole, so the app warns that stroke play and Stableford
