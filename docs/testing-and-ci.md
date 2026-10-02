@@ -35,6 +35,21 @@ On pull requests, `scripts/check-patch-coverage.mjs` also requires at least 90%
 line coverage on executable lines added or changed relative to the merge base.
 That prevents a well-tested legacy codebase from hiding untested new behavior.
 
+`src/domain/__tests__/properties.test.ts` checks settlement invariants over
+generated rounds and outings rather than worked examples. The generators in
+`arbitraries.ts` draw 2–6 players on 9 or 18 holes, any mix of games and
+options, pops, pick-ups, presses and Wolf picks. Every round must:
+
+- net to zero, with transfers that repay it exactly;
+- settle the same as a card as it does live; and
+- never count a score higher than was written.
+
+An outing must keep every cent either with a player or still in a pot.
+Transfers never need more than one fewer than the players with money to move,
+and every Handicap Index reads back as written. The suite uses a fixed seed (in
+`PROPERTY_RUNS`), so a CI failure reproduces locally, and fast-check prints the
+shrunk counter-example.
+
 The September 2026 audit baseline is 22 suites, 310 tests, 90.19% branch
 coverage, and 94.22% line coverage. Thresholds, rather than these point-in-time
 figures, are authoritative.
@@ -47,7 +62,7 @@ figures, are authoritative.
 |---|---|
 | **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
-| **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 24 account-isolation assertions pass |
+| **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 30 account-isolation assertions pass |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
 On a push to `main`, a fifth job applies pending migrations to the linked
