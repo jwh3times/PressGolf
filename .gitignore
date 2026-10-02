@@ -8,6 +8,10 @@ coverage/
 .expo/
 dist/
 web-build/
+
+# Playwright (tests/web): reports and failure output, never the baselines
+/test-results/
+/playwright-report/
 expo-env.d.ts
 
 # Native

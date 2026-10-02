@@ -1,0 +1,13 @@
+- text: /\d+ out · 5 groups Society Saturday/
+- button "Back"
+- text: /In the pots FIELD THRU 6\/\d+ \$\d+ Field skins · \d+ in · Scats · \d+ in/
+- button "Set up the pots"
+- text: /Field skins \$\d+ \d+ in at \$\d+ · 6\/\d+ holes settled · \$\d+ still riding Nothing won yet\. \d+ holes waiting on groups still out on the course Scats \$\d+ \d+ in at \$\d+ · 6\/\d+ holes settled · \$\d+ still riding IB Ibrahim \$\d+ SA Sam \$\d+ \d+ holes waiting on groups still out on the course Groups/
+- button "REARRANGE ›"
+- button /Group 1 8:\d+ MA DE T\. BR THRU \d+ 3 games/
+- button /Group 2 8:\d+ HO PE CH FR THRU \d+ 2 games/
+- button /Group 3 8:\d+ SA IB DE WE THRU \d+ 3 games/
+- button /Group 4 8:\d+ LO MA AR CO THRU 8 2 games/
+- button /Group 5 8:\d+ BV ST DU KE THRU 6 3 games/
+- text: /Where everybody stands Buy-ins are already out of everyone’s pocket, so most of the field sits negative until the pots pay\. 1 BR Big Ray \+\$\d+ 2 DE Denny \+\$\d+ 3 MA Marcus \+\$\d+ 4 DU Duke \+\$\d+ 5 DE Dev \+\$\d+ 6 IB Ibrahim \+\$\d+ 7 WE Wes \+\$\d+ 8 ST Stretch \+\$8 9 SA Sam \+\$3 \d+ HO Hollis −\$\d+ \d+ CO Cole −\$\d+ \d+ T\. T\.J\. −\$\d+ \d+ BV Bobby V −\$\d+ \d+ CH Chuy −\$\d+ \d+ LO Lou −\$\d+ \d+ MA Marty −\$\d+ \d+ KE Kenji −\$\d+ \d+ FR Franklin −\$\d+ \d+ AR Arjun −\$\d+ \d+ PE Pete −\$\d+/
+- button "Close the outing"

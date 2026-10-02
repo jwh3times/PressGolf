@@ -209,7 +209,7 @@ export function PrimaryButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      disabled={!!disabled}
       onPress={disabled ? undefined : onPress}
       style={({ pressed }) => [
         {
@@ -368,7 +368,6 @@ export function StepperButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (label === '+' ? 'increase' : 'decrease')}
-      accessibilityState={disabled ? { disabled: true } : undefined}
       disabled={disabled}
       onPress={onPress}
       // Hit slop keeps these tappable with a glove on in February.
@@ -402,7 +401,9 @@ export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => v
   return (
     <Pressable
       accessibilityRole="switch"
-      accessibilityState={{ checked: on }}
+      // aria-checked rather than accessibilityState: native reads both, and
+      // react-native-web only maps the aria prop, so web would announce no state.
+      aria-checked={on}
       accessibilityLabel={label}
       onPress={onToggle}
       hitSlop={8}
@@ -451,7 +452,8 @@ export function Chip({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: !!active, disabled: !!disabled }}
+      accessibilityState={{ selected: !!active }}
+      disabled={!!disabled}
       onPress={disabled ? undefined : onPress}
       hitSlop={6}
       style={({ pressed }) => ({

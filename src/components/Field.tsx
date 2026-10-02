@@ -13,6 +13,8 @@ export function Field({
     <View style={{ gap: 6 }}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        // The label above is only visible text; this is what a screen reader names the input.
+        accessibilityLabel={label}
         placeholderTextColor={ink.quiet}
         selectionColor={colors.accent}
         {...rest}

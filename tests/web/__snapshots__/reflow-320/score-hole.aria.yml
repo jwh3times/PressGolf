@@ -1,0 +1,71 @@
+- button "Hole by hole"
+- button "Whole card"
+- button "Previous hole": ‹
+- text: /Hole \d+ PAR 3 · 205Y · SI \d+/
+- button "Next hole": ›
+- button "Go to hole 1"
+- button "Go to hole 2"
+- button "Go to hole 3"
+- button "Go to hole 4"
+- button "Go to hole 5"
+- button "Go to hole 6"
+- button "Go to hole 7"
+- button "Go to hole 8"
+- button "Go to hole 9"
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- button /Go to hole \d+/
+- text: MB Marcus no score yet
+- button "Decrease score for Marcus": −
+- text: –
+- button "Increase score for Marcus": +
+- button "GREENIE"
+- button "SANDIE"
+- button "CHIP-IN"
+- button "POLIE"
+- button "PICK UP"
+- text: DP Dev no score yet
+- button "Decrease score for Dev": −
+- text: –
+- button "Increase score for Dev": +
+- button "GREENIE"
+- button "SANDIE"
+- button "CHIP-IN"
+- button "POLIE"
+- button "PICK UP"
+- text: TJ T.J. no score yet
+- button "Decrease score for T.J.": −
+- text: –
+- button "Increase score for T.J.": +
+- button "GREENIE"
+- button "SANDIE"
+- button "CHIP-IN"
+- button "POLIE"
+- button "PICK UP"
+- text: BR Big Ray no score yet
+- button "Decrease score for Big Ray": −
+- text: –
+- button "Increase score for Big Ray": +
+- button "GREENIE"
+- button "SANDIE"
+- button "CHIP-IN"
+- button "POLIE"
+- button "PICK UP"
+- text: What this hole did 1 skin riding Enter all 4 scores to settle this hole. Your matches · press while you’re down DP 1 down to Dev Back nine · $5
+- button "Press"
+- text: TJ 1 up on T.J. Back nine · $5
+- button "—" [disabled]
+- text: BR All square with Big Ray Back nine · $5
+- button "—" [disabled]
+- button "See the damage so far →"
+- tablist:
+  - tab "Home": ◆ Home
+  - tab "Format": ≡ Format
+  - tab "Score" [selected]: ● Score
+  - tab "Settle": $ Settle

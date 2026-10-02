@@ -18,6 +18,14 @@ npm run test:scripts        # node:test suites for the repository scripts
 npm run sync:agents:check   # .claude/skills matches .agents/skills
 ```
 
+When a change touches what a screen shows or how it is labelled, run the web
+UI suite (Docker required):
+
+```bash
+npm run test:web            # screenshots, accessibility tree and axe
+npm run test:web:update     # accept intended changes: rewrites the baselines
+```
+
 `npm run sync:agents` rewrites the generated mirror; see
 [AGENTS.md § Agent skills](../AGENTS.md#agent-skills) for which tree is authored.
 
@@ -62,6 +70,7 @@ figures, are authoritative.
 |---|---|
 | **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
+| **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
 | **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 30 account-isolation assertions pass |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
@@ -70,6 +79,48 @@ Supabase project only after the first three cross-platform checks pass. It uses
 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and `SUPABASE_DB_PASSWORD` from
 the protected GitHub `production` environment. `supabase db push` is safe to
 run when there are no pending migrations.
+
+## UI regression and accessibility (web)
+
+`tests/web/screens.spec.ts` opens the web export (`npx expo export --platform
+web`, demo data, clock frozen at 2026-09-26) in Playwright. It visits Home,
+Format, Score (hole by hole and whole card), Settle, Roster, History and Outing
+by tapping through the app, as a user would. On each screen it checks three
+things:
+
+1. **Screenshot.** It must match `tests/web/__snapshots__/<project>/<screen>.png`
+   exactly: there is no per-pixel tolerance, so even a one-step change to a
+   colour token fails.
+2. **Accessibility tree.** It must match `<screen>.aria.yml`: every role, name
+   and state, as a screen reader reads it.
+3. **axe.** It finds no WCAG 2.1 A or AA violation, such as a missing name, an
+   invalid role or poor colour contrast.
+
+It runs twice: as `phone` (390×844) and as `reflow-320` (320×640, the WCAG
+1.4.10 reflow width).
+
+Baselines only compare cleanly against the renderer that made them, so the CI
+job runs inside `mcr.microsoft.com/playwright:v<version>-noble`.
+`npm run test:web` runs the same image locally through Docker. Don't run a bare
+`npx playwright test` on Windows or macOS: their fonts render differently and
+every screenshot fails. The image tag in `ci.yml` must equal the pinned
+`@playwright/test` version, and a CI step fails if they drift. Update both
+together.
+
+When a change to a screen is intended, run `npm run test:web:update`, review
+the changed PNG and `.aria.yml` files in the diff, and commit them with the
+change. On failure, CI uploads a `playwright-report` artifact with the expected,
+actual and diff images and a trace.
+
+Limits:
+
+- **Web is a preview target.** Native `Alert`s and the date picker don't behave
+  as they do on a phone, so the suite checks screens rather than full flows.
+- **Large text isn't emulated.** React Native's font scale is fixed at 1 on the
+  web, so maximum text size is covered by the native nightly pass instead
+  ([issue #65](https://github.com/jwh3times/PressGolf/issues/65)). The 320 px
+  project checks reflow.
+- **This is not a screen-reader pass.** See [accessibility.md](accessibility.md).
 
 ## Native smoke workflow
 
@@ -117,7 +168,7 @@ areas, outdoor touch use, Dynamic Type, VoiceOver, or TalkBack.
 The active `Protect main` ruleset applies to the default branch. It:
 
 - requires pull requests and resolved review threads;
-- requires the four PR checks above against the latest `main`;
+- requires the five PR checks above against the latest `main`;
 - blocks force pushes and branch deletion; and
 - blocks merge on CodeQL errors or high-or-higher security alerts.
 

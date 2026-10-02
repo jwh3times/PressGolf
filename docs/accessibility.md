@@ -30,9 +30,32 @@ Relevant tests and helpers:
 - `src/theme/__tests__/type-scale.test.ts`
 - `src/hooks/__tests__/useLargeText.test.ts`
 
-The web preview is not the accessibility authority for this native app.
+The web preview is not the accessibility authority for this native app:
 React Native Testing Library mounts the components that ship on iOS and
-Android; Playwright and axe are therefore not part of the current gate.
+Android. The web suite (`tests/web`, see
+[testing-and-ci.md](testing-and-ci.md#ui-regression-and-accessibility-web))
+complements it on every pull request. axe checks each main screen against WCAG
+2.1 A and AA, and the screen's accessibility tree (roles, names, states) is
+committed as a text snapshot, so a renamed or unnamed control shows up as a
+diff.
+
+When it was introduced (October 2026), the web suite found:
+
+- **Text fields had no accessible name.** `Field` showed its label as visible
+  text only, so VoiceOver and TalkBack announced "text field" with no name.
+  The label is now the input's accessible name, on native as well as web.
+- **The tab bar wasn't a tab list,** so screen readers couldn't say "tab 2 of
+  4". The bar is now `tablist`, and the current tab is marked selected.
+- **Switches and disabled buttons had no state on web.** react-native-web
+  ignores `accessibilityState`. Switches now use `aria-checked`, and disabled
+  buttons use `Pressable`'s `disabled` prop. Both work on native too.
+- **The Round live card overflows at 320 px:**
+  [issue #72](https://github.com/jwh3times/PressGolf/issues/72).
+
+Selected state on chips and option buttons is still exposed through
+`accessibilityState` only. Native screen readers announce it, but web doesn't,
+because ARIA doesn't allow `aria-selected` on a button and React Native has no
+`aria-pressed`.
 
 ## Completed iOS validation
 

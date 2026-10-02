@@ -1,0 +1,28 @@
+- text: Your group Saturday Dogs
+- button "Done"
+- text: Group name
+- textbox "Group name": Saturday Dogs
+- text: Subtitle
+- textbox "Subtitle":
+  - /placeholder: Pine Hollow · 7:40 tee
+  - text: /Pine Hollow · 7:\d+ tee/
+- text: Shown under the group name on the home screen. House max score
+- button "Off"
+- button "Double bogey"
+- button "Net double bogey"
+- text: Every score counts as written. A pick-up sits out the hole. House handicaps
+- button "Full handicaps"
+- button "Off the low man"
+- text: Allowance, the share of each handicap played
+- button "Lower the allowance": −
+- text: /\d+%/
+- button "Raise the allowance": +
+- text: The lowest handicap plays off scratch and everyone else gets the difference. Players
+- button /MB Marcus YOU index 2\.1 · Sep \d+, \d+ · tap to edit 1/
+- button /DP Dev index 4\.6 · Sep \d+, \d+ · tap to edit 2/
+- button /TJ T\.J\. index 7\.2 · Sep \d+, \d+ · tap to edit 3/
+- button /BR Big Ray index \d+\.\d+ · Sep \d+, \d+ · tap to edit 4/
+- text: Add a player
+- textbox "Add a player":
+  - /placeholder: Name
+- button "Add" [disabled]
