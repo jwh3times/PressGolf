@@ -165,6 +165,31 @@ CI applies every migration to Postgres 16 and runs the RLS assertions before a
 merge can reach production. On `main`, the migration job uses secrets from the
 GitHub `production` environment.
 
+### Sync integration tests
+
+`npm run test:integration` runs `src/sync/**/*.integration.test.ts` against a
+local Supabase stack (Docker required): real auth, PostgREST, row-level
+security and realtime, with every migration applied. Start the stack first,
+with only the services sync uses:
+
+```bash
+npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
+npm run test:integration
+npx supabase stop            # when you're done
+```
+
+The runner reads the stack's URL and anon key from `supabase status`. Every run
+signs up fresh accounts and prefixes every id, so it can be repeated against a
+stack that stays up. It refuses any host but `localhost` or `127.0.0.1`.
+
+If another project's local Supabase already holds the default ports (54321 and
+up), start this one on others and point the runner at it:
+
+```bash
+SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_STUDIO_PORT=55323 SUPABASE_INBUCKET_PORT=55324 SUPABASE_ANALYTICS_PORT=55327 SUPABASE_DB_POOLER_PORT=55329 npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
+SUPABASE_TEST_URL=http://127.0.0.1:55321 SUPABASE_TEST_ANON_KEY=<ANON_KEY from that start> npm run test:integration
+```
+
 ## EAS build profiles
 
 Run the EAS CLI through `npx`; a global installation is not required.

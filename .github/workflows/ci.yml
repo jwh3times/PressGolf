@@ -173,11 +173,35 @@ jobs:
       - name: Row-level security holds two accounts apart
         run: $PSQL -f supabase/ci/rls-test.sql
 
+  sync:
+    name: Sync against a local Supabase stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Real auth, PostgREST, row-level security and realtime, with every
+      # migration applied. Only the services sync talks to are started.
+      - name: Start a local Supabase stack
+        run: npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
+
+      # Two accounts sync a season, share an outing by code and score it
+      # together; neither can read or write what the other has not shared.
+      - name: Sync integration tests
+        run: npm run test:integration
+
   migrate:
     name: Apply migrations to Supabase
     # Only once the tests and the throwaway database both agree, and only for
     # something that actually landed on main.
-    needs: [checks, bundle, database]
+    needs: [checks, bundle, database, sync]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15

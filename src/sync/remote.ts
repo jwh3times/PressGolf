@@ -12,6 +12,7 @@
  */
 import { conflictTarget, countDeletions, deletions, isEmpty, type Deletions } from './diff';
 import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
 
 /** PostgREST will not take an unbounded insert; big cards go up in pieces. */
@@ -22,6 +23,34 @@ function chunked<T>(rows: T[]): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < rows.length; i += CHUNK) out.push(rows.slice(i, i + CHUNK));
   return out;
+}
+
+/**
+ * Every row a read matches, however many there are.
+ *
+ * PostgREST caps a response at the project's `max_rows` (1000 by default) and
+ * says nothing about the rest, so one request for a season's scores silently
+ * came back short. Pages are ordered by the table's key so none is skipped or
+ * repeated, and the loop stops on an empty page rather than a short one: a
+ * project whose cap is lower than PAGE still gets everything.
+ */
+const PAGE = 1000;
+
+async function selectAll(
+  supabase: SupabaseClient,
+  table: keyof Snapshot,
+  filter: (query: ReturnType<ReturnType<SupabaseClient['from']>['select']>) => typeof query,
+): Promise<Record<string, unknown>[]> {
+  const rows: Record<string, unknown>[] = [];
+  for (;;) {
+    let query = filter(supabase.from(table).select('*'));
+    for (const column of conflictTarget(table).split(',')) query = query.order(column);
+    const { data, error } = await query.range(rows.length, rows.length + PAGE - 1);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    const page = (data ?? []) as Record<string, unknown>[];
+    if (page.length === 0) return rows;
+    rows.push(...page);
+  }
 }
 
 /** Everything this account owns, as it currently stands on the server. */
@@ -36,11 +65,8 @@ export async function pullSnapshot(): Promise<Snapshot> {
     // a shared outing's rows through. This snapshot is what pruning diffs
     // against, and a guest's scores are owned by the guest — pulling them here
     // would let one phone delete another's card the moment it fell behind.
-    const { data, error } = await supabase.from(table).select('*').eq('owner_id', ownerId);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    (snapshot[table] as unknown as Record<string, unknown>[]).push(
-      ...((data ?? []) as Record<string, unknown>[]),
-    );
+    const rows = await selectAll(supabase, table, (query) => query.eq('owner_id', ownerId));
+    (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   }
   return snapshot;
 }
@@ -71,11 +97,8 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   // The table name is the snapshot key in every case, so one argument does.
   const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
     if (values.length === 0) return;
-    const { data, error } = await supabase.from(table).select('*').in(column, values);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    (snapshot[table] as unknown as Record<string, unknown>[]).push(
-      ...((data ?? []) as Record<string, unknown>[]),
-    );
+    const rows = await selectAll(supabase, table, (query) => query.in(column, values));
+    (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   };
 
   await add('outings', 'id', outingIds);
