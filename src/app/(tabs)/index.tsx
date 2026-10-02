@@ -356,7 +356,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.accent,
   },
-  liveMiddle: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+  // Wraps rather than overflows: at 320 px the button drops onto its own line inside the card (#72).
+  liveMiddle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
   liveMiddleLarge: { flexDirection: 'column', alignItems: 'stretch' },
   liveButton: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20 },
   liveButtonLarge: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20, alignSelf: 'stretch' },
