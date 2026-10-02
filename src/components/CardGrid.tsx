@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { RoundContext } from '../domain/engine';
+import { wolfForHole, wolfPickForHole, type RoundContext } from '../domain/engine';
 import type { PlayerId } from '../domain/types';
 import { MAX_CONTROL_SCALE } from '../hooks/useLargeText';
 import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
@@ -23,10 +23,13 @@ export function CardGrid({
   ctx,
   onScore,
   onPickUp,
+  renderBelow,
 }: {
   ctx: RoundContext;
   onScore: (playerId: PlayerId, hole: number, value: number | null) => void;
   onPickUp: (playerId: PlayerId, hole: number) => void;
+  /** What goes under the keypad for the hole the cursor is on, e.g. its Wolf pick. */
+  renderBelow?: (hole: number) => React.ReactNode;
 }) {
   const players = ctx.players;
   const holes = ctx.holes;
@@ -57,6 +60,14 @@ export function CardGrid({
     if (value == null) return 'empty';
     const counted = ctx.gross(id, hole);
     return counted != null && counted !== value ? `${value}, counts ${counted}` : String(value);
+  };
+
+  const describeWolf = (hole: number): string => {
+    const wolf = wolfForHole(ctx, hole);
+    const pick = wolfPickForHole(ctx, hole);
+    const name = wolf ? ctx.name(wolf) : 'No wolf';
+    if (!pick) return `${name}, no pick`;
+    return pick.partner ? `${name} with ${ctx.name(pick.partner)}` : `${name} alone`;
   };
 
   return (
@@ -114,6 +125,31 @@ export function CardGrid({
               })}
             </View>
           ))}
+          {ctx.round.games.wolf.on ? (
+            <View style={styles.row}>
+              <Text style={[styles.name, styles.headText]}>WOLF</Text>
+              {holes.map((h, hole) => {
+                const pick = wolfPickForHole(ctx, hole);
+                return (
+                  <Pressable
+                    key={h.number}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Wolf, hole ${h.number}, ${describeWolf(hole)}`}
+                    accessibilityState={{ selected: cursor.hole === hole }}
+                    onPress={() => {
+                      setBig(null);
+                      setCursor((c) => ({ ...c, hole }));
+                    }}
+                    style={[styles.box, styles.cell, cursor.hole === hole ? styles.cellOn : null]}
+                  >
+                    <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={styles.wolfText}>
+                      {pick ? (pick.partner ? ctx.initials(pick.partner) : 'LW') : ''}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -187,6 +223,8 @@ export function CardGrid({
         />
         <Chip label="Clear box" onPress={() => onScore(at.id, cursor.hole, null)} />
       </View>
+
+      {renderBelow?.(cursor.hole)}
     </View>
   );
 }
@@ -206,6 +244,7 @@ const styles = StyleSheet.create({
   },
   cellOn: { borderColor: colors.accent, backgroundColor: colors.cardActive },
   cellText: { fontFamily: fonts.monoBold, fontSize: 14, color: ink.full },
+  wolfText: { fontFamily: fonts.monoBold, fontSize: 11, color: colors.gold },
   counted: { fontFamily: fonts.mono, fontSize: 10, color: colors.clay },
   cursorText: { fontFamily: fonts.sans, fontSize: 13, color: ink.soft },
   bigRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },

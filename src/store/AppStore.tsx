@@ -137,7 +137,8 @@ export interface AppStore extends AppState {
   toggleGame(key: GameKey): void;
   setStake(key: GameKey, cents: number): void;
   setOptions(patch: Partial<GameOptions>): void;
-  addPress(by: PlayerId, against: PlayerId, startHole: number, endHole: number, stake: number): void;
+  /** A press runs from `startHole` to the end of that nine, at the Nassau stake. */
+  addPress(by: PlayerId, against: PlayerId, startHole: number): void;
   removePress(pressId: string): void;
   setWolfPick(hole: number, wolf: PlayerId, partner: PlayerId | null): void;
   setRoundPlayers(playerIds: PlayerId[]): void;
@@ -735,17 +736,17 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           games: { ...r.games, [key]: { ...r.games[key], stake: Math.max(0, Math.round(cents)) } },
         })),
       setOptions: (patch) => patchRound((r) => ({ ...r, options: { ...r.options, ...patch } })),
-      // Presses and Wolf picks are called on the course; a finished card cannot carry them.
-      addPress: (by, against, startHole, endHole, stake) =>
-        patchRound((r) => r.entry === 'card' ? r : ({
-          ...r,
-          presses: [...r.presses, { id: makeId('press'), by, against, startHole, endHole, stake }],
-        })),
+      addPress: (by, against, startHole) =>
+        patchRound((r) => {
+          if (!course) return r;
+          const endHole = new RoundContext(r, course, []).nineFor(startHole)[1];
+          const stake = r.games.nassau.stake;
+          return { ...r, presses: [...r.presses, { id: makeId('press'), by, against, startHole, endHole, stake }] };
+        }),
       removePress: (pressId) =>
         patchRound((r) => ({ ...r, presses: r.presses.filter((p) => p.id !== pressId) })),
       setWolfPick: (hole, wolf, partner) =>
         patchRound((r) => {
-          if (r.entry === 'card') return r;
           const picks = r.wolfPicks.filter((p) => p.hole !== hole);
           return { ...r, wolfPicks: [...picks, { hole, wolf, partner }].sort((a, b) => a.hole - b.hole) };
         }),

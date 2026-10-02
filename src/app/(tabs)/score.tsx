@@ -99,6 +99,12 @@ export default function ScoreScreen() {
           ctx={ctx}
           onScore={(playerId, h, value) => store.setScore(playerId, h, value)}
           onPickUp={(playerId, h) => store.setPickedUp(playerId, h, true)}
+          renderBelow={(h) => (
+            <>
+              {round.games.wolf.on ? <WolfPicker hole={h} /> : null}
+              {round.games.nassau.on ? <CardPresses hole={h} /> : null}
+            </>
+          )}
         />
       </Screen>
     );
@@ -429,7 +435,7 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
                       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
                         () => {},
                       );
-                      store.addPress(youId, opponentId, hole, to, stake);
+                      store.addPress(youId, opponentId, hole);
                     }
                   : undefined
               }
@@ -447,6 +453,76 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
           </View>
         );
       })}
+    </View>
+  );
+}
+
+/**
+ * Presses written on a finished card ("Sam pressed Ben on 14"). The card is the
+ * record, so any player can have pressed any other from any hole; the store runs
+ * each one to the end of its nine at the Nassau stake, as a live press does.
+ */
+function CardPresses({ hole }: { hole: number }) {
+  const store = useStore();
+  const largeText = useLargeText();
+  const round = store.round!;
+  const ctx = new RoundContext(round, store.course!, store.group!.players);
+  const [by, setBy] = useState<PlayerId | null>(null);
+  const [against, setAgainst] = useState<PlayerId | null>(null);
+
+  const add = () => {
+    store.addPress(by!, against!, hole);
+    setBy(null);
+    setAgainst(null);
+  };
+
+  return (
+    <View style={{ gap: 10 }}>
+      <Eyebrow>Presses</Eyebrow>
+      {round.presses.map((press) => (
+        <View key={press.id} style={[styles.cardPressRow, largeText ? styles.stackRow : null]}>
+          <Text style={[styles.pressStatus, largeText ? styles.fullWidth : { flex: 1 }]}>
+            {`${ctx.name(press.by)} pressed ${ctx.name(press.against)} · ${press.startHole + 1} to ${press.endHole + 1} · ${money(press.stake)}`}
+          </Text>
+          <Chip
+            label="Remove"
+            accessibilityLabel={`Remove press: ${ctx.name(press.by)} pressed ${ctx.name(press.against)} from ${press.startHole + 1}`}
+            onPress={() => store.removePress(press.id)}
+          />
+        </View>
+      ))}
+      <Text style={styles.pressDetail}>Who pressed</Text>
+      <View style={styles.chipRow}>
+        {ctx.players.map((p) => (
+          <Chip
+            key={p.id}
+            label={p.initials}
+            accessibilityLabel={`Pressed by ${p.name}`}
+            color={p.color}
+            active={by === p.id}
+            onPress={() => {
+              setBy(p.id);
+              if (against === p.id) setAgainst(null);
+            }}
+          />
+        ))}
+      </View>
+      <Text style={styles.pressDetail}>Against</Text>
+      <View style={styles.chipRow}>
+        {ctx.players
+          .filter((p) => p.id !== by)
+          .map((p) => (
+            <Chip
+              key={p.id}
+              label={p.initials}
+              accessibilityLabel={`Against ${p.name}`}
+              color={p.color}
+              active={against === p.id}
+              onPress={() => setAgainst(p.id)}
+            />
+          ))}
+      </View>
+      <PrimaryButton label={`Add a press from hole ${hole + 1}`} disabled={!by || !against} onPress={add} />
     </View>
   );
 }
@@ -704,6 +780,7 @@ const styles = StyleSheet.create({
   wolfHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wolfName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
   wolfHint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, lineHeight: 16 },
+  cardPressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pressRow: {
     flexDirection: 'row',
     alignItems: 'center',

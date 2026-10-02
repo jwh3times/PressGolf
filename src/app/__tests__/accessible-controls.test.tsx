@@ -1186,13 +1186,75 @@ describe('entering a finished card', () => {
     expect(mockRouter.replace).toHaveBeenCalledWith('/format');
   });
 
-  it('explains on the Format tab why Wolf and tapped junk are off', async () => {
+  it('lets a card switch Wolf on, says which picks are missing, and explains that only tapped junk is off', async () => {
+    const user = userEvent.setup();
     useStoreValue({ round: { ...round, entry: 'card' } as typeof round });
-    await render(<FormatScreen />);
+    let view = await render(<FormatScreen />);
     expect(screen.getByText(/Entering a finished card/)).toBeOnTheScreen();
-    expect(screen.getByText(/Wolf partners are picked on the tee/)).toBeOnTheScreen();
-    expect(screen.queryByRole('switch', { name: 'Wolf' })).toBeNull();
+    expect(screen.queryByText(/Wolf partners are picked on the tee/)).toBeNull();
     expect(screen.getByText(/birdies and eagles off the card/i)).toBeOnTheScreen();
+    await user.press(screen.getByRole('switch', { name: 'Wolf' }));
+    expect(actions.toggleGame).toHaveBeenLastCalledWith('wolf');
+    await view.unmount();
+
+    const games = { ...round.games, wolf: { ...round.games.wolf, on: true } };
+    useStoreValue({ round: { ...round, entry: 'card', games, wolfPicks: [] } as typeof round });
+    view = await render(<FormatScreen />);
+    expect(screen.getByText(/Pick the Wolf/)).toBeOnTheScreen();
+    await view.unmount();
+  });
+
+  it('records Wolf partners on the card, hole by hole', async () => {
+    const user = userEvent.setup();
+    const ids = round.playerIds;
+    const player = (id: string) => group.players.find((p) => p.id === id)!;
+    const card = {
+      ...round,
+      entry: 'card',
+      games: { ...round.games, wolf: { ...round.games.wolf, on: true }, nassau: { ...round.games.nassau, on: false } },
+      wolfPicks: [
+        { hole: 0, wolf: ids[0], partner: ids[1] },
+        { hole: 1, wolf: ids[1], partner: null },
+      ],
+    } as unknown as typeof round;
+    useStoreValue({ round: card });
+    await render(<ScoreScreen />);
+
+    expect(screen.getByRole('button', { name: `Wolf, hole 1, ${player(ids[0]).name} with ${player(ids[1]).name}` })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: `Wolf, hole 2, ${player(ids[1]).name} alone` })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: `Wolf, hole 3, ${player(ids[2]).name}, no pick` }));
+    expect(screen.getByText('Wolf · hole 3')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: player(ids[0]).initials }));
+    expect(actions.setWolfPick).toHaveBeenLastCalledWith(2, ids[2], ids[0]);
+    await user.press(screen.getByRole('button', { name: /LONE WOLF/ }));
+    expect(actions.setWolfPick).toHaveBeenLastCalledWith(2, ids[2], null);
+  });
+
+  it('records presses on the card from the hole under the cursor, and removes a mistyped one', async () => {
+    const user = userEvent.setup();
+    const ids = round.playerIds;
+    const name = (id: string) => group.players.find((p) => p.id === id)!.name;
+    const card = {
+      ...round,
+      entry: 'card',
+      games: { ...round.games, wolf: { ...round.games.wolf, on: false }, nassau: { ...round.games.nassau, on: true } },
+      presses: [{ id: 'press-1', by: ids[0], against: ids[1], startHole: 13, endHole: 17, stake: 500 }],
+    } as unknown as typeof round;
+    useStoreValue({ round: card });
+    await render(<ScoreScreen />);
+
+    expect(screen.getByText(`${name(ids[0])} pressed ${name(ids[1])} · 14 to 18 · $5`)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: `Remove press: ${name(ids[0])} pressed ${name(ids[1])} from 14` }));
+    expect(actions.removePress).toHaveBeenLastCalledWith('press-1');
+
+    await user.press(screen.getByRole('button', { name: new RegExp(`^Hole 12, ${name(ids[0])},`) }));
+    const add = screen.getByRole('button', { name: 'Add a press from hole 12' });
+    expect(add).toBeDisabled();
+    await user.press(screen.getByRole('button', { name: `Pressed by ${name(ids[2])}` }));
+    expect(screen.queryByRole('button', { name: `Against ${name(ids[2])}` })).toBeNull();
+    await user.press(screen.getByRole('button', { name: `Against ${name(ids[0])}` }));
+    await user.press(add);
+    expect(actions.addPress).toHaveBeenLastCalledWith(ids[2], ids[0], 11);
   });
 
   it('fills the card box by box, flags pick-ups, and saves with a prompt for empty boxes', async () => {

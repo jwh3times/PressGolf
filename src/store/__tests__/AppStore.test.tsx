@@ -295,7 +295,7 @@ describe('AppStoreProvider', () => {
     await change(() => store.toggleGame('vegas'));
     await change(() => store.setStake('skins', -4.2));
     await change(() => store.setOptions({ vegasFlipOnBirdie: true }));
-    await change(() => store.addPress(playerId, round.playerIds[1], 0, 8, 500));
+    await change(() => store.addPress(playerId, round.playerIds[1], 0));
     const pressId = store.round!.presses[0].id;
     await change(() => store.removePress('missing'));
     await change(() => store.removePress(pressId));
@@ -410,6 +410,54 @@ describe('AppStoreProvider', () => {
     expect(inOuting.every((r) => r.options.maxScore === 'net_double_bogey')).toBe(true);
   });
 
+  it('runs a press to the end of the nine it was fired on, at the Nassau stake', async () => {
+    await mount();
+    expect(store.course!.tees[0].holes).toHaveLength(18);
+    const [a, b] = store.round!.playerIds;
+    await change(() => store.setStake('nassau', 700));
+    await change(() => store.addPress(a, b, 2));
+    await change(() => store.addPress(b, a, 11));
+    expect(store.round!.presses.slice(-2)).toEqual([
+      expect.objectContaining({ by: a, against: b, startHole: 2, endHole: 8, stake: 700 }),
+      expect.objectContaining({ by: b, against: a, startHole: 11, endHole: 17, stake: 700 }),
+    ]);
+  });
+
+  it('settles a card with presses and Wolf picks exactly as the same round played live', async () => {
+    await mount();
+    const group = store.group!;
+    const course = store.courses[0];
+    const ids = group.players.slice(0, 3).map((p) => p.id);
+    const holes = course.tees[0].holes.length;
+    const play = async () => {
+      for (const key of ['nassau', 'wolf'] as const) {
+        if (!store.round!.games[key].on) await change(() => store.toggleGame(key));
+      }
+      for (const [i, id] of ids.entries()) {
+        for (let h = 0; h < holes; h++) await change(() => store.setScore(id, h, 3 + ((h + i) % 3)));
+      }
+      await change(() => store.addPress(ids[0], ids[1], 3));
+      await change(() => store.addPress(ids[2], ids[0], 12));
+      for (let h = 0; h < holes; h++) {
+        await change(() => store.setWolfPick(h, ids[h % 3], h % 4 === 0 ? null : ids[(h + 1) % 3]));
+      }
+    };
+
+    await change(() => store.startRound(makeRound(group, course, ids)));
+    await play();
+    const live = store.settlement!;
+
+    const card = makeRound(group, course, ids, { entry: 'card', playedOn: new Date(2026, 8, 19, 12).getTime() });
+    await change(() => store.startCard(card));
+    await play();
+    expect(store.round!.id).toBe(card.id);
+    const settled = store.settlement!;
+    const lines = (key: string) => settled.games.find((g) => g.key === key)!.lines.map((l) => l.text);
+    expect(lines('nassau').filter((t) => t.startsWith('Press from'))).toHaveLength(2);
+    expect(lines('wolf').filter((t) => t.startsWith('Hole '))).not.toHaveLength(0);
+    expect(settled).toEqual(live);
+  });
+
   it('enters a finished card beside the live round, then saves or discards it', async () => {
     await mount();
     const liveId = store.activeRoundId!;
@@ -424,10 +472,10 @@ describe('AppStoreProvider', () => {
     expect(store.activeRoundId).toBe(liveId);
 
     await change(() => store.setScore(ids[0], 0, 5));
-    await change(() => store.addPress(ids[0], ids[1], 0, 8, 500));
+    await change(() => store.addPress(ids[0], ids[1], 0));
     await change(() => store.setWolfPick(0, ids[0], null));
-    expect(store.round!.presses).toEqual([]);
-    expect(store.round!.wolfPicks).toEqual([]);
+    expect(store.round!.presses).toEqual([expect.objectContaining({ by: ids[0], against: ids[1], startHole: 0 })]);
+    expect(store.round!.wolfPicks).toEqual([{ hole: 0, wolf: ids[0], partner: null }]);
     expect(store.rounds.find((r) => r.id === liveId)!.scores[ids[0]]?.[0]).not.toBe(5);
 
     await change(() => store.saveCard(true));
