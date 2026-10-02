@@ -52,6 +52,17 @@ A full VoiceOver flow was then completed on iOS hardware using swipe navigation:
 No blocking iOS screen-reader issue remained at the close of
 [issue #10](https://github.com/jwh3times/PressGolf/issues/10).
 
+Later features had the same iOS pass at maximum text size and with VoiceOver:
+
+- Handicaps ([issue #57](https://github.com/jwh3times/PressGolf/issues/57),
+  October 2026): iPhone 16 Pro, iOS 27.0. The Format tab's Handicaps card and
+  pops rows, recalculating after a tee change, the roster's index field, and
+  the outing's field pots. The Android half moved to issue #22.
+- Card entry of presses and Wolf picks
+  ([issue #39](https://github.com/jwh3times/PressGolf/issues/39), October 2026):
+  the card grid's Wolf row and picker, including RESET, and adding and removing
+  a press. Also switching Wolf on for a card from the Format tab.
+
 ## Required Android follow-up
 
 Physical Android validation remains open in
