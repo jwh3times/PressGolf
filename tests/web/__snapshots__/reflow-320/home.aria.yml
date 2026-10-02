@@ -1,0 +1,15 @@
+- text: /Your group Saturday Dogs Pine Hollow · 7:\d+ tee/
+- button "Settings": ⚙
+- text: /Round live THRU \d+ \$\d+ swinging across 3 games/
+- button "Enter scores"
+- text: /MB \+\$\d+ DP \+\$\d+ TJ −\$\d+ BR −\$\d+ Today’s games Nassau everyone vs everyone \$5 Skins net, carryover \$2 Junk birdies, greenies, sandies \$2/
+- button "Edit the format"
+- button "Enter a finished card"
+- text: Season ledger
+- button /\d+ rounds · since May ›/
+- text: /1 MB Marcus \+\$\d+ 2 DP Dev \+\$\d+ 3 TJ T\.J\. −\$\d+ 4 BR Big Ray −\$\d+/
+- tablist:
+  - tab "Home" [selected]: ◆ Home
+  - tab "Format": ≡ Format
+  - tab "Score": ● Score
+  - tab "Settle": $ Settle

@@ -1,0 +1,82 @@
+- text: Before the first tee What are we playing? Stack as many as the group can stomach. Every game settles on its own line. Nassau round robin Front, back and total as three separate matches — every player against every other.
+- switch "Nassau" [checked]
+- text: Per side, per match
+- button "decrease": −
+- text: $5
+- button "increase": +
+- text: Skins carryover Low net wins the hole outright. Ties push the money to the next one.
+- switch "Skins" [checked]
+- text: Per man, per hole
+- button "decrease": −
+- text: $2
+- button "increase": +
+- text: Junk side action Birdies pay, eagles pay double, greenies and sandies tapped in as they happen.
+- switch "Junk" [checked]
+- text: Per man, per bird
+- button "decrease": −
+- text: $2
+- button "increase": +
+- text: Stableford points Net points per hole — eagle 5, birdie 4, par 2, bogey 1. High man takes the pot.
+- switch "Stableford"
+- text: Four-ball teams Best ball of two. Teams alternate every round so nobody hoards the ringer.
+- switch "Four-ball"
+- text: Wolf rotating Tee order rotates the Wolf, who picks a partner or goes lone against the rest.
+- switch "Wolf"
+- text: Vegas teams Team scores paired into a two-digit number. Gets ugly fast — that’s the point.
+- switch "Vegas"
+- text: Match play 1 v 1 One straight match against your chosen rival for the whole eighteen.
+- switch "Match play"
+- text: Stroke play net Lowest net eighteen-hole total clears the table.
+- switch "Stroke play"
+- text: Tees Round
+- button "Round tee Blue"
+- button "Round tee Red"
+- text: Marcus
+- button "Marcus plays Blue"
+- button "Marcus plays Red"
+- text: Dev
+- button "Dev plays Blue"
+- button "Dev plays Red"
+- text: T.J.
+- button "T.J. plays Blue"
+- button "T.J. plays Red"
+- text: Big Ray
+- button "Big Ray plays Blue"
+- button "Big Ray plays Red"
+- text: /Pops strokes off the low man MB Marcus 2\.1 · Blue \d+\/\d+\.\d+ → 2 · the low man scratch in this group/
+- button "decrease": −
+- text: "0"
+- button "increase": +
+- text: /DP Dev 4\.6 · Blue \d+\/\d+\.\d+ → 5 · 2 off the low man strokes on SI 1–3/
+- button "decrease": −
+- text: "3"
+- button "increase": +
+- text: /TJ T\.J\. 7\.2 · Blue \d+\/\d+\.\d+ → 8 · 2 off the low man strokes on SI 1–6/
+- button "decrease": −
+- text: "6"
+- button "increase": +
+- text: /BR Big Ray \d+\.\d+ · Blue \d+\/\d+\.\d+ → \d+ · 2 off the low man strokes on SI 1–\d+/
+- button "decrease": −
+- text: /\d+/
+- button "increase": +
+- button "Recalculate from handicaps"
+- button "Edit the roster"
+- text: Handicaps
+- button "Full handicaps"
+- button "Off the low man"
+- text: Allowance, the share of each handicap played
+- button "Lower the allowance": −
+- text: /\d+%/
+- button "Raise the allowance": +
+- text: The lowest handicap plays off scratch and everyone else gets the difference. Max score
+- button "Off"
+- button "Double bogey"
+- button "Net double bogey"
+- text: Every score counts as written. A pick-up sits out the hole.
+- button /Lock it in · \$\d+ max exposure/
+- text: Worst case for one player if every remaining hole goes against them, Vegas quoted at ten points a hole.
+- tablist:
+  - tab "Home": ◆ Home
+  - tab "Format" [selected]: ≡ Format
+  - tab "Score": ● Score
+  - tab "Settle": $ Settle

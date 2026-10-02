@@ -1,0 +1,107 @@
+- button "Hole by hole"
+- button "Whole card"
+- text: /HOLE 1 2 3 4 5 6 7 8 9 \d+ \d+ \d+ \d+ \d+ \d+ \d+ \d+ \d+ PAR 4 5 4 3 4 4 5 3 4 4 4 3 5 4 4 3 4 5 MB/
+- button "Hole 1, Marcus, 4"
+- button "Hole 2, Marcus, 6"
+- button "Hole 3, Marcus, 4"
+- button "Hole 4, Marcus, 3"
+- button "Hole 5, Marcus, 5"
+- button "Hole 6, Marcus, 4"
+- button "Hole 7, Marcus, 5"
+- button "Hole 8, Marcus, 4"
+- button "Hole 9, Marcus, 4"
+- button /Hole \d+, Marcus, 5/
+- button /Hole \d+, Marcus, 4/
+- button /Hole \d+, Marcus, empty/
+- button /Hole \d+, Marcus, empty/
+- button /Hole \d+, Marcus, empty/
+- button /Hole \d+, Marcus, empty/
+- button /Hole \d+, Marcus, empty/
+- button /Hole \d+, Marcus, empty/
+- button /Hole \d+, Marcus, empty/
+- text: DP
+- button "Hole 1, Dev, 5"
+- button "Hole 2, Dev, 5"
+- button "Hole 3, Dev, 5"
+- button "Hole 4, Dev, 4"
+- button "Hole 5, Dev, 4"
+- button "Hole 6, Dev, 5"
+- button "Hole 7, Dev, 6"
+- button "Hole 8, Dev, 3"
+- button "Hole 9, Dev, 5"
+- button /Hole \d+, Dev, 4/
+- button /Hole \d+, Dev, 5/
+- button /Hole \d+, Dev, empty/
+- button /Hole \d+, Dev, empty/
+- button /Hole \d+, Dev, empty/
+- button /Hole \d+, Dev, empty/
+- button /Hole \d+, Dev, empty/
+- button /Hole \d+, Dev, empty/
+- button /Hole \d+, Dev, empty/
+- text: TJ
+- button "Hole 1, T.J., 6"
+- button "Hole 2, T.J., 6"
+- button "Hole 3, T.J., 4"
+- button "Hole 4, T.J., 4"
+- button "Hole 5, T.J., 5"
+- button "Hole 6, T.J., 6"
+- button "Hole 7, T.J., 5"
+- button "Hole 8, T.J., 4"
+- button "Hole 9, T.J., 6"
+- button /Hole \d+, T\.J\., 5/
+- button /Hole \d+, T\.J\., 6/
+- button /Hole \d+, T\.J\., empty/
+- button /Hole \d+, T\.J\., empty/
+- button /Hole \d+, T\.J\., empty/
+- button /Hole \d+, T\.J\., empty/
+- button /Hole \d+, T\.J\., empty/
+- button /Hole \d+, T\.J\., empty/
+- button /Hole \d+, T\.J\., empty/
+- text: BR
+- button "Hole 1, Big Ray, 5"
+- button "Hole 2, Big Ray, 7"
+- button "Hole 3, Big Ray, 6"
+- button "Hole 4, Big Ray, 5"
+- button "Hole 5, Big Ray, 6"
+- button "Hole 6, Big Ray, 5"
+- button "Hole 7, Big Ray, 7"
+- button "Hole 8, Big Ray, 4"
+- button "Hole 9, Big Ray, 5"
+- button /Hole \d+, Big Ray, 6/
+- button /Hole \d+, Big Ray, 5/
+- button /Hole \d+, Big Ray, empty/
+- button /Hole \d+, Big Ray, empty/
+- button /Hole \d+, Big Ray, empty/
+- button /Hole \d+, Big Ray, empty/
+- button /Hole \d+, Big Ray, empty/
+- button /Hole \d+, Big Ray, empty/
+- button /Hole \d+, Big Ray, empty/
+- text: Marcus · hole 1 · par 4
+- button "Enter 1"
+- button "Enter 2"
+- button "Enter 3"
+- button "Enter 4"
+- button "Enter 5"
+- button "Enter 6"
+- button "Enter 7"
+- button "Enter 8"
+- button "Enter 9"
+- button "Ten or more": /\d+\+/
+- button "Pick up"
+- button "Clear box"
+- text: Presses Who pressed
+- button "Pressed by Marcus": MB
+- button "Pressed by Dev": DP
+- button "Pressed by T.J.": TJ
+- button "Pressed by Big Ray": BR
+- text: Against
+- button "Against Marcus": MB
+- button "Against Dev": DP
+- button "Against T.J.": TJ
+- button "Against Big Ray": BR
+- button "Add a press from hole 1" [disabled]
+- tablist:
+  - tab "Home": ◆ Home
+  - tab "Format": ≡ Format
+  - tab "Score" [selected]: ● Score
+  - tab "Settle": $ Settle

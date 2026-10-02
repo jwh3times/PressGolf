@@ -7,6 +7,8 @@
 - npm, using the committed `package-lock.json`.
 - Expo Go for the quickest device loop, or native build tools/a development
   build when a dependency contains custom native code.
+- Docker, for `npm run test:web`, which runs the web UI suite in Playwright's
+  Linux container so screenshots match CI's.
 - Optional: the separately installed 1Password CLI for the maintainer
   configuration. The Supabase CLI used for database work is already a local
   development dependency and is invoked through `npx` or npm scripts.

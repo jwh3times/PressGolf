@@ -29,6 +29,8 @@
     "react-native-web": "^0.21.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "1.63.0",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^26.6.3",
@@ -53,6 +55,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "test:scripts": "node --test \"scripts/*.test.mjs\"",
+    "test:web": "node scripts/test-web.mjs",
+    "test:web:update": "node scripts/test-web.mjs --update-snapshots",
     "sync:agents": "node scripts/sync-agents.mjs",
     "sync:agents:check": "node scripts/sync-agents.mjs --check",
     "db:new": "supabase migration new",

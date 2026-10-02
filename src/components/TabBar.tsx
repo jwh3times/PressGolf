@@ -46,6 +46,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
       style={[styles.wrap, { bottom: Math.max(insets.bottom, 10) + 16 }]}
     >
       <BlurView
+        accessibilityRole="tablist"
         intensity={Platform.OS === 'android' ? 0 : 40}
         tint="dark"
         style={[styles.bar, { height: tabBarHeight(fontScale) }]}
@@ -57,7 +58,9 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             <Pressable
               key={route.key}
               accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
+              // aria-selected rather than accessibilityState: native reads both,
+              // and react-native-web only maps the aria prop.
+              aria-selected={focused}
               accessibilityLabel={LABELS[route.name] ?? route.name}
               onPress={() => {
                 if (!focused) {

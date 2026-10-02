@@ -429,7 +429,7 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: !down }}
+              disabled={!down}
               onPress={
                 down
                   ? () => {
