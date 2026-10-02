@@ -79,9 +79,13 @@ Maestro gives its driver a startup window, set by `MAESTRO_DRIVER_STARTUP_TIMEOU
 in the workflow: 5 minutes on Android and 10 on iOS. XCTest on a cold hosted
 simulator can take close to four minutes to start even on a passing run.
 
-When a run fails, the job uploads Maestro's output (a screenshot and log for
-each step, plus the JUnit report) as a `maestro-android` or `maestro-ios`
-artifact, kept for 14 days.
+Each attempt keeps its own output: a screenshot and log for each step under
+`attempt-N/`, and its own JUnit report, `junit-attempt-N.xml`. A failed attempt
+sets `MAESTRO_ATTEMPT_FAILED=true` for the rest of the job. The job uploads the
+output as a `maestro-android` or `maestro-ios` artifact, kept for 14 days,
+whenever the job fails or an attempt failed. A first attempt that fails before
+a passing retry therefore still leaves its evidence. `npm run test:scripts`
+covers `run.sh` against a stand-in for Maestro.
 
 The flow waits on what is on screen rather than on timing. It centres each
 button it scrolls to, because a button that scrolls in at the bottom edge can

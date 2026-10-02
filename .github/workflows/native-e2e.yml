@@ -82,18 +82,18 @@ jobs:
           disable-animations: true
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
-            sh .maestro/run.sh emulator-5554 "${{ runner.temp }}/maestro-android" maestro-android.xml
+            sh .maestro/run.sh emulator-5554 "${{ runner.temp }}/maestro-android"
 
-      # Screenshots and Maestro's own log of each step: the only way to see what
-      # was on screen when a step could not find its element.
+      # Screenshots, Maestro's own log of each step, and a JUnit report per
+      # attempt: the only way to see what was on screen when a step could not
+      # find its element. Kept whenever an attempt failed, even if the retry
+      # passed (run.sh sets MAESTRO_ATTEMPT_FAILED).
       - name: Keep the Maestro output
-        if: failure()
+        if: failure() || env.MAESTRO_ATTEMPT_FAILED == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: maestro-android
-          path: |
-            ${{ runner.temp }}/maestro-android
-            maestro-android.xml
+          path: ${{ runner.temp }}/maestro-android
           if-no-files-found: ignore
           retention-days: 14
 
@@ -146,15 +146,13 @@ jobs:
           app_path="$(find "$RUNNER_TEMP/press-ios" -maxdepth 2 -name '*.app' -print -quit)"
           test -n "$app_path"
           xcrun simctl install "$device_id" "$app_path"
-          sh .maestro/run.sh "$device_id" "$RUNNER_TEMP/maestro-ios" maestro-ios.xml
+          sh .maestro/run.sh "$device_id" "$RUNNER_TEMP/maestro-ios"
 
       - name: Keep the Maestro output
-        if: failure()
+        if: failure() || env.MAESTRO_ATTEMPT_FAILED == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: maestro-ios
-          path: |
-            ${{ runner.temp }}/maestro-ios
-            maestro-ios.xml
+          path: ${{ runner.temp }}/maestro-ios
           if-no-files-found: ignore
           retention-days: 14
