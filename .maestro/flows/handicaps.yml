@@ -9,16 +9,14 @@ name: Set an index and recalculate the pops
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Handicap index for T\.J\., DIRECTION: DOWN } }
 - eraseText: 10
 - inputText: '12.0'
-- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
-# With the keyboard up, the first tap only puts it away, as it would for a
-# person. If the roster is still showing, tap Done again.
+# Android's keyboard has a Done key of its own, which Maestro would find
+# before the screen's Done button. Put the keyboard away first.
 - runFlow:
     when:
-      visible: Done
+      platform: Android
     commands:
-      - tapOn:
-          text: Done
-          optional: true
+      - hideKeyboard
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
 # Format kept its place at the bottom. The round's pops were worked out from
 # the old index, so T.J.'s row offers to recalculate them.
 - scrollUntilVisible:

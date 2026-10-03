@@ -192,7 +192,18 @@ control to the middle of the screen in the direction given. At the largest
 text size most controls start off-screen, and a control left at the bottom
 edge can sit under the floating tab bar, or on Android over the system
 navigation bar, where Maestro still counts it as visible and the tap lands on
-the bar (an early run tapped Android's Home button this way). They wait for native alerts (Post it, Mark and save)
+the bar (an early run tapped Android's Home button this way).
+
+Two Android behaviours shape the shared steps:
+
+- **Launching.** Clearing the app's state removes its task, and the system's
+  delayed kill of that old task can land on the process a launch has just
+  started, leaving the splash screen over a dead process. `launch.yml` stops,
+  clears, pauses and then launches, and launches once more if the home screen
+  hasn't appeared after 90 seconds.
+- **The keyboard.** Maestro sees the soft keyboard's keys. A flow that types
+  and then taps a button named Done must hide the keyboard first, or it taps
+  the keyboard's own Done key. They wait for native alerts (Post it, Mark and save)
 before tapping them. They find controls by their accessibility labels; the one
 exception is a game's switch on Format, whose label repeats the title beside
 it, so the shared `Switch` carries a `switch-<label>` test ID. iOS reads a
