@@ -177,8 +177,9 @@ rule:
   refund goes in `FieldGameResult.refunds`, never in `payouts`, so it never
   reads as winnings.
 - **Carry to next time:** the money stays in `unclaimedPot`, and the field's nets
-  sum to minus that amount. Nobody holds it yet: the domain has no organiser to
-  hand it to (#70).
+  sum to minus that amount. The pot card shows it as still riding, and no
+  transfer moves it: whoever runs the outing carries it forward by hand. This
+  is the decided rule (#70); the domain has no organiser player to hand it to.
 
 ## Local data and demo isolation
 

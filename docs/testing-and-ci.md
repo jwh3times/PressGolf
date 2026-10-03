@@ -64,8 +64,8 @@ An outing must keep every cent either with a player or still in a pot. Once the
 field is in, only a pot whose leftovers carry may keep anything, and a refund
 only ever hands back a buy-in. The outing generator also produces fields where
 every card is finished, and fields level on every hole where nobody wins, so
-the end of the day is actually exercised. Transfers never need more than one fewer than the players with money to move,
-and every Handicap Index reads back as written. The suite uses a fixed seed (in
+the end of the day is actually exercised. Transfers never need more than one
+fewer than the players with money to move, and every Handicap Index reads back as written. The suite uses a fixed seed (in
 `PROPERTY_RUNS`), so a CI failure reproduces locally, and fast-check prints the
 shrunk counter-example.
 
