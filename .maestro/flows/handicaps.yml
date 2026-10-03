@@ -1,0 +1,39 @@
+appId: com.press.golf
+name: Set an index and recalculate the pops
+---
+- runFlow: ../subflows/launch.yml
+- tapOn: Format
+- scrollUntilVisible:
+    element:
+      text: Edit the roster
+    direction: DOWN
+    centerElement: true
+    timeout: 40000
+- tapOn: Edit the roster
+# iOS reads a roster row as one label; Android keeps the name as its own text.
+- scrollUntilVisible:
+    element:
+      text: .*T\.J\..*
+    direction: DOWN
+    centerElement: true
+    timeout: 40000
+- tapOn: .*T\.J\..*
+- tapOn: Handicap index for T.J.
+- eraseText: 10
+- inputText: '12.0'
+- tapOn: Done
+# The round's pops were worked out from the old index, so Format offers to
+# recalculate them.
+- extendedWaitUntil:
+    visible: .*12\.0 · Blue .*
+    timeout: 15000
+- assertVisible: handicaps give \d+ · recalculate\?
+- scrollUntilVisible:
+    element:
+      text: Recalculate from handicaps
+    direction: DOWN
+    centerElement: true
+    timeout: 40000
+- tapOn: Recalculate from handicaps
+- assertNotVisible: handicaps give \d+ · recalculate\?
+- assertVisible: .*12\.0 · Blue .* off the low man.*

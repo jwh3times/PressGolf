@@ -26,7 +26,8 @@ jobs:
   android:
     name: Android native smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Four journey flows, each at default and maximum text size (#65).
+    timeout-minutes: 90
     env:
       # Cold GitHub-hosted emulators can take several minutes to start the driver.
       MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
@@ -73,7 +74,7 @@ jobs:
           chmod +x "$maestro_bin"
           echo "$(dirname "$maestro_bin")" >> "$GITHUB_PATH"
 
-      - name: Boot Android and run the round flow
+      - name: Boot Android and run the journey flows at both text sizes
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34
@@ -82,10 +83,10 @@ jobs:
           disable-animations: true
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
-            sh .maestro/run.sh emulator-5554 "${{ runner.temp }}/maestro-android"
+            sh .maestro/passes.sh android emulator-5554 "${{ runner.temp }}/maestro-android"
 
       # Screenshots, Maestro's own log of each step, and a JUnit report per
-      # attempt: the only way to see what was on screen when a step could not
+      # flow, text size and attempt: the only way to see what was on screen when a step could not
       # find its element. Kept whenever an attempt failed, even if the retry
       # passed (run.sh sets MAESTRO_ATTEMPT_FAILED).
       - name: Keep the Maestro output
@@ -100,7 +101,9 @@ jobs:
   ios:
     name: iOS native smoke
     runs-on: macos-latest
-    timeout-minutes: 60
+    # Four journey flows, each at default and maximum text size (#65). Every
+    # Maestro run starts its own XCTest driver, which is the slow part here.
+    timeout-minutes: 120
     env:
       # Cold GitHub-hosted simulators can take several minutes to start XCTest:
       # close to four minutes on a passing run, and past five on failing ones (#51).
@@ -137,7 +140,7 @@ jobs:
           chmod +x "$maestro_bin"
           echo "$(dirname "$maestro_bin")" >> "$GITHUB_PATH"
 
-      - name: Boot iOS and run the round flow
+      - name: Boot iOS and run the journey flows at both text sizes
         run: |
           device_id="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')"
           test -n "$device_id"
@@ -146,7 +149,7 @@ jobs:
           app_path="$(find "$RUNNER_TEMP/press-ios" -maxdepth 2 -name '*.app' -print -quit)"
           test -n "$app_path"
           xcrun simctl install "$device_id" "$app_path"
-          sh .maestro/run.sh "$device_id" "$RUNNER_TEMP/maestro-ios"
+          sh .maestro/passes.sh ios "$device_id" "$RUNNER_TEMP/maestro-ios"
 
       - name: Keep the Maestro output
         if: failure() || env.MAESTRO_ATTEMPT_FAILED == 'true'

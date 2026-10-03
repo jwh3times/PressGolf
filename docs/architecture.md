@@ -242,7 +242,10 @@ scripts/
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/
-  smoke.yml         native round-to-ledger smoke flow
+  flows/            one native flow per journey (round, card entry, outing, handicaps)
+  subflows/         steps the flows share, such as a fresh launch
+  run.sh            runs every flow, retrying each once
+  passes.sh         runs the flows at default and maximum text size
 ```
 
 Expo Router screens belong in `src/app/`; non-route components and logic do not.

@@ -1,0 +1,31 @@
+appId: com.press.golf
+name: Check the demo outing's field pots
+---
+- runFlow: ../subflows/launch.yml
+# The outing belongs to the demo society, not the Saturday group.
+- tapOn: Settings
+- scrollUntilVisible:
+    element:
+      text: Pine Hollow Society
+    direction: DOWN
+    centerElement: true
+    timeout: 40000
+- tapOn: Pine Hollow Society
+- tapOn: Done
+- extendedWaitUntil:
+    visible: .*Society Saturday.*
+    timeout: 15000
+- tapOn: .*Society Saturday.*
+# Both pots, each with its field, buy-in and progress through the card.
+- extendedWaitUntil:
+    visible: Field skins
+    timeout: 15000
+- assertVisible: Scats
+- assertVisible: \d+ in at \$\d+ · \d+/18 holes settled.*
+- scrollUntilVisible:
+    element:
+      text: Close the outing
+    direction: DOWN
+    centerElement: true
+    timeout: 40000
+- assertVisible: .*Buy-ins are already out of everyone’s pocket.*

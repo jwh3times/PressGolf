@@ -1,12 +1,7 @@
 appId: com.press.golf
 name: Complete a demo round
 ---
-- launchApp:
-    clearState: true
-# A cold emulator can take minutes to load the first JS bundle.
-- extendedWaitUntil:
-    visible: Saturday Dogs
-    timeout: 240000
+- runFlow: ../subflows/launch.yml
 - assertVisible: Round live
 - tapOn: Enter scores
 - assertVisible: Hole 12

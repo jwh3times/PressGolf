@@ -1,0 +1,9 @@
+appId: com.press.golf
+name: Launch the demo app fresh
+---
+- launchApp:
+    clearState: true
+# A cold emulator can take minutes to load the first JS bundle.
+- extendedWaitUntil:
+    visible: Saturday Dogs
+    timeout: 240000

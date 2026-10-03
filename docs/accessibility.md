@@ -102,8 +102,31 @@ criteria are:
   double-announcement, skipped content, or navigation trap.
 - Any Android-specific defects are fixed or split into focused issues.
 
-The passing Android emulator/Maestro run proves the native round flow, not
+The passing Android emulator/Maestro run proves the native journeys, not
 TalkBack semantics or physical-device rendering.
+
+## Automated large-text pass
+
+The native nightly ([testing-and-ci.md](testing-and-ci.md#native-smoke-workflow))
+runs every journey flow (round, card entry, outing, handicaps) a second time at
+the largest text size: iOS Dynamic Type `accessibility-extra-extra-extra-large`
+on a simulator, and Android `font_scale` 2.0 on an emulator.
+
+What it automates: each control a journey uses must still be found by its
+accessible name, scrolled to, and tapped at maximum text size, and each value
+it checks must still be on screen. A control that large text pushes
+off-screen, under the tab bar, or out of reach fails the flow.
+
+What still needs a device:
+
+- **Screen readers.** Maestro reads the accessibility tree but does not drive
+  VoiceOver or TalkBack, so announcement order, double announcements, and
+  focus traps stay manual (issue #40, and #22 on Android).
+- **Physical rendering.** A label clipped mid-word or overlapping its
+  neighbour can still be found and tapped, so it passes the flow. Truncation,
+  safe areas, and how the screen reads at arm's length need a look on real
+  hardware.
+- **Screens no flow visits**, such as sign-in and the course editor.
 
 ## Regression checklist
 
