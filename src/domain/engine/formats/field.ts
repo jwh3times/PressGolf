@@ -76,6 +76,42 @@ function validEntrants(ctx: RoundContext, config: FieldGameConfig): PlayerId[] {
   return config.entrants.filter((id) => ctx.ids.includes(id));
 }
 
+/** How a pot's money ends up: won, handed back, or still in the pot. */
+interface Allocation {
+  holes: FieldHoleResult[];
+  payouts: Record<PlayerId, Cents>;
+  refunds: Record<PlayerId, Cents>;
+  unclaimedPot: Cents;
+  lines: SettlementLine[];
+}
+
+/**
+ * Hands a pot nobody won back to the people who paid into it.
+ *
+ * Only for a finished day where nobody took a hole and the leftovers are not
+ * set to carry: then the money was never anybody's to win. Whole cents, split
+ * the same way as everything else, so the refunds add back to the pot exactly.
+ */
+function refundTheField(
+  pot: Cents,
+  buyIn: Cents,
+  entrants: PlayerId[],
+): { refunds: Record<PlayerId, Cents>; line: SettlementLine } {
+  const shares = splitEvenly(pot, entrants.length);
+  const refunds: Record<PlayerId, Cents> = {};
+  entrants.forEach((id, i) => {
+    refunds[id] = shares[i];
+  });
+  return {
+    refunds,
+    line: {
+      text: `Nobody won a hole all day — ${money(buyIn)} back to each of the ${entrants.length} in.`,
+      amount: money(pot),
+      tone: 'pending',
+    },
+  };
+}
+
 export function settleFieldGame(
   key: FieldGameKey,
   ctx: RoundContext,
@@ -93,6 +129,7 @@ export function settleFieldGame(
     buyIn: config.buyIn,
     entrants,
     payouts: {},
+    refunds: {},
     holes: [],
     lines: [],
     pendingHoles: 0,
@@ -117,14 +154,15 @@ export function settleFieldGame(
   );
   const pendingHoles = resolved.filter((r) => !r.complete).length;
 
-  const { holes, payouts, unclaimedPot, lines } =
+  const { holes, payouts, refunds, unclaimedPot, lines } =
     key === 'scats' || config.carry
-      ? allocatePerHole(ctx, config, resolved, pot, entrants.length)
-      : allocateEvenly(ctx, resolved, pot);
+      ? allocatePerHole(ctx, config, resolved, pot, entrants)
+      : allocateEvenly(ctx, config, resolved, pot, entrants);
 
   for (const [id, amount] of Object.entries(payouts)) ledger.award(id, amount);
+  for (const [id, amount] of Object.entries(refunds)) ledger.award(id, amount);
 
-  return { ...base, pot, payouts, holes, lines, pendingHoles, unclaimedPot };
+  return { ...base, pot, payouts, refunds, holes, lines, pendingHoles, unclaimedPot };
 }
 
 /**
@@ -136,9 +174,11 @@ export function settleFieldGame(
  */
 function allocateEvenly(
   ctx: RoundContext,
+  config: FieldGameConfig,
   resolved: Omit<FieldHoleResult, 'holesClaimed'>[],
   pot: Cents,
-): { holes: FieldHoleResult[]; payouts: Record<PlayerId, Cents>; unclaimedPot: Cents; lines: SettlementLine[] } {
+  entrants: PlayerId[],
+): Allocation {
   const holes: FieldHoleResult[] = resolved.map((r) => ({ ...r, holesClaimed: r.winner ? 1 : 0 }));
   const winners = holes.filter((h) => h.winner);
   const everythingIn = resolved.every((r) => r.complete);
@@ -159,12 +199,16 @@ function allocateEvenly(
       amount: '',
       tone: 'pending',
     });
-    return { holes, payouts, unclaimedPot: pot, lines };
+    return { holes, payouts, refunds: {}, unclaimedPot: pot, lines };
   }
 
   if (winners.length === 0) {
+    if (config.unclaimed !== 'carry') {
+      const { refunds, line } = refundTheField(pot, config.buyIn, entrants);
+      return { holes, payouts, refunds, unclaimedPot: 0, lines: [line] };
+    }
     lines.push({ text: 'No skins won all day — the pot carries.', amount: money(pot), tone: 'pending' });
-    return { holes, payouts, unclaimedPot: pot, lines };
+    return { holes, payouts, refunds: {}, unclaimedPot: pot, lines };
   }
 
   // Whole cents, and the remainder goes to the earliest skins rather than vanishing.
@@ -179,7 +223,7 @@ function allocateEvenly(
     });
   });
 
-  return { holes, payouts, unclaimedPot: 0, lines };
+  return { holes, payouts, refunds: {}, unclaimedPot: 0, lines };
 }
 
 /**
@@ -193,12 +237,13 @@ function allocatePerHole(
   config: FieldGameConfig,
   resolved: Omit<FieldHoleResult, 'holesClaimed'>[],
   pot: Cents,
-  entrantCount: number,
-): { holes: FieldHoleResult[]; payouts: Record<PlayerId, Cents>; unclaimedPot: Cents; lines: SettlementLine[] } {
+  entrants: PlayerId[],
+): Allocation {
   const holeCount = resolved.length || 1;
   // Per-hole shares are whole cents that add back to the pot exactly.
   const perHole = splitEvenly(pot, holeCount);
   const payouts: Record<PlayerId, Cents> = {};
+  let refunds: Record<PlayerId, Cents> = {};
   const lines: SettlementLine[] = [];
   const holes: FieldHoleResult[] = [];
 
@@ -270,6 +315,11 @@ function allocatePerHole(
         tone: 'won',
       });
       unclaimedPot = 0;
+    } else if (winners.length === 0 && config.unclaimed !== 'carry') {
+      const refund = refundTheField(unclaimedPot, config.buyIn, entrants);
+      refunds = refund.refunds;
+      lines.push(refund.line);
+      unclaimedPot = 0;
     } else {
       lines.push({
         text:
@@ -284,11 +334,11 @@ function allocatePerHole(
 
   if (lines.length === 0) {
     lines.push({
-      text: `${entrantCount} in at ${money(config.buyIn)} — nothing decided yet.`,
+      text: `${entrants.length} in at ${money(config.buyIn)} — nothing decided yet.`,
       amount: money(pot),
       tone: 'pending',
     });
   }
 
-  return { holes, payouts, unclaimedPot, lines };
+  return { holes, payouts, refunds, unclaimedPot, lines };
 }

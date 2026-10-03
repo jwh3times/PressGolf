@@ -737,6 +737,31 @@ describe('setup and outing state matrices', () => {
     alert.mockRestore();
   });
 
+  it('says a pot nobody won is handed back rather than won', async () => {
+    const base = outingStore.outingSettlement!;
+    const ids = outing.field;
+    const refunded = {
+      ...base.fieldGames[0],
+      entrants: ids.slice(0, 2),
+      pot: 4000,
+      buyIn: 2000,
+      payouts: {},
+      refunds: { [ids[0]]: 2000, [ids[1]]: 2000 },
+      unclaimedPot: 0,
+      blocked: false,
+      pendingHoles: 0,
+    };
+    mockUseStore.mockReturnValue({
+      ...outingStore,
+      outingSettlement: { ...base, fieldGames: [refunded] },
+    } as AppStore);
+    const view = await render(<OutingScreen />);
+    expect(screen.getByText(/\$40 handed back/)).toBeOnTheScreen();
+    expect(screen.getByText('Nobody won a hole, so every buy-in goes back.')).toBeOnTheScreen();
+    expect(screen.queryByText('Nothing won yet.')).toBeNull();
+    await view.unmount();
+  });
+
   it('covers new-outing empty states, field sizes, tee formats, and both start modes', async () => {
     useStoreValue({ group: null });
     let view = await render(<NewOutingScreen />);
