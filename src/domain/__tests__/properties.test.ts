@@ -71,7 +71,19 @@ describe('settlement properties', () => {
         const settlement = settleOuting(outing, rounds, course, players);
         const riding = sum(settlement.fieldGames.map((pot) => pot.unclaimedPot));
         for (const pot of settlement.fieldGames) {
-          expect(sum(Object.values(pot.payouts)) + pot.unclaimedPot).toBe(pot.pot);
+          expect(sum(Object.values(pot.payouts)) + sum(Object.values(pot.refunds)) + pot.unclaimedPot).toBe(
+            pot.pot,
+          );
+          // Once the last card is in, only a pot whose leftovers carry keeps
+          // anything: otherwise it was won, split, or handed back.
+          const config = outing.fieldGames[pot.key];
+          const mustBeEmpty = pot.pendingHoles === 0 && config.unclaimed !== 'carry';
+          expect(mustBeEmpty ? pot.unclaimedPot : 0).toBe(0);
+          // A refund is only ever a buy-in coming back to somebody who paid it.
+          for (const [id, amount] of Object.entries(pot.refunds)) {
+            expect(pot.entrants).toContain(id);
+            expect(amount).toBeLessThanOrEqual(pot.buyIn);
+          }
         }
         // A buy-in leaves the player when it goes into the pot, so money still
         // riding is the only thing that keeps the field's nets off zero.

@@ -169,6 +169,17 @@ A field hole remains unresolved until every entrant has posted a score for that
 hole, and under a max a pick-up counts as a posted score. Contributions are shown immediately, so standings can be temporarily
 negative or fail to sum to zero while part of a pot is still unresolved.
 
+Once the whole field is in, money still in a pot follows the pot's leftovers
+rule:
+
+- **Split among winners** (the default): the leftovers are shared between
+  everyone who won a hole. If nobody won one, every buy-in is handed back. A
+  refund goes in `FieldGameResult.refunds`, never in `payouts`, so it never
+  reads as winnings.
+- **Carry to next time:** the money stays in `unclaimedPot`, and the field's nets
+  sum to minus that amount. Nobody holds it yet: the domain has no organiser to
+  hand it to (#70).
+
 ## Local data and demo isolation
 
 `AppStore` writes the active dataset to AsyncStorage and renders from local

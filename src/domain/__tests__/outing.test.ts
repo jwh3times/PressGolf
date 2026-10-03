@@ -98,16 +98,43 @@ describe('field skins pot', () => {
     expectBalanced(result);
   });
 
-  it('carries the whole pot when nobody wins a hole', () => {
+  it('hands every buy-in back when nobody wins a hole', () => {
     const result = settle({
       cards: flatField(20, 5),
       fieldGames: { fieldSkins: { on: true, buyIn: 2000 } },
     });
     const skins = result.fieldGames[0];
+    expect(skins.unclaimedPot).toBe(0);
+    expect(skins.payouts).toEqual({});
+    expect(Object.values(skins.refunds)).toEqual(Array(20).fill(2000));
+    expect(skins.lines.some((l) => l.text.includes('back'))).toBe(true);
+    // Everybody is square, so nobody hands anybody anything.
+    expect(result.net['p00']).toBe(0);
+    expect(result.transfers).toEqual([]);
+    expectBalanced(result);
+  });
+
+  it('keeps the whole pot riding when nobody wins a hole and leftovers carry', () => {
+    const result = settle({
+      cards: flatField(20, 5),
+      fieldGames: { fieldSkins: { on: true, buyIn: 2000, unclaimed: 'carry' } },
+    });
+    const skins = result.fieldGames[0];
     expect(skins.unclaimedPot).toBe(40000);
+    expect(skins.refunds).toEqual({});
     expect(skins.lines.some((l) => l.text.includes('carries'))).toBe(true);
     // Everybody is down exactly their buy-in and the money is still in the pot.
     expect(result.net['p00']).toBe(-2000);
+    expectBalanced(result);
+  });
+
+  it('refunds nothing while holes are still out', () => {
+    const cards = flatField(20, 5);
+    for (let p = 16; p < 20; p++) cards[p] = Array(18).fill(null) as unknown as number[];
+    const result = settle({ cards, fieldGames: { fieldSkins: { on: true, buyIn: 2000 } } });
+    const skins = result.fieldGames[0];
+    expect(skins.refunds).toEqual({});
+    expect(skins.unclaimedPot).toBe(40000);
   });
 
   it('only charges the people who bought in', () => {
@@ -234,6 +261,34 @@ describe('scats with the rabbit', () => {
     expectBalanced(result);
   });
 
+  it('hands every buy-in back when nobody wins a hole all day', () => {
+    const result = settle({
+      cards: flatField(20, 5),
+      fieldGames: {
+        scats: { on: true, buyIn: 2000, carry: true, unclaimed: 'splitAmongWinners' },
+      },
+    });
+    const scats = result.fieldGames[0];
+    expect(scats.unclaimedPot).toBe(0);
+    expect(scats.payouts).toEqual({});
+    expect(scats.refunds['p00']).toBe(2000);
+    expect(Object.values(scats.refunds).reduce((a, b) => a + b, 0)).toBe(40000);
+    expect(scats.lines.some((l) => l.text.includes('back'))).toBe(true);
+    expect(result.transfers).toEqual([]);
+    expectBalanced(result);
+  });
+
+  it('keeps the whole pot riding when nobody wins a hole and leftovers carry', () => {
+    const result = settle({
+      cards: flatField(20, 5),
+      fieldGames: { scats: { on: true, buyIn: 2000, carry: true, unclaimed: 'carry' } },
+    });
+    const scats = result.fieldGames[0];
+    expect(scats.unclaimedPot).toBe(40000);
+    expect(scats.refunds).toEqual({});
+    expectBalanced(result);
+  });
+
   it('never pays out more than the pot', () => {
     // A messy field: lots of outright winners across the card.
     const cards = flatField(20, 6);
@@ -354,7 +409,8 @@ describe('a whole outing', () => {
     expect(Object.keys(result.net)).toHaveLength(20);
     for (const game of result.fieldGames) {
       const paid = Object.values(game.payouts).reduce((a, b) => a + b, 0);
-      expect(paid + game.unclaimedPot).toBe(game.pot);
+      const refunded = Object.values(game.refunds).reduce((a, b) => a + b, 0);
+      expect(paid + refunded + game.unclaimedPot).toBe(game.pot);
     }
     const owed = Object.values(result.net)
       .filter((v) => v > 0)

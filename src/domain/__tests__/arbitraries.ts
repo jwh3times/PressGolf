@@ -157,6 +157,28 @@ const arbFieldGame = (field: PlayerId[]) =>
     unclaimed: fc.constantFrom('splitAmongWinners', 'carry' as const),
   });
 
+/**
+ * How the field's cards come in. Random scores leave a hole blank often enough
+ * that a whole field almost never finishes, so two modes force the end of the
+ * day: every card filled in, and every card level on every hole with no
+ * strokes, where nobody wins a hole outright and the pots have to deal with
+ * money nobody won.
+ */
+type FieldCards = 'asPlayed' | 'finished' | 'level';
+
+function fillCards(round: Round, cards: FieldCards): Round {
+  if (cards === 'asPlayed') return round;
+  if (cards === 'finished') {
+    const scores = Object.fromEntries(
+      Object.entries(round.scores).map(([id, card]) => [id, card.map((s, h) => s ?? 1 + ((h * 5) % 7))]),
+    );
+    return { ...round, scores };
+  }
+  const level = Object.fromEntries(round.playerIds.map((id) => [id, round.scores[id].map(() => 4)]));
+  const noStrokes = Object.fromEntries(round.playerIds.map((id) => [id, 0]));
+  return { ...round, scores: level, pops: noStrokes, pickups: {} };
+}
+
 /** A field of 4–12 split into groups of up to four, each its own random round, plus random field pots. */
 export const arbOuting: fc.Arbitrary<GeneratedOuting> = fc
   .record({ holeCount: fc.constantFrom(9, 18), fieldSize: fc.integer({ min: 4, max: 12 }) })
@@ -170,8 +192,10 @@ export const arbOuting: fc.Arbitrary<GeneratedOuting> = fc
         rounds: fc.tuple(...groups.map((ids, i) => arbRoundFor(ids, course, `round${i}`))),
         fieldSkins: arbFieldGame(field),
         scats: arbFieldGame(field),
+        cards: fc.constantFrom<FieldCards>('asPlayed', 'finished', 'level'),
       })
-      .map(({ rounds, fieldSkins, scats }): GeneratedOuting => {
+      .map(({ rounds: played, fieldSkins, scats, cards }): GeneratedOuting => {
+        const rounds = played.map((round) => fillCards(round, cards));
         const outing: Outing = {
           id: 'outing1',
           groupId: 'group1',
