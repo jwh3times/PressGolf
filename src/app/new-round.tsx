@@ -25,6 +25,8 @@ export default function NewRoundScreen() {
   const group = store.group;
   // A finished paper card goes in beside the live round, dated the day it was played.
   const cardMode = useLocalSearchParams<{ mode?: string }>().mode === 'card';
+  // Read the clock once, not on every render: the picker's latest allowed date.
+  const [openedAt] = useState(() => new Date());
   const [playedOn, setPlayedOn] = useState(() => {
     const today = new Date();
     today.setHours(12, 0, 0, 0);
@@ -100,7 +102,7 @@ export default function NewRoundScreen() {
                 value={playedOn}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'compact' : 'default'}
-                maximumDate={new Date()}
+                maximumDate={openedAt}
                 onChange={(event, date) => {
                   setPickingDate(false);
                   if (event.type === 'set' && date) {
