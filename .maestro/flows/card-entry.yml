@@ -19,9 +19,11 @@ name: Enter a finished card
 - tapOn: Score
 # The card's cursor starts on hole 1, and the Wolf pick and presses below the
 # grid follow the cursor.
-- extendedWaitUntil:
-    visible: Hole 1, Marcus, empty
-    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: Hole 1, Marcus, empty
+    direction: DOWN
+    timeout: 60000
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: LONE WOLF.*, DIRECTION: DOWN } }
 # The grid's Wolf row, back above the picker, records the pick.
 - scrollUntilVisible:
