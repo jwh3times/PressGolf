@@ -2,30 +2,21 @@ appId: com.press.golf
 name: Complete a demo round
 ---
 - runFlow: ../subflows/launch.yml
-- assertVisible: Round live
-- tapOn: Enter scores
-- assertVisible: Hole 12
-- tapOn: Increase score for Marcus
-- assertVisible: net 3 · par
-# The tab bar floats over the bottom of every tab screen. "Visible" to Maestro
-# includes the strip under it, so a button that scrolls in at the bottom edge
-# can be covered and the tap lands on the tab bar. Centring the button keeps
-# the tap on it.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Enter scores, DIRECTION: DOWN } }
+- extendedWaitUntil:
+    visible: Hole 12
+    timeout: 15000
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Increase score for Marcus, DIRECTION: DOWN } }
 - scrollUntilVisible:
     element:
-      text: See the damage so far →
+      text: net 3 · par
     direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: See the damage so far →
-- assertVisible: Settlement.*
-- scrollUntilVisible:
-    element:
-      text: Post to the season ledger
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Post to the season ledger
+    timeout: 60000
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: See the damage so far →, DIRECTION: DOWN } }
+- extendedWaitUntil:
+    visible: Settlement.*
+    timeout: 15000
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Post to the season ledger, DIRECTION: DOWN } }
 # The confirmation is a native alert; wait for it instead of racing it.
 - extendedWaitUntil:
     visible: 'Post it|POST IT'

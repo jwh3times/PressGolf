@@ -243,7 +243,7 @@ scripts/
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/
   flows/            one native flow per journey (round, card entry, outing, handicaps)
-  subflows/         steps the flows share, such as a fresh launch
+  subflows/         steps the flows share: a fresh launch, scroll-then-tap
   run.sh            runs every flow, retrying each once
   passes.sh         runs the flows at default and maximum text size
 ```

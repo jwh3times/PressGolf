@@ -3,29 +3,29 @@ name: Check the demo outing's field pots
 ---
 - runFlow: ../subflows/launch.yml
 # The outing belongs to the demo society, not the Saturday group.
-- tapOn: Settings
-- scrollUntilVisible:
-    element:
-      text: Pine Hollow Society
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Pine Hollow Society
-- tapOn: Done
-- extendedWaitUntil:
-    visible: .*Society Saturday.*
-    timeout: 15000
-- tapOn: .*Society Saturday.*
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Settings, DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Pine Hollow Society, DIRECTION: DOWN } }
+# Done heads the screen and scrolls away with it.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: .*Society Saturday.*, DIRECTION: DOWN } }
 # Both pots, each with its field, buy-in and progress through the card.
-- extendedWaitUntil:
-    visible: Field skins
-    timeout: 15000
-- assertVisible: Scats
-- assertVisible: \d+ in at \$\d+ · \d+/18 holes settled.*
 - scrollUntilVisible:
     element:
-      text: Close the outing
+      text: Field skins
     direction: DOWN
-    centerElement: true
-    timeout: 40000
-- assertVisible: .*Buy-ins are already out of everyone’s pocket.*
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: \d+ in at \$\d+ · \d+/18 holes settled.*
+    direction: DOWN
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: Scats
+    direction: DOWN
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: .*Buy-ins are already out of everyone’s pocket.*
+    direction: DOWN
+    timeout: 120000

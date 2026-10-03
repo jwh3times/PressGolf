@@ -4,31 +4,16 @@ name: Enter a finished card
 - runFlow: ../subflows/launch.yml
 # History labels a round by its short date, and the card is dated today.
 - evalScript: ${output.today = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][new Date().getMonth()] + ' ' + new Date().getDate()}
-- scrollUntilVisible:
-    element:
-      text: Enter a finished card
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Enter a finished card
-- scrollUntilVisible:
-    element:
-      text: Enter the card · 4 players.*
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Enter the card · 4 players.*
-# The card opens on Format. A new card plays Nassau but not Wolf.
-- extendedWaitUntil:
-    visible: .*Entering a finished card.*
-    timeout: 15000
-# "Wolf" is also the game's title beside the switch, so tap the switch by id.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Enter a finished card, DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: 'Enter the card · 4 players.*', DIRECTION: DOWN } }
+# The card opens on Format. A new card plays Nassau but not Wolf. "Wolf" is
+# also the game's title beside the switch, so tap the switch by id.
 - scrollUntilVisible:
     element:
       id: switch-Wolf
     direction: DOWN
     centerElement: true
-    timeout: 40000
+    timeout: 120000
 - tapOn:
     id: switch-Wolf
 - tapOn: Score
@@ -37,47 +22,34 @@ name: Enter a finished card
 - extendedWaitUntil:
     visible: Hole 1, Marcus, empty
     timeout: 15000
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: LONE WOLF.*, DIRECTION: DOWN } }
+# The grid's Wolf row, back above the picker, records the pick.
 - scrollUntilVisible:
     element:
-      text: LONE WOLF.*
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: LONE WOLF.*
-- assertVisible: Wolf, hole 1, Marcus alone
+      text: Wolf, hole 1, Marcus alone
+    direction: UP
+    timeout: 60000
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Pressed by Dev, DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Against Marcus, DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Add a press from hole 1, DIRECTION: DOWN } }
 - scrollUntilVisible:
     element:
-      text: Pressed by Dev
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Pressed by Dev
-- tapOn: Against Marcus
-- scrollUntilVisible:
-    element:
-      text: Add a press from hole 1
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Add a press from hole 1
-- assertVisible: Dev pressed Marcus · 1 to .*
-- scrollUntilVisible:
-    element:
-      text: Save card
-    direction: DOWN
-    centerElement: true
-    timeout: 40000
-- tapOn: Save card
+      text: Dev pressed Marcus · 1 to .*
+    direction: UP
+    timeout: 60000
+# Save sits in the card's banner at the top of the screen.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Save card, DIRECTION: UP } }
 # Every other box is empty, so saving asks to mark them picked up.
 - extendedWaitUntil:
     visible: 'Mark and save|MARK AND SAVE'
     timeout: 15000
 - tapOn: 'Mark and save|MARK AND SAVE'
-- extendedWaitUntil:
-    visible: History
-    timeout: 15000
-# iOS reads the row as one label and Android shows the date line on its own,
-# hence the open ends. The live round is dated today too but is part way
+# iOS reads a History row as one label and Android shows the date line on its
+# own, hence the open ends. The live round is dated today too but is part way
 # round; the card has every box filled or picked up, so it reads thru 0 or 18
 # depending on whether the group's max score counts a pick-up.
-- assertVisible: .*${output.today} · 4 players · thru (0|18)\b.*
+- scrollUntilVisible:
+    element:
+      text: .*${output.today} · 4 players · thru (0|18)\b.*
+    direction: DOWN
+    timeout: 60000

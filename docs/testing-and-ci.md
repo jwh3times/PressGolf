@@ -185,10 +185,14 @@ a passing retry therefore still leaves its evidence. `npm run test:scripts`
 covers `run.sh` and `passes.sh` against stand-ins for Maestro, `xcrun` and
 `adb`.
 
-The flows wait on what is on screen rather than on timing. They centre each
-button they scroll to, because a button that scrolls in at the bottom edge can
-sit under the floating tab bar, where Maestro still counts it as visible and
-the tap lands on the bar. They wait for native alerts (Post it, Mark and save)
+The flows wait on what is on screen rather than on timing, and check results by
+scrolling to them rather than by asserting on whatever happens to be showing.
+Every tap goes through `.maestro/subflows/tap.yml`, which first scrolls the
+control to the middle of the screen in the direction given. At the largest
+text size most controls start off-screen, and a control left at the bottom
+edge can sit under the floating tab bar, or on Android over the system
+navigation bar, where Maestro still counts it as visible and the tap lands on
+the bar (an early run tapped Android's Home button this way). They wait for native alerts (Post it, Mark and save)
 before tapping them. They find controls by their accessibility labels; the one
 exception is a game's switch on Format, whose label repeats the title beside
 it, so the shared `Switch` carries a `switch-<label>` test ID. iOS reads a
