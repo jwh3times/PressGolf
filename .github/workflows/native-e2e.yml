@@ -5,6 +5,11 @@ on:
     # Nightly, away from the top of the hour when hosted runners are busiest.
     - cron: '47 6 * * *'
   workflow_dispatch:
+    inputs:
+      record_baselines:
+        description: Record this run's screenshots as the new baselines, on a branch to open a PR from
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -83,14 +88,17 @@ jobs:
           disable-animations: true
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
+            mkdir -p "${{ runner.temp }}/maestro-android"
+            adb shell wm density > "${{ runner.temp }}/maestro-android/density.txt"
+            sh .maestro/pin-status-bar.sh android emulator-5554
             sh .maestro/passes.sh android emulator-5554 "${{ runner.temp }}/maestro-android"
 
       # Screenshots, Maestro's own log of each step, and a JUnit report per
-      # flow, text size and attempt: the only way to see what was on screen when a step could not
-      # find its element. Kept whenever an attempt failed, even if the retry
-      # passed (run.sh sets MAESTRO_ATTEMPT_FAILED).
+      # flow, text size and attempt: the only way to see what was on screen
+      # when a step could not find its element. Kept on every run, because the
+      # report job reads each checkpoint's screenshot and hierarchy from it.
       - name: Keep the Maestro output
-        if: failure() || env.MAESTRO_ATTEMPT_FAILED == 'true'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: maestro-android
@@ -108,6 +116,8 @@ jobs:
       # Cold GitHub-hosted simulators can take several minutes to start XCTest:
       # close to four minutes on a passing run, and past five on failing ones (#51).
       MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
+      IOS_DEVICE: iPhone 17 Pro
+      IOS_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-4
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -142,20 +152,131 @@ jobs:
 
       - name: Boot iOS and run the journey flows at both text sizes
         run: |
-          device_id="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')"
+          # A fixed model and runtime, so screenshots compare from night to
+          # night. When the runner image drops them, fall back to the newest
+          # iPhone and say so; the baselines then need recording again.
+          devices="$(xcrun simctl list devices available -j)"
+          device_id="$(echo "$devices" | jq -r --arg rt "$IOS_RUNTIME" --arg name "$IOS_DEVICE" '(.devices[$rt] // []) | map(select(.name == $name))[0].udid // empty')"
+          if [ -z "$device_id" ]; then
+            echo "::warning title=Native smoke::$IOS_DEVICE on $IOS_RUNTIME is not available; screenshots won't match their baselines"
+            device_id="$(echo "$devices" | jq -r '[.devices | to_entries | sort_by(.key) | reverse[] | .value[] | select(.name | startswith("iPhone"))][0].udid')"
+          fi
           test -n "$device_id"
           xcrun simctl boot "$device_id"
           xcrun simctl bootstatus "$device_id" -b
           app_path="$(find "$RUNNER_TEMP/press-ios" -maxdepth 2 -name '*.app' -print -quit)"
           test -n "$app_path"
           xcrun simctl install "$device_id" "$app_path"
+          sh .maestro/pin-status-bar.sh ios "$device_id"
           sh .maestro/passes.sh ios "$device_id" "$RUNNER_TEMP/maestro-ios"
 
       - name: Keep the Maestro output
-        if: failure() || env.MAESTRO_ATTEMPT_FAILED == 'true'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: maestro-ios
           path: ${{ runner.temp }}/maestro-ios
           if-no-files-found: ignore
           retention-days: 14
+
+  # Compares each checkpoint's screenshot with its baseline (#66) and lints its
+  # accessibility tree (#67), across both platforms and text sizes. Report-only:
+  # findings go to the run summary, a native-report artifact, and, for the
+  # scheduled nightly, one open "Native nightly report" issue. A finding never
+  # fails the run.
+  report:
+    name: Native nightly report
+    needs: [android, ios]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: maestro-*
+          path: ${{ runner.temp }}/native
+
+      - name: Compare screenshots and lint the accessibility tree
+        env:
+          NATIVE: ${{ runner.temp }}/native
+          REPORT: ${{ runner.temp }}/native-report
+          ANDROID_RESULT: ${{ needs.android.result }}
+          IOS_RESULT: ${{ needs.ios.result }}
+        run: |
+          mkdir -p "$REPORT"
+          # "Physical density: 420" is 420 / 160 = 2.625 px per dp.
+          dpi="$(grep -o '[0-9]\+' "$NATIVE/maestro-android/density.txt" 2>/dev/null | tail -1 || true)"
+          density="$(node -e 'console.log((Number(process.argv[1]) || 420) / 160)' "$dpi")"
+          node scripts/native-screens.mjs compare "$NATIVE" --report "$REPORT/screens" --markdown "$REPORT/screens.md"
+          node scripts/a11y-lint.mjs "$NATIVE" --android-density "$density" \
+            --markdown "$REPORT/a11y.md" --json "$REPORT/a11y.json"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          {
+            echo "# Native nightly report"
+            echo
+            echo "[Run $GITHUB_RUN_ID]($run_url) on $(date -u +%Y-%m-%d) at $(git rev-parse --short HEAD)."
+            echo "Android: $ANDROID_RESULT · iOS: $IOS_RESULT. The run's native-report artifact holds the diff images."
+            echo
+            cat "$REPORT/screens.md"
+            echo
+            cat "$REPORT/a11y.md"
+          } > "$REPORT/report.md"
+          cat "$REPORT/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-report
+          path: ${{ runner.temp }}/native-report
+          retention-days: 14
+
+      # One open issue carries the latest report, so findings don't pile up as
+      # new issues. Only the scheduled nightly writes it.
+      - name: Update the report issue
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ runner.temp }}/native-report/report.md
+        run: |
+          title="Native nightly report"
+          number="$(gh issue list --state open --search "in:title $title" --json number,title \
+            --jq "map(select(.title == \"$title\"))[0].number // empty")"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file "$REPORT"
+          else
+            gh issue create --title "$title" --body-file "$REPORT"
+          fi
+
+      # GitHub Actions may not open pull requests in this repository, so the
+      # new baselines go to a branch and the summary links to open the PR.
+      - name: Record the baselines on a branch
+        if: github.event_name == 'workflow_dispatch' && inputs.record_baselines
+        env:
+          NATIVE: ${{ runner.temp }}/native
+        run: |
+          branch="baselines/run-$GITHUB_RUN_ID"
+          git switch -c "$branch"
+          node scripts/native-screens.mjs record "$NATIVE"
+          git add .maestro/baselines
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Record native screenshot baselines from run $GITHUB_RUN_ID"
+          git push origin "$branch"
+          {
+            echo
+            echo "## New baselines"
+            echo
+            echo "Recorded on $branch. Review the images, then open a PR:"
+            echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$GITHUB_REF_NAME...$branch?expand=1"
+          } >> "$GITHUB_STEP_SUMMARY"

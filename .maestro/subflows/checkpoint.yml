@@ -1,0 +1,13 @@
+appId: com.press.golf
+name: Capture this screen for the nightly report
+---
+# Maestro saves a failing step's screenshot and view hierarchy, and an optional
+# step's failure doesn't fail the flow, so waiting briefly for text that never
+# appears captures the screen. The nightly report compares the screenshot with
+# its baseline (#66) and lints the hierarchy (#67).
+# Env: NAME, the screen's name in lower case with underscores. Maestro names
+# the files ...-checkpoint_<NAME>.png and .json.
+- extendedWaitUntil:
+    visible: __checkpoint ${NAME}__
+    timeout: 500
+    optional: true
