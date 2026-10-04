@@ -24,6 +24,7 @@ name: Enter a finished card
       text: Hole 1, Marcus, empty
     direction: DOWN
     timeout: 60000
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: score_card } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: LONE WOLF.*, DIRECTION: DOWN } }
 # The grid's Wolf row, back above the picker, records the pick.
 - scrollUntilVisible:
@@ -55,3 +56,4 @@ name: Enter a finished card
       text: .*${output.today} · 4 players · thru (0|18)\b.*
     direction: DOWN
     timeout: 60000
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: history } }

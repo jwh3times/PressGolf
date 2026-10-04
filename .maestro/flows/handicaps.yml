@@ -3,7 +3,15 @@ name: Set an index and recalculate the pops
 ---
 - runFlow: ../subflows/launch.yml
 - tapOn: Format
+- extendedWaitUntil:
+    visible: What are we playing\?
+    timeout: 15000
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: format } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Edit the roster, DIRECTION: DOWN } }
+- extendedWaitUntil:
+    visible: Group name
+    timeout: 15000
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: roster } }
 # iOS reads a roster row as one label; Android keeps the name as its own text.
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: .*T\.J\..*, DIRECTION: DOWN } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Handicap index for T\.J\., DIRECTION: DOWN } }

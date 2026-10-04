@@ -1,3 +1,5 @@
 # Playwright baselines are compared byte for byte inside a Linux container, so
 # Git must never rewrite their line endings on a Windows checkout.
 tests/web/__snapshots__/** -text
+# Native screenshot baselines are compared pixel for pixel.
+.maestro/baselines/** -text

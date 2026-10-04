@@ -2,10 +2,12 @@ appId: com.press.golf
 name: Complete a demo round
 ---
 - runFlow: ../subflows/launch.yml
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: home } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Enter scores, DIRECTION: DOWN } }
 - extendedWaitUntil:
     visible: Hole 12
     timeout: 15000
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: score_hole } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Increase score for Marcus, DIRECTION: DOWN } }
 - scrollUntilVisible:
     element:
@@ -16,6 +18,7 @@ name: Complete a demo round
 - extendedWaitUntil:
     visible: Settlement.*
     timeout: 15000
+- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: settle } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Post to the season ledger, DIRECTION: DOWN } }
 # The confirmation is a native alert; wait for it instead of racing it.
 - extendedWaitUntil:
