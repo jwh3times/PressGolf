@@ -1,7 +1,7 @@
 // Reads what the nightly's Maestro flows leave behind (.github/workflows/native-e2e.yml):
 // <root>/maestro-<platform>/<size>/<flow>/attempt-N/<session>/<flow name>/
 //   screenshots/step-NNN-…-checkpoint_<name>.png and screen-hierarchy/….json,
-// written by .maestro/subflows/checkpoint.yml. Shared by the accessibility
+// written by the flows' checkpoint steps. Shared by the accessibility
 // lint (#67) and the screenshot comparison (#66).
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";

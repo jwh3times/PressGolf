@@ -223,11 +223,13 @@ VoiceOver, or TalkBack; see [accessibility.md](accessibility.md).
 
 ### Native nightly report
 
-The flows pass through eight checkpoints (`.maestro/subflows/checkpoint.yml`):
-Home, Score hole by hole, Settle, Score as a whole card, History, Outing,
-Format and Roster. A checkpoint waits half a second for text that never
-appears, as an optional step: Maestro saves a failing step's screenshot and
-view hierarchy, and an optional failure doesn't fail the flow. Each checkpoint
+The flows pass through eight checkpoints: Home, Score hole by hole, Settle,
+Score as a whole card, History, Outing, Format and Roster. A checkpoint is a
+step that waits half a second for the text `__checkpoint <name>__`, which
+never appears, as an optional step: Maestro saves a failing step's screenshot
+and view hierarchy, and an optional failure doesn't fail the flow. The step is
+written out in each flow, not shared, because Maestro names the saved files
+from the step's text before it substitutes variables. Each checkpoint
 is captured on both platforms at both text sizes.
 
 A third job, `report`, runs after both platform jobs, whatever their result.

@@ -121,14 +121,35 @@ test("the allowlist drops matching findings and needs a reason for each entry", 
   assert.throws(() => applyAllowlist(findings, [{ rule: "small-target", label: "Lower" }]), /reason/);
 });
 
-test("the report lists findings by platform, text size and screen, and says when there are none", () => {
+test("the report groups findings by control, numbers collapsed, with the usual size on each platform", () => {
+  const at = (platform, size, label, width, height) => ({
+    platform, size, flow: "card-entry", checkpoint: "score_card", rule: "small-target", label,
+    width, height, detail: `${width}×${height} ${platform === "ios" ? "pt" : "dp"}`,
+  });
   const findings = [
-    { platform: "ios", size: "large-text", flow: "outing", checkpoint: "pots", rule: "ambiguous", label: "increase", detail: "3 controls" },
+    at("ios", "default", "Hole 1, Marcus, empty", 34, 34),
+    at("ios", "default", "Hole 2, Marcus, empty", 34, 34),
+    at("android", "default", "Hole 1, Marcus, empty", 34, 34),
+    at("android", "large-text", "Hole 1, Marcus, empty", 23, 34),
+    { platform: "android", size: "default", flow: "handicaps", checkpoint: "format", rule: "ambiguous", label: "increase", count: 3, detail: "3 controls share this name" },
   ];
   const md = renderMarkdown({ kept: findings, allowed: [], screens: 4 });
-  assert.match(md, /ios · large-text · outing\/pots/);
-  assert.match(md, /ambiguous.*increase/);
+  assert.match(md, /5 findings across 4 screens, 2 distinct/);
+  assert.match(md, /### small-target/);
+  assert.ok(md.includes('- "Hole #, Marcus, empty" ×4 · card-entry/score_card · android 23×34 dp, ios 34×34 pt'), md);
+  assert.match(md, /### ambiguous/);
+  assert.ok(md.includes('- "increase" ×1 · handicaps/format · up to 3 controls share this name'), md);
   assert.match(renderMarkdown({ kept: [], allowed: [], screens: 4 }), /No findings across 4 screens/);
+});
+
+test("a long report is cut to fit an issue body, and says so", () => {
+  const findings = Array.from({ length: 3000 }, (_, i) => ({
+    platform: "android", size: "default", flow: "round", checkpoint: "home", rule: "ambiguous",
+    label: `control ${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + ((i / 26) % 26 | 0))}${String.fromCharCode(97 + ((i / 676) % 26 | 0))} with a long accessible name`, count: 2, detail: "2 controls share this name",
+  }));
+  const md = renderMarkdown({ kept: findings, allowed: [], screens: 1 });
+  assert.ok(md.length < 30000);
+  assert.match(md, /more in the run's a11y.json/);
 });
 
 test("checkpoint dumps are found in Maestro's output tree, the latest attempt winning", () => {

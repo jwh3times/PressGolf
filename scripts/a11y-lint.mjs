@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Lints the native accessibility tree the nightly Maestro flows capture (#67).
 //
-// Each flow passes through checkpoints (.maestro/subflows/checkpoint.yml) that
-// make Maestro save the screen's view hierarchy. This reads those dumps and
+// Each flow passes through checkpoint steps that make Maestro save the screen's view hierarchy. This reads those dumps and
 // reports, for each platform, text size and screen:
 //
 //   unlabelled    a tappable control with no accessible text (Android only:
@@ -86,8 +85,8 @@ export function lintScreens(screens, { androidDensity = DEFAULT_ANDROID_DENSITY 
   const findings = [];
   for (const s of screens) {
     const { elements: all, viewport } = elements(s.tree);
-    const report = (rule, label, detail) =>
-      findings.push({ platform: s.platform, size: s.size, flow: s.flow, checkpoint: s.checkpoint, rule, label, detail });
+    const report = (rule, label, detail, extra = {}) =>
+      findings.push({ platform: s.platform, size: s.size, flow: s.flow, checkpoint: s.checkpoint, rule, label, detail, ...extra });
 
     let controls;
     if (s.platform === "android") {
@@ -117,14 +116,16 @@ export function lintScreens(screens, { androidDensity = DEFAULT_ANDROID_DENSITY 
       const w = Math.round((e.bounds.x2 - e.bounds.x1) / scale);
       const h = Math.round((e.bounds.y2 - e.bounds.y1) / scale);
       const min = MIN_POINTS[s.platform];
-      if (w < min || h < min) report("small-target", e.label, `${w}×${h} ${unit}, under ${min}×${min} ${unit}`);
+      if (w < min || h < min) {
+        report("small-target", e.label, `${w}×${h} ${unit}, under ${min}×${min} ${unit}`, { width: w, height: h });
+      }
     }
 
     if (s.platform !== "android") continue;
     const byName = new Map();
     for (const e of controls.filter((e) => e.label)) byName.set(e.label, (byName.get(e.label) ?? 0) + 1);
     for (const [label, count] of byName) {
-      if (count > 1) report("ambiguous", label, `${count} controls share this name`);
+      if (count > 1) report("ambiguous", label, `${count} controls share this name`, { count });
     }
   }
   return findings;
@@ -158,21 +159,72 @@ export function renderMarkdown({ kept, allowed, screens }) {
   if (kept.length === 0) {
     lines.push(`No findings across ${screens} screens.`);
   } else {
-    lines.push(`${kept.length} findings across ${screens} screens.`, "");
+    // One line per control: the same control turns up on both platforms, at
+    // both text sizes, and once per hole or player, so numbers are collapsed.
     const groups = new Map();
     for (const f of kept) {
-      const heading = `${f.platform} · ${f.size} · ${f.flow}/${f.checkpoint}`;
-      if (!groups.has(heading)) groups.set(heading, []);
-      groups.get(heading).push(f);
+      const id = `${f.rule}|${f.label.replace(/\d+/g, "#")}`;
+      if (!groups.has(id)) groups.set(id, { rule: f.rule, label: f.label.replace(/\d+/g, "#"), found: [] });
+      groups.get(id).found.push(f);
     }
-    for (const [heading, list] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
-      lines.push(`### ${heading}`, "");
-      for (const f of list) lines.push(`- **${f.rule}** ${f.label ? `"${f.label}"` : "(no name)"}: ${f.detail}`);
-      lines.push("");
+    lines.push(`${kept.length} findings across ${screens} screens, ${groups.size} distinct. Numbers in a name are shown as #.`);
+    for (const rule of ["unlabelled", "small-target", "ambiguous"]) {
+      const list = [...groups.values()].filter((g) => g.rule === rule).sort((a, b) => b.found.length - a.found.length);
+      if (list.length === 0) continue;
+      lines.push("", `### ${rule}`, "");
+      for (const g of list) {
+        const where = [...new Set(g.found.map((f) => `${f.flow}/${f.checkpoint}`))].sort().join(", ");
+        lines.push(`- ${g.label ? `"${g.label}"` : "(no name)"} ×${g.found.length} · ${where} · ${summary(g)}`);
+      }
     }
   }
   if (allowed.length) lines.push("", `${allowed.length} more accepted by \`.maestro/a11y-allowlist.json\`.`);
-  return lines.join("\n").trimEnd() + "\n";
+  return fit(lines).join("\n").trimEnd() + "\n";
+}
+
+/**
+ * What a group of findings has in common: its usual size per platform (the
+ * most common one, the smaller on a tie, since a cell half-hidden by its own
+ * scroller reads narrower than it is), or its largest clash.
+ */
+function summary(group) {
+  if (group.rule === "small-target") {
+    const sizes = new Map();
+    for (const f of group.found) {
+      if (!sizes.has(f.platform)) sizes.set(f.platform, new Map());
+      const seen = sizes.get(f.platform);
+      const id = `${f.width}×${f.height}`;
+      seen.set(id, { count: (seen.get(id)?.count ?? 0) + 1, area: f.width * f.height });
+    }
+    return [...sizes.keys()]
+      .sort()
+      .map((p) => {
+        const [usual] = [...sizes.get(p)].sort(([, a], [, b]) => b.count - a.count || a.area - b.area);
+        return `${p} ${usual[0]} ${p === "android" ? "dp" : "pt"}`;
+      })
+      .join(", ");
+  }
+  if (group.rule === "ambiguous") return `up to ${Math.max(...group.found.map((f) => f.count))} controls share this name`;
+  return group.found[0].detail;
+}
+
+// A GitHub issue body holds 65,536 characters, and the screenshot section
+// shares it.
+const MAX_REPORT_CHARS = 25000;
+
+/** Cuts a report that would not fit an issue body, saying where the rest is. */
+function fit(lines) {
+  const out = [];
+  let length = 0;
+  for (const line of lines) {
+    if (length + line.length > MAX_REPORT_CHARS) {
+      out.push("", `…and ${lines.length - out.length} more in the run's a11y.json.`);
+      break;
+    }
+    out.push(line);
+    length += line.length + 1;
+  }
+  return out;
 }
 
 /** Every checkpoint's hierarchy under a nightly's output, latest attempt only. */

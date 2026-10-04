@@ -2,12 +2,22 @@ appId: com.press.golf
 name: Complete a demo round
 ---
 - runFlow: ../subflows/launch.yml
-- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: home } }
+# A checkpoint for the nightly report: Maestro saves a failing step's screenshot
+# and view hierarchy, and an optional step's failure doesn't fail the flow.
+# The name is written out because Maestro names those files from this text
+# before it substitutes variables.
+- extendedWaitUntil:
+    visible: __checkpoint home__
+    timeout: 500
+    optional: true
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Enter scores, DIRECTION: DOWN } }
 - extendedWaitUntil:
     visible: Hole 12
     timeout: 15000
-- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: score_hole } }
+- extendedWaitUntil:
+    visible: __checkpoint score_hole__
+    timeout: 500
+    optional: true
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Increase score for Marcus, DIRECTION: DOWN } }
 - scrollUntilVisible:
     element:
@@ -18,7 +28,10 @@ name: Complete a demo round
 - extendedWaitUntil:
     visible: Settlement.*
     timeout: 15000
-- runFlow: { file: ../subflows/checkpoint.yml, env: { NAME: settle } }
+- extendedWaitUntil:
+    visible: __checkpoint settle__
+    timeout: 500
+    optional: true
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Post to the season ledger, DIRECTION: DOWN } }
 # The confirmation is a native alert; wait for it instead of racing it.
 - extendedWaitUntil:

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Compares the nightly's native screenshots against stored baselines (#66).
 //
-// Each checkpoint in the Maestro flows (.maestro/subflows/checkpoint.yml)
-// saves a screenshot and the view hierarchy of the same moment. This compares
+// Each checkpoint step in the Maestro flows saves a screenshot and the view hierarchy of the same moment. This compares
 // each screenshot with .maestro/baselines/<platform>/<size>/<flow>--<checkpoint>.png
 // and writes the expected, actual and diff images of any screen that differs.
 // Text that changes by itself, such as the demo data's dates (it is seeded
