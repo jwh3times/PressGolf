@@ -346,6 +346,11 @@ export interface FieldGameResult {
   entrants: PlayerId[];
   /** What each winner actually collects, keyed by player. */
   payouts: Record<PlayerId, Cents>;
+  /**
+   * Buy-ins handed back, keyed by player: a finished pot nobody won a hole in,
+   * when its leftovers are not set to carry. Never counted as winnings.
+   */
+  refunds: Record<PlayerId, Cents>;
   holes: FieldHoleResult[];
   lines: SettlementLine[];
   /** Holes still unresolved because somebody has not played them. */

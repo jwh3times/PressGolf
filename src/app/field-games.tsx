@@ -150,7 +150,7 @@ export default function FieldGamesScreen() {
                   }
                   hint={
                     config.unclaimed === 'splitAmongWinners'
-                      ? 'Money still riding at the last hole is shared between everyone who won one.'
+                      ? 'Money still riding at the last hole is shared between everyone who won one. If nobody won one, every buy-in goes back.'
                       : 'Money still riding stays in the pot for the next outing.'
                   }
                   on={config.unclaimed === 'splitAmongWinners'}

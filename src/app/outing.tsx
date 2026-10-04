@@ -252,6 +252,7 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
   const players = store.outingGroup?.players ?? [];
   const won = Object.entries(game.payouts).sort((a, b) => b[1] - a[1]);
   const settledHoles = game.holes.filter((h) => h.complete).length;
+  const handedBack = Object.values(game.refunds).reduce((sum, amount) => sum + amount, 0);
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -268,6 +269,7 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
           {game.entrants.length} in at {money(game.buyIn)} · {settledHoles}/{holeCount} holes
           settled
           {game.unclaimedPot > 0 ? ` · ${money(game.unclaimedPot)} still riding` : ''}
+          {handedBack > 0 ? ` · ${money(handedBack)} handed back` : ''}
         </Text>
 
         {game.blocked ? (
@@ -296,7 +298,9 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
             })}
           </View>
         ) : (
-          <Text style={styles.potMeta}>Nothing won yet.</Text>
+          <Text style={styles.potMeta}>
+            {handedBack > 0 ? 'Nobody won a hole, so every buy-in goes back.' : 'Nothing won yet.'}
+          </Text>
         )}
 
         {game.pendingHoles > 0 ? (
