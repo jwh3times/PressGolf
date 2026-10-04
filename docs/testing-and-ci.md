@@ -229,7 +229,10 @@ step that waits half a second for the text `__checkpoint <name>__`, which
 never appears, as an optional step: Maestro saves a failing step's screenshot
 and view hierarchy, and an optional failure doesn't fail the flow. The step is
 written out in each flow, not shared, because Maestro names the saved files
-from the step's text before it substitutes variables. Each checkpoint
+from the step's text before it substitutes variables. A checkpoint comes
+right after arriving on a screen, once its transition has settled and before
+any scrolling: a scroll doesn't land on the same pixel twice, and a capture
+taken after one differs from its baseline by a pixel or two all over. Each checkpoint
 is captured on both platforms at both text sizes.
 
 A third job, `report`, runs after both platform jobs, whatever their result.
@@ -240,7 +243,10 @@ It downloads their output and runs two scripts:
   screen is reported when more than 0.2% of its pixels differ, when it has no
   baseline, or when its size changed. Text that changes by itself, such as the
   demo data's dates (seeded relative to today), is masked using its bounds in
-  the hierarchy captured with the screenshot.
+  the hierarchy captured with the screenshot. A region that legitimately varies
+  can be left out in `.maestro/baselines/ignore.json`, each entry with a
+  reason; the one entry skips the strip above Roster's sheet on iOS, which
+  shows the screen behind it.
 - **`scripts/a11y-lint.mjs`** lints each hierarchy; see
   [accessibility.md](accessibility.md#native-accessibility-tree-lint).
 

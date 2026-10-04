@@ -7,6 +7,10 @@
 // Text that changes by itself, such as the demo data's dates (it is seeded
 // relative to today), is masked out using the hierarchy's bounds.
 //
+// A region that legitimately varies can be left out through
+// .maestro/baselines/ignore.json: a list of { platform, screen ("flow/checkpoint"),
+// top (the share of the screen's height to skip from the top), reason }.
+//
 // Report-only: a difference never fails the nightly.
 //
 // Usage:
@@ -76,7 +80,10 @@ function paint(image, rects) {
  * with status match, diff, missing (no baseline yet) or size (the screen size
  * changed), and writes images for each diff under `report`.
  */
-export function compareScreens({ output, baselines = DEFAULT_BASELINES, report, maxDiffRatio = DEFAULT_MAX_DIFF_RATIO }) {
+export function compareScreens({ output, baselines = DEFAULT_BASELINES, report, maxDiffRatio = DEFAULT_MAX_DIFF_RATIO, ignore = [] }) {
+  for (const entry of ignore) {
+    if (!entry.reason?.trim()) throw new Error(`Ignore entry for ${entry.platform} ${entry.screen} needs a reason`);
+  }
   return collectCaptures(output).map((c) => {
     const { png: _png, hierarchy: _hierarchy, file: _file, ...where } = c;
     const expectedFile = path.join(baselines, baselineName(c));
@@ -89,6 +96,11 @@ export function compareScreens({ output, baselines = DEFAULT_BASELINES, report, 
     }
 
     const rects = masks(c.hierarchy, actual.width);
+    for (const entry of ignore) {
+      if (entry.platform === c.platform && entry.screen === `${c.flow}/${c.checkpoint}`) {
+        rects.push({ x1: 0, y1: 0, x2: actual.width, y2: Math.ceil(actual.height * entry.top) });
+      }
+    }
     paint(actual, rects);
     paint(expected, rects);
     const diff = new PNG({ width: actual.width, height: actual.height });
@@ -155,9 +167,11 @@ function main([command, output, ...rest]) {
     return 0;
   }
   if (command === "compare" && output) {
+    const ignoreFile = path.join(baselines, "ignore.json");
     const results = compareScreens({
       output,
       baselines,
+      ignore: existsSync(ignoreFile) ? JSON.parse(readFileSync(ignoreFile, "utf8")) : [],
       report: opt("--report"),
       maxDiffRatio: Number(opt("--max-diff-ratio")) || DEFAULT_MAX_DIFF_RATIO,
     });

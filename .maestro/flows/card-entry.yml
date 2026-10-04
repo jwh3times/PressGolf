@@ -19,19 +19,24 @@ name: Enter a finished card
 - tapOn: Score
 # The card's cursor starts on hole 1, and the Wolf pick and presses below the
 # grid follow the cursor.
+- extendedWaitUntil:
+    visible: Save card
+    timeout: 15000
+# A checkpoint for the nightly report: Maestro saves a failing step's screenshot
+# and view hierarchy, and an optional step's failure doesn't fail the flow.
+# The name is written out because Maestro names those files from this text
+# before it substitutes variables.
+# Checkpoints come before any scrolling on a screen: a scroll doesn't land on
+# the same pixel twice, and the screenshots are compared.
+- extendedWaitUntil:
+    visible: __checkpoint score_card__
+    timeout: 500
+    optional: true
 - scrollUntilVisible:
     element:
       text: Hole 1, Marcus, empty
     direction: DOWN
     timeout: 60000
-# A checkpoint for the nightly report: Maestro saves a failing step's screenshot
-# and view hierarchy, and an optional step's failure doesn't fail the flow.
-# The name is written out because Maestro names those files from this text
-# before it substitutes variables.
-- extendedWaitUntil:
-    visible: __checkpoint score_card__
-    timeout: 500
-    optional: true
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: LONE WOLF.*, DIRECTION: DOWN } }
 # The grid's Wolf row, back above the picker, records the pick.
 - scrollUntilVisible:
@@ -54,6 +59,15 @@ name: Enter a finished card
     visible: 'Mark and save|MARK AND SAVE'
     timeout: 15000
 - tapOn: 'Mark and save|MARK AND SAVE'
+- extendedWaitUntil:
+    visible: Back
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: __checkpoint history__
+    timeout: 500
+    optional: true
 # iOS reads a History row as one label and Android shows the date line on its
 # own, hence the open ends. The live round is dated today too but is part way
 # round; the card has every box filled or picked up, so it reads thru 0 or 18
@@ -63,7 +77,3 @@ name: Enter a finished card
       text: .*${output.today} · 4 players · thru (0|18)\b.*
     direction: DOWN
     timeout: 60000
-- extendedWaitUntil:
-    visible: __checkpoint history__
-    timeout: 500
-    optional: true

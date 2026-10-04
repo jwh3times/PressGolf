@@ -155,3 +155,25 @@ test("the report counts each outcome and lists every screen that needs a look", 
   assert.match(md, /android · large-text · outing\/pots.*no baseline/);
   assert.doesNotMatch(md, /round\/home/);
 });
+
+test("an ignored band of a screen is left out of the comparison, and needs a reason", () => {
+  const ws = workspace();
+  try {
+    // The top 2 of 10 rows differ.
+    ws.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 10, y2: 2, colour: WHITE }]) });
+    ws.baseline("ios/default/round--home.png", png(10, 10, GREEN));
+    const ignore = [{ platform: "ios", screen: "round/home", top: 0.2, reason: "the screen behind a sheet shows above it" }];
+    const [masked] = compareScreens({ output: ws.out, baselines: ws.baselines, report: ws.report, ignore });
+    assert.equal(masked.status, "match");
+    assert.equal(masked.ratio, 0);
+
+    const other = [{ platform: "android", screen: "round/home", top: 0.2, reason: "another platform" }];
+    assert.equal(compareScreens({ output: ws.out, baselines: ws.baselines, report: ws.report, ignore: other })[0].status, "diff");
+    assert.throws(
+      () => compareScreens({ output: ws.out, baselines: ws.baselines, ignore: [{ platform: "ios", screen: "round/home", top: 0.2 }] }),
+      /reason/,
+    );
+  } finally {
+    ws.cleanup();
+  }
+});

@@ -18,6 +18,8 @@ name: Set an index and recalculate the pops
 - extendedWaitUntil:
     visible: Group name
     timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
 - extendedWaitUntil:
     visible: __checkpoint roster__
     timeout: 500

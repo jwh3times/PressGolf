@@ -1,0 +1,8 @@
+[
+  {
+    "platform": "ios",
+    "screen": "handicaps/roster",
+    "top": 0.08,
+    "reason": "Roster opens as a sheet, and the strip above it shows Format wherever the flow's scroll left it."
+  }
+]
