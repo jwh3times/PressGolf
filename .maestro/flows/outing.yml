@@ -1,0 +1,31 @@
+appId: com.press.golf
+name: Check the demo outing's field pots
+---
+- runFlow: ../subflows/launch.yml
+# The outing belongs to the demo society, not the Saturday group.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Settings, DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Pine Hollow Society, DIRECTION: DOWN } }
+# Done heads the screen and scrolls away with it.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: .*Society Saturday.*, DIRECTION: DOWN } }
+# Both pots, each with its field, buy-in and progress through the card.
+- scrollUntilVisible:
+    element:
+      text: Field skins
+    direction: DOWN
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: \d+ in at \$\d+ · \d+/18 holes settled.*
+    direction: DOWN
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: Scats
+    direction: DOWN
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: .*Buy-ins are already out of everyone’s pocket.*
+    direction: DOWN
+    timeout: 120000

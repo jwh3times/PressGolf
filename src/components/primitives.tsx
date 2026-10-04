@@ -405,6 +405,9 @@ export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => v
       // react-native-web only maps the aria prop, so web would announce no state.
       aria-checked={on}
       accessibilityLabel={label}
+      // The label repeats a visible title beside the switch; native flows tap
+      // the switch by this id so they can't land on the title (.maestro/flows).
+      testID={label ? `switch-${label}` : undefined}
       onPress={onToggle}
       hitSlop={8}
       style={{

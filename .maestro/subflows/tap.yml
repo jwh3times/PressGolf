@@ -1,0 +1,30 @@
+appId: com.press.golf
+name: Scroll to a control and tap it
+---
+# Every tap scrolls first. At the largest text size most controls start
+# off-screen, and centring keeps the tap off the floating tab bar and, on
+# Android, off the system navigation bar below the content.
+# Env: TEXT, the control's accessible name (a regex); DIRECTION, UP or DOWN.
+# Maestro checks direction before it substitutes variables, so each direction
+# is spelled out in its own branch.
+- runFlow:
+    when:
+      true: ${DIRECTION == 'UP'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ${TEXT}
+          direction: UP
+          centerElement: true
+          timeout: 120000
+- runFlow:
+    when:
+      true: ${DIRECTION != 'UP'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ${TEXT}
+          direction: DOWN
+          centerElement: true
+          timeout: 120000
+- tapOn: ${TEXT}

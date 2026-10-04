@@ -1,0 +1,27 @@
+appId: com.press.golf
+name: Launch the demo app fresh
+---
+# Stop, clear and launch as separate steps with a pause between. On Android,
+# clearing state removes the app's task, and the system's delayed kill of that
+# old task can land on the process a launch has just started. The splash
+# screen then sits over a dead process for good.
+- stopApp
+- clearState
+- waitForAnimationToEnd:
+    timeout: 3000
+- launchApp
+# A cold emulator can take minutes to load the first JS bundle, so this first
+# wait is allowed to give up. If the home screen still isn't there, the launch
+# lost that race: start the app again.
+- extendedWaitUntil:
+    visible: Saturday Dogs
+    timeout: 90000
+    optional: true
+- runFlow:
+    when:
+      notVisible: Saturday Dogs
+    commands:
+      - launchApp
+- extendedWaitUntil:
+    visible: Saturday Dogs
+    timeout: 240000

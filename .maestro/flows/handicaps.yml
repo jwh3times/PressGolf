@@ -1,0 +1,38 @@
+appId: com.press.golf
+name: Set an index and recalculate the pops
+---
+- runFlow: ../subflows/launch.yml
+- tapOn: Format
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Edit the roster, DIRECTION: DOWN } }
+# iOS reads a roster row as one label; Android keeps the name as its own text.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: .*T\.J\..*, DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Handicap index for T\.J\., DIRECTION: DOWN } }
+- eraseText: 10
+- inputText: '12.0'
+# Android's keyboard has a Done key of its own, which Maestro would find
+# before the screen's Done button. Put the keyboard away first.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
+# Format kept its place at the bottom. The round's pops were worked out from
+# the old index, so T.J.'s row offers to recalculate them.
+- scrollUntilVisible:
+    element:
+      text: .*12\.0 · Blue .*
+    direction: UP
+    timeout: 120000
+- scrollUntilVisible:
+    element:
+      text: handicaps give \d+ · recalculate\?
+    direction: DOWN
+    timeout: 60000
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Recalculate from handicaps, DIRECTION: DOWN } }
+- assertNotVisible: handicaps give \d+ · recalculate\?
+- scrollUntilVisible:
+    element:
+      text: .*12\.0 · Blue .* off the low man.*
+    direction: UP
+    timeout: 60000
