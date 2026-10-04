@@ -98,6 +98,15 @@ describe('Switch', () => {
     await render(<Switch on={false} label="Skins" onToggle={() => {}} />);
     expect(screen.getByRole('switch', { name: 'Skins' })).not.toBeChecked();
   });
+
+  it('carries a test ID from its label, so a native flow can tell it from the title beside it', async () => {
+    const view = await render(<Switch on label="Wolf" onToggle={() => {}} />);
+    expect(screen.getByTestId('switch-Wolf')).toBe(screen.getByRole('switch'));
+    await view.unmount();
+
+    await render(<Switch on onToggle={() => {}} />);
+    expect(screen.getByRole('switch').props.testID).toBeUndefined();
+  });
 });
 
 describe('Chip', () => {
