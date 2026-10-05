@@ -10,7 +10,7 @@ substitute for assistive-technology use on both platforms.
   Primitive tests also verify button, switch, selection, disabled, and state
   semantics.
 - Controls repeated per player, game or pot say which one they act on: the
-  junk, result, pick-up and clear chips on Score ("Greenie for Marcus",
+  junk, birdie, eagle, pick-up and clear chips on Score ("Greenie for Marcus",
   "Birdie for Dev"), the press buttons on Score ("Press Marcus"), the stake and
   pops steppers on Format ("Increase the Skins stake"), and the buy-in steppers
   on Field pots.

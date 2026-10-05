@@ -158,6 +158,7 @@ export default function ScoreScreen() {
         const strokes = ctx.strokes(player.id, current);
         const par = ctx.par(current, player.id);
         const rel = gross == null ? null : gross - par;
+        const underPar = rel == null || rel >= 0 ? null : rel <= -2 ? 'Eagle' : 'Birdie';
         const ownTee = ctx.teeFor(player.id);
         const ownHole = ownTee.holes[current];
         const teeDiffers =
@@ -240,10 +241,10 @@ export default function ScoreScreen() {
             </View>
 
             <View style={styles.chipRow}>
-              {gross != null && gross < par ? (
+              {underPar ? (
                 <Chip
-                  label={gross <= par - 2 ? 'EAGLE' : 'BIRDIE'}
-                  accessibilityLabel={`${gross <= par - 2 ? 'Eagle' : 'Birdie'} for ${player.name}`}
+                  label={underPar.toUpperCase()}
+                  accessibilityLabel={`${underPar} for ${player.name}`}
                   active
                   color={colors.accent}
                   disabled
