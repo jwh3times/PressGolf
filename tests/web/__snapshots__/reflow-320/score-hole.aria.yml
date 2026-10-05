@@ -25,38 +25,38 @@
 - button "Decrease score for Marcus": −
 - text: –
 - button "Increase score for Marcus": +
-- button "GREENIE"
-- button "SANDIE"
-- button "CHIP-IN"
-- button "POLIE"
-- button "PICK UP"
+- button "Greenie for Marcus": GREENIE
+- button "Sandie for Marcus": SANDIE
+- button "Chip-in for Marcus": CHIP-IN
+- button "Polie for Marcus": POLIE
+- button "Pick up for Marcus": PICK UP
 - text: DP Dev no score yet
 - button "Decrease score for Dev": −
 - text: –
 - button "Increase score for Dev": +
-- button "GREENIE"
-- button "SANDIE"
-- button "CHIP-IN"
-- button "POLIE"
-- button "PICK UP"
+- button "Greenie for Dev": GREENIE
+- button "Sandie for Dev": SANDIE
+- button "Chip-in for Dev": CHIP-IN
+- button "Polie for Dev": POLIE
+- button "Pick up for Dev": PICK UP
 - text: TJ T.J. no score yet
 - button "Decrease score for T.J.": −
 - text: –
 - button "Increase score for T.J.": +
-- button "GREENIE"
-- button "SANDIE"
-- button "CHIP-IN"
-- button "POLIE"
-- button "PICK UP"
+- button "Greenie for T.J.": GREENIE
+- button "Sandie for T.J.": SANDIE
+- button "Chip-in for T.J.": CHIP-IN
+- button "Polie for T.J.": POLIE
+- button "Pick up for T.J.": PICK UP
 - text: BR Big Ray no score yet
 - button "Decrease score for Big Ray": −
 - text: –
 - button "Increase score for Big Ray": +
-- button "GREENIE"
-- button "SANDIE"
-- button "CHIP-IN"
-- button "POLIE"
-- button "PICK UP"
+- button "Greenie for Big Ray": GREENIE
+- button "Sandie for Big Ray": SANDIE
+- button "Chip-in for Big Ray": CHIP-IN
+- button "Polie for Big Ray": POLIE
+- button "Pick up for Big Ray": PICK UP
 - text: What this hole did 1 skin riding Enter all 4 scores to settle this hole. Your matches · press while you’re down DP 1 down to Dev Back nine · $5
 - button "Press"
 - text: TJ 1 up on T.J. Back nine · $5

@@ -125,6 +125,8 @@ export default function FormatScreen() {
                 <View>
                   <Stepper
                     value={money(config.stake)}
+                    decrementLabel={`Decrease the ${meta.name} stake`}
+                    incrementLabel={`Increase the ${meta.name} stake`}
                     onDecrement={() => store.setStake(key, Math.max(0, config.stake - step(config.stake)))}
                     onIncrement={() => store.setStake(key, config.stake + step(config.stake))}
                   />
@@ -218,6 +220,8 @@ export default function FormatScreen() {
                 size={30}
                 minWidth={26}
                 value={String(pops)}
+                decrementLabel={`Decrease pops for ${player.name}`}
+                incrementLabel={`Increase pops for ${player.name}`}
                 onDecrement={() => store.setPops(player.id, pops - 1)}
                 onIncrement={() => store.setPops(player.id, pops + 1)}
               />

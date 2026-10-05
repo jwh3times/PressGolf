@@ -248,21 +248,27 @@ export default function ScoreScreen() {
                   disabled
                 />
               ) : null}
-              {MANUAL_JUNK.map(({ kind, label }) => (
+              {MANUAL_JUNK.map(({ kind, label, name }) => (
                 <Chip
                   key={kind}
                   label={label}
+                  accessibilityLabel={`${name} for ${player.name}`}
                   active={ctx.hasJunk(current, player.id, kind)}
                   onPress={() => store.toggleJunk(current, player.id, kind as JunkKind)}
                 />
               ))}
               <Chip
                 label="PICK UP"
+                accessibilityLabel={`Pick up for ${player.name}`}
                 active={pickedUp}
                 onPress={() => store.setPickedUp(player.id, current, !pickedUp)}
               />
               {gross != null || pickedUp ? (
-                <Chip label="CLEAR" onPress={() => store.setScore(player.id, current, null)} />
+                <Chip
+                  label="CLEAR"
+                  accessibilityLabel={`Clear score for ${player.name}`}
+                  onPress={() => store.setScore(player.id, current, null)}
+                />
               ) : null}
             </View>
           </View>

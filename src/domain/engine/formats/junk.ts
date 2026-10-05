@@ -2,11 +2,12 @@ import type { JunkKind, PlayerId, SettlementLine } from '../../types';
 import { money, RoundContext } from '../context';
 import type { Ledger } from '../ledger';
 
-export const MANUAL_JUNK: { kind: JunkKind; label: string; hint: string }[] = [
-  { kind: 'greenie', label: 'GREENIE', hint: 'Closest on a par 3 and made par' },
-  { kind: 'sandie', label: 'SANDIE', hint: 'Up and down from the bunker' },
-  { kind: 'chipIn', label: 'CHIP-IN', hint: 'Holed from off the green' },
-  { kind: 'polie', label: 'POLIE', hint: 'Inside the flagstick and made it' },
+/** `label` is the chip's face; `name` is how it reads in a sentence, such as a control's accessible name. */
+export const MANUAL_JUNK: { kind: JunkKind; label: string; name: string; hint: string }[] = [
+  { kind: 'greenie', label: 'GREENIE', name: 'Greenie', hint: 'Closest on a par 3 and made par' },
+  { kind: 'sandie', label: 'SANDIE', name: 'Sandie', hint: 'Up and down from the bunker' },
+  { kind: 'chipIn', label: 'CHIP-IN', name: 'Chip-in', hint: 'Holed from off the green' },
+  { kind: 'polie', label: 'POLIE', name: 'Polie', hint: 'Inside the flagstick and made it' },
 ];
 
 /** Gross-to-par junk, and what it multiplies the stake by. */
