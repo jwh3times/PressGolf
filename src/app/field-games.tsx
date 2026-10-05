@@ -111,6 +111,8 @@ export default function FieldGamesScreen() {
                   </View>
                   <Stepper
                     value={money(config.buyIn)}
+                    decrementLabel={`Decrease the ${meta.name} buy-in`}
+                    incrementLabel={`Increase the ${meta.name} buy-in`}
                     onDecrement={() =>
                       store.setFieldGame(key, { buyIn: Math.max(0, config.buyIn - step(config.buyIn)) })
                     }

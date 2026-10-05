@@ -1130,6 +1130,68 @@ describe('management screen state matrices', () => {
   });
 });
 
+describe('controls that say what they act on', () => {
+  const ids = group.players.map((player) => player.id);
+  const names = group.players.map((player) => player.name);
+  const allOn = Object.fromEntries(
+    Object.entries(round.games).map(([key, config]) => [key, { ...config, on: true, stake: 500 }]),
+  );
+
+  it('names each junk chip, pick-up and clear on Score for its player', async () => {
+    const user = userEvent.setup();
+    const scores = Object.fromEntries(
+      ids.map((id) => [id, [4, ...Array(course.tees[0].holes.length - 1).fill(null)]]),
+    );
+    useStoreValue({ round: { ...round, scores } as typeof round });
+    await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+
+    for (const junk of ['Greenie', 'Sandie', 'Chip-in', 'Polie']) {
+      for (const name of names) {
+        expect(screen.getByRole('button', { name: `${junk} for ${name}` })).toBeOnTheScreen();
+      }
+    }
+    await user.press(screen.getByRole('button', { name: `Chip-in for ${names[2]}` }));
+    expect(actions.toggleJunk).toHaveBeenCalledWith(0, ids[2], 'chipIn');
+    await user.press(screen.getByRole('button', { name: `Clear score for ${names[1]}` }));
+    expect(actions.setScore).toHaveBeenCalledWith(ids[1], 0, null);
+    for (const shared of ['GREENIE', 'SANDIE', 'CHIP-IN', 'POLIE', 'PICK UP', 'CLEAR']) {
+      expect(screen.queryByRole('button', { name: shared })).toBeNull();
+    }
+  });
+
+  it('names each stake and pops stepper on Format for its game or player', async () => {
+    const user = userEvent.setup();
+    useStoreValue({ round: { ...round, games: allOn } as unknown as typeof round });
+    await render(<FormatScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Increase the Skins stake' }));
+    expect(actions.setStake).toHaveBeenCalledWith('skins', 600);
+    await user.press(screen.getByRole('button', { name: 'Decrease the Nassau stake' }));
+    expect(actions.setStake).toHaveBeenCalledWith('nassau', 400);
+    const pops = round.pops[ids[3]] ?? 0;
+    await user.press(screen.getByRole('button', { name: `Increase pops for ${names[3]}` }));
+    expect(actions.setPops).toHaveBeenCalledWith(ids[3], pops + 1);
+    expect(screen.getByRole('button', { name: `Decrease pops for ${names[0]}` })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'increase' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'decrease' })).toBeNull();
+  });
+
+  it('names each buy-in stepper on Field pots for its pot', async () => {
+    const user = userEvent.setup();
+    const fieldGames = Object.fromEntries(
+      Object.entries(outing.fieldGames).map(([key, config]) => [key, { ...config, on: true, buyIn: 500 }]),
+    );
+    mockUseStore.mockReturnValue({ ...outingStore, outing: { ...outing, fieldGames } } as AppStore);
+    await render(<FieldGamesScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Increase the Scats buy-in' }));
+    expect(actions.setFieldGame).toHaveBeenCalledWith('scats', { buyIn: 600 });
+    expect(screen.getByRole('button', { name: 'Decrease the Field skins buy-in' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'increase' })).toBeNull();
+  });
+});
+
 describe('max score and pick-ups', () => {
   const ids = group.players.map((player) => player.id);
   const par = course.tees[0].holes[0].par;
@@ -1153,11 +1215,12 @@ describe('max score and pick-ups', () => {
     await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
     expect(screen.getByText(/max/)).toBeOnTheScreen();
     expect(screen.getByText(new RegExp(`picked up · counts ${par + 2}`))).toBeOnTheScreen();
-    const pickUps = screen.getAllByRole('button', { name: 'PICK UP' });
-    expect(pickUps[1]).toBeSelected();
-    await user.press(pickUps[1]);
+    const pickUp = (index: number) =>
+      screen.getByRole('button', { name: `Pick up for ${group.players[index].name}` });
+    expect(pickUp(1)).toBeSelected();
+    await user.press(pickUp(1));
     expect(actions.setPickedUp).toHaveBeenCalledWith(ids[1], 0, false);
-    await user.press(pickUps[2]);
+    await user.press(pickUp(2));
     expect(actions.setPickedUp).toHaveBeenCalledWith(ids[2], 0, true);
     await view.unmount();
 
