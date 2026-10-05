@@ -182,9 +182,9 @@ Each attempt keeps its own output under `default/` or `large-text/`, then the
 flow's name: a screenshot and log for each step under `attempt-N/`, and its own
 JUnit report, `junit-attempt-N.xml`. A failed attempt
 sets `MAESTRO_ATTEMPT_FAILED=true` for the rest of the job. The job uploads the
-output as a `maestro-android` or `maestro-ios` artifact, kept for 14 days,
-whenever the job fails or an attempt failed. A first attempt that fails before
-a passing retry therefore still leaves its evidence. `npm run test:scripts`
+output as a `maestro-android` or `maestro-ios` artifact on every run, kept for
+14 days: the report job reads it, and a first attempt that fails before a
+passing retry still leaves its evidence. `npm run test:scripts`
 covers `run.sh` and `passes.sh` against stand-ins for Maestro, `xcrun` and
 `adb`.
 
@@ -197,6 +197,14 @@ edge can sit under the floating tab bar, or on Android over the system
 navigation bar, where Maestro still counts it as visible and the tap lands on
 the bar (an early run tapped Android's Home button this way).
 
+The flows wait for native alerts (Post it, Mark and save) before tapping them.
+They find controls by their accessibility labels; the one exception is a
+game's switch on Format, whose label repeats the title beside it, so the
+shared `Switch` carries a `switch-<label>` test ID. iOS reads a button with no
+label of its own as its children's text joined together, while Android keeps
+each text separate, so a flow that matches such a row uses a pattern open at
+both ends.
+
 Two Android behaviours shape the shared steps:
 
 - **Launching.** Clearing the app's state removes its task, and the system's
@@ -206,18 +214,75 @@ Two Android behaviours shape the shared steps:
   hasn't appeared after 90 seconds.
 - **The keyboard.** Maestro sees the soft keyboard's keys. A flow that types
   and then taps a button named Done must hide the keyboard first, or it taps
-  the keyboard's own Done key. They wait for native alerts (Post it, Mark and save)
-before tapping them. They find controls by their accessibility labels; the one
-exception is a game's switch on Format, whose label repeats the title beside
-it, so the shared `Switch` carries a `switch-<label>` test ID. iOS reads a
-button with no label of its own as its children's text joined together, while
-Android keeps each text separate, so a flow that matches such a row uses a
-pattern open at both ends.
+  the keyboard's own Done key.
 
 The workflow catches native compilation, installation, startup, navigation,
 the four journeys, and controls that large text pushes out of reach. It does
 not replace physical-device checks for safe areas, outdoor touch use,
 VoiceOver, or TalkBack; see [accessibility.md](accessibility.md).
+
+### Native nightly report
+
+The flows pass through eight checkpoints: Home, Score hole by hole, Settle,
+Score as a whole card, History, Outing, Format and Roster. A checkpoint is a
+step that waits half a second for the text `__checkpoint <name>__`, which
+never appears, as an optional step: Maestro saves a failing step's screenshot
+and view hierarchy, and an optional failure doesn't fail the flow. The step is
+written out in each flow, not shared, because Maestro names the saved files
+from the step's text before it substitutes variables. A checkpoint comes
+right after arriving on a screen, once its transition has settled and before
+any scrolling: a scroll doesn't land on the same pixel twice, and a capture
+taken after one differs from its baseline by a pixel or two all over. Each checkpoint
+is captured on both platforms at both text sizes.
+
+A third job, `report`, runs after both platform jobs, whatever their result.
+It downloads their output and runs two scripts:
+
+- **`scripts/native-screens.mjs`** compares each screenshot with its baseline
+  in `.maestro/baselines/<platform>/<text size>/<flow>--<checkpoint>.png`. A
+  screen is reported when more than 0.2% of its pixels differ, when it has no
+  baseline, or when its size changed. Text that changes by itself, such as the
+  demo data's dates (seeded relative to today), is masked using its bounds in
+  the hierarchy captured with the screenshot. A region that legitimately varies
+  can be left out in `.maestro/baselines/ignore.json`, each entry with a
+  reason; the one entry skips the strip above Roster's sheet on iOS, which
+  shows the screen behind it.
+- **`scripts/a11y-lint.mjs`** lints each hierarchy; see
+  [accessibility.md](accessibility.md#native-accessibility-tree-lint).
+
+Both are **report-only**: a finding never fails the run. The report goes to
+the run's summary and a `native-report` artifact, which holds the expected,
+actual and diff image of every screen that differs. The scheduled nightly also
+writes it to one open issue titled "Native nightly report", replacing the
+previous night's.
+
+Screenshots only compare when the renders are pinned, so the workflow:
+
+- boots a named simulator, iPhone 17 Pro on iOS 26.4 (`IOS_DEVICE` and
+  `IOS_RUNTIME` in the workflow), and warns and falls back to the newest
+  iPhone when the runner image no longer has it;
+- keeps the fixed Pixel 6, API 34 emulator; and
+- pins the status bar to 9:41, full battery and full signal
+  (`.maestro/pin-status-bar.sh`: the simulator's status bar override on iOS,
+  System UI demo mode on Android).
+
+To read a difference, download `native-report` and open the three images for
+the screen. An intended change needs new baselines:
+
+1. Run the workflow by hand from the branch (Actions → Native smoke tests →
+   Run workflow) with **Record this run's screenshots** ticked.
+2. The report job commits the run's screenshots to a `baselines/run-<id>`
+   branch and links to it from the run summary. GitHub Actions may not open
+   pull requests in this repository, so open the PR from that link.
+3. Review the images in the PR as you would any other change.
+
+The baselines also need recording again when the runner image changes the
+simulator, the emulator image, or the OS fonts. The 0.2% allowance
+(`DEFAULT_MAX_DIFF_RATIO`) is a starting point: each report prints the largest
+difference among the screens that matched, which is the figure to tune it
+from.
+
+`npm run test:scripts` covers both scripts and `pin-status-bar.sh`.
 
 ## Repository protections
 

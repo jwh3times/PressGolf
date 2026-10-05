@@ -250,14 +250,19 @@ supabase/
 scripts/
   check-patch-coverage.mjs
   generate-icons.py
+  native-screens.mjs      compares the native nightly's screenshots with baselines
+  a11y-lint.mjs           lints the native accessibility tree the nightly captures
+  maestro-output.mjs      reads Maestro's output tree for the two scripts above
   sync-agents.mjs         .agents/skills -> .claude/skills generator
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/
   flows/            one native flow per journey (round, card entry, outing, handicaps)
   subflows/         steps the flows share: a fresh launch, scroll-then-tap
+  baselines/        native screenshot baselines, by platform and text size
   run.sh            runs every flow, retrying each once
   passes.sh         runs the flows at default and maximum text size
+  pin-status-bar.sh fixes the status bar's time, battery and signal for screenshots
 ```
 
 Expo Router screens belong in `src/app/`; non-route components and logic do not.

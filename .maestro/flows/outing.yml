@@ -9,6 +9,21 @@ name: Check the demo outing's field pots
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: .*Society Saturday.*, DIRECTION: DOWN } }
 # Both pots, each with its field, buy-in and progress through the card.
+- extendedWaitUntil:
+    visible: Back
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+# A checkpoint for the nightly report: Maestro saves a failing step's screenshot
+# and view hierarchy, and an optional step's failure doesn't fail the flow.
+# The name is written out because Maestro names those files from this text
+# before it substitutes variables.
+# Checkpoints come before any scrolling on a screen: a scroll doesn't land on
+# the same pixel twice, and the screenshots are compared.
+- extendedWaitUntil:
+    visible: __checkpoint outing__
+    timeout: 500
+    optional: true
 - scrollUntilVisible:
     element:
       text: Field skins

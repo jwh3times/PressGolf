@@ -226,3 +226,31 @@ test("an unknown platform is refused before anything runs", { skip: !hasSh }, ()
     run.cleanup();
   }
 });
+
+test("the iOS status bar is pinned through the simulator's override", { skip: !hasSh }, () => {
+  const ws = workspace([]);
+  try {
+    const run = ws.run(".maestro/pin-status-bar.sh", ["ios", "device-1"]);
+    assert.equal(run.status, 0);
+    assert.deepEqual(ws.log(), [
+      "xcrun simctl status_bar device-1 override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --dataNetwork wifi",
+    ]);
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test("the Android status bar is pinned through System UI demo mode", { skip: !hasSh }, () => {
+  const ws = workspace([]);
+  try {
+    const run = ws.run(".maestro/pin-status-bar.sh", ["android", "device-1"]);
+    assert.equal(run.status, 0);
+    const log = ws.log();
+    assert.equal(log[0], "adb -s device-1 shell settings put global sysui_demo_allowed 1");
+    assert.match(log[1], /demo -e command enter$/);
+    assert.ok(log.some((line) => /command clock -e hhmm 0941$/.test(line)));
+    assert.ok(log.some((line) => /command battery -e level 100 -e plugged false$/.test(line)));
+  } finally {
+    ws.cleanup();
+  }
+});

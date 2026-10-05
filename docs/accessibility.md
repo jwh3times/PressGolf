@@ -128,6 +128,42 @@ What still needs a device:
   hardware.
 - **Screens no flow visits**, such as sign-in and the course editor.
 
+## Native accessibility tree lint
+
+Jest checks accessible names on the React tree, not what VoiceOver and
+TalkBack are given. The native nightly's report job
+([testing-and-ci.md](testing-and-ci.md#native-nightly-report)) reads the view
+hierarchy Maestro captures at eight screens, on both platforms and at both
+text sizes, and `scripts/a11y-lint.mjs` reports:
+
+- **unlabelled:** a tappable control with no accessible text of its own or
+  below it;
+- **small-target:** a tap target under 44×44 pt on iOS or 48×48 dp on Android;
+- **ambiguous:** two or more tappable controls on one screen sharing a name.
+
+It is report-only and never fails the nightly. Accepted exceptions go in
+`.maestro/a11y-allowlist.json`, a list of entries with a `rule`, a `label`
+pattern, an optional `platform` and `screen` (`flow/checkpoint`) pattern, and
+a `reason`, which is required.
+
+Its limits:
+
+- **It does not replace a screen-reader pass.** It reads names and sizes, not
+  announcement order, focus, or whether a name makes sense.
+- **iOS dumps carry no roles.** Maestro's iOS hierarchy has labels, bounds and
+  states but nothing that says a node is a button. A label counts as a control
+  on iOS when Android marks the same label tappable at the same screen and
+  text size. So unlabelled controls are found on Android only, ambiguity is
+  reported from Android, and a label iOS also shows as plain text (a player's
+  initials as both row text and a chip) is skipped there.
+- **Sizes are the drawn bounds.** `hitSlop` widens what a finger can hit
+  without changing the bounds, so a control reported as small may still be
+  comfortable to tap. Say so in the allowlist entry's reason if you accept it.
+- **Controls cut off by the screen edge are skipped**, since their visible
+  size says nothing.
+- **Only the eight checkpoint screens are covered**, in the state the flow
+  reaches them.
+
 ## Regression checklist
 
 For a control, typography, or layout change:
