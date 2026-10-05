@@ -13,7 +13,8 @@ substitute for assistive-technology use on both platforms.
   junk, birdie, eagle, pick-up and clear chips on Score ("Greenie for Marcus",
   "Birdie for Dev"), the press buttons on Score ("Press Marcus"), the stake and
   pops steppers on Format ("Increase the Skins stake"), and the buy-in steppers
-  on Field pots.
+  on Field pots. A birdie or eagle is a fact about the hole and not a control,
+  so it is exposed as text ("Birdie for Dev") and not as a disabled button.
 - All static source font sizes are at least `MIN_FONT_SIZE` (10). The test scans
   direct `fontSize` declarations, conditional literal sizes, and the shared
   display/mono primitives.

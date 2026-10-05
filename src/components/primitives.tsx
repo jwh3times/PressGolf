@@ -459,28 +459,54 @@ export function Chip({
       disabled={!!disabled}
       onPress={disabled ? undefined : onPress}
       hitSlop={6}
-      style={({ pressed }) => ({
-        backgroundColor: active ? `${color}22` : 'transparent',
-        borderWidth: 1,
-        borderColor: active ? `${color}88` : line.control,
-        borderRadius: 999,
-        paddingVertical: 4,
-        paddingHorizontal: 9,
-        opacity: pressed && !disabled ? 0.6 : 1,
-      })}
+      style={({ pressed }) => [chipBox(color, active), { opacity: pressed && !disabled ? 0.6 : 1 }]}
     >
-      <Text
-        style={{
-          fontFamily: fonts.mono,
-          fontSize: 10,
-          letterSpacing: 0.85,
-          color: active ? color : ink.quiet,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={chipText(color, active)}>{label}</Text>
     </Pressable>
   );
+}
+
+/** A chip that reports a fact and does nothing, so it is read as text and not as a button. */
+export function StatusChip({
+  label,
+  accessibilityLabel,
+  color = colors.clay,
+}: {
+  label: string;
+  /** When the visible label alone is ambiguous, e.g. a result repeated for every player. */
+  accessibilityLabel?: string;
+  color?: string;
+}) {
+  return (
+    <View
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={accessibilityLabel}
+      style={chipBox(color, true)}
+    >
+      <Text style={chipText(color, true)}>{label}</Text>
+    </View>
+  );
+}
+
+function chipBox(color: string, active?: boolean): ViewStyle {
+  return {
+    backgroundColor: active ? `${color}22` : 'transparent',
+    borderWidth: 1,
+    borderColor: active ? `${color}88` : line.control,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+  };
+}
+
+function chipText(color: string, active?: boolean): TextStyle {
+  return {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.85,
+    color: active ? color : ink.quiet,
+  };
 }
 
 /** Coloured square used as a legend dot next to a format name. */

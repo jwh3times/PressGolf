@@ -14,6 +14,7 @@ import {
   GhostButton,
   Mono,
   PrimaryButton,
+  StatusChip,
   StepperButton,
 } from '../../components/primitives';
 import { MANUAL_JUNK, RoundContext, matchStatus, money, wolfForHole, wolfPickForHole } from '../../domain/engine';
@@ -242,12 +243,10 @@ export default function ScoreScreen() {
 
             <View style={styles.chipRow}>
               {underPar ? (
-                <Chip
+                <StatusChip
                   label={underPar.toUpperCase()}
                   accessibilityLabel={`${underPar} for ${player.name}`}
-                  active
                   color={colors.accent}
-                  disabled
                 />
               ) : null}
               {MANUAL_JUNK.map(({ kind, label, name }) => (
