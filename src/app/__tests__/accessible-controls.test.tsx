@@ -1160,6 +1160,52 @@ describe('controls that say what they act on', () => {
     }
   });
 
+  it('names each press for its opponent, and each birdie or eagle for its player', async () => {
+    const user = userEvent.setup();
+    const youId = group.youId!;
+    const others = group.players.filter((player) => player.id !== youId);
+    const par = course.tees[0].holes[0].par;
+    const rest = Array(course.tees[0].holes.length - 1).fill(null);
+    const scratch = {
+      ...round,
+      games: { ...round.games, nassau: { ...round.games.nassau, on: true } },
+      pops: Object.fromEntries(ids.map((id) => [id, 0])),
+      playerTees: {},
+      presses: [],
+    };
+    const scores = {
+      [youId]: [par + 2, ...rest],
+      [others[0].id]: [par - 1, ...rest],
+      [others[1].id]: [par - 2, ...rest],
+      [others[2].id]: [par, ...rest],
+    };
+    useStoreValue({ round: { ...scratch, scores } as typeof round });
+    let view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+
+    expect(screen.getByRole('button', { name: `Birdie for ${others[0].name}` })).toBeDisabled();
+    expect(screen.getByRole('button', { name: `Eagle for ${others[1].name}` })).toBeDisabled();
+    for (const opponent of others) {
+      expect(screen.getByRole('button', { name: `Press ${opponent.name}` })).toBeEnabled();
+    }
+    await user.press(screen.getByRole('button', { name: `Press ${others[1].name}` }));
+    expect(actions.addPress).toHaveBeenCalledWith(youId, others[1].id, 0);
+    for (const shared of ['Press', 'BIRDIE', 'EAGLE']) {
+      expect(screen.queryByRole('button', { name: shared })).toBeNull();
+    }
+    await view.unmount();
+
+    // All square: nothing to press, but each button still says whose match it is.
+    const level = Object.fromEntries(ids.map((id) => [id, [par, ...rest]]));
+    useStoreValue({ round: { ...scratch, scores: level } as typeof round });
+    view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    for (const opponent of others) {
+      expect(screen.getByRole('button', { name: `Press ${opponent.name}` })).toBeDisabled();
+    }
+    expect(screen.queryByRole('button', { name: '—' })).toBeNull();
+  });
+
   it('names each stake and pops stepper on Format for its game or player', async () => {
     const user = userEvent.setup();
     useStoreValue({ round: { ...round, games: allOn } as unknown as typeof round });
