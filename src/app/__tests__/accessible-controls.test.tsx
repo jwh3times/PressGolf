@@ -1189,6 +1189,7 @@ describe('controls that say what they act on', () => {
     expect(actions.setFieldGame).toHaveBeenCalledWith('scats', { buyIn: 600 });
     expect(screen.getByRole('button', { name: 'Decrease the Field skins buy-in' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'increase' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'decrease' })).toBeNull();
   });
 });
 

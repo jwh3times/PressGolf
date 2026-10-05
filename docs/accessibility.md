@@ -9,6 +9,10 @@ substitute for assistive-technology use on both platforms.
 - Every rendered button in the mounted screen suite has an accessible name.
   Primitive tests also verify button, switch, selection, disabled, and state
   semantics.
+- Controls repeated per player, game or pot say which one they act on: the
+  junk, pick-up and clear chips on Score ("Greenie for Marcus"), the stake and
+  pops steppers on Format ("Increase the Skins stake"), and the buy-in steppers
+  on Field pots.
 - All static source font sizes are at least `MIN_FONT_SIZE` (10). The test scans
   direct `fontSize` declarations, conditional literal sizes, and the shared
   display/mono primitives.
