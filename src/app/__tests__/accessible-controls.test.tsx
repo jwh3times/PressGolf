@@ -1183,8 +1183,10 @@ describe('controls that say what they act on', () => {
     let view = await render(<ScoreScreen />);
     await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
 
-    expect(screen.getByRole('button', { name: `Birdie for ${others[0].name}` })).toBeDisabled();
-    expect(screen.getByRole('button', { name: `Eagle for ${others[1].name}` })).toBeDisabled();
+    // A result is a fact about the hole, not something to tap, so it is not a button.
+    expect(screen.getByRole('text', { name: `Birdie for ${others[0].name}` })).toBeOnTheScreen();
+    expect(screen.getByRole('text', { name: `Eagle for ${others[1].name}` })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /^(Birdie|Eagle) for / })).toBeNull();
     for (const opponent of others) {
       expect(screen.getByRole('button', { name: `Press ${opponent.name}` })).toBeEnabled();
     }
