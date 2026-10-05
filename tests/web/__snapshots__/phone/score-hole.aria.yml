@@ -58,11 +58,11 @@
 - button "Polie for Big Ray": POLIE
 - button "Pick up for Big Ray": PICK UP
 - text: What this hole did 1 skin riding Enter all 4 scores to settle this hole. Your matches · press while you’re down DP 1 down to Dev Back nine · $5
-- button "Press"
+- button "Press Dev"
 - text: TJ 1 up on T.J. Back nine · $5
-- button "—" [disabled]
+- button "Press T.J." [disabled]: —
 - text: BR All square with Big Ray Back nine · $5
-- button "—" [disabled]
+- button "Press Big Ray" [disabled]: —
 - button "See the damage so far →"
 - tablist:
   - tab "Home": ◆ Home

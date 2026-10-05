@@ -10,7 +10,8 @@ substitute for assistive-technology use on both platforms.
   Primitive tests also verify button, switch, selection, disabled, and state
   semantics.
 - Controls repeated per player, game or pot say which one they act on: the
-  junk, pick-up and clear chips on Score ("Greenie for Marcus"), the stake and
+  junk, result, pick-up and clear chips on Score ("Greenie for Marcus",
+  "Birdie for Dev"), the press buttons on Score ("Press Marcus"), the stake and
   pops steppers on Format ("Increase the Skins stake"), and the buy-in steppers
   on Field pots.
 - All static source font sizes are at least `MIN_FONT_SIZE` (10). The test scans

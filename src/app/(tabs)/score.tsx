@@ -243,6 +243,7 @@ export default function ScoreScreen() {
               {gross != null && gross < par ? (
                 <Chip
                   label={gross <= par - 2 ? 'EAGLE' : 'BIRDIE'}
+                  accessibilityLabel={`${gross <= par - 2 ? 'Eagle' : 'Birdie'} for ${player.name}`}
                   active
                   color={colors.accent}
                   disabled
@@ -435,6 +436,8 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
             </View>
             <Pressable
               accessibilityRole="button"
+              // The face is a dash when there is nothing to press, which is no name at all.
+              accessibilityLabel={`Press ${opponent.name}`}
               disabled={!down}
               onPress={
                 down
