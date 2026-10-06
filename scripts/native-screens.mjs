@@ -30,8 +30,10 @@ const DEFAULT_BASELINES = ".maestro/baselines";
 const DEFAULT_MAX_DIFF_RATIO = 0.002;
 // pixelmatch's per-pixel colour tolerance (0 to 1).
 const PIXEL_THRESHOLD = 0.1;
-// Labels whose text changes from day to day without the app changing.
-const VOLATILE = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b/;
+// Labels whose text changes from day to day without the app changing: a date
+// ("Sep 21"), or the month the season started in ("since June").
+const MONTH = "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*";
+const VOLATILE = new RegExp(`\\b${MONTH} \\d{1,2}\\b|\\bsince ${MONTH}\\b`);
 
 /** Every checkpoint screenshot, paired with the hierarchy captured with it. */
 export function collectCaptures(output) {

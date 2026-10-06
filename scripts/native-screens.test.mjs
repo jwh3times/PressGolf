@@ -118,6 +118,32 @@ test("a date in the demo data is masked out, scaled from points to pixels", () =
   }
 });
 
+test("the season's starting month is masked out, but a player's name that starts like a month is not", () => {
+  const ws = workspace();
+  try {
+    // Home's ledger line names a month with no day: "since May" one day, "since June" the next.
+    const season = hierarchy(5, 5, [["18 rounds · since June ›", "[0,0][2,2]"]]);
+    ws.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 4, y2: 4, colour: WHITE }]), tree: season });
+    ws.baseline("ios/default/round--home.png", png(10, 10, GREEN));
+    const [masked] = compareScreens({ output: ws.out, baselines: ws.baselines, report: ws.report });
+    assert.equal(masked.status, "match");
+    assert.equal(masked.ratio, 0);
+  } finally {
+    ws.cleanup();
+  }
+
+  const other = workspace();
+  try {
+    const name = hierarchy(5, 5, [["Marcus has played 3 since joining", "[0,0][2,2]"]]);
+    other.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 4, y2: 4, colour: WHITE }]), tree: name });
+    other.baseline("ios/default/round--home.png", png(10, 10, GREEN));
+    const [seen] = compareScreens({ output: other.out, baselines: other.baselines, report: other.report });
+    assert.equal(seen.status, "diff");
+  } finally {
+    other.cleanup();
+  }
+});
+
 test("a screen with no baseline, or a different size, is reported rather than compared", () => {
   const ws = workspace();
   try {
