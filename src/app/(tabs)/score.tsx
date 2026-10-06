@@ -85,7 +85,7 @@ export default function ScoreScreen() {
   const modeBar = (
     <View style={{ gap: 10 }}>
       {round.entry === 'card' ? <CardActions /> : null}
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View testID="score-view-switch" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <Chip label="Hole by hole" active={mode === 'hole'} color={colors.accent} onPress={() => setView('hole')} />
         <Chip label="Whole card" active={mode === 'card'} color={colors.accent} onPress={() => setView('card')} />
       </View>

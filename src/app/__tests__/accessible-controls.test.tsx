@@ -1489,6 +1489,27 @@ describe('entering a finished card', () => {
     expect(screen.getByRole('button', { name: 'Go to hole 1' })).toBeOnTheScreen();
     alert.mockRestore();
   });
+
+  it('keeps the view switch and the card grid readable at the largest text size', async () => {
+    const user = userEvent.setup();
+    mockUseAccessibilityControlScale.mockReturnValue(2.25);
+    await render(<ScoreScreen />);
+    // The two chips are wider than a phone at this size, so the second drops to its own line.
+    expect(screen.getByTestId('score-view-switch')).toHaveStyle({ flexWrap: 'wrap' });
+    await user.press(screen.getByRole('button', { name: 'Whole card' }));
+
+    // The grid's text stops growing at the control scale, and its columns grow with it,
+    // so "HOLE" stays on one line and a two-digit hole number fits its box.
+    for (const label of ['HOLE', 'PAR', group.players[0].initials, '18']) {
+      expect(screen.getAllByText(label)[0].props.maxFontSizeMultiplier).toBe(2.25);
+    }
+    expect(screen.getByText('HOLE')).toHaveStyle({ width: 40 * 2.25 });
+    expect(screen.getByText('18')).toHaveStyle({ width: 34 * 2.25 });
+    expect(screen.getAllByRole('button', { name: /^Hole 1, / })[0]).toHaveStyle({
+      width: 34 * 2.25,
+      minHeight: 34 * 2.25,
+    });
+  });
 });
 
 describe('handicaps', () => {
