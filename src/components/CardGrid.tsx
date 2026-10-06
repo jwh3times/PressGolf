@@ -41,6 +41,9 @@ export function CardGrid({
   const scale = useAccessibilityControlScale();
   const nameCol = { width: 40 * scale };
   const box = { width: 34 * scale, minHeight: 34 * scale };
+  // A header figure fills its box's height with one line, which centres it beside the
+  // row's label. The line height grows with the text, so it is given unscaled.
+  const headBox = [box, styles.headText, { lineHeight: 34 }];
 
   const at = players[cursor.player];
   const written = (id: PlayerId, hole: number) => ctx.round.scores[id]?.[hole] ?? null;
@@ -84,7 +87,7 @@ export function CardGrid({
               HOLE
             </Text>
             {holes.map((h) => (
-              <Text key={h.number} maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[box, styles.headText]}>
+              <Text key={h.number} maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={headBox}>
                 {h.number}
               </Text>
             ))}
@@ -94,7 +97,7 @@ export function CardGrid({
               PAR
             </Text>
             {holes.map((h) => (
-              <Text key={h.number} maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[box, styles.headText]}>
+              <Text key={h.number} maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={headBox}>
                 {h.par}
               </Text>
             ))}

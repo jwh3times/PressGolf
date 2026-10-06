@@ -19,7 +19,14 @@ case "$platform" in
     reset() { xcrun simctl ui "$device" content_size large; }
     ;;
   android)
-    large() { adb -s "$device" shell settings put system font_scale 2.0; }
+    # A new font scale rebuilds System UI's status bar, which drops demo mode
+    # and shows the real clock again. Give it a moment, then pin it once more,
+    # or every large-text screenshot carries the time it was taken.
+    large() {
+      adb -s "$device" shell settings put system font_scale 2.0
+      sleep "${TEXT_SIZE_SETTLE_SECONDS:-3}"
+      sh "$here/pin-status-bar.sh" android "$device"
+    }
     reset() { adb -s "$device" shell settings put system font_scale 1.0; }
     ;;
   *)
