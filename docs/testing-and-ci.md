@@ -244,9 +244,10 @@ It downloads their output and runs two scripts:
   baseline, or when its size changed. Text that changes by itself, because the
   demo data is seeded relative to today, is masked using its bounds in the
   hierarchy captured with the screenshot: any label holding a date ("Sep 21")
-  or the month the season started in ("since June"). A new kind of dated text
-  needs adding to `VOLATILE` in the script, or it drifts under the allowance
-  until a longer month name tips it over. A region that legitimately varies
+  or the month the season started in ("since June"; masked a little wider than
+  the text, since month names differ in width). A new kind of dated text needs
+  its own pattern beside `DATED` and `SEASON` in the script, or it drifts under
+  the allowance until a longer month name tips it over. A region that legitimately varies
   can be left out in `.maestro/baselines/ignore.json`, each entry with a
   reason; the one entry skips the strip above Roster's sheet on iOS, which
   shows the screen behind it.

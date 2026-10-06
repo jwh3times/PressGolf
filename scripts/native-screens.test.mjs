@@ -122,8 +122,10 @@ test("the season's starting month is masked out, but a player's name that starts
   const ws = workspace();
   try {
     // Home's ledger line names a month with no day: "since May" one day, "since June" the next.
-    const season = hierarchy(5, 5, [["18 rounds · since June ›", "[0,0][2,2]"]]);
-    ws.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 4, y2: 4, colour: WHITE }]), tree: season });
+    // The line is right-aligned, so a longer month in the baseline starts further left than
+    // this capture's text does: the mask reaches past the label's own bounds on each side.
+    const season = hierarchy(5, 5, [["18 rounds · since June ›", "[3,0][4,1]"]]);
+    ws.capture({ image: png(10, 10, GREEN, [{ x1: 1, y1: 0, x2: 8, y2: 2, colour: WHITE }]), tree: season });
     ws.baseline("ios/default/round--home.png", png(10, 10, GREEN));
     const [masked] = compareScreens({ output: ws.out, baselines: ws.baselines, report: ws.report });
     assert.equal(masked.status, "match");
@@ -132,15 +134,18 @@ test("the season's starting month is masked out, but a player's name that starts
     ws.cleanup();
   }
 
-  const other = workspace();
-  try {
-    const name = hierarchy(5, 5, [["Marcus has played 3 since joining", "[0,0][2,2]"]]);
-    other.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 4, y2: 4, colour: WHITE }]), tree: name });
-    other.baseline("ios/default/round--home.png", png(10, 10, GREEN));
-    const [seen] = compareScreens({ output: other.out, baselines: other.baselines, report: other.report });
-    assert.equal(seen.status, "diff");
-  } finally {
-    other.cleanup();
+  // "Marcus" starts with "Mar", after "since" and before a number: neither makes it a month.
+  for (const label of ["3 rounds since Marcus joined", "Marcus 4"]) {
+    const other = workspace();
+    try {
+      const name = hierarchy(5, 5, [[label, "[0,0][2,2]"]]);
+      other.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 4, y2: 4, colour: WHITE }]), tree: name });
+      other.baseline("ios/default/round--home.png", png(10, 10, GREEN));
+      const [seen] = compareScreens({ output: other.out, baselines: other.baselines, report: other.report });
+      assert.equal(seen.status, "diff", label);
+    } finally {
+      other.cleanup();
+    }
   }
 });
 

@@ -30,10 +30,16 @@ const DEFAULT_BASELINES = ".maestro/baselines";
 const DEFAULT_MAX_DIFF_RATIO = 0.002;
 // pixelmatch's per-pixel colour tolerance (0 to 1).
 const PIXEL_THRESHOLD = 0.1;
+// A month, short or in full, and nothing that merely starts like one ("Marcus").
+const MONTH = "(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(t(ember)?)?|Oct(ober)?|Nov(ember)?|Dec(ember)?)";
 // Labels whose text changes from day to day without the app changing: a date
 // ("Sep 21"), or the month the season started in ("since June").
-const MONTH = "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*";
-const VOLATILE = new RegExp(`\\b${MONTH} \\d{1,2}\\b|\\bsince ${MONTH}\\b`);
+const DATED = new RegExp(`\\b${MONTH} \\d{1,2}\\b`);
+const SEASON = new RegExp(`\\bsince ${MONTH}\\b`);
+// "since May" is far narrower than "since September", and the mask is cut to
+// the text in the new capture only. So a season line is masked this many
+// times its own height further on each side, to cover the baseline's too.
+const SEASON_PAD = 3;
 
 /** Every checkpoint screenshot, paired with the hierarchy captured with it. */
 export function collectCaptures(output) {
@@ -57,8 +63,9 @@ function masks(hierarchyFile, pngWidth) {
     const a = n.attributes ?? {};
     const label = a.accessibilityText || a.text || "";
     const b = parseBounds(a.bounds);
-    if (b && VOLATILE.test(label)) {
-      rects.push({ x1: Math.floor(b.x1 * scale), y1: Math.floor(b.y1 * scale), x2: Math.ceil(b.x2 * scale), y2: Math.ceil(b.y2 * scale) });
+    if (b && (DATED.test(label) || SEASON.test(label))) {
+      const pad = SEASON.test(label) ? SEASON_PAD * (b.y2 - b.y1) : 0;
+      rects.push({ x1: Math.floor((b.x1 - pad) * scale), y1: Math.floor(b.y1 * scale), x2: Math.ceil((b.x2 + pad) * scale), y2: Math.ceil(b.y2 * scale) });
     }
     for (const c of n.children ?? []) walk(c);
   };
