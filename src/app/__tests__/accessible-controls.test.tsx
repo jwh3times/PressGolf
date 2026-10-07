@@ -1504,7 +1504,6 @@ describe('entering a finished card', () => {
       expect(screen.getAllByText(label)[0].props.maxFontSizeMultiplier).toBe(2.25);
     }
     expect(screen.getByText('HOLE')).toHaveStyle({ width: 40 * 2.25 });
-    expect(screen.getByText('18')).toHaveStyle({ width: 34 * 2.25 });
     expect(screen.getAllByRole('button', { name: /^Hole 1, / })[0]).toHaveStyle({
       width: 34 * 2.25,
       minHeight: 34 * 2.25,

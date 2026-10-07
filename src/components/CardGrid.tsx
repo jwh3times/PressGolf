@@ -41,9 +41,14 @@ export function CardGrid({
   const scale = useAccessibilityControlScale();
   const nameCol = { width: 40 * scale };
   const box = { width: 34 * scale, minHeight: 34 * scale };
-  // A header figure fills its box's height with one line, which centres it beside the
-  // row's label. The line height grows with the text, so it is given unscaled.
-  const headBox = [box, styles.headText, { lineHeight: 34 }];
+  // A header figure sits in the middle of a box the size of a score's, level with the row's label.
+  const headFigure = (key: number, figure: number) => (
+    <View key={key} style={[box, styles.headBox]}>
+      <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={styles.headText}>
+        {figure}
+      </Text>
+    </View>
+  );
 
   const at = players[cursor.player];
   const written = (id: PlayerId, hole: number) => ctx.round.scores[id]?.[hole] ?? null;
@@ -86,21 +91,13 @@ export function CardGrid({
             <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
               HOLE
             </Text>
-            {holes.map((h) => (
-              <Text key={h.number} maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={headBox}>
-                {h.number}
-              </Text>
-            ))}
+            {holes.map((h) => headFigure(h.number, h.number))}
           </View>
           <View style={styles.row}>
             <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
               PAR
             </Text>
-            {holes.map((h) => (
-              <Text key={h.number} maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={headBox}>
-                {h.par}
-              </Text>
-            ))}
+            {holes.map((h) => headFigure(h.number, h.par))}
           </View>
           {players.map((player, p) => (
             <View key={player.id} style={styles.row}>
@@ -247,6 +244,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
   headText: { fontFamily: fonts.mono, fontSize: 10, color: ink.quiet, textAlign: 'center' },
+  headBox: { alignItems: 'center', justifyContent: 'center' },
   cell: {
     alignItems: 'center',
     justifyContent: 'center',
