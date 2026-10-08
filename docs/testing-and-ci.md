@@ -268,7 +268,10 @@ Screenshots only compare when the renders are pinned, so the workflow:
 - keeps the fixed Pixel 6, API 34 emulator; and
 - pins the status bar to 9:41, full battery and full signal
   (`.maestro/pin-status-bar.sh`: the simulator's status bar override on iOS,
-  System UI demo mode on Android).
+  System UI demo mode on Android). On Android `passes.sh` pins it a second
+  time after changing the font scale, because the new scale rebuilds the
+  status bar and drops demo mode; the bar it comes back with has no mobile
+  signal icon, which is the same every run.
 
 To read a difference, download `native-report` and open the three images for
 the screen. An intended change needs new baselines:
