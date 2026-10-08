@@ -19,7 +19,17 @@ case "$platform" in
     reset() { xcrun simctl ui "$device" content_size large; }
     ;;
   android)
-    large() { adb -s "$device" shell settings put system font_scale 2.0; }
+    # A new font scale rebuilds System UI's status bar, which drops demo mode
+    # and shows the real clock again. Give it a moment, then pin it once more,
+    # or every large-text screenshot carries the time it was taken.
+    large() {
+      adb -s "$device" shell settings put system font_scale 2.0
+      sleep "${TEXT_SIZE_SETTLE_SECONDS:-3}"
+      # The flows still run unpinned, but say so: an unpinned clock is small
+      # enough to pass the screenshot comparison unnoticed.
+      sh "$here/pin-status-bar.sh" android "$device" ||
+        echo "::warning title=Native smoke::Could not pin the Android status bar for the large-text pass"
+    }
     reset() { adb -s "$device" shell settings put system font_scale 1.0; }
     ;;
   *)
