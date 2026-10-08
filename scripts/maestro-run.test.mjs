@@ -63,6 +63,7 @@ function workspace(flows, results = {}) {
         GITHUB_ENV: githubEnv,
         FAKE_STATE: state,
         MAESTRO_FLOWS: flowDir,
+        TEXT_SIZE_SETTLE_SECONDS: "0",
       },
     });
   const read = (file) => (existsSync(file) ? readFileSync(file, "utf8").trim() : null);
@@ -186,12 +187,25 @@ test("Android runs the flows at default size, then at font scale 2.0, then resto
   const run = runPasses("android", ["round"]);
   try {
     assert.equal(run.status, 0);
-    assert.deepEqual(run.log(), [
-      "maestro round",
-      "adb -s device-1 shell settings put system font_scale 2.0",
-      "maestro round",
-      "adb -s device-1 shell settings put system font_scale 1.0",
-    ]);
+    const log = run.log();
+    assert.equal(log[0], "maestro round");
+    assert.equal(log[1], "adb -s device-1 shell settings put system font_scale 2.0");
+    assert.equal(log.at(-2), "maestro round");
+    assert.equal(log.at(-1), "adb -s device-1 shell settings put system font_scale 1.0");
+  } finally {
+    run.cleanup();
+  }
+});
+
+test("Android pins the status bar again after the font scale changes, before the large-text flows", { skip: !hasSh }, () => {
+  const run = runPasses("android", ["round"]);
+  try {
+    assert.equal(run.status, 0);
+    const log = run.log();
+    const scaled = log.indexOf("adb -s device-1 shell settings put system font_scale 2.0");
+    const pinned = log.findIndex((line) => /command clock -e hhmm 0941$/.test(line));
+    const largePass = log.lastIndexOf("maestro round");
+    assert.ok(scaled < pinned && pinned < largePass, log.join("\n"));
   } finally {
     run.cleanup();
   }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { wolfForHole, wolfPickForHole, type RoundContext } from '../domain/engine';
 import type { PlayerId } from '../domain/types';
-import { MAX_CONTROL_SCALE } from '../hooks/useLargeText';
+import { MAX_CONTROL_SCALE, useAccessibilityControlScale } from '../hooks/useLargeText';
 import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
 import { Chip, GhostButton, StepperButton } from './primitives';
 
@@ -36,6 +36,24 @@ export function CardGrid({
   const [cursor, setCursor] = useState<Cursor>({ player: 0, hole: 0 });
   // Set after 10+, while the stepper nudges a double-figure score.
   const [big, setBig] = useState<number | null>(null);
+  // The grid is too dense to grow without limit, so its text stops at the control
+  // scale and its columns grow by the same amount: a label never outgrows its column.
+  const controlScale = useAccessibilityControlScale();
+  const nameCol = { width: 40 * controlScale };
+  const box = { width: 34 * controlScale, minHeight: 34 * controlScale };
+  const headLabel = (label: string) => (
+    <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
+      {label}
+    </Text>
+  );
+  // A header figure sits in the middle of a box the size of a score's, level with the row's label.
+  const headFigure = (key: number, figure: number) => (
+    <View key={key} style={[box, styles.headBox]}>
+      <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={styles.headText}>
+        {figure}
+      </Text>
+    </View>
+  );
 
   const at = players[cursor.player];
   const written = (id: PlayerId, hole: number) => ctx.round.scores[id]?.[hole] ?? null;
@@ -75,24 +93,16 @@ export function CardGrid({
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ gap: 4 }}>
           <View style={styles.row}>
-            <Text style={[styles.name, styles.headText]}>HOLE</Text>
-            {holes.map((h) => (
-              <Text key={h.number} style={[styles.box, styles.headText]}>
-                {h.number}
-              </Text>
-            ))}
+            {headLabel('HOLE')}
+            {holes.map((h) => headFigure(h.number, h.number))}
           </View>
           <View style={styles.row}>
-            <Text style={[styles.name, styles.headText]}>PAR</Text>
-            {holes.map((h) => (
-              <Text key={h.number} style={[styles.box, styles.headText]}>
-                {h.par}
-              </Text>
-            ))}
+            {headLabel('PAR')}
+            {holes.map((h) => headFigure(h.number, h.par))}
           </View>
           {players.map((player, p) => (
             <View key={player.id} style={styles.row}>
-              <Text style={styles.name} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol]} numberOfLines={1}>
                 {player.initials}
               </Text>
               {holes.map((h, hole) => {
@@ -110,7 +120,7 @@ export function CardGrid({
                       setBig(null);
                       setCursor({ player: p, hole });
                     }}
-                    style={[styles.box, styles.cell, selected ? styles.cellOn : null]}
+                    style={[box, styles.cell, selected ? styles.cellOn : null]}
                   >
                     <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={styles.cellText}>
                       {pickedUp ? 'PU' : (value ?? '')}
@@ -127,7 +137,7 @@ export function CardGrid({
           ))}
           {ctx.round.games.wolf.on ? (
             <View style={styles.row}>
-              <Text style={[styles.name, styles.headText]}>WOLF</Text>
+              {headLabel('WOLF')}
               {holes.map((h, hole) => {
                 const pick = wolfPickForHole(ctx, hole);
                 return (
@@ -140,7 +150,7 @@ export function CardGrid({
                       setBig(null);
                       setCursor((c) => ({ ...c, hole }));
                     }}
-                    style={[styles.box, styles.cell, cursor.hole === hole ? styles.cellOn : null]}
+                    style={[box, styles.cell, cursor.hole === hole ? styles.cellOn : null]}
                   >
                     <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={styles.wolfText}>
                       {pick ? (pick.partner ? ctx.initials(pick.partner) : 'LW') : ''}
@@ -231,9 +241,9 @@ export function CardGrid({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  name: { width: 40, fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
+  name: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
   headText: { fontFamily: fonts.mono, fontSize: 10, color: ink.quiet, textAlign: 'center' },
-  box: { width: 34, minHeight: 34 },
+  headBox: { alignItems: 'center', justifyContent: 'center' },
   cell: {
     alignItems: 'center',
     justifyContent: 'center',

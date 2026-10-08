@@ -24,6 +24,11 @@ substitute for assistive-technology use on both platforms.
 - Dense screens switch to large-text layouts at a font scale of 1.8. Fixed
   controls can grow up to the shared 2.25 control scale while surrounding
   layouts reflow.
+- The whole-card grid on Score is one such control: its labels, hole numbers
+  and scores stop growing at the control scale, and its label column and
+  boxes widen by the same factor. The mounted screen test checks the cap and
+  the widths; that "HOLE" then stays on one line is shown by the native
+  large-text screenshots, not asserted.
 - Shared text primitives control both font size and line height to prevent
   custom-font clipping at accessibility sizes.
 
