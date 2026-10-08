@@ -38,9 +38,14 @@ export function CardGrid({
   const [big, setBig] = useState<number | null>(null);
   // The grid is too dense to grow without limit, so its text stops at the control
   // scale and its columns grow by the same amount: a label never outgrows its column.
-  const scale = useAccessibilityControlScale();
-  const nameCol = { width: 40 * scale };
-  const box = { width: 34 * scale, minHeight: 34 * scale };
+  const controlScale = useAccessibilityControlScale();
+  const nameCol = { width: 40 * controlScale };
+  const box = { width: 34 * controlScale, minHeight: 34 * controlScale };
+  const headLabel = (label: string) => (
+    <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
+      {label}
+    </Text>
+  );
   // A header figure sits in the middle of a box the size of a score's, level with the row's label.
   const headFigure = (key: number, figure: number) => (
     <View key={key} style={[box, styles.headBox]}>
@@ -88,15 +93,11 @@ export function CardGrid({
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ gap: 4 }}>
           <View style={styles.row}>
-            <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
-              HOLE
-            </Text>
+            {headLabel('HOLE')}
             {holes.map((h) => headFigure(h.number, h.number))}
           </View>
           <View style={styles.row}>
-            <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
-              PAR
-            </Text>
+            {headLabel('PAR')}
             {holes.map((h) => headFigure(h.number, h.par))}
           </View>
           {players.map((player, p) => (
@@ -136,9 +137,7 @@ export function CardGrid({
           ))}
           {ctx.round.games.wolf.on ? (
             <View style={styles.row}>
-              <Text maxFontSizeMultiplier={MAX_CONTROL_SCALE} style={[styles.name, nameCol, styles.headText]}>
-                WOLF
-              </Text>
+              {headLabel('WOLF')}
               {holes.map((h, hole) => {
                 const pick = wolfPickForHole(ctx, hole);
                 return (

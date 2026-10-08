@@ -200,6 +200,7 @@ test("Android runs the flows at default size, then at font scale 2.0, then resto
 test("Android pins the status bar again after the font scale changes, before the large-text flows", { skip: !hasSh }, () => {
   const run = runPasses("android", ["round"]);
   try {
+    assert.equal(run.status, 0);
     const log = run.log();
     const scaled = log.indexOf("adb -s device-1 shell settings put system font_scale 2.0");
     const pinned = log.findIndex((line) => /command clock -e hhmm 0941$/.test(line));

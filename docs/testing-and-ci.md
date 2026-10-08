@@ -270,8 +270,10 @@ Screenshots only compare when the renders are pinned, so the workflow:
   (`.maestro/pin-status-bar.sh`: the simulator's status bar override on iOS,
   System UI demo mode on Android). On Android `passes.sh` pins it a second
   time after changing the font scale, because the new scale rebuilds the
-  status bar and drops demo mode; the bar it comes back with has no mobile
-  signal icon, which is the same every run.
+  status bar and drops demo mode. It waits three seconds for the rebuild
+  first (`TEXT_SIZE_SETTLE_SECONDS`, which the script tests set to 0). The bar
+  it comes back with shows wifi and battery but no mobile signal icon, unlike
+  the default-size pass; that is the same every run, so it compares.
 
 To read a difference, download `native-report` and open the three images for
 the screen. An intended change needs new baselines:

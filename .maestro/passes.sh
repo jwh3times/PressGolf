@@ -25,7 +25,10 @@ case "$platform" in
     large() {
       adb -s "$device" shell settings put system font_scale 2.0
       sleep "${TEXT_SIZE_SETTLE_SECONDS:-3}"
-      sh "$here/pin-status-bar.sh" android "$device"
+      # The flows still run unpinned, but say so: an unpinned clock is small
+      # enough to pass the screenshot comparison unnoticed.
+      sh "$here/pin-status-bar.sh" android "$device" ||
+        echo "::warning title=Native smoke::Could not pin the Android status bar for the large-text pass"
     }
     reset() { adb -s "$device" shell settings put system font_scale 1.0; }
     ;;
