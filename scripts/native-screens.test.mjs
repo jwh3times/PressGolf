@@ -118,6 +118,24 @@ test("a date in the demo data is masked out, scaled from points to pixels", () =
   }
 });
 
+test("a sheet's backdrop reaching past the screen doesn't throw off the scale of the masks", () => {
+  const ws = workspace();
+  try {
+    // As iOS dumps a sheet: the backdrop is three screens wide and tall, centred on the screen.
+    const tree = hierarchy(5, 5, [
+      ["", "[-5,-5][10,10]"],
+      ["index 2.1 · Sep 21, 2026 · tap to edit", "[0,0][2,2]"],
+    ]);
+    ws.capture({ image: png(10, 10, GREEN, [{ x1: 0, y1: 0, x2: 4, y2: 4, colour: WHITE }]), tree });
+    ws.baseline("ios/default/round--home.png", png(10, 10, GREEN));
+    const [result] = compareScreens({ output: ws.out, baselines: ws.baselines, report: ws.report });
+    assert.equal(result.status, "match");
+    assert.equal(result.ratio, 0);
+  } finally {
+    ws.cleanup();
+  }
+});
+
 test("the season's starting month is masked out, but a player's name that starts like a month is not", () => {
   const ws = workspace();
   try {
