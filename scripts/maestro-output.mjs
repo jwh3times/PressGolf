@@ -16,16 +16,20 @@ export function parseBounds(bounds) {
 
 export const area = (b) => (b.x2 - b.x1) * (b.y2 - b.y1);
 
-/** The screen's bounds: the largest window in the dump (Android lists the status bar's first). */
+/**
+ * The screen's bounds: the largest of the outermost nodes that have a size.
+ * Android lists its windows side by side, the status bar's first. Deeper nodes
+ * are no guide: scrolled content runs on past the screen, and the backdrop of
+ * an iOS sheet is three screens wide.
+ */
 export function viewportOf(tree) {
-  let viewport = null;
-  const walk = (n) => {
-    const b = parseBounds(n.attributes?.bounds);
-    if (b && (!viewport || area(b) > area(viewport))) viewport = b;
-    for (const c of n.children ?? []) walk(c);
-  };
-  walk(tree);
-  return viewport;
+  let level = [tree];
+  while (level.length) {
+    const sized = level.map((n) => parseBounds(n.attributes?.bounds)).filter((b) => b && area(b) > 0);
+    if (sized.length) return sized.reduce((a, b) => (area(b) > area(a) ? b : a));
+    level = level.flatMap((n) => n.children ?? []);
+  }
+  return null;
 }
 
 /**

@@ -57,6 +57,15 @@ test("a target cut off by the screen edge is not called small", () => {
   assert.deepEqual(findings, []);
 });
 
+test("on iOS the screen edge is the screen's, not the end of the scrolled content", () => {
+  const findings = lintScreens([
+    screen("android", androidScreen(tap("[100,300][300,500]", { accessibilityText: "Hole 9" }))),
+    // The scroll content runs on to 2681 pt; the control is cut off at the screen's 874.
+    screen("ios", iosScreen(ios("[0,0][402,2681]", "", [ios("[20,860][60,874]", "Hole 9")]))),
+  ]);
+  assert.deepEqual(findings, []);
+});
+
 test("two tappables sharing a name on one screen are ambiguous, once, reported from Android", () => {
   const findings = lintScreens([
     screen(
