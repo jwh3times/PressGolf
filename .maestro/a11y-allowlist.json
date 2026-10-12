@@ -1,0 +1,45 @@
+[
+  {
+    "rule": "small-target",
+    "label": "^(Previous|Next) hole$",
+    "reason": "Drawn 40×40 with a hitSlop of 8, so the touch area is 56×56."
+  },
+  {
+    "rule": "small-target",
+    "label": "^Settings$",
+    "screen": "^round/home$",
+    "reason": "Drawn 38×38 with a hitSlop of 8, so the touch area is 54×54."
+  },
+  {
+    "rule": "small-target",
+    "label": "^(Back|Done)$",
+    "reason": "The header's close button is drawn about 60×34 with a hitSlop of 10, so the touch area is about 80×54."
+  },
+  {
+    "rule": "small-target",
+    "label": "^((Decrease|Increase) (score|pops) for .+|(Decrease|Increase) the .+ (stake|buy-in)|(Lower|Raise) the allowance|decrease|increase)$",
+    "reason": "A stepper button is drawn 30 to 34 square, and StepperButton sets its hitSlop to bring the touch area to 48×48."
+  },
+  {
+    "rule": "small-target",
+    "label": "^(Nassau|Skins|Junk|Stableford|Four-ball|Wolf|Vegas)$",
+    "screen": "^handicaps/format$",
+    "reason": "A game's switch is drawn 46×27, and Switch sets its hitSlop to bring the touch area to 62×49."
+  },
+  {
+    "rule": "small-target",
+    "label": " ›$",
+    "reason": "A text link in a section header, drawn at the height of its text; its hitSlop brings the touch area to 48 high."
+  },
+  {
+    "rule": "small-target",
+    "label": "^Go to hole \\d+$",
+    "reason": "Eighteen dots share one row, so each is about 18 wide and can't reach the minimum; hitSlop makes them 49 high, and Previous hole and Next hole do the same job at full size."
+  },
+  {
+    "rule": "small-target",
+    "label": "^(Hole \\d+, |Wolf, hole \\d+, )",
+    "screen": "^card-entry/score_card$|^round/score_hole$",
+    "reason": "The whole-card grid's boxes are 34×34 so that a card's holes fit across a phone. A box only selects where the keypad writes, the keypad's keys are 58×48, and a mis-tap is undone by tapping the box meant."
+  }
+]
