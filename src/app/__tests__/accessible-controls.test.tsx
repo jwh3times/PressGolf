@@ -1747,12 +1747,10 @@ describe('tap targets', () => {
 
     mockUseStore.mockReturnValue(outingStore);
     await render(<OutingScreen />);
-    expect(screen.getByRole('button', { name: 'REARRANGE ›' }).props.hitSlop).toEqual({
-      top: 16,
-      bottom: 16,
-      left: 8,
-      right: 8,
-    });
+    const rearrange = screen.getByRole('button', { name: 'REARRANGE ›' });
+    expect(rearrange.props.hitSlop).toEqual({ top: 16, bottom: 16, left: 8, right: 8 });
+    await userEvent.setup().press(rearrange);
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/groups');
   });
 
   it('makes the whole of a Roster card the target for opening it', async () => {
