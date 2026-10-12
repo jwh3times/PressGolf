@@ -121,6 +121,15 @@ describe('Chip', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it('is a full-size tap target around a pill drawn at its own size', async () => {
+    await render(<Chip label="OFF" onPress={jest.fn()} />);
+
+    const chip = screen.getByRole('button', { name: 'OFF' });
+    expect(chip).toHaveStyle({ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' });
+    expect(chip.props.hitSlop).toBeUndefined();
+    expect(screen.getByTestId('chip-pill')).toHaveStyle({ paddingVertical: 4, paddingHorizontal: 9, borderWidth: 1 });
+  });
+
   it('reports disabled and ignores presses when disabled', async () => {
     const user = userEvent.setup();
     const onPress = jest.fn();
