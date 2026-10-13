@@ -27,8 +27,9 @@ import { checkpointFiles, parseBounds, viewportOf } from "./maestro-output.mjs";
 const DEFAULT_BASELINES = ".maestro/baselines";
 // Share of pixels allowed to differ before a screen is reported. Tune it from
 // the ratios consecutive nightlies report for an unchanged app: those reached
-// 0.009%, and a change of accent colour moved the least-touched screen 0.054%.
-const DEFAULT_MAX_DIFF_RATIO = 0.0003;
+// 0.009%, and a change of accent colour moved the least-touched screen 0.027%
+// (both as pixelmatch 8 counts them; it counts fewer pixels than 7 did).
+const DEFAULT_MAX_DIFF_RATIO = 0.0002;
 // pixelmatch's per-pixel colour tolerance (0 to 1).
 const PIXEL_THRESHOLD = 0.1;
 // A month, short or in full, and nothing that merely starts like one ("Marcus").

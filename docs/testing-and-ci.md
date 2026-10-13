@@ -240,7 +240,7 @@ It downloads their output and runs two scripts:
 
 - **`scripts/native-screens.mjs`** compares each screenshot with its baseline
   in `.maestro/baselines/<platform>/<text size>/<flow>--<checkpoint>.png`. A
-  screen is reported when more than 0.03% of its pixels differ, when it has no
+  screen is reported when more than 0.02% of its pixels differ, when it has no
   baseline, or when its size changed. Text that changes by itself, because the
   demo data is seeded relative to today, is masked using its bounds in the
   hierarchy captured with the screenshot: any label holding a date ("Sep 21")
@@ -286,10 +286,13 @@ the screen. An intended change needs new baselines:
 3. Review the images in the PR as you would any other change.
 
 The baselines also need recording again when the runner image changes the
-simulator, the emulator image, or the OS fonts. The 0.03% allowance
-(`DEFAULT_MAX_DIFF_RATIO`) was set on 2026-10-11 from three nightlies of an
-unchanged app, whose largest difference was 0.009%, and from a run with the
-accent colour changed, where the least-affected screen moved 0.054%. Each
+simulator, the emulator image, or the OS fonts. The 0.02% allowance
+(`DEFAULT_MAX_DIFF_RATIO`) was set on 2026-10-13, with the move to pixelmatch 8,
+from three nightlies of an unchanged app, whose largest difference was 0.009%,
+and from a run with the accent colour changed, where the least-affected screen
+moved 0.027%. pixelmatch 8 counts fewer differing pixels than 7 did (the same
+screen measured 0.054%), so figures from reports before that date are not
+comparable. Each
 report prints the largest difference among the screens that matched, which is
 the figure to tune it from.
 
