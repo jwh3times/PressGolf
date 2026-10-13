@@ -154,7 +154,11 @@ export default function OutingScreen() {
       <View style={{ gap: 10 }}>
         <View style={[styles.sectionHead, largeText ? styles.stackRow : null]}>
           <Eyebrow>Groups</Eyebrow>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/groups')} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/groups')}
+            hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
+          >
             <Mono size={11} style={{ color: ink.quiet }}>
               REARRANGE ›
             </Mono>

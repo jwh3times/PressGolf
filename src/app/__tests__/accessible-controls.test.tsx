@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { SignInScreen } from '../../components/SignInScreen';
 import { buildDemoDataset } from '../../demo/seed';
@@ -1696,3 +1696,81 @@ describe('tee sets', () => {
   });
 });
 
+
+// The platform minimums are 44 pt on iOS and 48 dp on Android; 48 covers both.
+describe('tap targets', () => {
+  const names = group.players.map((player) => player.name);
+  const allOn = Object.fromEntries(
+    Object.entries(round.games).map(([key, config]) => [key, { ...config, on: true, stake: 500 }]),
+  );
+  const flat = (element: { props: { style?: unknown } }) =>
+    StyleSheet.flatten(element.props.style as StyleProp<ViewStyle>) ?? {};
+
+  it('widens each stepper’s touch area to 48, whatever size it is drawn', async () => {
+    let view = await render(<ScoreScreen />);
+    expect(screen.getByRole('button', { name: `Increase score for ${names[0]}` }).props.hitSlop).toBe(7);
+    await view.unmount();
+
+    useStoreValue({ round: { ...round, games: allOn } as unknown as typeof round });
+    view = await render(<FormatScreen />);
+    expect(screen.getByRole('button', { name: 'Increase the Skins stake' }).props.hitSlop).toBe(8);
+    await view.unmount();
+
+    view = await render(<RosterScreen />);
+    expect(screen.getByRole('button', { name: 'Lower the allowance' }).props.hitSlop).toBe(9);
+    await view.unmount();
+
+    // Drawn larger at the largest text size, a stepper keeps the slop a glove needs.
+    mockUseAccessibilityControlScale.mockReturnValue(2.25);
+    await render(<RosterScreen />);
+    expect(screen.getByRole('button', { name: 'Lower the allowance' }).props.hitSlop).toBe(6);
+  });
+
+  it('widens a game switch, the hole dots and the two text links to 48 high', async () => {
+    useStoreValue({ round: { ...round, games: allOn } as unknown as typeof round });
+    let view = await render(<FormatScreen />);
+    expect(screen.getAllByRole('switch')[0].props.hitSlop).toEqual({ top: 11, bottom: 11, left: 8, right: 8 });
+    await view.unmount();
+
+    view = await render(<ScoreScreen />);
+    expect(screen.getByRole('button', { name: 'Go to hole 1' }).props.hitSlop).toEqual({ top: 22, bottom: 22 });
+    await view.unmount();
+
+    view = await render(<HomeScreen />);
+    expect(screen.getByRole('button', { name: /rounds? ·.* ›$/ }).props.hitSlop).toEqual({
+      top: 18,
+      bottom: 18,
+      left: 8,
+      right: 8,
+    });
+    await view.unmount();
+
+    mockUseStore.mockReturnValue(outingStore);
+    await render(<OutingScreen />);
+    const rearrange = screen.getByRole('button', { name: 'REARRANGE ›' });
+    expect(rearrange.props.hitSlop).toEqual({ top: 16, bottom: 16, left: 8, right: 8 });
+    await userEvent.setup().press(rearrange);
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/groups');
+  });
+
+  it('makes the whole of a Roster card the target for opening it', async () => {
+    const user = userEvent.setup();
+    await render(<RosterScreen />);
+    const row = () => screen.getByRole('button', { name: new RegExp(`${names[1]}.*tap to`) });
+    expect(flat(row())).toMatchObject({ padding: 13 });
+    await user.press(row());
+    // Open, the card's editor sits below the row at the spacing it had before.
+    expect(flat(row())).toMatchObject({ padding: 13, paddingBottom: 12 });
+  });
+
+  it('draws text fields and outlined and filled buttons at least 48 high', async () => {
+    let view = await render(<RosterScreen />);
+    expect(flat(screen.getByLabelText('Group name'))).toMatchObject({ minHeight: 48 });
+    await view.unmount();
+
+    view = await render(<HomeScreen />);
+    expect(flat(screen.getByRole('button', { name: 'Edit the format' }))).toMatchObject({ minHeight: 48 });
+    expect(flat(screen.getByRole('button', { name: 'Enter scores' }))).toMatchObject({ minHeight: 48 });
+    await view.unmount();
+  });
+});

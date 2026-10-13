@@ -214,7 +214,11 @@ export default function HomeScreen() {
         <View style={{ gap: 6 }}>
           <View style={[styles.seasonHeader, largeText ? styles.stackRow : null]}>
             <Eyebrow>Season ledger</Eyebrow>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/history')} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/history')}
+              hitSlop={{ top: 18, bottom: 18, left: 8, right: 8 }}
+            >
               <Text style={styles.seasonMeta}>{seasonSubtitle(season)} ›</Text>
             </Pressable>
           </View>

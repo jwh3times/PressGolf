@@ -123,11 +123,12 @@ export default function RosterScreen() {
           const isYou = group.youId === player.id;
           const open = editing === player.id;
           return (
-            <Card key={player.id} style={{ padding: 13, gap: open ? 12 : 0 }}>
+            <Card key={player.id}>
+              {/* The row carries the card's padding, so all of a closed card opens it. */}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setEditing(open ? null : player.id)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}
+                style={[styles.playerRow, open ? { paddingBottom: 12 } : null]}
               >
                 <Avatar initials={player.initials} color={player.color} size={34} />
                 <View style={{ flex: 1, minWidth: 0 }}>
@@ -151,7 +152,7 @@ export default function RosterScreen() {
               </Pressable>
 
               {open ? (
-                <View style={{ gap: 12 }}>
+                <View style={styles.playerEditor}>
                   <Field
                     label="Name"
                     value={player.name}
@@ -294,6 +295,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: ink.soft,
   },
+  playerRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13 },
+  playerEditor: { gap: 12, paddingHorizontal: 13, paddingBottom: 13 },
   youTag: {
     backgroundColor: 'rgba(139,224,174,.15)',
     borderRadius: 4,
