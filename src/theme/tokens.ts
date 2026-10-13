@@ -113,6 +113,12 @@ export const fonts = {
  */
 export const MIN_FONT_SIZE = 10;
 
+/**
+ * The smallest side of anything tapped: Android asks for 48 dp and iOS for
+ * 44 pt, so 48 satisfies both.
+ */
+export const MIN_TAP_TARGET = 48;
+
 export const radius = {
   chip: 999,
   sm: 5,
