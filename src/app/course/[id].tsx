@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Field } from '../../components/Field';
 import { ModalHeader, Screen } from '../../components/Screen';
-import { Body, Card, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
+import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
 import type { Hole, Tee } from '../../domain/types';
 import { useStore } from '../../store/AppStore';
 import { colors, fonts, ink, line, radius } from '../../theme/tokens';
@@ -70,7 +70,7 @@ export default function CourseEditorScreen() {
 
       <View style={{ gap: 10 }}>
         <Eyebrow>Tees</Eyebrow>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP }}>
           {course.tees.map((t) => (
             <Chip
               key={t.id}

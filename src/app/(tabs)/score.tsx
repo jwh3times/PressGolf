@@ -7,6 +7,7 @@ import { CardGrid } from '../../components/CardGrid';
 import { Screen } from '../../components/Screen';
 import {
   Avatar,
+  CHIP_ROW_GAP,
   Chip,
   Display,
   EmptyState,
@@ -85,7 +86,7 @@ export default function ScoreScreen() {
   const modeBar = (
     <View style={{ gap: 10 }}>
       {round.entry === 'card' ? <CardActions /> : null}
-      <View testID="score-view-switch" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      <View testID="score-view-switch" style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP }}>
         <Chip label="Hole by hole" active={mode === 'hole'} color={colors.accent} onPress={() => setView('hole')} />
         <Chip label="Whole card" active={mode === 'card'} color={colors.accent} onPress={() => setView('card')} />
       </View>
@@ -760,9 +761,14 @@ const styles = StyleSheet.create({
   pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
   popText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.gold },
   scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
-  // A chip's tap box stands 12 clear of its pill above and below, which is the
-  // space this row used to leave above itself and between its lines.
-  chipRow: { flexDirection: 'row', alignItems: 'center', columnGap: 6, flexWrap: 'wrap' },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 6,
+    rowGap: CHIP_ROW_GAP,
+    marginTop: CHIP_ROW_GAP,
+    flexWrap: 'wrap',
+  },
   holeCard: {
     borderWidth: 1,
     borderColor: colors.accentLine,

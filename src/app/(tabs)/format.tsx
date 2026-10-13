@@ -6,6 +6,7 @@ import {
   Avatar,
   Body,
   Card,
+  CHIP_ROW_GAP,
   Chip,
   Display,
   EmptyState,
@@ -363,7 +364,7 @@ function popsHint(pops: number, holeCount: number): string {
 }
 
 const styles = StyleSheet.create({
-  teeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  teeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP },
   teeLabel: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full, width: 88 },
   stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
   flexCopy: { flex: 1, minWidth: 0 },

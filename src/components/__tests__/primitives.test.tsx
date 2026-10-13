@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { MAX_CONTROL_SCALE } from '../../hooks/useLargeText';
-import { Avatar, Chip, Mono, PrimaryButton, Stepper, StepperButton, Switch } from '../primitives';
+import { Avatar, CHIP_ROW_GAP, Chip, Mono, PrimaryButton, Stepper, StepperButton, Switch } from '../primitives';
 
 // The first tests in the tree that mount anything (#10). They hold the
 // primitives to what a screen reader is told, since every screen builds on them.
@@ -128,6 +128,19 @@ describe('Chip', () => {
     expect(chip).toHaveStyle({ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' });
     expect(chip.props.hitSlop).toBeUndefined();
     expect(screen.getByTestId('chip-pill')).toHaveStyle({ paddingVertical: 4, paddingHorizontal: 9, borderWidth: 1 });
+  });
+
+  it('takes no more room in a row than its pill, and wrapped lines keep their tap boxes off each other', async () => {
+    await render(<Chip label="OFF" onPress={jest.fn()} />);
+
+    // The padding that makes the box is given back as margin.
+    const { paddingVertical, marginVertical } = StyleSheet.flatten(
+      screen.getByRole('button', { name: 'OFF' }).props.style,
+    );
+    expect(paddingVertical).toBeGreaterThan(0);
+    expect(marginVertical).toBe(-paddingVertical);
+    // The box of a chip on the next line reaches up no further than the gap.
+    expect(CHIP_ROW_GAP).toBeGreaterThanOrEqual(paddingVertical);
   });
 
   it('reports disabled and ignores presses when disabled', async () => {

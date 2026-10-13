@@ -7,6 +7,7 @@ import {
   Avatar,
   Body,
   Card,
+  CHIP_ROW_GAP,
   Chip,
   EmptyState,
   Eyebrow,
@@ -165,7 +166,7 @@ export default function NewRoundScreen() {
           })
         )}
         {course && course.tees.length > 1 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP, alignItems: 'center' }}>
             <Text style={styles.meta}>Tee</Text>
             {course.tees.map((tee) => (
               <Chip
