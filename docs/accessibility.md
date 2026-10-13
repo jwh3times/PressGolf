@@ -170,6 +170,11 @@ Its limits:
 - **Sizes are the drawn bounds.** `hitSlop` widens what a finger can hit
   without changing the bounds, so a control reported as small may still be
   comfortable to tap. Say so in the allowlist entry's reason if you accept it.
+  Steppers, game switches, the hole dots and the header text links are accepted
+  this way: each sets a `hitSlop` that brings its touch area to
+  `MIN_TAP_TARGET` (48, in `src/theme/tokens.ts`). That the slop is honoured
+  where it reaches past the control's parent has not been checked on a device
+  (as of 2026-10-12).
 - **Controls cut off by the screen edge are skipped**, since their visible
   size says nothing.
 - **Only the eight checkpoint screens are covered**, in the state the flow

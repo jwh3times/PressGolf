@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { colors, fonts, ink, line, MIN_TAP_TARGET, radius } from '../theme/tokens';
 
 /** Labelled text input in the app's dark palette. */
 export function Field({
@@ -38,6 +38,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: line.control,
     borderRadius: radius.md,
+    minHeight: MIN_TAP_TARGET,
     paddingVertical: 12,
     paddingHorizontal: 14,
     fontFamily: fonts.sans,

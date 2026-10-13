@@ -141,7 +141,8 @@ export default function ScoreScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Go to hole ${i + 1}`}
             onPress={() => setHole(i)}
-            hitSlop={{ top: 12, bottom: 12 }}
+            // Eighteen across can't be widened; Previous and Next do the same job.
+            hitSlop={{ top: 22, bottom: 22 }}
             style={{
               flex: 1,
               height: 5,
