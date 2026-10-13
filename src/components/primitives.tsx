@@ -10,7 +10,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { colors, eyebrow, fill, fonts, ink, line, moneyColor, radius } from '../theme/tokens';
+import { colors, eyebrow, fill, fonts, ink, line, MIN_TAP_TARGET, moneyColor, radius } from '../theme/tokens';
 import {
   MAX_CONTROL_SCALE,
   scaledTypeMetrics,
@@ -215,9 +215,11 @@ export function PrimaryButton({
         {
           backgroundColor: colors.accent,
           borderRadius: radius.panel,
+          minHeight: MIN_TAP_TARGET,
           paddingVertical: 16,
           paddingHorizontal: 20,
           alignItems: 'center',
+          justifyContent: 'center',
           opacity: disabled ? 0.35 : pressed ? 0.85 : 1,
         },
         style,
@@ -261,9 +263,11 @@ export function GhostButton({
           borderStyle: dashed ? 'dashed' : 'solid',
           borderColor: dashed ? line.dashed : line.button,
           borderRadius: radius.card,
+          minHeight: MIN_TAP_TARGET,
           paddingVertical: 13,
           paddingHorizontal: 16,
           alignItems: 'center',
+          justifyContent: 'center',
           opacity: pressed ? 0.6 : 1,
         },
         style,
@@ -370,8 +374,9 @@ export function StepperButton({
       accessibilityLabel={accessibilityLabel ?? (label === '+' ? 'increase' : 'decrease')}
       disabled={disabled}
       onPress={onPress}
-      // Hit slop keeps these tappable with a glove on in February.
-      hitSlop={6}
+      // Hit slop keeps these tappable with a glove on in February, and makes
+      // up whatever the drawn size is short of the smallest tap target.
+      hitSlop={Math.max(6, Math.ceil((MIN_TAP_TARGET - scaledSize) / 2))}
       style={({ pressed }) => ({
         width: scaledSize,
         height: scaledSize,
@@ -409,7 +414,12 @@ export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => v
       // the switch by this id so they can't land on the title (.maestro/flows).
       testID={label ? `switch-${label}` : undefined}
       onPress={onToggle}
-      hitSlop={8}
+      hitSlop={{
+        top: Math.max(8, Math.ceil((MIN_TAP_TARGET - 27 * controlScale) / 2)),
+        bottom: Math.max(8, Math.ceil((MIN_TAP_TARGET - 27 * controlScale) / 2)),
+        left: 8,
+        right: 8,
+      }}
       style={{
         width: 46 * controlScale,
         height: 27 * controlScale,
