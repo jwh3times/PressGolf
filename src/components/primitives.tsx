@@ -444,6 +444,18 @@ export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => v
   );
 }
 
+/**
+ * How far a chip's tap box stands clear of its pill, above and below. The box
+ * takes no room for it: chips lay out by their pills and the boxes overlap the
+ * space around them.
+ */
+const CHIP_OVERHANG = 12;
+/**
+ * The least space between wrapped lines of chips. Any less and the tap box of
+ * the chip below would cover the foot of the pill above.
+ */
+export const CHIP_ROW_GAP = CHIP_OVERHANG;
+
 /** Small tappable mono pill — junk, partner picks, filters. */
 export function Chip({
   label,
@@ -468,10 +480,14 @@ export function Chip({
       accessibilityState={{ selected: !!active }}
       disabled={!!disabled}
       onPress={disabled ? undefined : onPress}
-      // The pill is drawn small; the box around it is what a finger gets.
+      // The pill is drawn small; the box around it is what a finger gets. The
+      // margin gives back the height the padding adds, so a row of chips is as
+      // tall as its pills.
       style={({ pressed }) => ({
         minWidth: MIN_TAP_TARGET,
         minHeight: MIN_TAP_TARGET,
+        paddingVertical: CHIP_OVERHANG,
+        marginVertical: -CHIP_OVERHANG,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed && !disabled ? 0.6 : 1,

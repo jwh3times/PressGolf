@@ -4,7 +4,7 @@ import { wolfForHole, wolfPickForHole, type RoundContext } from '../domain/engin
 import type { PlayerId } from '../domain/types';
 import { MAX_CONTROL_SCALE, useAccessibilityControlScale } from '../hooks/useLargeText';
 import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
-import { Chip, GhostButton, StepperButton } from './primitives';
+import { CHIP_ROW_GAP, Chip, GhostButton, StepperButton } from './primitives';
 
 interface Cursor {
   player: number;
@@ -223,7 +223,7 @@ export function CardGrid({
         </Pressable>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: 'row', columnGap: 8, rowGap: CHIP_ROW_GAP, flexWrap: 'wrap' }}>
         <Chip
           label="Pick up"
           onPress={() => {
