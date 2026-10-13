@@ -468,10 +468,18 @@ export function Chip({
       accessibilityState={{ selected: !!active }}
       disabled={!!disabled}
       onPress={disabled ? undefined : onPress}
-      hitSlop={6}
-      style={({ pressed }) => [chipBox(color, active), { opacity: pressed && !disabled ? 0.6 : 1 }]}
+      // The pill is drawn small; the box around it is what a finger gets.
+      style={({ pressed }) => ({
+        minWidth: MIN_TAP_TARGET,
+        minHeight: MIN_TAP_TARGET,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: pressed && !disabled ? 0.6 : 1,
+      })}
     >
-      <Text style={chipText(color, active)}>{label}</Text>
+      <View testID="chip-pill" style={chipBox(color, active)}>
+        <Text style={chipText(color, active)}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
