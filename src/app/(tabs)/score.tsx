@@ -760,7 +760,9 @@ const styles = StyleSheet.create({
   pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
   popText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.gold },
   scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
-  chipRow: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  // A chip's tap box stands 12 clear of its pill above and below, which is the
+  // space this row used to leave above itself and between its lines.
+  chipRow: { flexDirection: 'row', alignItems: 'center', columnGap: 6, flexWrap: 'wrap' },
   holeCard: {
     borderWidth: 1,
     borderColor: colors.accentLine,
