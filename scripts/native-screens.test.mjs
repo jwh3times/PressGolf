@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { PNG } from "pngjs";
-import { compareScreens, collectCaptures, recordBaselines, renderMarkdown } from "./native-screens.mjs";
+import { compareScreens, collectCaptures, recordBaselines, renderMarkdown, systemBanner } from "./native-screens.mjs";
 
 /** A width×height PNG filled with one colour, with optional rectangles painted over it. */
 function png(width, height, colour, rects = []) {
@@ -20,6 +20,10 @@ function png(width, height, colour, rects = []) {
 
 const GREEN = [20, 40, 30];
 const WHITE = [250, 250, 250];
+const BANNER_GREY = [185, 187, 185];
+
+/** A dark 100×100 screen with a light-grey notification banner across rows 8 to 20. */
+const bannered = () => png(100, 100, GREEN, [{ x1: 2, y1: 8, x2: 98, y2: 20, colour: BANNER_GREY }]);
 
 /** A hierarchy with the given labelled elements, its root spanning width×height points. */
 const hierarchy = (width, height, labelled = []) => ({
@@ -185,9 +189,46 @@ test("recording copies every capture into the baselines, named by platform, text
   const ws = workspace();
   try {
     ws.capture({ platform: "android", size: "large-text", flow: "card-entry", name: "score_card", image: png(3, 3, WHITE) });
-    const written = recordBaselines({ output: ws.out, baselines: ws.baselines });
+    const { written, skipped } = recordBaselines({ output: ws.out, baselines: ws.baselines });
     assert.deepEqual(written, ["android/large-text/card-entry--score_card.png"]);
+    assert.deepEqual(skipped, []);
     assert.deepEqual(readFileSync(path.join(ws.baselines, written[0])), png(3, 3, WHITE));
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test("a system notification banner is found by its light-grey slab across the top", () => {
+  const read = (buffer) => PNG.sync.read(buffer);
+  assert.deepEqual(systemBanner(read(bannered())), { y1: 8, y2: 20 });
+  // Too short to be a banner: a light control a few rows tall.
+  assert.equal(systemBanner(read(png(100, 100, GREEN, [{ x1: 2, y1: 8, x2: 98, y2: 11, colour: BANNER_GREY }]))), null);
+  // Too narrow: a light button that doesn't span the screen.
+  assert.equal(systemBanner(read(png(100, 100, GREEN, [{ x1: 30, y1: 8, x2: 70, y2: 20, colour: BANNER_GREY }]))), null);
+  // No edge: a band from the very top, or one running past the top of the screen, is the app's.
+  assert.equal(systemBanner(read(png(100, 100, GREEN, [{ x1: 2, y1: 0, x2: 98, y2: 12, colour: BANNER_GREY }]))), null);
+  assert.equal(systemBanner(read(png(100, 100, GREEN, [{ x1: 2, y1: 20, x2: 98, y2: 40, colour: BANNER_GREY }]))), null);
+  // Too far down: banners drop from the top.
+  assert.equal(systemBanner(read(png(100, 100, GREEN, [{ x1: 2, y1: 50, x2: 98, y2: 62, colour: BANNER_GREY }]))), null);
+  // Coloured, not grey: the accent across the screen is the app's own.
+  assert.equal(systemBanner(read(png(100, 100, GREEN, [{ x1: 2, y1: 8, x2: 98, y2: 20, colour: [139, 224, 174] }]))), null);
+});
+
+test("a screen under a system banner is not compared, and is not recorded as a baseline", () => {
+  const ws = workspace();
+  try {
+    ws.capture({ name: "home", image: bannered() });
+    ws.capture({ name: "settle", image: png(100, 100, GREEN) });
+    ws.baseline("ios/default/round--home.png", png(100, 100, GREEN));
+    const results = compareScreens({ output: ws.out, baselines: ws.baselines, report: ws.report });
+    const by = Object.fromEntries(results.map((r) => [r.checkpoint, r.status]));
+    assert.deepEqual(by, { home: "banner", settle: "missing" });
+    assert.ok(existsSync(path.join(ws.report, "ios", "default", "round--home.actual.png")));
+
+    const { written, skipped } = recordBaselines({ output: ws.out, baselines: ws.baselines });
+    assert.deepEqual(written, ["ios/default/round--settle.png"]);
+    assert.deepEqual(skipped, ["ios/default/round--home.png"]);
+    assert.deepEqual(readFileSync(path.join(ws.baselines, "ios/default/round--home.png")), png(100, 100, GREEN));
   } finally {
     ws.cleanup();
   }
@@ -203,6 +244,11 @@ test("the report counts each outcome and lists every screen that needs a look", 
   assert.match(md, /ios · default · round\/settle.*1\.23%/);
   assert.match(md, /android · large-text · outing\/pots.*no baseline/);
   assert.doesNotMatch(md, /round\/home/);
+  assert.doesNotMatch(md, /system banner/);
+
+  const covered = renderMarkdown([{ platform: "ios", size: "default", flow: "card-entry", checkpoint: "history", status: "banner" }]);
+  assert.match(covered, /1 under a system banner, not compared/);
+  assert.match(covered, /ios · default · card-entry\/history: a system notification banner covered the screen/);
 });
 
 test("an ignored band of a screen is left out of the comparison, and needs a reason", () => {

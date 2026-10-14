@@ -256,7 +256,13 @@ It downloads their output and runs two scripts:
   the allowance until a longer month name tips it over. A region that legitimately varies
   can be left out in `.maestro/baselines/ignore.json`, each entry with a
   reason; the one entry skips the strip above Roster's sheet on iOS, which
-  shows the screen behind it.
+  shows the screen behind it. A screen that a system notification banner
+  covered (iOS showed "Ready for Apple Intelligence" once, #112) is reported
+  as not compared, and recording baselines skips it with a warning. The banner
+  is outside the app's hierarchy, so it is found by its pixels: a light-grey
+  slab spanning the screen near the top, with the app's dark background above
+  and below. That relies on the default dark theme and on the iOS simulator
+  being in light mode, which `.maestro/pin-status-bar.sh` sets.
 - **`scripts/a11y-lint.mjs`** lints each hierarchy; see
   [accessibility.md](accessibility.md#native-accessibility-tree-lint).
 
@@ -274,7 +280,8 @@ Screenshots only compare when the renders are pinned, so the workflow:
 - keeps the fixed Pixel 6, API 34 emulator; and
 - pins the status bar to 9:41, full battery and full signal
   (`.maestro/pin-status-bar.sh`: the simulator's status bar override on iOS,
-  System UI demo mode on Android). On Android `passes.sh` pins it a second
+  System UI demo mode on Android), and keeps the iOS simulator in light mode
+  so a notification banner is recognisable. On Android `passes.sh` pins it a second
   time after changing the font scale, because the new scale rebuilds the
   status bar and drops demo mode. It waits three seconds for the rebuild
   first (`TEXT_SIZE_SETTLE_SECONDS`, which the script tests set to 0). The bar

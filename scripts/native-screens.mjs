@@ -11,6 +11,10 @@
 // .maestro/baselines/ignore.json: a list of { platform, screen ("flow/checkpoint"),
 // top (the share of the screen's height to skip from the top), reason }.
 //
+// A screen a system notification banner covered (#112) is reported but not
+// compared, and is not recorded as a baseline. The app cannot see the banner,
+// so it is found by its pixels: see systemBanner().
+//
 // Report-only: a difference never fails the nightly.
 //
 // Usage:
@@ -42,6 +46,10 @@ const SEASON = new RegExp(`\\bsince ${MONTH}\\b`);
 // the text in the new capture only. So a season line is masked this many
 // times its own height further on each side, to cover the baseline's too.
 const SEASON_PAD = 3;
+// A system notification banner (#112): a light-grey slab across the top of the
+// screen, in a dark app. The light-mode banner on iOS is about 9% of the screen
+// tall; nothing the app draws makes even 0.5% of solid light-grey rows.
+const BANNER = { within: 0.3, minHeight: 0.04, rowShare: 0.5, inset: 0.08 };
 
 /** Every checkpoint screenshot, paired with the hierarchy captured with it. */
 export function collectCaptures(output) {
@@ -87,9 +95,41 @@ function paint(image, rects) {
 }
 
 /**
+ * Whether a system notification banner covers the top of the screen. The app
+ * cannot see it, so the hierarchy does not show it; only the pixels do.
+ * Returns the banner's rows in pixels, or null.
+ */
+export function systemBanner(image) {
+  const { width, height, data } = image;
+  const x1 = Math.floor(width * BANNER.inset);
+  const x2 = Math.ceil(width * (1 - BANNER.inset));
+  // A banner floats below the status bar: the slab needs the screen's own
+  // colour above and below it, so a band running off either end doesn't count.
+  let start = null;
+  let best = null;
+  for (let y = 0; y < Math.floor(height * BANNER.within); y++) {
+    let light = 0;
+    for (let x = x1; x < x2; x++) {
+      const i = (y * width + x) * 4;
+      const lo = Math.min(data[i], data[i + 1], data[i + 2]);
+      const hi = Math.max(data[i], data[i + 1], data[i + 2]);
+      if (lo >= 140 && hi - lo <= 40) light++;
+    }
+    if (light / (x2 - x1) >= BANNER.rowShare) {
+      start ??= y;
+    } else {
+      if (start > 0 && (!best || y - start > best.y2 - best.y1)) best = { y1: start, y2: y };
+      start = null;
+    }
+  }
+  return best && best.y2 - best.y1 >= height * BANNER.minHeight ? best : null;
+}
+
+/**
  * Compares every capture with its baseline. Returns one result per capture,
- * with status match, diff, missing (no baseline yet) or size (the screen size
- * changed), and writes images for each diff under `report`.
+ * with status match, diff, missing (no baseline yet), size (the screen size
+ * changed) or banner (a system banner covered it, so it was not compared), and
+ * writes images for each diff under `report`.
  */
 export function compareScreens({ output, baselines = DEFAULT_BASELINES, report, maxDiffRatio = DEFAULT_MAX_DIFF_RATIO, ignore = [] }) {
   for (const entry of ignore) {
@@ -104,6 +144,14 @@ export function compareScreens({ output, baselines = DEFAULT_BASELINES, report, 
     const expected = PNG.sync.read(readFileSync(expectedFile));
     if (actual.width !== expected.width || actual.height !== expected.height) {
       return { ...where, status: "size", detail: `${expected.width}×${expected.height} → ${actual.width}×${actual.height}` };
+    }
+    if (systemBanner(actual)) {
+      if (report) {
+        const base = path.join(report, baselineName(c)).replace(/\.png$/, "");
+        mkdirSync(path.dirname(base), { recursive: true });
+        copyFileSync(c.png, `${base}.actual.png`);
+      }
+      return { ...where, status: "banner" };
     }
 
     const rects = masks(c.hierarchy, actual.width);
@@ -130,16 +178,26 @@ export function compareScreens({ output, baselines = DEFAULT_BASELINES, report, 
   });
 }
 
-/** Copies every capture into the baselines; returns the baseline paths written. */
+/**
+ * Copies every capture into the baselines, except one a system banner covered,
+ * which would leave the banner in the baseline. Returns the baseline paths
+ * written and skipped.
+ */
 export function recordBaselines({ output, baselines = DEFAULT_BASELINES }) {
   const written = [];
+  const skipped = [];
   for (const c of collectCaptures(output)) {
+    const name = baselineName(c).split(path.sep).join("/");
+    if (systemBanner(PNG.sync.read(readFileSync(c.png)))) {
+      skipped.push(name);
+      continue;
+    }
     const target = path.join(baselines, baselineName(c));
     mkdirSync(path.dirname(target), { recursive: true });
     copyFileSync(c.png, target);
-    written.push(baselineName(c).split(path.sep).join("/"));
+    written.push(name);
   }
-  return written.sort();
+  return { written: written.sort(), skipped: skipped.sort() };
 }
 
 const pct = (r) => `${(r * 100).toFixed(2)}%`;
@@ -149,11 +207,13 @@ export function renderMarkdown(results) {
   const count = (s) => results.filter((r) => r.status === s).length;
   const lines = ["## Native screenshots", ""];
   if (results.length === 0) return lines.concat("No checkpoint screenshots were captured.", "").join("\n");
-  lines.push(`${count("match")} match · ${count("diff")} differ · ${count("missing")} without a baseline · ${count("size")} changed size`, "");
+  const banner = count("banner") ? ` · ${count("banner")} under a system banner, not compared` : "";
+  lines.push(`${count("match")} match · ${count("diff")} differ · ${count("missing")} without a baseline · ${count("size")} changed size${banner}`, "");
   const notes = {
     diff: (r) => `${pct(r.ratio)} of pixels differ`,
     missing: () => "no baseline",
     size: (r) => `screen size changed (${r.detail})`,
+    banner: () => "a system notification banner covered the screen, so it was not compared",
   };
   const attention = results.filter((r) => r.status !== "match");
   for (const r of attention.sort((a, b) => `${a.platform}${a.size}${a.flow}${a.checkpoint}`.localeCompare(`${b.platform}${b.size}${b.flow}${b.checkpoint}`))) {
@@ -173,8 +233,11 @@ function main([command, output, ...rest]) {
   };
   const baselines = opt("--baselines") ?? DEFAULT_BASELINES;
   if (command === "record" && output) {
-    const written = recordBaselines({ output, baselines });
+    const { written, skipped } = recordBaselines({ output, baselines });
     console.log(`Recorded ${written.length} baselines:\n${written.join("\n")}`);
+    for (const name of skipped) {
+      console.log(`::warning title=Native baselines::${name} was not recorded: a system notification banner covered it`);
+    }
     return 0;
   }
   if (command === "compare" && output) {
