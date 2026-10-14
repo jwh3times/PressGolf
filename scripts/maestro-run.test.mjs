@@ -241,13 +241,14 @@ test("an unknown platform is refused before anything runs", { skip: !hasSh }, ()
   }
 });
 
-test("the iOS status bar is pinned through the simulator's override", { skip: !hasSh }, () => {
+test("the iOS status bar is pinned through the simulator's override, in light mode", { skip: !hasSh }, () => {
   const ws = workspace([]);
   try {
     const run = ws.run(".maestro/pin-status-bar.sh", ["ios", "device-1"]);
     assert.equal(run.status, 0);
     assert.deepEqual(ws.log(), [
       "xcrun simctl status_bar device-1 override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --dataNetwork wifi",
+      "xcrun simctl ui device-1 appearance light",
     ]);
   } finally {
     ws.cleanup();

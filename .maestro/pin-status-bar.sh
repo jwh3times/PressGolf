@@ -3,6 +3,8 @@
 # nightly's screenshots compare from one night to the next (#66).
 #
 # iOS uses the simulator's status bar override; Android uses System UI demo mode.
+# iOS also stays in light mode, so a system notification banner is the light
+# slab scripts/native-screens.mjs looks for (#112). The app forces dark itself.
 #
 # Usage: sh .maestro/pin-status-bar.sh <ios|android> <device>
 set -eu
@@ -13,6 +15,8 @@ case "$platform" in
   ios)
     xcrun simctl status_bar "$device" override --time 9:41 --batteryState charged \
       --batteryLevel 100 --cellularBars 4 --wifiBars 3 --dataNetwork wifi
+    xcrun simctl ui "$device" appearance light ||
+      echo "::warning title=Native smoke::Could not set the iOS simulator to light mode; a dark notification banner would not be recognised"
     ;;
   android)
     demo() { adb -s "$device" shell am broadcast -a com.android.systemui.demo -e command "$@" > /dev/null; }
