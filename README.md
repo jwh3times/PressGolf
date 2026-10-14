@@ -116,8 +116,8 @@ pass.
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
 - Themes: dark (the default, made for daylight), light, and a high-contrast
   version of each, with a choice of four accents (Settings → Appearance). The
-  splash screen stays dark whichever is chosen, and whether the system keyboard
-  and alerts follow a light theme has not been checked on a device.
+  splash screen stays dark whichever is chosen. Checked on an iPhone; not yet
+  on Android.
 
 Track planned work and additional limitations in the
 [issue tracker](https://github.com/jwh3times/PressGolf/issues).
