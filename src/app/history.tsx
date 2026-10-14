@@ -7,6 +7,7 @@ import { settleRound } from '../domain/engine';
 import { signedMoney } from '../domain/engine/context';
 import { buildSeason } from '../domain/season';
 import { useStore } from '../store/AppStore';
+import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
 
@@ -168,7 +169,7 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     name: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
     meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
     liveTag: {
-      backgroundColor: 'rgba(139,224,174,.15)',
+      backgroundColor: alpha(colors.accent, 0.15),
       borderRadius: 4,
       paddingVertical: 2,
       paddingHorizontal: 5,

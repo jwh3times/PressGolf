@@ -1,14 +1,38 @@
 import React from 'react';
 import type { TextStyle } from 'react-native';
-import { darkTheme, type Theme } from './themes';
+import {
+  darkTheme,
+  DEFAULT_THEME_CHOICE,
+  type Theme,
+  type ThemeAccent,
+  type ThemeBase,
+  type ThemeChoice,
+} from './themes';
 import { fonts } from './tokens';
 
 // Outside a provider the theme is the dark one, so a component rendered alone
 // in a test looks as it does in the app by default.
-const ThemeContext = React.createContext<Theme>(darkTheme);
+export const ThemeContext = React.createContext<Theme>(darkTheme);
 
 export function ThemeProvider({ theme, children }: { theme: Theme; children: React.ReactNode }) {
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
+}
+
+export interface ThemeSetting {
+  choice: ThemeChoice;
+  setBase: (base: ThemeBase) => void;
+  setAccent: (accent: ThemeAccent) => void;
+}
+
+export const ThemeSettingContext = React.createContext<ThemeSetting>({
+  choice: DEFAULT_THEME_CHOICE,
+  setBase: () => {},
+  setAccent: () => {},
+});
+
+/** The chosen theme and the means to change it. */
+export function useThemeSetting(): ThemeSetting {
+  return React.useContext(ThemeSettingContext);
 }
 
 export function useTheme(): Theme {

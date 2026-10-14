@@ -15,6 +15,7 @@ import {
 import { PLAYER_COLORS, deriveInitials, makePlayer } from '../domain/factory';
 import type { Player } from '../domain/types';
 import { useStore } from '../store/AppStore';
+import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
 import { MaxScorePicker } from '../components/MaxScorePicker';
@@ -23,7 +24,7 @@ import { formatIndex, parseIndex } from '../domain/handicap';
 
 export default function RosterScreen() {
   const styles = useStyles();
-  const { ink } = useTheme();
+  const { ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const [groupName, setGroupName] = useState('');
@@ -195,8 +196,8 @@ export default function RosterScreen() {
                           style={[
                             styles.swatch,
                             {
-                              backgroundColor: `${color}33`,
-                              borderColor: player.color === color ? color : 'transparent',
+                              backgroundColor: `${tint(color)}33`,
+                              borderColor: player.color === color ? tint(color) : 'transparent',
                             },
                           ]}
                         >
@@ -302,7 +303,7 @@ const useStyles = makeStyles(({ colors, ink }) =>
     playerRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13 },
     playerEditor: { gap: 12, paddingHorizontal: 13, paddingBottom: 13 },
     youTag: {
-      backgroundColor: 'rgba(139,224,174,.15)',
+      backgroundColor: alpha(colors.accent, 0.15),
       borderRadius: 4,
       paddingVertical: 2,
       paddingHorizontal: 5,
@@ -318,7 +319,7 @@ const useStyles = makeStyles(({ colors, ink }) =>
     },
     destructive: {
       borderWidth: 1,
-      borderColor: 'rgba(232,154,127,.4)',
+      borderColor: alpha(colors.clay, 0.4),
       borderRadius: radius.card,
       paddingVertical: 13,
       alignItems: 'center',

@@ -27,12 +27,13 @@ import {
   useLargeText,
 } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
+import { alpha } from '../../theme/color';
 import { makeStyles, useTheme } from '../../theme/theme';
 import { fonts, radius } from '../../theme/tokens';
 
 export default function HomeScreen() {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { colors, ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
@@ -149,7 +150,7 @@ export default function HomeScreen() {
             .map((p) => ({
               id: p.id,
               initials: p.initials,
-              color: p.color,
+              color: tint(p.color),
               net: settlement.net[p.id] ?? 0,
             }))}
           largeText={largeText}
@@ -257,7 +258,7 @@ export default function HomeScreen() {
                         height: 5,
                         borderRadius: 999,
                         opacity: 0.75,
-                        backgroundColor: entry.net >= 0 ? colors.accent : colors.clay,
+                        backgroundColor: entry.net >= 0 ? colors.up : colors.clay,
                       }}
                     />
                   </View>
@@ -398,7 +399,7 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
       gap: 12,
       backgroundColor: colors.cardDeep,
       borderWidth: 1,
-      borderColor: 'rgba(232,196,106,.28)',
+      borderColor: alpha(colors.gold, 0.28),
       borderRadius: radius.card,
       paddingVertical: 13,
       paddingHorizontal: 15,

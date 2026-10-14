@@ -6,12 +6,13 @@ import { ModalHeader, Screen } from '../../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
 import type { Hole, Tee } from '../../domain/types';
 import { useStore } from '../../store/AppStore';
+import { alpha } from '../../theme/color';
 import { makeStyles, useTheme } from '../../theme/theme';
 import { fonts, radius } from '../../theme/tokens';
 
 export default function CourseEditorScreen() {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { colors, ink, scheme } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const router = useRouter();
@@ -140,6 +141,7 @@ export default function CourseEditorScreen() {
               keyboardType="number-pad"
               selectTextOnFocus
               selectionColor={colors.accent}
+              keyboardAppearance={scheme}
               onChangeText={(text) => {
                 const value = Number(text.replace(/[^0-9]/g, ''));
                 if (!Number.isFinite(value)) return;
@@ -156,6 +158,7 @@ export default function CourseEditorScreen() {
               keyboardType="number-pad"
               selectTextOnFocus
               selectionColor={colors.accent}
+              keyboardAppearance={scheme}
               onChangeText={(text) => {
                 const value = Number(text.replace(/[^0-9]/g, ''));
                 setHole(index, { yards: Number.isFinite(value) ? value : 0 });
@@ -233,7 +236,7 @@ function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
 
 const useStyles = makeStyles(({ colors, ink, line }) =>
   StyleSheet.create({
-    warning: { padding: 14, borderColor: 'rgba(232,154,127,.35)' },
+    warning: { padding: 14, borderColor: alpha(colors.clay, 0.35) },
     legend: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 },
     legendText: {
       fontFamily: fonts.mono,

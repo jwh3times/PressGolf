@@ -152,7 +152,7 @@ export default function SettleScreen() {
                     style={[
                       styles.breakdownAmount,
                       line_.tone === 'won'
-                        ? { color: colors.accent, fontFamily: fonts.monoBold, fontSize: 12.5 }
+                        ? { color: colors.up, fontFamily: fonts.monoBold, fontSize: 12.5 }
                         : null,
                     ]}
                   >

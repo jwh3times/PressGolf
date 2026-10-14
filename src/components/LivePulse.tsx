@@ -7,8 +7,8 @@ import { useTheme } from '../theme/theme';
  * keyframes, 1.8s, opacity .35 to 1 and back.
  */
 export function LivePulse({ size = 7, color }: { size?: number; color?: string }) {
-  const { colors } = useTheme();
-  const dot = color ?? colors.accent;
+  const { colors, tint } = useTheme();
+  const dot = tint(color ?? colors.accent);
   // Lazy useState rather than useRef().current: the value is created once, and
   // React 19 treats reading a ref during render as a bug.
   const [opacity] = useState(() => new Animated.Value(0.35));

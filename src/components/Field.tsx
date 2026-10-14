@@ -11,7 +11,7 @@ export function Field({
   ...rest
 }: TextInputProps & { label: string; hint?: string }) {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { colors, ink, scheme } = useTheme();
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.label}>{label}</Text>
@@ -20,6 +20,7 @@ export function Field({
         accessibilityLabel={label}
         placeholderTextColor={ink.quiet}
         selectionColor={colors.accent}
+      keyboardAppearance={scheme}
         {...rest}
         style={[styles.input, style]}
       />

@@ -21,6 +21,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthGate } from '../auth/AuthGate';
 import { AuthProvider } from '../auth/AuthProvider';
 import { AppStoreProvider } from '../store/AppStore';
+import { ChosenThemeProvider } from '../theme/ChosenTheme';
 import { useTheme } from '../theme/theme';
 
 // Must run before the first render, not inside the component, or the native
@@ -32,7 +33,6 @@ SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 300, fade: true });
 
 export default function RootLayout() {
-  const { colors } = useTheme();
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     InstrumentSans_400Regular,
@@ -49,9 +49,18 @@ export default function RootLayout() {
   const ready = fontsLoaded || fontError != null;
 
   return (
+    <ChosenThemeProvider>
+      <Root ready={ready} />
+    </ChosenThemeProvider>
+  );
+}
+
+function Root({ ready }: { ready: boolean }) {
+  const { colors, scheme } = useTheme();
+  return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.screen }}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
+        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
         {ready ? (
           <AuthProvider>
             <AuthGate>

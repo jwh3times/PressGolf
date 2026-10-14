@@ -1,0 +1,7 @@
+- text: /Settlement · thru \d+ You’re up \$\d+ Hand it over BR → DP Big Ray pays Dev \$\d+ TJ → DP T\.J\. pays Dev \$3 TJ → MB T\.J\. pays Marcus \$\d+ The math, line by line Nassau · everyone vs everyone \$5 Front — MB over DP, 3 up \$5 Back — DP over MB, 1 up \(running\) \$5 Total — MB over DP, 2 up \(running\) \$5 Front — MB over TJ, 1 up \$5 Back — MB over TJ, 1 up \(running\) \$5 Total — MB over TJ, 2 up \(running\) \$5 Front — MB over BR, 4 up \$5 Back — MB v BR all square live Total — MB over BR, 4 up \(running\) \$5 Front — DP over TJ, 4 up \$5 Back — DP over TJ, 2 up \(running\) \$5 Total — DP over TJ, 6 up \(running\) \$5 Front — DP over BR, 2 up \$5 Back — DP over BR, 1 up \(running\) \$5 Total — DP over BR, 3 up \(running\) \$5 Front — TJ over BR, 2 up \$5 Back — BR over TJ, 1 up \(running\) \$5 Total — TJ over BR, 1 up \(running\) \$5 Skins · net, carryover \$2 Hole 2 — DP nets 4, 2 skins \$\d+ Hole 4 — MB nets 3, 2 skins \$\d+ Hole 5 — DP nets 3 \$6 Hole 6 — MB nets 4 \$6 Hole 7 — TJ nets 4 \$6 Hole 8 — DP nets 3 \$6 Hole \d+ — DP nets 4, 2 skins \$\d+ 1 skin riding into hole \d+ \$6 Junk · birdies, greenies, sandies \$2 Nothing banked yet\. — Net position MB Marcus \+4 \+\$\d+ DP Dev \+7 \+\$\d+ TJ T\.J\. \+\d+ −\$\d+ BR Big Ray \+\d+ −\$\d+/
+- button "Post to the season ledger"
+- tablist:
+  - tab "Home": ◆ Home
+  - tab "Format": ≡ Format
+  - tab "Score": ● Score
+  - tab "Settle" [selected]: $ Settle

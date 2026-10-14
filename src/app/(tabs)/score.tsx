@@ -26,6 +26,7 @@ import {
   useLargeText,
 } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
+import { alpha } from '../../theme/color';
 import { makeStyles, useTheme } from '../../theme/theme';
 import type { Theme } from '../../theme/themes';
 import { fonts, radius } from '../../theme/tokens';
@@ -154,7 +155,7 @@ export default function ScoreScreen() {
               height: 5,
               borderRadius: 999,
               backgroundColor:
-                i === current ? colors.accent : ctx.played(i) ? 'rgba(139,224,174,.32)' : line.control,
+                i === current ? colors.accent : ctx.played(i) ? alpha(colors.accent, 0.32) : line.control,
             }}
           />
         ))}
@@ -227,7 +228,7 @@ export default function ScoreScreen() {
                         gross == null
                           ? ink.quiet
                           : rel! < 0
-                            ? colors.accent
+                            ? colors.up
                             : rel! > 1
                               ? colors.clay
                               : ink.full,
@@ -301,12 +302,12 @@ export default function ScoreScreen() {
         </View>
         {buildHoleEvents(theme, ctx, current).map((event, i) => (
           <View key={i} style={[styles.eventRow, largeText ? styles.stackRow : null]}>
-            <View style={[styles.eventDot, { backgroundColor: event.color }]} />
+            <View style={[styles.eventDot, { backgroundColor: theme.tint(event.color) }]} />
             <Text style={[styles.eventText, largeText ? styles.fullWidth : null]}>{event.text}</Text>
             <Text
               style={[
                 styles.eventAmount,
-                event.tone === 'won' ? { color: colors.accent, fontFamily: fonts.monoBold } : null,
+                event.tone === 'won' ? { color: colors.up, fontFamily: fonts.monoBold } : null,
               ]}
             >
               {event.amount}
@@ -625,7 +626,7 @@ function buildHoleEvents({ colors, ink }: Theme, ctx: RoundContext, hole: number
           : `Wolf: ${ctx.initials(pick.wolf)} went alone`
         : 'Wolf: no pick recorded — this hole pays nothing',
       amount: pick ? money(round.games.wolf.stake) : '—',
-      color: '#E8A0C8',
+      color: colors.pink,
       tone: pick ? 'won' : 'pending',
     });
   }
@@ -772,7 +773,7 @@ const useStyles = makeStyles(({ colors, ink, line, fill }) =>
     scoreControls: { flexDirection: 'row', alignItems: 'center', gap: 9 },
     playerName: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
     playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
-    pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
+    pop: { backgroundColor: alpha(colors.gold, 0.15), borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
     popText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.gold },
     scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
     chipRow: {
@@ -805,7 +806,7 @@ const useStyles = makeStyles(({ colors, ink, line, fill }) =>
     wolfCard: {
       backgroundColor: colors.cardDeep,
       borderWidth: 1,
-      borderColor: 'rgba(232,160,200,.28)',
+      borderColor: alpha(colors.pink, 0.28),
       borderRadius: radius.format,
       padding: 15,
       gap: 9,

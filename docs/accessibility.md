@@ -21,6 +21,15 @@ substitute for assistive-technology use on both platforms.
 - Theme ink tokens meet WCAG AA contrast on every supported surface. The test
   measures alpha compositing and relative luminance rather than comparing
   hard-coded color strings.
+- So does every other theme: the light base and all four accents at AA (4.5:1),
+  and both high-contrast bases at AAA (7:1), for every ink level, the accent,
+  the money colours, players' and games' colours, and text on the accent. The
+  high-contrast bases also give control outlines 3:1. Only the default palette
+  is written out; the others are derived from these floors in
+  `src/theme/themes.ts`, and `src/theme/__tests__/themes.test.ts` holds all 16
+  combinations to them. axe checks four of them on the web build.
+- Money won is green and money lost is clay in every theme, whichever accent
+  is chosen, so the accent never changes what a figure means.
 - Dense screens switch to large-text layouts at a font scale of 1.8. Fixed
   controls can grow up to the shared 2.25 control scale while surrounding
   layouts reflow.
@@ -38,6 +47,7 @@ Relevant tests and helpers:
 - `src/components/__tests__/primitives.test.tsx`
 - `src/components/__tests__/TabBar.test.tsx`
 - `src/theme/__tests__/contrast.test.ts`
+- `src/theme/__tests__/themes.test.ts`
 - `src/theme/__tests__/type-scale.test.ts`
 - `src/hooks/__tests__/useLargeText.test.ts`
 

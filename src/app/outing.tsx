@@ -21,6 +21,7 @@ import type { FieldGameResult, PlayerId } from '../domain/types';
 import { useLargeText } from '../hooks/useLargeText';
 import { useStore } from '../store/AppStore';
 import { hostOuting, isSupabaseConfigured } from '../sync/supabase';
+import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
 
@@ -325,7 +326,7 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
   );
 }
 
-const useStyles = makeStyles(({ colors, ink, line }) =>
+const useStyles = makeStyles(({ colors, ink, line, fill }) =>
   StyleSheet.create({
     stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
     fullWidth: { flex: 0, width: '100%' },
@@ -369,7 +370,7 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
       gap: 9,
       paddingVertical: 12,
       paddingHorizontal: 14,
-      backgroundColor: 'rgba(242,239,230,.03)',
+      backgroundColor: fill.wash,
     },
     potName: { flex: 1, fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
     potBody: { padding: 14, gap: 8 },
@@ -402,7 +403,7 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     groupSummaryLarge: { alignItems: 'flex-start' },
     groupName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
     youTag: {
-      backgroundColor: 'rgba(139,224,174,.15)',
+      backgroundColor: alpha(colors.accent, 0.15),
       borderRadius: 4,
       paddingVertical: 2,
       paddingHorizontal: 5,

@@ -18,6 +18,7 @@ import {
 import { lastUsedTee, makeRound } from '../domain/factory';
 import type { PlayerId } from '../domain/types';
 import { useStore } from '../store/AppStore';
+import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
 
@@ -237,7 +238,7 @@ export default function NewRoundScreen() {
 
 const useStyles = makeStyles(({ colors, ink, line }) =>
   StyleSheet.create({
-    notice: { padding: 14, borderColor: 'rgba(232,196,106,.3)' },
+    notice: { padding: 14, borderColor: alpha(colors.gold, 0.3) },
     row: {
       flexDirection: 'row',
       alignItems: 'center',

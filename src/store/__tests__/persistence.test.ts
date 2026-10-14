@@ -5,8 +5,10 @@ import {
   clearDataset,
   loadDataset,
   loadSettings,
+  loadThemeChoice,
   saveDataset,
   saveSettings,
+  saveThemeChoice,
 } from '../persistence';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -177,5 +179,29 @@ describe('settings persistence', () => {
   it('writes settings', async () => {
     await saveSettings(fallback);
     expect(storage.setItem).toHaveBeenCalledWith('press:settings', JSON.stringify(fallback));
+  });
+});
+
+describe('theme choice persistence', () => {
+  it('is the default when nothing is saved or the blob is unreadable', async () => {
+    storage.getItem.mockResolvedValueOnce(null);
+    await expect(loadThemeChoice()).resolves.toEqual({ base: 'dark', accent: 'green' });
+    storage.getItem.mockResolvedValueOnce('{not json');
+    await expect(loadThemeChoice()).resolves.toEqual({ base: 'dark', accent: 'green' });
+    storage.getItem.mockResolvedValueOnce('null');
+    await expect(loadThemeChoice()).resolves.toEqual({ base: 'dark', accent: 'green' });
+  });
+
+  it('reads a saved choice back, and replaces an unknown part with the default', async () => {
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ base: 'lightContrast', accent: 'violet' }));
+    await expect(loadThemeChoice()).resolves.toEqual({ base: 'lightContrast', accent: 'violet' });
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ base: 'sepia', accent: 'gold' }));
+    await expect(loadThemeChoice()).resolves.toEqual({ base: 'dark', accent: 'gold' });
+    expect(storage.getItem).toHaveBeenCalledWith('press:theme');
+  });
+
+  it('writes the choice under its own key', async () => {
+    await saveThemeChoice({ base: 'light', accent: 'blue' });
+    expect(storage.setItem).toHaveBeenCalledWith('press:theme', JSON.stringify({ base: 'light', accent: 'blue' }));
   });
 });

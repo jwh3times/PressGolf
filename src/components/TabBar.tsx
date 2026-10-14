@@ -39,7 +39,7 @@ const LABELS: Record<string, string> = {
 
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { colors, ink, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
 
@@ -51,7 +51,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
       <BlurView
         accessibilityRole="tablist"
         intensity={Platform.OS === 'android' ? 0 : 40}
-        tint="dark"
+        tint={scheme}
         style={[styles.bar, { height: tabBarHeight(fontScale) }]}
       >
         {state.routes.map((route, index) => {
@@ -103,7 +103,7 @@ const useStyles = makeStyles(({ colors, line }) =>
       borderRadius: radius.hero,
       // Android has no backdrop filter, so the pill carries its own near-opaque
       // fill; on iOS the blur does the work and this tints it.
-      backgroundColor: Platform.OS === 'android' ? 'rgba(18,25,20,.97)' : colors.glass,
+      backgroundColor: Platform.OS === 'android' ? colors.glassSolid : colors.glass,
       borderWidth: 1,
       borderColor: line.bright,
       flexDirection: 'row',

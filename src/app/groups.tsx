@@ -25,7 +25,7 @@ import { fonts, radius } from '../theme/tokens';
  */
 export default function GroupsScreen() {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { colors, ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const { outing, outingGroup, outingRounds } = store;
@@ -143,7 +143,7 @@ export default function GroupsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={p.name}
                   onPress={() => setPicked(picked === id ? null : id)}
-                  style={[styles.chip, picked === id ? { borderColor: p.color } : null]}
+                  style={[styles.chip, picked === id ? { borderColor: tint(p.color) } : null]}
                 >
                   <Avatar initials={p.initials} color={p.color} size={22} />
                   <Text style={styles.chipName}>{p.name}</Text>

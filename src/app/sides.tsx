@@ -28,7 +28,7 @@ import { fonts, radius } from '../theme/tokens';
  */
 export default function SidesScreen() {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { colors, ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const { round, course, group } = store;
@@ -117,7 +117,7 @@ export default function SidesScreen() {
                       onPress={() => assign(id, teamIndex)}
                       style={[
                         styles.slot,
-                        on ? { borderColor: p.color, backgroundColor: `${p.color}18` } : null,
+                        on ? { borderColor: tint(p.color), backgroundColor: `${tint(p.color)}18` } : null,
                       ]}
                     >
                       <Avatar initials={p.initials} color={p.color} size={26} />

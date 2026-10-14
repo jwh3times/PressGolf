@@ -31,7 +31,7 @@ import { HandicapPicker } from '../components/HandicapPicker';
  */
 export default function FieldGamesScreen() {
   const styles = useStyles();
-  const { colors, ink, line } = useTheme();
+  const { colors, ink, line, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const { outing, outingGroup } = store;
@@ -195,7 +195,7 @@ export default function FieldGamesScreen() {
                           onPress={() => store.toggleFieldEntrant(key, p.id)}
                           style={[
                             styles.entrant,
-                            inPot ? { borderColor: p.color, backgroundColor: `${p.color}18` } : null,
+                            inPot ? { borderColor: tint(p.color), backgroundColor: `${tint(p.color)}18` } : null,
                           ]}
                         >
                           <Avatar initials={p.initials} color={p.color} size={22} />

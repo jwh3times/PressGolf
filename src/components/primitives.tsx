@@ -105,7 +105,7 @@ export function Mono({
 /** Player bubble. Colour comes from the player, so two people never read alike. */
 export function Avatar({
   initials,
-  color,
+  color: given,
   size = 30,
   style,
 }: {
@@ -114,6 +114,7 @@ export function Avatar({
   size?: number;
   style?: ViewStyle;
 }) {
+  const color = useTheme().tint(given);
   const controlScale = useAccessibilityControlScale(1.5);
   const scaledSize = size * controlScale;
 
@@ -487,7 +488,7 @@ export function Chip({
   disabled?: boolean;
 }) {
   const theme = useTheme();
-  const color = chosen ?? theme.colors.clay;
+  const color = theme.tint(chosen ?? theme.colors.clay);
   return (
     <Pressable
       accessibilityRole="button"
@@ -527,7 +528,7 @@ export function StatusChip({
   color?: string;
 }) {
   const theme = useTheme();
-  const color = chosen ?? theme.colors.clay;
+  const color = theme.tint(chosen ?? theme.colors.clay);
   return (
     <View
       accessible
@@ -562,7 +563,8 @@ function chipText({ ink }: Theme, color: string, active?: boolean): TextStyle {
 
 /** Coloured square used as a legend dot next to a format name. */
 export function GameDot({ color, size = 9 }: { color: string; size?: number }) {
-  return <View style={{ width: size, height: size, borderRadius: 3, backgroundColor: color }} />;
+  const { tint } = useTheme();
+  return <View style={{ width: size, height: size, borderRadius: 3, backgroundColor: tint(color) }} />;
 }
 
 export function Divider({ style }: { style?: ViewStyle }) {
