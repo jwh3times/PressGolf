@@ -14,7 +14,8 @@ import { MIN_PASSWORD_LENGTH, authErrorMessage, emailProblem, passwordProblem } 
 import { Screen } from './Screen';
 import { Body, Display, Eyebrow, Mono, PrimaryButton } from './primitives';
 import { Field } from './Field';
-import { colors, fonts, ink } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts } from '../theme/tokens';
 
 type Mode = 'sign-in' | 'sign-up';
 
@@ -26,6 +27,8 @@ type Mode = 'sign-in' | 'sign-up';
  * before is let straight through even with no signal. See AuthProvider.
  */
 export function SignInScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
@@ -194,9 +197,11 @@ export function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  content: { gap: 24, justifyContent: 'center', flexGrow: 1 },
-  error: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.clay, lineHeight: 17 },
-  notice: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.accent, lineHeight: 17 },
-  swap: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.muted },
-});
+const useStyles = makeStyles(({ colors, ink }) =>
+  StyleSheet.create({
+    content: { gap: 24, justifyContent: 'center', flexGrow: 1 },
+    error: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.clay, lineHeight: 17 },
+    notice: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.accent, lineHeight: 17 },
+    swap: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.muted },
+  }),
+);

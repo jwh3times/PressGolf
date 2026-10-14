@@ -18,9 +18,13 @@ import {
 import { lastUsedTee, makeRound } from '../domain/factory';
 import type { PlayerId } from '../domain/types';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { alpha } from '../theme/color';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 export default function NewRoundScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const group = store.group;
@@ -232,32 +236,34 @@ export default function NewRoundScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  notice: { padding: 14, borderColor: 'rgba(232,196,106,.3)' },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  rowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
-  name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: line.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    notice: { padding: 14, borderColor: alpha(colors.gold, 0.3) },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    rowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+    name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
+    check: {
+      width: 22,
+      height: 22,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: line.control,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+    checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
+    note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
+  }),
+);

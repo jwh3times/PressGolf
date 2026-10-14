@@ -6,7 +6,8 @@ import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, PrimaryButton } from '../components/primitives';
 import { isSupabaseConfigured, joinOuting } from '../sync/supabase';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 /**
  * Joining somebody else's outing with a six-character code.
@@ -16,6 +17,8 @@ import { colors, fonts, ink, radius } from '../theme/tokens';
  * You are already signed in by the time this screen can be reached.
  */
 export default function JoinScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const [code, setCode] = useState('');
@@ -101,14 +104,16 @@ export default function JoinScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  codeInput: {
-    fontFamily: fonts.monoBold,
-    fontSize: 24,
-    letterSpacing: 6,
-    textAlign: 'center',
-    paddingVertical: 18,
-    borderRadius: radius.panel,
-  },
-  error: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.clay, lineHeight: 17 },
-});
+const useStyles = makeStyles(({ colors }) =>
+  StyleSheet.create({
+    codeInput: {
+      fontFamily: fonts.monoBold,
+      fontSize: 24,
+      letterSpacing: 6,
+      textAlign: 'center',
+      paddingVertical: 18,
+      borderRadius: radius.panel,
+    },
+    error: { fontFamily: fonts.sans, fontSize: 12.5, color: colors.clay, lineHeight: 17 },
+  }),
+);

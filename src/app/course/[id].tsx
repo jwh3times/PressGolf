@@ -6,9 +6,13 @@ import { ModalHeader, Screen } from '../../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
 import type { Hole, Tee } from '../../domain/types';
 import { useStore } from '../../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../../theme/tokens';
+import { alpha } from '../../theme/color';
+import { makeStyles, useTheme } from '../../theme/theme';
+import { fonts, radius } from '../../theme/tokens';
 
 export default function CourseEditorScreen() {
+  const styles = useStyles();
+  const { colors, ink, scheme } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const router = useRouter();
@@ -137,6 +141,7 @@ export default function CourseEditorScreen() {
               keyboardType="number-pad"
               selectTextOnFocus
               selectionColor={colors.accent}
+              keyboardAppearance={scheme}
               onChangeText={(text) => {
                 const value = Number(text.replace(/[^0-9]/g, ''));
                 if (!Number.isFinite(value)) return;
@@ -153,6 +158,7 @@ export default function CourseEditorScreen() {
               keyboardType="number-pad"
               selectTextOnFocus
               selectionColor={colors.accent}
+              keyboardAppearance={scheme}
               onChangeText={(text) => {
                 const value = Number(text.replace(/[^0-9]/g, ''));
                 setHole(index, { yards: Number.isFinite(value) ? value : 0 });
@@ -228,46 +234,48 @@ function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
   );
 }
 
-const styles = StyleSheet.create({
-  warning: { padding: 14, borderColor: 'rgba(232,154,127,.35)' },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 },
-  legendText: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: ink.soft,
-    width: 46,
-    textAlign: 'center',
-  },
-  holeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.hair,
-    borderRadius: radius.md,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  parGroup: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
-  parValue: {
-    fontFamily: fonts.monoBold,
-    fontSize: 14,
-    color: ink.full,
-    minWidth: 18,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: 9,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-    fontFamily: fonts.mono,
-    fontSize: 13,
-    color: ink.full,
-    textAlign: 'center',
-  },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    warning: { padding: 14, borderColor: alpha(colors.clay, 0.35) },
+    legend: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 },
+    legendText: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.4,
+      color: ink.soft,
+      width: 46,
+      textAlign: 'center',
+    },
+    holeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.hair,
+      borderRadius: radius.md,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    parGroup: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
+    parValue: {
+      fontFamily: fonts.monoBold,
+      fontSize: 14,
+      color: ink.full,
+      minWidth: 18,
+      textAlign: 'center',
+    },
+    input: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: 9,
+      paddingVertical: 7,
+      paddingHorizontal: 8,
+      fontFamily: fonts.mono,
+      fontSize: 13,
+      color: ink.full,
+      textAlign: 'center',
+    },
+  }),
+);

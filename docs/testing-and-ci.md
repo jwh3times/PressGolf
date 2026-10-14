@@ -112,6 +112,12 @@ things:
 It runs twice: as `phone` (390×844) and as `reflow-320` (320×640, the WCAG
 1.4.10 reflow width).
 
+`tests/web/themes.spec.ts` does the same for the themes other than the
+default: Home, Score (hole by hole) and Settle in dark high contrast, light,
+light high contrast, and light with the violet accent, each opened from a saved
+choice. It also chooses a theme in Settings and checks it is used and kept
+across a reload. The default theme is the one `screens.spec.ts` covers.
+
 Baselines only compare cleanly against the renderer that made them, so the CI
 job runs inside `mcr.microsoft.com/playwright:v<version>-noble`.
 `npm run test:web` runs the same image locally through Docker. Don't run a bare

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import type { HouseRules, StrokesMode } from '../domain/types';
-import { fonts, ink } from '../theme/tokens';
+import { useTheme } from '../theme/theme';
+import { fonts } from '../theme/tokens';
 import { Stepper } from './primitives';
 import { RulePicker } from './RulePicker';
 
@@ -25,6 +26,7 @@ export function HandicapPicker({
   /** When set, the rule is shown but belongs to someone else — this says who. */
   lockedReason?: string;
 }) {
+  const { ink } = useTheme();
   return (
     <RulePicker
       title={title}

@@ -27,9 +27,13 @@ import {
   useLargeText,
 } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../../theme/tokens';
+import { alpha } from '../../theme/color';
+import { makeStyles, useTheme } from '../../theme/theme';
+import { fonts, radius } from '../../theme/tokens';
 
 export default function HomeScreen() {
+  const styles = useStyles();
+  const { colors, ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
@@ -146,7 +150,7 @@ export default function HomeScreen() {
             .map((p) => ({
               id: p.id,
               initials: p.initials,
-              color: p.color,
+              color: tint(p.color),
               net: settlement.net[p.id] ?? 0,
             }))}
           largeText={largeText}
@@ -254,7 +258,7 @@ export default function HomeScreen() {
                         height: 5,
                         borderRadius: 999,
                         opacity: 0.75,
-                        backgroundColor: entry.net >= 0 ? colors.accent : colors.clay,
+                        backgroundColor: entry.net >= 0 ? colors.up : colors.clay,
                       }}
                     />
                   </View>
@@ -284,6 +288,8 @@ function LiveRoundCard({
   onEnterScores: () => void;
   largeText: boolean;
 }) {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   return (
     <LinearGradient
       colors={[colors.gradientFrom, colors.gradientTo]}
@@ -330,93 +336,95 @@ function LiveRoundCard({
   );
 }
 
-const styles = StyleSheet.create({
-  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
-  flexCopy: { flex: 1, minWidth: 0 },
-  fullWidth: { flex: 0, width: '100%' },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  subtitle: { fontFamily: fonts.sans, fontSize: 12, color: ink.soft, marginTop: 4 },
-  gear: {
-    width: 38,
-    height: 38,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: line.avatar,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  live: {
-    borderWidth: 1,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.hero,
-    padding: 18,
-    gap: 15,
-  },
-  liveTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  liveLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    color: colors.accent,
-  },
-  // Wraps rather than overflows: at 320 px the button drops onto its own line inside the card (#72).
-  liveMiddle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
-  liveMiddleLarge: { flexDirection: 'column', alignItems: 'stretch' },
-  liveButton: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20 },
-  liveButtonLarge: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20, alignSelf: 'stretch' },
-  liveSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 4 },
-  standing: { flex: 1, alignItems: 'center', gap: 7 },
-  standings: { flexDirection: 'row', gap: 8 },
-  standingsLarge: { flexWrap: 'wrap' },
-  standingLarge: { flexBasis: '45%' },
-  gameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 15,
-  },
-  gameName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  gameDetail: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-  noGames: { padding: 16 },
-  seasonHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  seasonMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
-  outingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: 'rgba(232,196,106,.28)',
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 15,
-  },
-  outingLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: colors.gold,
-  },
-  outingName: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full, marginTop: 4 },
-  outingMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-  seasonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: line.soft,
-  },
-  seasonRowLarge: { flexDirection: 'column', alignItems: 'stretch' },
-  seasonIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  seasonName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
-  barTrack: { width: 74, alignItems: 'center', justifyContent: 'center' },
-  barTrackLarge: { display: 'none' },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+    flexCopy: { flex: 1, minWidth: 0 },
+    fullWidth: { flex: 0, width: '100%' },
+    headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    subtitle: { fontFamily: fonts.sans, fontSize: 12, color: ink.soft, marginTop: 4 },
+    gear: {
+      width: 38,
+      height: 38,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: line.avatar,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    live: {
+      borderWidth: 1,
+      borderColor: colors.accentSoft,
+      borderRadius: radius.hero,
+      padding: 18,
+      gap: 15,
+    },
+    liveTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    liveLabel: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.8,
+      textTransform: 'uppercase',
+      color: colors.accent,
+    },
+    // Wraps rather than overflows: at 320 px the button drops onto its own line inside the card (#72).
+    liveMiddle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+    liveMiddleLarge: { flexDirection: 'column', alignItems: 'stretch' },
+    liveButton: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20 },
+    liveButtonLarge: { borderRadius: 999, paddingVertical: 12, paddingHorizontal: 20, alignSelf: 'stretch' },
+    liveSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 4 },
+    standing: { flex: 1, alignItems: 'center', gap: 7 },
+    standings: { flexDirection: 'row', gap: 8 },
+    standingsLarge: { flexWrap: 'wrap' },
+    standingLarge: { flexBasis: '45%' },
+    gameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 15,
+    },
+    gameName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    gameDetail: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
+    noGames: { padding: 16 },
+    seasonHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    seasonMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
+    outingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: alpha(colors.gold, 0.28),
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 15,
+    },
+    outingLabel: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.6,
+      textTransform: 'uppercase',
+      color: colors.gold,
+    },
+    outingName: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full, marginTop: 4 },
+    outingMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
+    seasonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingVertical: 11,
+      borderBottomWidth: 1,
+      borderBottomColor: line.soft,
+    },
+    seasonRowLarge: { flexDirection: 'column', alignItems: 'stretch' },
+    seasonIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+    seasonName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
+    barTrack: { width: 74, alignItems: 'center', justifyContent: 'center' },
+    barTrackLarge: { display: 'none' },
+  }),
+);

@@ -230,6 +230,26 @@ Treat them as staged infrastructure, not a guarantee of current app behavior.
 Connecting that path requires an explicit integration change with device tests
 for concurrent scoring, process termination, replay, and conflict handling.
 
+## Themes
+
+Every colour belongs to a theme (`src/theme/themes.ts`): a base (dark, light,
+or either at high contrast) and an accent (green, blue, violet or gold).
+Components read it with `useTheme()`, and style sheets are built per theme by
+`makeStyles()` (`src/theme/theme.tsx`); nothing imports a colour from a module.
+Only the default, dark with green, is written out. The other bases name their
+surfaces and ink, and the ink levels, accents, money colours and outlines are
+derived from the contrast floor the base sets (4.5:1, or 7:1 at high
+contrast). Colours that come with the data, a player's or a game's, pass
+through `theme.tint()`, which darkens or lightens them only as far as the floor
+needs. Money won uses `colors.up`, which stays green whatever the accent.
+
+The choice is saved under its own AsyncStorage key, `press:theme`, apart from
+`press:settings`, because it is needed before sign-in and the store that writes
+the settings only exists after. `ChosenThemeProvider` (`src/theme/ChosenTheme.tsx`)
+reads it before drawing anything, while the splash screen is still up, and sets
+the system's colour scheme (keyboard, alerts, status bar) and root background
+to match. The splash screen and `app.json` stay dark for every theme.
+
 ## Repository layout
 
 ```text
@@ -243,7 +263,8 @@ src/
   hooks/            responsive accessibility helpers
   store/            application state and AsyncStorage persistence
   sync/             row translation, snapshot sync, and staged mutation sync
-  theme/            tokens, type floor, and contrast calculations
+  theme/            themes (every colour), the provider and hooks that read them,
+                    type and size tokens, and contrast calculations
 supabase/
   migrations/       versioned production schema
   ci/               Postgres stand-ins and RLS assertions

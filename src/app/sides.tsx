@@ -16,7 +16,8 @@ import { allPairings, RoundContext } from '../domain/engine';
 import { defaultTeams } from '../domain/factory';
 import type { Pairing, PlayerId, Team } from '../domain/types';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 /**
  * Sides, rivals and the knobs the team formats need.
@@ -26,6 +27,8 @@ import { colors, fonts, ink, line, radius } from '../theme/tokens';
  * two chances to set them inconsistently.
  */
 export default function SidesScreen() {
+  const styles = useStyles();
+  const { colors, ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
   const { round, course, group } = store;
@@ -114,7 +117,7 @@ export default function SidesScreen() {
                       onPress={() => assign(id, teamIndex)}
                       style={[
                         styles.slot,
-                        on ? { borderColor: p.color, backgroundColor: `${p.color}18` } : null,
+                        on ? { borderColor: tint(p.color), backgroundColor: `${tint(p.color)}18` } : null,
                       ]}
                     >
                       <Avatar initials={p.initials} color={p.color} size={26} />
@@ -226,46 +229,48 @@ export default function SidesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  sideLabel: { fontFamily: fonts.sansBold, fontSize: 14, color: ink.full },
-  sideCount: { fontFamily: fonts.mono, fontSize: 11, color: ink.quiet },
-  slot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-  },
-  slotName: { fontFamily: fonts.sans, fontSize: 12.5, color: ink.muted },
-  warn: { fontFamily: fonts.sans, fontSize: 11.5, color: colors.clay, lineHeight: 16 },
-  pairRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 11,
-    paddingHorizontal: 13,
-  },
-  vs: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
-  pairNames: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: line.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-  optionRow: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  optionName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  optionHint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, marginTop: 3, lineHeight: 16 },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    sideLabel: { fontFamily: fonts.sansBold, fontSize: 14, color: ink.full },
+    sideCount: { fontFamily: fonts.mono, fontSize: 11, color: ink.quiet },
+    slot: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: 999,
+      paddingVertical: 5,
+      paddingHorizontal: 8,
+    },
+    slotName: { fontFamily: fonts.sans, fontSize: 12.5, color: ink.muted },
+    warn: { fontFamily: fonts.sans, fontSize: 11.5, color: colors.clay, lineHeight: 16 },
+    pairRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 11,
+      paddingHorizontal: 13,
+    },
+    vs: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
+    pairNames: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
+    check: {
+      width: 22,
+      height: 22,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: line.control,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+    checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
+    optionRow: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    optionName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    optionHint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, marginTop: 3, lineHeight: 16 },
+  }),
+);

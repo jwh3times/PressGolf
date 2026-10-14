@@ -1,0 +1,28 @@
+- text: Press Settings
+- button "Done"
+- text: Data Demo data Showing the Saturday Dogs at Pine Hollow — a live round and a season behind it.
+- switch "Demo data" [checked]
+- button "Reset demo data"
+- text: Appearance
+- radiogroup "Theme":
+  - radio "Dark theme": Dark The original. Made for a bright day with the brightness up.
+  - radio "Dark, high contrast theme": Dark, high contrast Black, with brighter text and firmer outlines.
+  - radio "Light theme" [checked]: Light Paper, with dark text. ✓
+  - radio "Light, high contrast theme": Light, high contrast White, with black text and firmer outlines.
+- text: Accent
+- radiogroup "Accent":
+  - radio "Green accent"
+  - radio "Blue accent" [checked]
+  - radio "Violet accent"
+  - radio "Gold accent"
+- text: Money won stays green and money lost stays clay, whichever you pick. Group
+- button "Saturday Dogs": Saturday Dogs 4 players ✓
+- button "Pine Hollow Society": /Pine Hollow Society \d+ players · Society Saturday on now/
+- text: Manage
+- button "Roster and group ›"
+- button "Courses ›"
+- button "Sides and rivals ›"
+- button "Round history ›"
+- button "Set up an outing ›"
+- button "Join an outing by code ›"
+- text: "About Press settles nine formats off one card: Nassau with presses, skins with carryovers, junk, Stableford, four-ball, Wolf, Vegas, match play and stroke play. Everything is computed in whole cents and netted down to the fewest hand-offs. v1.0.0 · demo dataset"

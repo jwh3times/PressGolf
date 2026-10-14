@@ -29,6 +29,8 @@ import OutingScreen from '../outing';
 import RosterScreen from '../roster';
 import SettingsScreen from '../settings';
 import SidesScreen from '../sides';
+import { ThemeContext, ThemeSettingContext } from '../../theme/theme';
+import { themeFor } from '../../theme/themes';
 
 const mockRouter = {
   back: jest.fn(),
@@ -1022,6 +1024,36 @@ describe('management screen state matrices', () => {
     expect(actions.eraseLiveData).toHaveBeenCalled();
     expect(screen.queryByText('Account')).not.toBeOnTheScreen();
     alert.mockRestore();
+  });
+
+  it('offers the four themes and four accents, and says which is chosen', async () => {
+    const user = userEvent.setup();
+    mockUseStore.mockReturnValue({ ...roundStore, groups: [group] } as AppStore);
+    const setting = { choice: { base: 'light', accent: 'violet' } as const, setBase: jest.fn(), setAccent: jest.fn() };
+    await render(
+      <ThemeSettingContext.Provider value={setting}>
+        <ThemeContext.Provider value={themeFor(setting.choice)}>
+          <SettingsScreen />
+        </ThemeContext.Provider>
+      </ThemeSettingContext.Provider>,
+    );
+
+    const themes = screen.getAllByRole('radio', { name: / theme$/ });
+    expect(themes.map((r) => r.props.accessibilityLabel)).toEqual([
+      'Dark theme',
+      'Dark, high contrast theme',
+      'Light theme',
+      'Light, high contrast theme',
+    ]);
+    expect(screen.getByRole('radio', { name: 'Light theme' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Dark theme' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Violet accent' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Green accent' })).not.toBeChecked();
+
+    await user.press(screen.getByRole('radio', { name: 'Dark, high contrast theme' }));
+    expect(setting.setBase).toHaveBeenCalledWith('darkContrast');
+    await user.press(screen.getByRole('radio', { name: 'Gold accent' }));
+    expect(setting.setAccent).toHaveBeenCalledWith('gold');
   });
 
   it('covers missing and duplicate-index course editor states', async () => {

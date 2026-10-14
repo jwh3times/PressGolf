@@ -16,9 +16,12 @@ import {
 import { RoundContext, money, signedMoney } from '../../domain/engine';
 import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
-import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
+import { makeStyles, useTheme } from '../../theme/theme';
+import { fonts, radius } from '../../theme/tokens';
 
 export default function SettleScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
@@ -149,7 +152,7 @@ export default function SettleScreen() {
                     style={[
                       styles.breakdownAmount,
                       line_.tone === 'won'
-                        ? { color: colors.accent, fontFamily: fonts.monoBold, fontSize: 12.5 }
+                        ? { color: colors.up, fontFamily: fonts.monoBold, fontSize: 12.5 }
                         : null,
                     ]}
                   >
@@ -191,67 +194,69 @@ export default function SettleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
-  fullWidth: { flex: 0, width: '100%' },
-  square: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: line.dashed,
-    borderRadius: radius.panel,
-    padding: 18,
-  },
-  transfer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: line.strong,
-    borderRadius: radius.panel,
-    padding: 14,
-  },
-  transferAvatars: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  transferCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  transferCopyLarge: { flex: 0, width: '100%', flexDirection: 'column', alignItems: 'flex-start' },
-  transferText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
-  transferAmount: { fontFamily: fonts.monoBold, fontSize: 16, color: ink.full },
-  breakdown: {
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.panel,
-    overflow: 'hidden',
-  },
-  breakdownHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: fill.wash,
-  },
-  breakdownName: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.full },
-  breakdownLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderTopWidth: 1,
-    borderTopColor: line.hair,
-  },
-  breakdownText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.body, lineHeight: 17 },
-  breakdownAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
-  netRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: line.soft,
-  },
-  netIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  netStats: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  netName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
-});
+const useStyles = makeStyles(({ colors, ink, line, fill }) =>
+  StyleSheet.create({
+    stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+    fullWidth: { flex: 0, width: '100%' },
+    square: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: line.dashed,
+      borderRadius: radius.panel,
+      padding: 18,
+    },
+    transfer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: line.strong,
+      borderRadius: radius.panel,
+      padding: 14,
+    },
+    transferAvatars: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    transferCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    transferCopyLarge: { flex: 0, width: '100%', flexDirection: 'column', alignItems: 'flex-start' },
+    transferText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
+    transferAmount: { fontFamily: fonts.monoBold, fontSize: 16, color: ink.full },
+    breakdown: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.panel,
+      overflow: 'hidden',
+    },
+    breakdownHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      backgroundColor: fill.wash,
+    },
+    breakdownName: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.full },
+    breakdownLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderTopWidth: 1,
+      borderTopColor: line.hair,
+    },
+    breakdownText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.body, lineHeight: 17 },
+    breakdownAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
+    netRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: line.soft,
+    },
+    netIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+    netStats: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    netName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
+  }),
+);

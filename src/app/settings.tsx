@@ -6,7 +6,10 @@ import { useAuth } from '../auth/AuthProvider';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, Switch } from '../components/primitives';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { alpha } from '../theme/color';
+import { makeStyles, useTheme, useThemeSetting } from '../theme/theme';
+import { THEME_ACCENTS, THEME_BASES } from '../theme/themes';
+import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
 
 const SYNC_LABEL: Record<string, string> = {
   off: 'Not backing up',
@@ -17,6 +20,9 @@ const SYNC_LABEL: Record<string, string> = {
 };
 
 export default function SettingsScreen() {
+  const styles = useStyles();
+  const { colors, ink, tint } = useTheme();
+  const appearance = useThemeSetting();
   const store = useStore();
   const router = useRouter();
   const auth = useAuth();
@@ -91,11 +97,63 @@ export default function SettingsScreen() {
                 ],
               )
             }
-            style={[styles.action, { borderColor: 'rgba(232,154,127,.4)' }]}
+            style={[styles.action, { borderColor: alpha(colors.clay, 0.4) }]}
           >
             <Text style={[styles.actionText, { color: colors.clay }]}>Erase my data</Text>
           </Pressable>
         )}
+      </View>
+
+      <View style={{ gap: 10 }}>
+        <Eyebrow>Appearance</Eyebrow>
+        <View accessibilityRole="radiogroup" accessibilityLabel="Theme" style={{ gap: 10 }}>
+          {THEME_BASES.map((base) => {
+            const on = base.id === appearance.choice.base;
+            return (
+              <Pressable
+                key={base.id}
+                accessibilityRole="radio"
+                aria-checked={on}
+                accessibilityLabel={`${base.label} theme`}
+                onPress={() => appearance.setBase(base.id)}
+                style={[styles.groupRow, on ? styles.groupRowOn : null]}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.name}>{base.label}</Text>
+                  <Text style={styles.hint}>{base.hint}</Text>
+                </View>
+                <View style={[styles.check, on ? styles.checkOn : null]}>
+                  {on ? <Text style={styles.checkMark}>✓</Text> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Card style={styles.accents}>
+          <Text style={styles.name}>Accent</Text>
+          <View accessibilityRole="radiogroup" accessibilityLabel="Accent" style={styles.swatches}>
+            {THEME_ACCENTS.map((accent) => {
+              const on = accent.id === appearance.choice.accent;
+              const color = tint(accent.color);
+              return (
+                <Pressable
+                  key={accent.id}
+                  accessibilityRole="radio"
+                  aria-checked={on}
+                  accessibilityLabel={`${accent.label} accent`}
+                  onPress={() => appearance.setAccent(accent.id)}
+                  style={styles.swatch}
+                >
+                  <View style={[styles.swatchRing, on ? { borderColor: color } : null]}>
+                    <View style={[styles.swatchDot, { backgroundColor: color }]} />
+                  </View>
+                  <Text style={[styles.swatchLabel, on ? { color: ink.full } : null]}>{accent.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.hint}>Money won stays green and money lost stays clay, whichever you pick.</Text>
+        </Card>
       </View>
 
       {/* With more than one group on the phone there has to be a way to move
@@ -183,7 +241,7 @@ export default function SettingsScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={confirmSignOut}
-            style={[styles.action, { borderColor: 'rgba(232,154,127,.4)' }]}
+            style={[styles.action, { borderColor: alpha(colors.clay, 0.4) }]}
           >
             <Text style={[styles.actionText, { color: colors.clay }]}>Sign out</Text>
           </Pressable>
@@ -207,50 +265,66 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  hint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, marginTop: 3, lineHeight: 16 },
-  action: {
-    borderWidth: 1,
-    borderColor: line.button,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  actionText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.body },
-  link: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-  },
-  linkText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
-  groupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  groupRowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: line.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    row: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    hint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, marginTop: 3, lineHeight: 16 },
+    action: {
+      borderWidth: 1,
+      borderColor: line.button,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      alignItems: 'center',
+    },
+    actionText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.body },
+    link: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 14,
+      paddingHorizontal: 15,
+    },
+    linkText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
+    groupRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    groupRowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+    check: {
+      width: 22,
+      height: 22,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: line.control,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+    accents: { padding: 14, gap: 10 },
+    swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    swatch: { minWidth: 64, minHeight: MIN_TAP_TARGET, alignItems: 'center', justifyContent: 'center', gap: 5 },
+    swatchRing: {
+      width: 30,
+      height: 30,
+      borderRadius: 999,
+      borderWidth: 2,
+      borderColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    swatchDot: { width: 20, height: 20, borderRadius: 999 },
+    swatchLabel: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: ink.soft },
+    checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
+  }),
+);

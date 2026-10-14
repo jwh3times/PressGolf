@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { ActivityIndicator, View } from 'react-native';
 import { SignInScreen } from '../components/SignInScreen';
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/theme';
 import { useAuth } from './AuthProvider';
 
 /**
@@ -14,6 +14,7 @@ import { useAuth } from './AuthProvider';
  * question has even been asked.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
   const { status } = useAuth();
 
   useEffect(() => {

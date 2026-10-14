@@ -16,7 +16,8 @@ import {
 import { lastUsedTee, makeOuting, makeRound, splitIntoGroups } from '../domain/factory';
 import type { PlayerId, TeeFormat } from '../domain/types';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 /**
  * Sets up a day for more than one group.
@@ -26,6 +27,8 @@ import { colors, fonts, ink, line, radius } from '../theme/tokens';
  * picking who is actually out and splitting them up.
  */
 export default function NewOutingScreen() {
+  const styles = useStyles();
+  const { ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const group = store.group;
@@ -214,6 +217,7 @@ export default function NewOutingScreen() {
 }
 
 function Check({ on }: { on: boolean }) {
+  const styles = useStyles();
   return (
     <View style={[styles.check, on ? styles.checkOn : null]}>
       {on ? <Text style={styles.checkMark}>✓</Text> : null}
@@ -221,32 +225,34 @@ function Check({ on }: { on: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  rowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
-  name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-  fieldHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: line.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    rowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+    name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
+    fieldHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    check: {
+      width: 22,
+      height: 22,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: line.control,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+    checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
+    note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
+  }),
+);

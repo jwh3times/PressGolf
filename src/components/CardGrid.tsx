@@ -3,7 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { wolfForHole, wolfPickForHole, type RoundContext } from '../domain/engine';
 import type { PlayerId } from '../domain/types';
 import { MAX_CONTROL_SCALE, useAccessibilityControlScale } from '../hooks/useLargeText';
-import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 import { CHIP_ROW_GAP, Chip, GhostButton, StepperButton } from './primitives';
 
 interface Cursor {
@@ -31,6 +32,7 @@ export function CardGrid({
   /** What goes under the keypad for the hole the cursor is on, e.g. its Wolf pick. */
   renderBelow?: (hole: number) => React.ReactNode;
 }) {
+  const styles = useStyles();
   const players = ctx.players;
   const holes = ctx.holes;
   const [cursor, setCursor] = useState<Cursor>({ player: 0, hole: 0 });
@@ -239,34 +241,36 @@ export function CardGrid({
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  name: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
-  headText: { fontFamily: fonts.mono, fontSize: 10, color: ink.quiet, textAlign: 'center' },
-  headBox: { alignItems: 'center', justifyContent: 'center' },
-  cell: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: radius.sm,
-    backgroundColor: colors.cardDeep,
-  },
-  cellOn: { borderColor: colors.accent, backgroundColor: colors.cardActive },
-  cellText: { fontFamily: fonts.monoBold, fontSize: 14, color: ink.full },
-  wolfText: { fontFamily: fonts.monoBold, fontSize: 11, color: colors.gold },
-  counted: { fontFamily: fonts.mono, fontSize: 10, color: colors.clay },
-  cursorText: { fontFamily: fonts.sans, fontSize: 13, color: ink.soft },
-  bigRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  bigValue: { fontFamily: fonts.monoBold, fontSize: 18, color: ink.full, minWidth: 28, textAlign: 'center' },
-  keypad: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  key: {
-    width: 58,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    backgroundColor: fill.control,
-  },
-  keyText: { fontFamily: fonts.monoBold, fontSize: 18, color: ink.full },
-});
+const useStyles = makeStyles(({ colors, ink, line, fill }) =>
+  StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    name: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
+    headText: { fontFamily: fonts.mono, fontSize: 10, color: ink.quiet, textAlign: 'center' },
+    headBox: { alignItems: 'center', justifyContent: 'center' },
+    cell: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: radius.sm,
+      backgroundColor: colors.cardDeep,
+    },
+    cellOn: { borderColor: colors.accent, backgroundColor: colors.cardActive },
+    cellText: { fontFamily: fonts.monoBold, fontSize: 14, color: ink.full },
+    wolfText: { fontFamily: fonts.monoBold, fontSize: 11, color: colors.gold },
+    counted: { fontFamily: fonts.mono, fontSize: 10, color: colors.clay },
+    cursorText: { fontFamily: fonts.sans, fontSize: 13, color: ink.soft },
+    bigRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+    bigValue: { fontFamily: fonts.monoBold, fontSize: 18, color: ink.full, minWidth: 28, textAlign: 'center' },
+    keypad: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    key: {
+      width: 58,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.sm,
+      backgroundColor: fill.control,
+    },
+    keyText: { fontFamily: fonts.monoBold, fontSize: 18, color: ink.full },
+  }),
+);

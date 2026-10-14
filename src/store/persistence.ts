@@ -2,9 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_VERSION, storageNamespace } from '../config/flags';
 import { houseRulesOrDefault } from '../domain/formats';
 import type { AppData, AppSettings, Course, Hole } from '../domain/types';
+import { DEFAULT_THEME_CHOICE, THEME_ACCENTS, THEME_BASES, type ThemeChoice } from '../theme/themes';
 
 /** Where the demo/live preference lives — outside both datasets, so it survives switching. */
 const SETTINGS_KEY = 'press:settings';
+/**
+ * The theme has its own key: it is wanted before anyone has signed in, and the
+ * store that writes the settings above only exists after.
+ */
+const THEME_KEY = 'press:theme';
 
 interface StoredPayload {
   version: number;
@@ -125,6 +131,25 @@ export async function loadSettings(fallback: AppSettings): Promise<AppSettings> 
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+/** The chosen theme. Anything unreadable or unknown falls back to the default, part by part. */
+export async function loadThemeChoice(): Promise<ThemeChoice> {
+  try {
+    const raw = await AsyncStorage.getItem(THEME_KEY);
+    if (!raw) return DEFAULT_THEME_CHOICE;
+    const parsed = JSON.parse(raw) as Partial<ThemeChoice> | null;
+    return {
+      base: THEME_BASES.find((b) => b.id === parsed?.base)?.id ?? DEFAULT_THEME_CHOICE.base,
+      accent: THEME_ACCENTS.find((a) => a.id === parsed?.accent)?.id ?? DEFAULT_THEME_CHOICE.accent,
+    };
+  } catch {
+    return DEFAULT_THEME_CHOICE;
+  }
+}
+
+export async function saveThemeChoice(choice: ThemeChoice): Promise<void> {
+  await AsyncStorage.setItem(THEME_KEY, JSON.stringify(choice));
 }
 
 /** Wipes one dataset. Used by "reset demo data" and "erase everything". */

@@ -114,7 +114,10 @@ pass.
   date does not render there, so a card entered on web is dated today.
 - Handicap indexes are typed in by hand. Keeping them in step with GHIN is
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
-- The app currently ships one dark, outdoor-oriented theme.
+- Themes: dark (the default, made for daylight), light, and a high-contrast
+  version of each, with a choice of four accents (Settings → Appearance). The
+  splash screen stays dark whichever is chosen, and whether the system keyboard
+  and alerts follow a light theme has not been checked on a device.
 
 Track planned work and additional limitations in the
 [issue tracker](https://github.com/jwh3times/PressGolf/issues).
