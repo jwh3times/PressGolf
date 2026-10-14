@@ -14,15 +14,18 @@ const ALL = THEME_BASES.flatMap((base) =>
 );
 const DERIVED = ALL.filter(([, theme]) => theme.base !== 'dark');
 
-/** Surfaces text is laid on. The dark base keeps the five its own test has always held. */
-function surfaces(theme: Theme): string[] {
+/**
+ * Surfaces text is laid on. The gradient is the live-round, hole and outing
+ * cards; `cards: false` leaves it out.
+ */
+function surfaces(theme: Theme, { cards = true } = {}): string[] {
   const { base, screen, card, cardDeep, cardActive, gradientFrom, gradientTo } = theme.colors;
-  const all = [base, screen, card, cardDeep, cardActive];
-  return theme.base === 'dark' ? all : [...all, gradientFrom, gradientTo];
+  const plain = [base, screen, card, cardDeep, cardActive];
+  return cards ? [...plain, gradientFrom, gradientTo] : plain;
 }
 
-function worst(color: string, theme: Theme): number {
-  return Math.min(...surfaces(theme).map((s) => contrastRatio(color, s)));
+function worst(color: string, theme: Theme, options?: { cards?: boolean }): number {
+  return Math.min(...surfaces(theme, options).map((s) => contrastRatio(color, s)));
 }
 
 const DATA_COLOURS = [
@@ -46,8 +49,17 @@ describe('every theme', () => {
   });
 
   it.each(ALL)('%s: every ink level clears the floor on every surface', (_name, theme) => {
-    const below = Object.entries(theme.ink).filter(([, value]) => worst(value, theme) < theme.floor);
+    // Except ink.quiet on the gradient cards in the dark base, where the light
+    // end reads 4.33:1 with the green accent. Those cards never use it.
+    const below = Object.entries(theme.ink).filter(
+      ([level, value]) =>
+        worst(value, theme, { cards: !(theme.base === 'dark' && level === 'quiet') }) < theme.floor,
+    );
     expect(below).toEqual([]);
+  });
+
+  it('pins the one exception above, so it is dropped once it is not needed', () => {
+    expect(contrastRatio(darkTheme.ink.quiet, darkTheme.colors.gradientFrom)).toBeLessThan(AA_BODY);
   });
 
   it.each(ALL)('%s: the ink levels descend, none landing on another', (_name, theme) => {

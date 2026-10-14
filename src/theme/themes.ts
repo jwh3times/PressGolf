@@ -40,7 +40,10 @@ const colors = {
   clay: '#E89A7F',
   violet: '#C9A8E8',
 
-  /** Gradient stops for the live-round card. */
+  /**
+   * Gradient stops for the live-round, hole and outing cards. Text on them
+   * stops at `ink.soft`: `ink.quiet` reads 4.33:1 on the light end.
+   */
   gradientFrom: '#1C2C21',
   gradientTo: '#131C16',
 
