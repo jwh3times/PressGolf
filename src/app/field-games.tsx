@@ -16,7 +16,8 @@ import { money } from '../domain/engine';
 import { FIELD_FORMATS } from '../domain/formats';
 import { FIELD_GAME_KEYS } from '../domain/types';
 import { useStore } from '../store/AppStore';
-import { colors, fill, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 import { MaxScorePicker } from '../components/MaxScorePicker';
 import { HandicapPicker } from '../components/HandicapPicker';
 
@@ -29,6 +30,8 @@ import { HandicapPicker } from '../components/HandicapPicker';
  * difference between skins and a rabbit-variant scat.
  */
 export default function FieldGamesScreen() {
+  const styles = useStyles();
+  const { colors, ink, line } = useTheme();
   const store = useStore();
   const router = useRouter();
   const { outing, outingGroup } = store;
@@ -242,6 +245,7 @@ function Toggle({
   on: boolean;
   onToggle: () => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -253,34 +257,36 @@ function Toggle({
   );
 }
 
-const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: radius.format, padding: 15 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  name: { fontFamily: fonts.sansBold, fontSize: 15.5, color: ink.full },
-  tag: { backgroundColor: fill.control, borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 6 },
-  tagText: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: ink.muted,
-  },
-  blurb: { fontFamily: fonts.sans, fontSize: 12, color: ink.muted, marginTop: 5, lineHeight: 17 },
-  settingLabel: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.full },
-  settingHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.muted, marginTop: 3, lineHeight: 15 },
-  entrantHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  entrantGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  entrant: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 7,
-    maxWidth: '48%',
-  },
-  entrantName: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.quiet, flexShrink: 1 },
-  warn: { fontFamily: fonts.sans, fontSize: 11.5, color: colors.clay, lineHeight: 16 },
-});
+const useStyles = makeStyles(({ colors, ink, line, fill }) =>
+  StyleSheet.create({
+    card: { borderWidth: 1, borderRadius: radius.format, padding: 15 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    name: { fontFamily: fonts.sansBold, fontSize: 15.5, color: ink.full },
+    tag: { backgroundColor: fill.control, borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 6 },
+    tagText: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      color: ink.muted,
+    },
+    blurb: { fontFamily: fonts.sans, fontSize: 12, color: ink.muted, marginTop: 5, lineHeight: 17 },
+    settingLabel: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.full },
+    settingHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.muted, marginTop: 3, lineHeight: 15 },
+    entrantHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    entrantGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+    entrant: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: 999,
+      paddingVertical: 4,
+      paddingHorizontal: 7,
+      maxWidth: '48%',
+    },
+    entrantName: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.quiet, flexShrink: 1 },
+    warn: { fontFamily: fonts.sans, fontSize: 11.5, color: colors.clay, lineHeight: 16 },
+  }),
+);

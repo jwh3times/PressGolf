@@ -10,7 +10,9 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { colors, eyebrow, fill, fonts, ink, line, MIN_TAP_TARGET, moneyColor, radius } from '../theme/tokens';
+import { eyebrowStyle, makeStyles, useTheme } from '../theme/theme';
+import { moneyColor, type Theme } from '../theme/themes';
+import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
 import {
   MAX_CONTROL_SCALE,
   scaledTypeMetrics,
@@ -40,8 +42,9 @@ function ScaledText({
 
 /** Section label: 10px mono, wide tracking, uppercase. */
 export function Eyebrow({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
+  const theme = useTheme();
   return (
-    <ScaledText size={10} baseLineHeight={14} style={[eyebrow, style]}>
+    <ScaledText size={10} baseLineHeight={14} style={[eyebrowStyle(theme), style]}>
       {children}
     </ScaledText>
   );
@@ -57,6 +60,7 @@ export function Display({
   size?: number;
   style?: TextStyle;
 }) {
+  const { ink } = useTheme();
   return (
     <Text style={[{ fontFamily: fonts.serif, fontSize: size, lineHeight: size * 1.05, color: ink.full }, style]}>
       {children}
@@ -65,6 +69,7 @@ export function Display({
 }
 
 export function Body({ children, style, ...rest }: TextProps & { children: React.ReactNode }) {
+  const { ink } = useTheme();
   return (
     <Text {...rest} style={[{ fontFamily: fonts.sans, fontSize: 13, color: ink.body }, style]}>
       {children}
@@ -83,6 +88,7 @@ export function Mono({
   weight?: 'regular' | 'medium' | 'bold';
   style?: TextStyle;
 }) {
+  const { ink } = useTheme();
   const family =
     weight === 'bold' ? fonts.monoBold : weight === 'medium' ? fonts.monoMedium : fonts.mono;
   return (
@@ -154,12 +160,13 @@ export function Money({
   size?: number;
   style?: TextStyle;
 }) {
+  const theme = useTheme();
   return (
     <ScaledText
       size={size}
       baseLineHeight={size * 1.4}
       style={[
-        { fontFamily: fonts.monoBold, color: moneyColor(cents) },
+        { fontFamily: fonts.monoBold, color: moneyColor(theme, cents) },
         style,
       ]}
     >
@@ -177,6 +184,7 @@ export function Card({
   style?: ViewStyle;
   deep?: boolean;
 }) {
+  const { colors, line } = useTheme();
   return (
     <View
       style={[
@@ -206,6 +214,7 @@ export function PrimaryButton({
   disabled?: boolean;
   style?: ViewStyle;
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -253,6 +262,7 @@ export function GhostButton({
   dashed?: boolean;
   style?: ViewStyle;
 }) {
+  const { ink, line } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -312,6 +322,7 @@ export function Stepper({
   incrementLabel?: string;
   disabled?: boolean;
 }) {
+  const { ink } = useTheme();
   const controlScale = useAccessibilityControlScale();
 
   return (
@@ -365,6 +376,7 @@ export function StepperButton({
   size?: number;
   disabled?: boolean;
 }) {
+  const { ink, line, fill } = useTheme();
   const controlScale = useAccessibilityControlScale();
   const scaledSize = size * controlScale;
 
@@ -401,6 +413,7 @@ export function StepperButton({
 
 /** The pill switch on format cards. */
 export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; label?: string }) {
+  const { colors, ink, line, fill } = useTheme();
   const controlScale = useAccessibilityControlScale();
 
   return (
@@ -461,7 +474,7 @@ export function Chip({
   label,
   accessibilityLabel,
   active,
-  color = colors.clay,
+  color: chosen,
   onPress,
   disabled,
 }: {
@@ -473,6 +486,8 @@ export function Chip({
   onPress?: () => void;
   disabled?: boolean;
 }) {
+  const theme = useTheme();
+  const color = chosen ?? theme.colors.clay;
   return (
     <Pressable
       accessibilityRole="button"
@@ -493,8 +508,8 @@ export function Chip({
         opacity: pressed && !disabled ? 0.6 : 1,
       })}
     >
-      <View testID="chip-pill" style={chipBox(color, active)}>
-        <Text style={chipText(color, active)}>{label}</Text>
+      <View testID="chip-pill" style={chipBox(theme, color, active)}>
+        <Text style={chipText(theme, color, active)}>{label}</Text>
       </View>
     </Pressable>
   );
@@ -504,26 +519,28 @@ export function Chip({
 export function StatusChip({
   label,
   accessibilityLabel,
-  color = colors.clay,
+  color: chosen,
 }: {
   label: string;
   /** When the visible label alone is ambiguous, e.g. a result repeated for every player. */
   accessibilityLabel?: string;
   color?: string;
 }) {
+  const theme = useTheme();
+  const color = chosen ?? theme.colors.clay;
   return (
     <View
       accessible
       accessibilityRole="text"
       accessibilityLabel={accessibilityLabel}
-      style={chipBox(color, true)}
+      style={chipBox(theme, color, true)}
     >
-      <Text style={chipText(color, true)}>{label}</Text>
+      <Text style={chipText(theme, color, true)}>{label}</Text>
     </View>
   );
 }
 
-function chipBox(color: string, active?: boolean): ViewStyle {
+function chipBox({ line }: Theme, color: string, active?: boolean): ViewStyle {
   return {
     backgroundColor: active ? `${color}22` : 'transparent',
     borderWidth: 1,
@@ -534,7 +551,7 @@ function chipBox(color: string, active?: boolean): ViewStyle {
   };
 }
 
-function chipText(color: string, active?: boolean): TextStyle {
+function chipText({ ink }: Theme, color: string, active?: boolean): TextStyle {
   return {
     fontFamily: fonts.mono,
     fontSize: 10,
@@ -549,6 +566,7 @@ export function GameDot({ color, size = 9 }: { color: string; size?: number }) {
 }
 
 export function Divider({ style }: { style?: ViewStyle }) {
+  const { line } = useTheme();
   return <View style={[{ height: 1, backgroundColor: line.bright }, style]} />;
 }
 
@@ -562,6 +580,8 @@ export function EmptyState({
   body: string;
   action?: React.ReactNode;
 }) {
+  const styles = useStyles();
+  const { ink } = useTheme();
   return (
     <View style={styles.empty}>
       <Display size={24} style={{ textAlign: 'center' }}>
@@ -573,14 +593,16 @@ export function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
-  empty: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: line.dashed,
-    borderRadius: radius.format,
-    padding: 24,
-    gap: 12,
-    alignItems: 'center',
-  },
-});
+const useStyles = makeStyles(({ line }) =>
+  StyleSheet.create({
+    empty: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: line.dashed,
+      borderRadius: radius.format,
+      padding: 24,
+      gap: 12,
+      alignItems: 'center',
+    },
+  }),
+);

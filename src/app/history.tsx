@@ -7,9 +7,12 @@ import { settleRound } from '../domain/engine';
 import { signedMoney } from '../domain/engine/context';
 import { buildSeason } from '../domain/season';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 export default function HistoryScreen() {
+  const styles = useStyles();
+  const { ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const group = store.group;
@@ -141,33 +144,35 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  seasonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: line.soft,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  name: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-  liveTag: {
-    backgroundColor: 'rgba(139,224,174,.15)',
-    borderRadius: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 5,
-  },
-  liveText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    seasonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingVertical: 9,
+      borderBottomWidth: 1,
+      borderBottomColor: line.soft,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    name: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
+    liveTag: {
+      backgroundColor: 'rgba(139,224,174,.15)',
+      borderRadius: 4,
+      paddingVertical: 2,
+      paddingHorizontal: 5,
+    },
+    liveText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
+  }),
+);

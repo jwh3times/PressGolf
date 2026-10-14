@@ -21,7 +21,8 @@ import type { FieldGameResult, PlayerId } from '../domain/types';
 import { useLargeText } from '../hooks/useLargeText';
 import { useStore } from '../store/AppStore';
 import { hostOuting, isSupabaseConfigured } from '../sync/supabase';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 /**
  * The whole day at a glance: the pots, the field, and every group.
@@ -31,6 +32,8 @@ import { colors, fonts, ink, line, radius } from '../theme/tokens';
  * the morning, and a leaderboard that hides that is worse than no leaderboard.
  */
 export default function OutingScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const store = useStore();
@@ -251,6 +254,8 @@ export default function OutingScreen() {
 
 /** One pot's state: what is in it, what has been won, what is still out. */
 function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: number }) {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const largeText = useLargeText();
   const players = store.outingGroup?.players ?? [];
@@ -320,97 +325,99 @@ function FieldPot({ game, holeCount }: { game: FieldGameResult; holeCount: numbe
   );
 }
 
-const styles = StyleSheet.create({
-  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
-  fullWidth: { flex: 0, width: '100%' },
-  codeBox: {
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    borderRadius: radius.panel,
-    padding: 16,
-    gap: 8,
-    alignItems: 'center',
-  },
-  code: { color: colors.accent, letterSpacing: 8 },
-  codeHint: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: ink.soft,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
-  hero: {
-    borderWidth: 1,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.hero,
-    padding: 18,
-    gap: 12,
-  },
-  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    color: colors.accent,
-  },
-  heroSub: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, lineHeight: 16 },
-  sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  potHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(242,239,230,.03)',
-  },
-  potName: { flex: 1, fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  potBody: { padding: 14, gap: 8 },
-  potMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, lineHeight: 16 },
-  potWinner: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
-  potWinnerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  potWinnerIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  pendingBar: {
-    marginTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: line.hair,
-    paddingTop: 9,
-  },
-  pendingText: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 15 },
-  groupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    padding: 13,
-  },
-  groupRowMine: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
-  groupMain: { flex: 1, minWidth: 0, gap: 6 },
-  groupTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  avatarRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  groupSummary: { alignItems: 'flex-end', gap: 3 },
-  groupSummaryLarge: { alignItems: 'flex-start' },
-  groupName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  youTag: {
-    backgroundColor: 'rgba(139,224,174,.15)',
-    borderRadius: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 5,
-  },
-  youText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
-  standingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: line.soft,
-  },
-  standingRowLarge: { flexDirection: 'column', alignItems: 'stretch' },
-  standingIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  standingName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+    fullWidth: { flex: 0, width: '100%' },
+    codeBox: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: colors.accentLine,
+      borderRadius: radius.panel,
+      padding: 16,
+      gap: 8,
+      alignItems: 'center',
+    },
+    code: { color: colors.accent, letterSpacing: 8 },
+    codeHint: {
+      fontFamily: fonts.sans,
+      fontSize: 12,
+      color: ink.soft,
+      lineHeight: 17,
+      textAlign: 'center',
+    },
+    hero: {
+      borderWidth: 1,
+      borderColor: colors.accentSoft,
+      borderRadius: radius.hero,
+      padding: 18,
+      gap: 12,
+    },
+    heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    heroLabel: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.8,
+      textTransform: 'uppercase',
+      color: colors.accent,
+    },
+    heroSub: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, lineHeight: 16 },
+    sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    potHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      backgroundColor: 'rgba(242,239,230,.03)',
+    },
+    potName: { flex: 1, fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    potBody: { padding: 14, gap: 8 },
+    potMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, lineHeight: 16 },
+    potWinner: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.body },
+    potWinnerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    potWinnerIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9 },
+    pendingBar: {
+      marginTop: 4,
+      borderTopWidth: 1,
+      borderTopColor: line.hair,
+      paddingTop: 9,
+    },
+    pendingText: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 15 },
+    groupRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      padding: 13,
+    },
+    groupRowMine: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+    groupMain: { flex: 1, minWidth: 0, gap: 6 },
+    groupTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+    avatarRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+    groupSummary: { alignItems: 'flex-end', gap: 3 },
+    groupSummaryLarge: { alignItems: 'flex-start' },
+    groupName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    youTag: {
+      backgroundColor: 'rgba(139,224,174,.15)',
+      borderRadius: 4,
+      paddingVertical: 2,
+      paddingHorizontal: 5,
+    },
+    youText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
+    standingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 9,
+      borderBottomWidth: 1,
+      borderBottomColor: line.soft,
+    },
+    standingRowLarge: { flexDirection: 'column', alignItems: 'stretch' },
+    standingIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    standingName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
+  }),
+);

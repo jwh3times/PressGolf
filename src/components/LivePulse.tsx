@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, Easing, View } from 'react-native';
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/theme';
 
 /**
  * The breathing dot on the live-round card — the prototype's `pressPulse`
  * keyframes, 1.8s, opacity .35 to 1 and back.
  */
-export function LivePulse({ size = 7, color = colors.accent }: { size?: number; color?: string }) {
+export function LivePulse({ size = 7, color }: { size?: number; color?: string }) {
+  const { colors } = useTheme();
+  const dot = color ?? colors.accent;
   // Lazy useState rather than useRef().current: the value is created once, and
   // React 19 treats reading a ref during render as a bug.
   const [opacity] = useState(() => new Animated.Value(0.35));
@@ -35,7 +37,7 @@ export function LivePulse({ size = 7, color = colors.accent }: { size?: number; 
   return (
     <View style={{ width: size, height: size }}>
       <Animated.View
-        style={{ width: size, height: size, borderRadius: 999, backgroundColor: color, opacity }}
+        style={{ width: size, height: size, borderRadius: 999, backgroundColor: dot, opacity }}
       />
     </View>
   );

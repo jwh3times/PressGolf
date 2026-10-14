@@ -21,7 +21,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthGate } from '../auth/AuthGate';
 import { AuthProvider } from '../auth/AuthProvider';
 import { AppStoreProvider } from '../store/AppStore';
-import { colors } from '../theme/tokens';
+import { useTheme } from '../theme/theme';
 
 // Must run before the first render, not inside the component, or the native
 // splash is already gone by the time the effect fires. The splash is the
@@ -32,6 +32,7 @@ SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 300, fade: true });
 
 export default function RootLayout() {
+  const { colors } = useTheme();
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     InstrumentSans_400Regular,

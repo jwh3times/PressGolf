@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { colors, fonts, ink } from '../theme/tokens';
+import { useTheme } from '../theme/theme';
+import { fonts } from '../theme/tokens';
 import { CHIP_ROW_GAP, Chip, Eyebrow } from './primitives';
 
 /**
@@ -25,6 +26,7 @@ export function RulePicker<T extends string>({
   /** Further controls for the same rule, shown under the chips. */
   children?: React.ReactNode;
 }) {
+  const { colors, ink } = useTheme();
   const hint = choices.find((c) => c.value === value)?.hint;
   return (
     <View style={{ gap: 8 }}>

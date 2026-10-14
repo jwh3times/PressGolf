@@ -1,5 +1,7 @@
-import { colors, fill, ink, line, moneyColor } from '../tokens';
 import { AA_BODY, contrastRatio, parseColor, ratio, relativeLuminance } from '../contrast';
+import { darkTheme, moneyColor } from '../themes';
+
+const { colors, fill, ink, line } = darkTheme;
 
 /**
  * The palette's contrast, held to a number.
@@ -137,11 +139,11 @@ describe('the money colours', () => {
   });
 
   it('shows won, lost and level all above the bar', () => {
-    expect(ratio(moneyColor(1500), colors.screen)).toBe(12.06);
-    expect(ratio(moneyColor(-1500), colors.screen)).toBe(8.44);
+    expect(ratio(moneyColor(darkTheme, 1500), colors.screen)).toBe(12.06);
+    expect(ratio(moneyColor(darkTheme, -1500), colors.screen)).toBe(8.44);
     // Level money used to be the one gap in the money path, at 4.09:1.
-    expect(moneyColor(0)).toBe(ink.soft);
-    expect(ratio(moneyColor(0), colors.screen)).toBe(5.55);
+    expect(moneyColor(darkTheme, 0)).toBe(ink.soft);
+    expect(ratio(moneyColor(darkTheme, 0), colors.screen)).toBe(5.55);
   });
 });
 

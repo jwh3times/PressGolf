@@ -6,7 +6,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, Switch } from '../components/primitives';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 const SYNC_LABEL: Record<string, string> = {
   off: 'Not backing up',
@@ -17,6 +18,8 @@ const SYNC_LABEL: Record<string, string> = {
 };
 
 export default function SettingsScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const auth = useAuth();
@@ -207,50 +210,52 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  hint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, marginTop: 3, lineHeight: 16 },
-  action: {
-    borderWidth: 1,
-    borderColor: line.button,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  actionText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.body },
-  link: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-  },
-  linkText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
-  groupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  groupRowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: line.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    row: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    hint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, marginTop: 3, lineHeight: 16 },
+    action: {
+      borderWidth: 1,
+      borderColor: line.button,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      alignItems: 'center',
+    },
+    actionText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.body },
+    link: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 14,
+      paddingHorizontal: 15,
+    },
+    linkText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
+    groupRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    groupRowOn: { borderColor: colors.accentSoft, backgroundColor: colors.cardActive },
+    check: {
+      width: 22,
+      height: 22,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: line.control,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+    checkMark: { fontSize: 12, color: colors.screen, fontFamily: fonts.sansBold },
+  }),
+);

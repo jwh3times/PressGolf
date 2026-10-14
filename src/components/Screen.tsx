@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, ink, line } from '../theme/tokens';
+import { makeStyles } from '../theme/theme';
+import { fonts } from '../theme/tokens';
 import { useLargeText } from '../hooks/useLargeText';
 import { tabBarClearance } from './TabBar';
 
@@ -26,6 +27,7 @@ export function Screen({
   floatingTabBar?: boolean;
   scroll?: boolean;
 }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const padding = {
@@ -64,6 +66,7 @@ export function ModalHeader({
   closeLabel?: string;
   right?: React.ReactNode;
 }) {
+  const styles = useStyles();
   const largeText = useLargeText();
 
   return (
@@ -82,28 +85,30 @@ export function ModalHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.screen },
-  content: { gap: 22 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  headerLarge: { flexDirection: 'column' },
-  headerCopy: { flex: 1, minWidth: 0 },
-  headerCopyLarge: { flex: 0, width: '100%' },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerEyebrow: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    color: ink.soft,
-  },
-  headerTitle: { fontFamily: fonts.serif, fontSize: 32, lineHeight: 34, color: ink.full, marginTop: 3 },
-  close: {
-    borderWidth: 1,
-    borderColor: line.button,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  closeLabel: { fontFamily: fonts.sansSemi, fontSize: 12.5, color: ink.body },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.screen },
+    content: { gap: 22 },
+    header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    headerLarge: { flexDirection: 'column' },
+    headerCopy: { flex: 1, minWidth: 0 },
+    headerCopyLarge: { flex: 0, width: '100%' },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headerEyebrow: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+      color: ink.soft,
+    },
+    headerTitle: { fontFamily: fonts.serif, fontSize: 32, lineHeight: 34, color: ink.full, marginTop: 3 },
+    close: {
+      borderWidth: 1,
+      borderColor: line.button,
+      borderRadius: 999,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+    },
+    closeLabel: { fontFamily: fonts.sansSemi, fontSize: 12.5, color: ink.body },
+  }),
+);

@@ -6,9 +6,12 @@ import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, PrimaryButton } from '../components/primitives';
 import { makeCourse } from '../domain/factory';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 export default function CoursesScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const [name, setName] = useState('');
@@ -121,29 +124,31 @@ function hasDefaultIndexes(holes: { strokeIndex: number }[]): boolean {
   return holes.every((h, i) => h.strokeIndex === i + 1);
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.card,
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-  },
-  name: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
-  meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-  toggle: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  toggleOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  toggleText: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.body },
-  note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 14,
+      paddingHorizontal: 15,
+    },
+    name: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
+    meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
+    toggle: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: radius.md,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    toggleOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+    toggleText: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.body },
+    note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
+  }),
+);

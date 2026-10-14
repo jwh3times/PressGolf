@@ -13,7 +13,8 @@ import {
 } from '../components/primitives';
 import type { PlayerId } from '../domain/types';
 import { useStore, type OutingGroupDraft } from '../store/AppStore';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 
 /**
  * Sorting the field into playing groups.
@@ -23,6 +24,8 @@ import { colors, fonts, ink, line, radius } from '../theme/tokens';
  * is the wrong control for that. Pick a player, tap the group they belong in.
  */
 export default function GroupsScreen() {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const { outing, outingGroup, outingRounds } = store;
@@ -237,51 +240,53 @@ export default function GroupsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  pickedBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.cardActive,
-    borderWidth: 1,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.card,
-    padding: 12,
-  },
-  pickedText: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
-  pool: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  chipName: { fontFamily: fonts.sans, fontSize: 12, color: ink.body },
-  group: {
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: radius.format,
-    padding: 14,
-    gap: 10,
-  },
-  groupTarget: { borderColor: colors.accentSoft, borderStyle: 'dashed' },
-  groupHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  groupName: { fontFamily: fonts.sansBold, fontSize: 14.5, color: ink.full },
-  emptyGroup: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.quiet },
-  member: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  memberName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.full },
-  warn: { fontFamily: fonts.sans, fontSize: 11, color: colors.clay, lineHeight: 15 },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    pickedBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.cardActive,
+      borderWidth: 1,
+      borderColor: colors.accentSoft,
+      borderRadius: radius.card,
+      padding: 12,
+    },
+    pickedText: { flex: 1, minWidth: 0, fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full },
+    pool: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: 999,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+    },
+    chipName: { fontFamily: fonts.sans, fontSize: 12, color: ink.body },
+    group: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.format,
+      padding: 14,
+      gap: 10,
+    },
+    groupTarget: { borderColor: colors.accentSoft, borderStyle: 'dashed' },
+    groupHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    groupName: { fontFamily: fonts.sansBold, fontSize: 14.5, color: ink.full },
+    emptyGroup: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.quiet },
+    member: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      backgroundColor: colors.card,
+      borderRadius: radius.md,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    memberName: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 13, color: ink.full },
+    warn: { fontFamily: fonts.sans, fontSize: 11, color: colors.clay, lineHeight: 15 },
+  }),
+);

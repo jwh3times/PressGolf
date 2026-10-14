@@ -15,12 +15,15 @@ import {
 import { PLAYER_COLORS, deriveInitials, makePlayer } from '../domain/factory';
 import type { Player } from '../domain/types';
 import { useStore } from '../store/AppStore';
-import { colors, fonts, ink, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 import { MaxScorePicker } from '../components/MaxScorePicker';
 import { HandicapPicker } from '../components/HandicapPicker';
 import { formatIndex, parseIndex } from '../domain/handicap';
 
 export default function RosterScreen() {
+  const styles = useStyles();
+  const { ink } = useTheme();
   const store = useStore();
   const router = useRouter();
   const [groupName, setGroupName] = useState('');
@@ -285,39 +288,41 @@ function IndexField({
   );
 }
 
-const styles = StyleSheet.create({
-  name: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full },
-  sub: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 2 },
-  fieldLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: ink.soft,
-  },
-  playerRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13 },
-  playerEditor: { gap: 12, paddingHorizontal: 13, paddingBottom: 13 },
-  youTag: {
-    backgroundColor: 'rgba(139,224,174,.15)',
-    borderRadius: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 5,
-  },
-  youText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
-  swatch: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  destructive: {
-    borderWidth: 1,
-    borderColor: 'rgba(232,154,127,.4)',
-    borderRadius: radius.card,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  destructiveText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: colors.clay },
-});
+const useStyles = makeStyles(({ colors, ink }) =>
+  StyleSheet.create({
+    name: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full },
+    sub: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 2 },
+    fieldLabel: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.6,
+      textTransform: 'uppercase',
+      color: ink.soft,
+    },
+    playerRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13 },
+    playerEditor: { gap: 12, paddingHorizontal: 13, paddingBottom: 13 },
+    youTag: {
+      backgroundColor: 'rgba(139,224,174,.15)',
+      borderRadius: 4,
+      paddingVertical: 2,
+      paddingHorizontal: 5,
+    },
+    youText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.accent },
+    swatch: {
+      width: 34,
+      height: 34,
+      borderRadius: 999,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    destructive: {
+      borderWidth: 1,
+      borderColor: 'rgba(232,154,127,.4)',
+      borderRadius: radius.card,
+      paddingVertical: 13,
+      alignItems: 'center',
+    },
+    destructiveText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: colors.clay },
+  }),
+);

@@ -26,9 +26,14 @@ import {
   useLargeText,
 } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
-import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
+import { makeStyles, useTheme } from '../../theme/theme';
+import type { Theme } from '../../theme/themes';
+import { fonts, radius } from '../../theme/tokens';
 
 export default function ScoreScreen() {
+  const styles = useStyles();
+  const theme = useTheme();
+  const { colors, ink, line } = theme;
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
@@ -294,7 +299,7 @@ export default function ScoreScreen() {
             {carry > 1 ? `${carry - 1} skin${carry > 2 ? 's' : ''} riding` : 'skins clean'}
           </Mono>
         </View>
-        {buildHoleEvents(ctx, current).map((event, i) => (
+        {buildHoleEvents(theme, ctx, current).map((event, i) => (
           <View key={i} style={[styles.eventRow, largeText ? styles.stackRow : null]}>
             <View style={[styles.eventDot, { backgroundColor: event.color }]} />
             <Text style={[styles.eventText, largeText ? styles.fullWidth : null]}>{event.text}</Text>
@@ -321,6 +326,8 @@ export default function ScoreScreen() {
 
 /** Per-hole partner selection — the flow Wolf needs and the prototype never had. */
 function WolfPicker({ hole }: { hole: number }) {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const largeText = useLargeText();
   const round = store.round!;
@@ -395,6 +402,8 @@ function WolfPicker({ hole }: { hole: number }) {
  * the press would attach to.
  */
 function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const store = useStore();
   const largeText = useLargeText();
   const round = store.round!;
@@ -475,6 +484,7 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
  * each one to the end of its nine at the Nassau stake, as a live press does.
  */
 function CardPresses({ hole }: { hole: number }) {
+  const styles = useStyles();
   const store = useStore();
   const largeText = useLargeText();
   const round = store.round!;
@@ -547,7 +557,7 @@ interface HoleEvent {
 }
 
 /** The live "what this hole did" strip. Reads the same numbers the settlement will. */
-function buildHoleEvents(ctx: RoundContext, hole: number): HoleEvent[] {
+function buildHoleEvents({ colors, ink }: Theme, ctx: RoundContext, hole: number): HoleEvent[] {
   const round = ctx.round;
   if (!ctx.played(hole)) {
     return [
@@ -630,6 +640,8 @@ function firstUnplayedHole(ctx: RoundContext): number {
 }
 
 function RoundButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const styles = useStyles();
+  const { ink } = useTheme();
   const controlScale = useAccessibilityControlScale();
 
   return (
@@ -655,6 +667,7 @@ function RoundButton({ label, onPress }: { label: string; onPress: () => void })
 
 /** Save or throw away the card being typed in. The live round is never touched either way. */
 function CardActions() {
+  const styles = useStyles();
   const store = useStore();
   const router = useRouter();
   const round = store.round!;
@@ -713,109 +726,111 @@ function CardActions() {
   );
 }
 
-const styles = StyleSheet.create({
-  cardBanner: {
-    gap: 8,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.card,
-    backgroundColor: colors.cardActive,
-  },
-  cardBannerText: { fontFamily: fonts.sans, fontSize: 13, color: ink.soft },
-  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
-  fullWidth: { flex: 0, width: '100%' },
-  holeNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  holeMeta: { letterSpacing: 1.4, color: ink.soft, marginTop: 5 },
-  holeMetaLarge: {
-    letterSpacing: 1.4,
-    color: ink.soft,
-    marginTop: 5,
-    textAlign: 'center',
-    alignSelf: 'stretch',
-  },
-  roundButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    backgroundColor: fill.subtle,
-    borderWidth: 1,
-    borderColor: line.bright,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreRow: {
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderRadius: radius.panel,
-    paddingHorizontal: 13,
-    paddingTop: 13,
-    paddingBottom: 12,
-  },
-  scoreMain: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  playerIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  playerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  scoreControls: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  playerName: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
-  playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
-  pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
-  popText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.gold },
-  scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    columnGap: 6,
-    rowGap: CHIP_ROW_GAP,
-    marginTop: CHIP_ROW_GAP,
-    flexWrap: 'wrap',
-  },
-  holeCard: {
-    borderWidth: 1,
-    borderColor: colors.accentLine,
-    borderRadius: radius.format,
-    padding: 15,
-    gap: 11,
-  },
-  holeCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  holeCardLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.8,
-    textTransform: 'uppercase',
-    color: colors.accent,
-  },
-  eventDot: { width: 7, height: 7, borderRadius: 999 },
-  eventRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  eventText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.strong },
-  eventAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
-  wolfCard: {
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: 'rgba(232,160,200,.28)',
-    borderRadius: radius.format,
-    padding: 15,
-    gap: 9,
-  },
-  wolfHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wolfName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
-  wolfHint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, lineHeight: 16 },
-  cardPressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: line.card,
-    borderRadius: 13,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-  },
-  pressCopy: { flex: 1, minWidth: 0 },
-  pressStatus: { fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
-  pressDetail: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
-  pressButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
-  pressButtonLive: { backgroundColor: colors.clay },
-  pressButtonIdle: { borderWidth: 1, borderColor: line.bright },
-  pressButtonText: { fontFamily: fonts.sansBold, fontSize: 12 },
-});
+const useStyles = makeStyles(({ colors, ink, line, fill }) =>
+  StyleSheet.create({
+    cardBanner: {
+      gap: 8,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.accentSoft,
+      borderRadius: radius.card,
+      backgroundColor: colors.cardActive,
+    },
+    cardBannerText: { fontFamily: fonts.sans, fontSize: 13, color: ink.soft },
+    stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+    fullWidth: { flex: 0, width: '100%' },
+    holeNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    holeMeta: { letterSpacing: 1.4, color: ink.soft, marginTop: 5 },
+    holeMetaLarge: {
+      letterSpacing: 1.4,
+      color: ink.soft,
+      marginTop: 5,
+      textAlign: 'center',
+      alignSelf: 'stretch',
+    },
+    roundButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 999,
+      backgroundColor: fill.subtle,
+      borderWidth: 1,
+      borderColor: line.bright,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scoreRow: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderRadius: radius.panel,
+      paddingHorizontal: 13,
+      paddingTop: 13,
+      paddingBottom: 12,
+    },
+    scoreMain: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    playerIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+    playerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+    scoreControls: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    playerName: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
+    playerSub: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
+    pop: { backgroundColor: 'rgba(232,196,106,.15)', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 5 },
+    popText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.85, color: colors.gold },
+    scoreValue: { fontFamily: fonts.monoBold, fontSize: 21, minWidth: 30, textAlign: 'center' },
+    chipRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 6,
+      rowGap: CHIP_ROW_GAP,
+      marginTop: CHIP_ROW_GAP,
+      flexWrap: 'wrap',
+    },
+    holeCard: {
+      borderWidth: 1,
+      borderColor: colors.accentLine,
+      borderRadius: radius.format,
+      padding: 15,
+      gap: 11,
+    },
+    holeCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    holeCardLabel: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.8,
+      textTransform: 'uppercase',
+      color: colors.accent,
+    },
+    eventDot: { width: 7, height: 7, borderRadius: 999 },
+    eventRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    eventText: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 12.5, color: ink.strong },
+    eventAmount: { fontFamily: fonts.mono, fontSize: 12, color: ink.soft },
+    wolfCard: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: 'rgba(232,160,200,.28)',
+      borderRadius: radius.format,
+      padding: 15,
+      gap: 9,
+    },
+    wolfHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    wolfName: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    wolfHint: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted, lineHeight: 16 },
+    cardPressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    pressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: 13,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+    },
+    pressCopy: { flex: 1, minWidth: 0 },
+    pressStatus: { fontFamily: fonts.sans, fontSize: 13.5, color: ink.full },
+    pressDetail: { fontFamily: fonts.sans, fontSize: 11, color: ink.soft, marginTop: 2 },
+    pressButton: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
+    pressButtonLive: { backgroundColor: colors.clay },
+    pressButtonIdle: { borderWidth: 1, borderColor: line.bright },
+    pressButtonText: { fontFamily: fonts.sansBold, fontSize: 12 },
+  }),
+);

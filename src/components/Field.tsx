@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { colors, fonts, ink, line, MIN_TAP_TARGET, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
 
 /** Labelled text input in the app's dark palette. */
 export function Field({
@@ -9,6 +10,8 @@ export function Field({
   style,
   ...rest
 }: TextInputProps & { label: string; hint?: string }) {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.label}>{label}</Text>
@@ -25,25 +28,27 @@ export function Field({
   );
 }
 
-const styles = StyleSheet.create({
-  label: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: ink.soft,
-  },
-  input: {
-    backgroundColor: colors.cardDeep,
-    borderWidth: 1,
-    borderColor: line.control,
-    borderRadius: radius.md,
-    minHeight: MIN_TAP_TARGET,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    color: ink.full,
-  },
-  hint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
-});
+const useStyles = makeStyles(({ colors, ink, line }) =>
+  StyleSheet.create({
+    label: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1.6,
+      textTransform: 'uppercase',
+      color: ink.soft,
+    },
+    input: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.control,
+      borderRadius: radius.md,
+      minHeight: MIN_TAP_TARGET,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      fontFamily: fonts.sans,
+      fontSize: 15,
+      color: ink.full,
+    },
+    hint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
+  }),
+);

@@ -4,7 +4,8 @@ import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import { colors, fonts, ink, line, radius } from '../theme/tokens';
+import { makeStyles, useTheme } from '../theme/theme';
+import { fonts, radius } from '../theme/tokens';
 import { MAX_CONTROL_SCALE, accessibilityControlScale } from '../hooks/useLargeText';
 
 export function tabBarHeight(fontScale: number): number {
@@ -37,6 +38,8 @@ const LABELS: Record<string, string> = {
 };
 
 export function TabBar({ state, navigation }: BottomTabBarProps) {
+  const styles = useStyles();
+  const { colors, ink } = useTheme();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
 
@@ -93,21 +96,23 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 14, right: 14 },
-  bar: {
-    borderRadius: radius.hero,
-    // Android has no backdrop filter, so the pill carries its own near-opaque
-    // fill; on iOS the blur does the work and this tints it.
-    backgroundColor: Platform.OS === 'android' ? 'rgba(18,25,20,.97)' : colors.glass,
-    borderWidth: 1,
-    borderColor: line.bright,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    overflow: 'hidden',
-  },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
-  glyph: { fontSize: 13, lineHeight: 18, fontFamily: fonts.sans },
-  label: { fontSize: 10, lineHeight: 14, letterSpacing: 0.2, fontFamily: fonts.sans },
-});
+const useStyles = makeStyles(({ colors, line }) =>
+  StyleSheet.create({
+    wrap: { position: 'absolute', left: 14, right: 14 },
+    bar: {
+      borderRadius: radius.hero,
+      // Android has no backdrop filter, so the pill carries its own near-opaque
+      // fill; on iOS the blur does the work and this tints it.
+      backgroundColor: Platform.OS === 'android' ? 'rgba(18,25,20,.97)' : colors.glass,
+      borderWidth: 1,
+      borderColor: line.bright,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      overflow: 'hidden',
+    },
+    tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
+    glyph: { fontSize: 13, lineHeight: 18, fontFamily: fonts.sans },
+    label: { fontSize: 10, lineHeight: 14, letterSpacing: 0.2, fontFamily: fonts.sans },
+  }),
+);

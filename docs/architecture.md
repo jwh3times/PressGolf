@@ -243,7 +243,8 @@ src/
   hooks/            responsive accessibility helpers
   store/            application state and AsyncStorage persistence
   sync/             row translation, snapshot sync, and staged mutation sync
-  theme/            tokens, type floor, and contrast calculations
+  theme/            themes (every colour), the provider and hooks that read them,
+                    type and size tokens, and contrast calculations
 supabase/
   migrations/       versioned production schema
   ci/               Postgres stand-ins and RLS assertions

@@ -23,12 +23,15 @@ import { FORMATS } from '../../domain/formats';
 import { GAME_KEYS, type GameKey } from '../../domain/types';
 import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
-import { colors, fill, fonts, ink, line, radius } from '../../theme/tokens';
+import { makeStyles, useTheme } from '../../theme/theme';
+import { fonts, radius } from '../../theme/tokens';
 import { MaxScorePicker } from '../../components/MaxScorePicker';
 import { HandicapPicker } from '../../components/HandicapPicker';
 import { describeWorking, teesChanged, workingsFor } from '../../domain/handicap';
 
 export default function FormatScreen() {
+  const styles = useStyles();
+  const { colors, ink, line } = useTheme();
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
@@ -291,6 +294,8 @@ function FormatRequirement({
   onOpenSides: () => void;
   onOpenScore: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const store = useStore();
   const round = store.round!;
   const group = store.group!;
@@ -363,68 +368,70 @@ function popsHint(pops: number, holeCount: number): string {
   return extra ? `${each} strokes everywhere, ${each + 1} on SI 1–${to}` : `${each} strokes on every hole`;
 }
 
-const styles = StyleSheet.create({
-  teeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP },
-  teeLabel: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full, width: 88 },
-  stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
-  flexCopy: { flex: 1, minWidth: 0 },
-  fullWidth: { flex: 0, width: '100%' },
-  formatCard: { borderWidth: 1, borderRadius: radius.format, padding: 15 },
-  formatHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  formatTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  formatName: { fontFamily: fonts.sansBold, fontSize: 15.5, color: ink.full },
-  tag: { backgroundColor: fill.control, borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 6 },
-  tagText: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: ink.muted,
-  },
-  blurb: { fontFamily: fonts.sans, fontSize: 12, color: ink.muted, marginTop: 5, lineHeight: 17 },
-  stakeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    marginTop: 14,
-    paddingTop: 13,
-    borderTopWidth: 1,
-    borderTopColor: line.bright,
-  },
-  stakeLabel: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted },
-  requirement: {
-    marginTop: 12,
-    paddingTop: 11,
-    borderTopWidth: 1,
-    borderTopColor: line.hair,
-    gap: 4,
-  },
-  requirementLabel: { letterSpacing: 1.2, color: ink.soft },
-  requirementText: { fontFamily: fonts.sans, fontSize: 12, color: ink.body, lineHeight: 17 },
-  popsHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  popsMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
-  popsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingVertical: 9,
-    borderTopWidth: 1,
-    borderTopColor: line.hair,
-  },
-  popsIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  popsName: { fontFamily: fonts.sans, fontSize: 14, color: ink.full },
-  popsHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 1 },
-  exposureNote: {
-    fontFamily: fonts.sans,
-    fontSize: 11,
-    color: ink.quiet,
-    lineHeight: 16,
-    textAlign: 'center',
-    marginTop: -10,
-  },
-});
+const useStyles = makeStyles(({ ink, line, fill }) =>
+  StyleSheet.create({
+    teeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP },
+    teeLabel: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.full, width: 88 },
+    stackRow: { flexDirection: 'column', alignItems: 'flex-start' },
+    flexCopy: { flex: 1, minWidth: 0 },
+    fullWidth: { flex: 0, width: '100%' },
+    formatCard: { borderWidth: 1, borderRadius: radius.format, padding: 15 },
+    formatHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    formatTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    formatName: { fontFamily: fonts.sansBold, fontSize: 15.5, color: ink.full },
+    tag: { backgroundColor: fill.control, borderRadius: radius.sm, paddingVertical: 3, paddingHorizontal: 6 },
+    tagText: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      color: ink.muted,
+    },
+    blurb: { fontFamily: fonts.sans, fontSize: 12, color: ink.muted, marginTop: 5, lineHeight: 17 },
+    stakeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      marginTop: 14,
+      paddingTop: 13,
+      borderTopWidth: 1,
+      borderTopColor: line.bright,
+    },
+    stakeLabel: { flex: 1, minWidth: 0, fontFamily: fonts.sans, fontSize: 11.5, color: ink.muted },
+    requirement: {
+      marginTop: 12,
+      paddingTop: 11,
+      borderTopWidth: 1,
+      borderTopColor: line.hair,
+      gap: 4,
+    },
+    requirementLabel: { letterSpacing: 1.2, color: ink.soft },
+    requirementText: { fontFamily: fonts.sans, fontSize: 12, color: ink.body, lineHeight: 17 },
+    popsHeader: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    popsMeta: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet },
+    popsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingVertical: 9,
+      borderTopWidth: 1,
+      borderTopColor: line.hair,
+    },
+    popsIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+    popsName: { fontFamily: fonts.sans, fontSize: 14, color: ink.full },
+    popsHint: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, marginTop: 1 },
+    exposureNote: {
+      fontFamily: fonts.sans,
+      fontSize: 11,
+      color: ink.quiet,
+      lineHeight: 16,
+      textAlign: 'center',
+      marginTop: -10,
+    },
+  }),
+);
