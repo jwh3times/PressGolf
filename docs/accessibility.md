@@ -27,7 +27,14 @@ substitute for assistive-technology use on both platforms.
   high-contrast bases also give control outlines 3:1. Only the default palette
   is written out; the others are derived from these floors in
   `src/theme/themes.ts`, and `src/theme/__tests__/themes.test.ts` holds all 16
-  combinations to them. axe checks four of them on the web build.
+  combinations to them. The one exception is `ink.quiet` on the gradient
+  cards (live round, hole, outing pots) in the dark base, which those cards
+  don't use. axe checks four of them on the web build.
+- The themes were checked by hand on an iPhone in Expo Go on 2026-10-14
+  (#114): each base with several accents, readability across the main
+  screens, money colours, a light keyboard, alerts and status bar in the
+  light themes, the tab bar's blur, and the Appearance section at the largest
+  text size. Not checked on Android.
 - Money won is green and money lost is clay in every theme, whichever accent
   is chosen, so the accent never changes what a figure means.
 - Dense screens switch to large-text layouts at a font scale of 1.8. Fixed
