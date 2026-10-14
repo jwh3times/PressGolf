@@ -172,9 +172,10 @@ Its limits:
   comfortable to tap. Say so in the allowlist entry's reason if you accept it.
   Steppers, game switches, the hole dots and the header text links are accepted
   this way: each sets a `hitSlop` that brings its touch area to
-  `MIN_TAP_TARGET` (48, in `src/theme/tokens.ts`). That the slop is honoured
-  where it reaches past the control's parent has not been checked on a device
-  (as of 2026-10-12).
+  `MIN_TAP_TARGET` (48, in `src/theme/tokens.ts`). The slop is honoured where
+  it reaches past the control's parent on iOS: checked by hand on an iPhone on
+  2026-10-13, along with the chips, whose tap boxes overlap the space around
+  their pills. Neither has been checked on an Android device.
 - **Controls cut off by the screen edge are skipped**, since their visible
   size says nothing.
 - **Only the eight checkpoint screens are covered**, in the state the flow
