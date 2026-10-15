@@ -113,6 +113,12 @@ export default function CourseEditorScreen() {
           label="Place greens on a map"
           onPress={() => router.push({ pathname: '/green-map', params: { id: course.id } })}
         />
+        {course.features.length || course.greens.length ? (
+          <GhostButton
+            label="View the hole map"
+            onPress={() => router.push({ pathname: '/hole-map', params: { course: course.id, hole: '1' } })}
+          />
+        ) : null}
       </View>
 
       {duplicateIndexes ? (

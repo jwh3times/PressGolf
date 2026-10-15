@@ -154,6 +154,34 @@ greens mapped: 81% have at least nine bunkers, 87% at least nine fairways, 85%
 a tagged water hazard, and 2% any `golf=out_of_bounds`. Out of bounds therefore
 comes from the course edge and from lines the owner draws.
 
+### Hole map
+
+**Map of hole N** on the Score screen, and **View the hole map** in the course
+editor, open `src/app/hole-map.tsx` for a course and hole, both carried in the
+URL. `holePlan` (`src/domain/hole-map.ts`) gathers the hole's line, its green,
+everything within 60 m of the line (`CORRIDOR_M`), and the course's edge.
+`HoleDiagram` draws them with `react-native-svg`, turned so the hole plays up
+the screen, from the saved map alone: it needs no signal on the course, no map
+provider and no API key, and it works on the web. The map's colours come from
+the theme (`src/theme/course-colors.ts`).
+
+Distances are from the phone when it is within 1 km of the hole
+(`ON_HOLE_M`); from the Score screen GPS starts for a minute, as the yardage
+card's does. Anywhere else they are from the tee, so a hole can be looked over
+beforehand. The target is the next bend in the hole's line, as mappers draw
+it through the landing area (`defaultTarget`), or the green. A lay-up button
+measures to a point 100, 150 or 200 yards short of the green along the line
+(`pointShort`), and a tap on the map measures to that point.
+
+`hazardsBetween` lists each bunker and penalty area within 40 m of the line to
+the target and short of 30 m past it, nearest first: its side, the yards to
+its front and to its far end, and for one across the line, the carry.
+`aroundGreen` adds those within 35 m of the green when the target is short of
+it, and `edgesNear` says how close the course's edge or an out-of-bounds line
+comes to the target. These are all distances between two points, which
+Rule 4.3a allows a device to show during a round; nothing here suggests a
+club.
+
 For a course nobody has mapped and nobody is standing on, **Place greens on a
 map** (`src/app/green-map.tsx`) shows a satellite map (`react-native-maps`:
 Apple Maps on iOS, Google Maps on Android). Pick a hole and tap where its

@@ -10,7 +10,9 @@ and tee, in full or off the low man, or are typed in by hand. Outings can split
 a larger field into playing groups while settling field-wide skins or scats
 alongside each group's games. On the course, a tap gives the yardage to the
 green, from greens found on OpenStreetMap, placed on a satellite map, or marked
-standing on them.
+standing on them. Courses imported from OpenStreetMap also get a drawn map of
+each hole, with the yards to the green, to a target, and to and over every
+bunker and penalty area in play.
 
 ## Quick start
 
@@ -118,11 +120,14 @@ pass.
   editor, which covers about half of courses, placed on a map, or marked by
   standing on each. The map has no web version, and an Android store build
   needs a Google Maps key that isn't set up yet (Expo Go doesn't).
-  Importing them, with the course's bunkers, water and fairways for the coming
-  hole map ([#125](https://github.com/jwh3times/PressGolf/issues/125)), sends
+  Importing them, with the course's bunkers, water and fairways for the hole
+  map ([#125](https://github.com/jwh3times/PressGolf/issues/125)), sends
   the course name to OpenStreetMap's public services. It has
   been tested in Jest and on the web build, not on a phone on a course. Web
   cannot mark a green, because marking confirms through a native alert.
+- The hole map has been checked in Jest and in the web build on Torrey Pines
+  South's real map, not yet on a phone. It is drawn from the saved map; a
+  satellite view on phones is still to come (#125).
 - Handicap indexes are typed in by hand. Keeping them in step with GHIN is
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
 - Themes: dark (the default, made for daylight), light, and a high-contrast

@@ -170,6 +170,14 @@ export default function ScoreScreen() {
         green={greenFor(course.greens, holeInfo.number)}
         onMark={(green) => store.setGreen(course.id, green)}
       />
+      {course.features.length ? (
+        <GhostButton
+          label={`Map of hole ${holeInfo.number}`}
+          onPress={() =>
+            router.push({ pathname: '/hole-map', params: { course: course.id, hole: String(holeInfo.number), live: '1' } })
+          }
+        />
+      ) : null}
 
       {roster.map((player) => {
         const gross = ctx.gross(player.id, current);

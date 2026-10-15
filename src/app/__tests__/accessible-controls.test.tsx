@@ -21,6 +21,12 @@ import CourseScreen from '../course/[id]';
 import CoursesScreen from '../courses';
 import GreensScreen from '../greens';
 import GreenMapScreen from '../green-map';
+import HoleMapScreen from '../hole-map';
+import { featuresFromOsm } from '../../osm/features';
+import { greensFromOsm, type OsmElement } from '../../osm/greens';
+import { frame } from '../../domain/hole-map';
+import type { CourseFeature, LatLng } from '../../domain/types';
+import * as Location from 'expo-location';
 import { fetchCourseFeatures, findCourses } from '../../osm/client';
 import torrey from '../../osm/__tests__/torrey-south.json';
 import FieldGamesScreen from '../field-games';
@@ -40,6 +46,7 @@ const mockRouter = {
   back: jest.fn(),
   push: jest.fn(),
   replace: jest.fn(),
+  setParams: jest.fn(),
 };
 
 let mockCourseId = '';
@@ -2020,5 +2027,152 @@ describe('tap targets', () => {
     expect(flat(screen.getByRole('button', { name: 'Edit the format' }))).toMatchObject({ minHeight: 48 });
     expect(flat(screen.getByRole('button', { name: 'Enter scores' }))).toMatchObject({ minHeight: 48 });
     await view.unmount();
+  });
+});
+
+describe('the hole map', () => {
+  const elements = torrey.elements as unknown as OsmElement[];
+  // Pine Hollow's card, with Torrey Pines South's map: holes 3 and 8 have lines and greens.
+  const mapped = { ...course, features: featuresFromOsm(elements, 18), greens: greensFromOsm(elements, 18).greens };
+  const open = async (params: Record<string, string>) => {
+    useStoreValue({ courses: [mapped], course: mapped });
+    mockParams = { course: mapped.id, ...params };
+    return render(<HoleMapScreen />);
+  };
+  const drawing = () => screen.getByRole('image', { name: /^Drawn map of hole/ });
+  const layOut = async () => {
+    await act(async () => drawing().props.onLayout({ nativeEvent: { layout: { width: 360, height: 440 } } }));
+  };
+
+  it('measures from the tee away from the course: to the green, and to and over what is in play', async () => {
+    await open({ hole: '3' });
+    expectEveryControlToHaveAName();
+    expect(screen.getByText('FROM THE TEE')).toBeOnTheScreen();
+    expect(screen.getByText('TO THE MIDDLE')).toBeOnTheScreen();
+    expect(drawing()).toHaveAccessibleName(/^Drawn map of hole 3, tee at the bottom, green at the top\. \d+ yards to the middle of the green\./);
+    expect(screen.getByLabelText(/^Bunker, across the line: \d+ yards to the front, \d+ to carry it\.$/)).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: /OpenStreetMap contributors/ })).toBeOnTheScreen();
+  });
+
+  it('measures to a lay-up short of the green, to a tapped point, and back to the green', async () => {
+    await open({ hole: '8' });
+    await layOut();
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Measure to 100 yards short of the green' }));
+    expect(screen.getByText(/^\d+ to the target, then 100 to the green\.$/)).toBeOnTheScreen();
+
+    await act(async () => {
+      drawing().props.onResponderGrant({ nativeEvent: { locationX: 150, locationY: 200 } });
+      drawing().props.onResponderRelease({ nativeEvent: { locationX: 152, locationY: 201 } });
+    });
+    await user.press(screen.getByRole('button', { name: 'Clear the point you tapped' }));
+    expect(screen.queryByRole('button', { name: 'Clear the point you tapped' })).toBeNull();
+
+    // A drag is a scroll, not a tap.
+    await act(async () => {
+      drawing().props.onResponderGrant({ nativeEvent: { locationX: 150, locationY: 200 } });
+      drawing().props.onResponderRelease({ nativeEvent: { locationX: 150, locationY: 300 } });
+      drawing().props.onResponderGrant({ nativeEvent: { locationX: 150, locationY: 200 } });
+      drawing().props.onResponderTerminate();
+    });
+    expect(screen.queryByRole('button', { name: 'Clear the point you tapped' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Measure to the middle of the green' })).toBeOnTheScreen();
+  });
+
+  it('moves between holes through the URL', async () => {
+    await open({ hole: '3' });
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Next hole' }));
+    expect(mockRouter.setParams).toHaveBeenCalledWith({ hole: '4' });
+    await user.press(screen.getByRole('button', { name: 'Previous hole' }));
+    expect(mockRouter.setParams).toHaveBeenCalledWith({ hole: '2' });
+  });
+
+  it('measures from the phone when it is on the hole, started from the Score screen', async () => {
+    const plan = mapped.features.find((f) => f.kind === 'holeLine' && f.hole === 3)!;
+    jest.mocked(Location.watchPositionAsync).mockImplementationOnce(async (_options, callback) => {
+      callback({ coords: { latitude: plan.points[0].lat - 0.0003, longitude: plan.points[0].lng, accuracy: 4 }, timestamp: 0 } as never);
+      return { remove: jest.fn() };
+    });
+    await open({ hole: '3', live: '1' });
+    await waitFor(() => expect(screen.getByText('FROM YOU · LIVE · ±4 M')).toBeOnTheScreen());
+  });
+
+  it('says so for a hole with no map, and for a course that isn\'t there', async () => {
+    const view = await open({ hole: '1' });
+    expect(screen.getByText(/This hole isn’t mapped yet/)).toBeOnTheScreen();
+    await view.unmount();
+    mockParams = { course: 'missing', hole: '1' };
+    await render(<HoleMapScreen />);
+    expect(screen.getByText('Course not found')).toBeOnTheScreen();
+  });
+
+  it('opens from the course editor, and from the Score screen measuring from the phone', async () => {
+    useStoreValue({ courses: [mapped] });
+    const view = await render(<CourseScreen />);
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'View the hole map' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '1' } });
+    await view.unmount();
+
+    useStoreValue({ course: mapped });
+    await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: /^Map of hole \d+$/ }));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/hole-map',
+      params: { course: mapped.id, hole: expect.any(String), live: '1' },
+    });
+  });
+
+  it('reads trouble around a player on a hole with no line: in a bunker, over red water, beside out of bounds', async () => {
+    // Laid out round where the location mock puts the phone, which stands in a bunker.
+    const flat = frame({ lat: 45.5, lng: -122.6 }, 0);
+    const at = (north: number, east = 0) => flat.toLatLng([east, north]);
+    const box = (south: number, north: number, west: number, east: number) => [at(south, west), at(south, east), at(north, east), at(north, west)];
+    const feature = (id: string, kind: CourseFeature['kind'], points: LatLng[], source: 'osm' | 'map' = 'map'): CourseFeature => ({
+      id,
+      kind,
+      hole: null,
+      points,
+      source,
+    });
+    const onFoot = {
+      ...course,
+      greens: [{ number: 2, middle: at(150), front: at(140), back: at(160), source: 'marked' as const }],
+      features: [
+        feature('b', 'bunker', box(-5, 5, -5, 5)),
+        feature('r', 'lateralWater', box(80, 95, -60, 60), 'osm'),
+        feature('y', 'water', box(130, 140, 20, 40)),
+        feature('ob', 'outOfBounds', [at(0, 25), at(200, 25)]),
+        feature('edge', 'courseEdge', box(-300, 300, -30, 300)),
+      ],
+    };
+    useStoreValue({ courses: [onFoot], course: onFoot });
+    mockParams = { course: onFoot.id, hole: '2' };
+    await render(<HoleMapScreen />);
+    expect(screen.getByText(/This hole has no line from tee to green/)).toBeOnTheScreen();
+
+    jest.mocked(Location.watchPositionAsync).mockImplementationOnce(async (_options, callback) => {
+      callback({ coords: { latitude: 45.5, longitude: -122.6, accuracy: 4 }, timestamp: 0 } as never);
+      return { remove: jest.fn() };
+    });
+    await userEvent.setup().press(screen.getByRole('button', { name: '⌖ MEASURE FROM ME' }));
+    await waitFor(() => expect(screen.getByText('FROM YOU · LIVE · ±4 M')).toBeOnTheScreen());
+    expect(screen.getByText('THE GREEN')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^You are in a bunker\. \d+ yards to get past it\.$/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Red penalty area, across the line: \d+ yards to the front, \d+ to carry it\.$/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Water, right: \d+ yards to the front, \d+ to get past it\.$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Out of bounds, \d+ yards right of the target\.$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Course edge, \d+ yards left of the target\.$/)).toBeOnTheScreen();
+    expect(screen.getByText(/the white stakes are what count/)).toBeOnTheScreen();
+    expect(screen.getByText(/^\d+ FRONT · \d+ BACK$/)).toBeOnTheScreen();
+    expect(screen.getByRole('link', { name: /OpenStreetMap contributors/ })).toBeOnTheScreen();
+  });
+
+  it('measures from the tee when the phone may not say where it is', async () => {
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({ granted: false } as never);
+    await open({ hole: '3', live: '1' });
+    await waitFor(() => expect(screen.getByText('Press can’t see your location, so it measures from the tee.')).toBeOnTheScreen());
+    expect(screen.getByText('FROM THE TEE')).toBeOnTheScreen();
   });
 });
