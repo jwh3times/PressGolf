@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { changedRows, deletions } from './diff';
-import { pullSharedOutings, pushSnapshot, reconcile } from './remote';
+import { pullSharedOutings, pushChanges, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
-import { fromRows, toRows, type Documents, type Snapshot } from './rows';
+import { emptySnapshot, fromRows, toRows, type Documents, type Snapshot } from './rows';
 
 export interface SyncState {
   /**
@@ -43,6 +42,8 @@ export function useDataSync(options: {
   // What we believe the server is holding. Later pushes diff against this to
   // work out what was deleted, rather than pulling the whole lot again.
   const serverHas = useRef<Snapshot | null>(null);
+  // The shared outings as last pulled: which of the phone's rows are someone else's.
+  const sharedHas = useRef<Snapshot>(emptySnapshot());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef(false);
   const adopt = useRef(onAdoptRemote);
@@ -81,11 +82,12 @@ export function useDataSync(options: {
         const local = toRows(documents);
         const outcome = await reconcile(local);
         if (cancelled) return;
+        sharedHas.current = outcome.shared;
         if (outcome.status === 'adopted-remote') {
           serverHas.current = outcome.snapshot;
           adopt.current(fromRows(outcome.snapshot));
         } else {
-          serverHas.current = local;
+          serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
         }
         setState({ status: 'synced', at: Date.now(), message: null });
       } catch (error) {
@@ -114,12 +116,11 @@ export function useDataSync(options: {
       void (async () => {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
-          const local = toRows(documents);
-          await pushSnapshot(changedRows(server, local), { prune: deletions(server, local) });
-          serverHas.current = local;
+          serverHas.current = await pushChanges(toRows(documents), server, sharedHas.current);
           // Only now, with this phone's edits safely up, is it safe to let the
           // server's copy of a shared day win.
-          const incoming = fromRows(await pullSharedOutings());
+          sharedHas.current = await pullSharedOutings();
+          const incoming = fromRows(sharedHas.current);
           const merged = mergeShared(latest.current, incoming);
           if (changesAnything(latest.current, merged)) shared.current(merged);
           setState({ status: 'synced', at: Date.now(), message: null });

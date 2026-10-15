@@ -1,5 +1,5 @@
 import { buildDemoDataset } from '../../demo/seed';
-import { changedRows, countDeletions, deletions, identify, isEmpty, KEYS } from '../diff';
+import { changedRows, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, KEYS, splitByOwner } from '../diff';
 import { emptySnapshot, toRows, TABLES, type Documents, type Snapshot } from '../rows';
 
 function demoRows(): Snapshot {
@@ -124,6 +124,57 @@ describe('changedRows', () => {
     const server = structuredClone(local);
     server.groups = server.groups.map((row) => ({ ...row, owner_id: 'someone' }));
     expect(changedRows(server, local).groups).toEqual([]);
+  });
+});
+
+describe('splitByOwner', () => {
+  const me = 'owner-me';
+  const ann = 'owner-ann';
+  /** The guest's phone after merging Ann's day: its own season, and her outing with one cell changed. */
+  function phone() {
+    const own = demoRows();
+    const hers = demoRows();
+    // Ann's rows, as the shared pull returns them: with her as owner, under ids of her own.
+    const shared = emptySnapshot();
+    shared.groups = hers.groups.slice(0, 1).map((row) => ({ ...row, id: `ann-${row.id}`, owner_id: ann }));
+    shared.rounds = hers.rounds.slice(0, 1).map((row) => ({ ...row, id: 'ann-round', owner_id: ann }));
+    shared.scores = hers.scores
+      .filter((row) => row.round_id === hers.rounds[0].id)
+      .slice(0, 3)
+      .map((row) => ({ ...row, round_id: 'ann-round', owner_id: ann }));
+    /** As the phone holds them: rows carry no owner. */
+    const strip = <T,>(rows: T[]): T[] =>
+      rows.map((row) => {
+        const { owner_id: _owner, ...rest } = row as T & { owner_id?: unknown };
+        return rest as T;
+      });
+    const local = structuredClone(own);
+    local.groups.push(...strip(shared.groups));
+    local.rounds.push(...strip(shared.rounds));
+    const cells = strip(shared.scores);
+    cells[0] = { ...cells[0], strokes: 9 };
+    local.scores.push(...cells);
+    return { own, shared, local, changed: cells[0] };
+  }
+
+  it('keeps every row this account owns or is adding, and none of someone else\'s day', () => {
+    const { own, shared, local } = phone();
+    const split = splitByOwner(local, shared, me);
+    expect(split.own).toEqual(own);
+  });
+
+  it('sends only the cells of their card this phone changed, and only from the tables a guest may write', () => {
+    const { shared, local, changed } = phone();
+    const { guest } = splitByOwner(local, shared, me);
+    expect(guest.scores).toEqual([changed]);
+    expect(TABLES.filter((t) => guest[t].length > 0)).toEqual(['scores']);
+    expect([...GUEST_WRITES]).toEqual(['scores', 'junk']);
+  });
+
+  it('treats rows the shared pull says are this account\'s own as its own: the organiser\'s own day', () => {
+    const { shared, local } = phone();
+    const mine = { ...shared, groups: shared.groups.map((row) => ({ ...row, owner_id: me })) };
+    expect(splitByOwner(local, mine, me).own.groups.map((g) => g.id)).toContain(shared.groups[0].id);
   });
 });
 

@@ -1,19 +1,19 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { buildDemoDataset } from '../../demo/seed';
 import { changesAnything, mergeShared } from '../merge-shared';
-import { pullSharedOutings, pushSnapshot, reconcile } from '../remote';
+import { pullSharedOutings, pushChanges, reconcile } from '../remote';
 import { emptySnapshot, toRows } from '../rows';
 import { useDataSync } from '../useDataSync';
 
 jest.mock('../remote', () => ({
   pullSharedOutings: jest.fn(),
-  pushSnapshot: jest.fn(),
+  pushChanges: jest.fn(),
   reconcile: jest.fn(),
 }));
 jest.mock('../merge-shared', () => ({ changesAnything: jest.fn(), mergeShared: jest.fn() }));
 
 const mockReconcile = reconcile as jest.MockedFunction<typeof reconcile>;
-const mockPush = pushSnapshot as jest.MockedFunction<typeof pushSnapshot>;
+const mockPush = pushChanges as jest.MockedFunction<typeof pushChanges>;
 const mockPullShared = pullSharedOutings as jest.MockedFunction<typeof pullSharedOutings>;
 const mockMergeShared = mergeShared as jest.MockedFunction<typeof mergeShared>;
 const mockChangesAnything = changesAnything as jest.MockedFunction<typeof changesAnything>;
@@ -48,8 +48,8 @@ async function advancePush() {
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
-  mockReconcile.mockResolvedValue({ status: 'nothing-to-do' });
-  mockPush.mockResolvedValue({ upserted: 0, deleted: 0 });
+  mockReconcile.mockResolvedValue({ status: 'nothing-to-do', shared: emptySnapshot() });
+  mockPush.mockImplementation(async (local) => local);
   mockPullShared.mockResolvedValue(emptySnapshot());
   mockMergeShared.mockImplementation((local) => local);
   mockChangesAnything.mockReturnValue(false);
@@ -72,7 +72,7 @@ it('stays off and resets server state while disabled', async () => {
 it('adopts a remote season on first contact', async () => {
   const input = options();
   const remote = toRows(documents);
-  mockReconcile.mockResolvedValueOnce({ status: 'adopted-remote', rows: 1, snapshot: remote });
+  mockReconcile.mockResolvedValueOnce({ status: 'adopted-remote', rows: 1, snapshot: remote, shared: emptySnapshot() });
   const view = await renderHook(() => useDataSync(input));
 
   await waitFor(() => expect(view.result.current.status).toBe('synced'));
@@ -81,8 +81,8 @@ it('adopts a remote season on first contact', async () => {
 });
 
 it.each([
-  ['pushed', { status: 'pushed' as const, upserted: 1, deleted: 0 }],
-  ['nothing', { status: 'nothing-to-do' as const }],
+  ['pushed', { status: 'pushed' as const, upserted: 1, deleted: 0, own: emptySnapshot(), shared: emptySnapshot() }],
+  ['nothing', { status: 'nothing-to-do' as const, shared: emptySnapshot() }],
 ])('records a successful %s first contact without adopting', async (_name, outcome) => {
   const input = options();
   mockReconcile.mockResolvedValueOnce(outcome);
@@ -118,26 +118,30 @@ it('debounces later changes, pushes deletions, and merges changed shared data', 
   expect(view.result.current.status).toBe('synced');
 });
 
-it('after first contact, pushes only what changed since the server last had it', async () => {
+it('pushes against what the server holds and the last shared pull, and keeps what each push returns', async () => {
   const input = options();
+  const own = toRows({ ...documents, outings: [] });
+  const shared = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings });
+  mockReconcile.mockResolvedValueOnce({ status: 'pushed', upserted: 1, deleted: 0, own, shared });
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
   await waitFor(() => expect(view.result.current.status).toBe('synced'));
 
-  const [first, ...rest] = documents.groups;
-  const renamed = { ...documents, groups: [{ ...first, name: 'Renamed' }, ...rest] };
+  const renamed = { ...documents, groups: [{ ...documents.groups[0], name: 'Renamed' }, ...documents.groups.slice(1)] };
+  const afterFirst = toRows({ ...renamed, outings: [] });
+  mockPush.mockResolvedValueOnce(afterFirst);
+  const pulled = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings.slice(0, 1) });
+  mockPullShared.mockResolvedValueOnce(pulled);
   await view.rerender({ ...input, documents: renamed });
   await advancePush();
   await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
-  const [sent] = mockPush.mock.calls[0];
-  expect(sent.groups).toEqual([expect.objectContaining({ id: first.id, name: 'Renamed' })]);
-  expect(sent.scores).toEqual([]);
-  expect(sent.courses).toEqual([]);
+  expect(mockPush).toHaveBeenLastCalledWith(toRows(renamed), own, shared);
 
-  // The server now has the rename, so the next edit doesn't send it again.
-  await view.rerender({ ...input, documents: { ...renamed, outings: [] } });
+  // The next push diffs against what the last one returned, and the shared day as last pulled.
+  await view.rerender({ ...input, documents: { ...renamed, rounds: [] } });
   await advancePush();
   await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(2));
-  expect(mockPush.mock.calls[1][0].groups).toEqual([]);
+  expect(mockPush.mock.calls[1][1]).toBe(afterFirst);
+  expect(mockPush.mock.calls[1][2]).toBe(pulled);
 });
 
 it('does not publish an unchanged shared merge', async () => {
@@ -166,7 +170,7 @@ it('reports a later push failure and retries on the next edit', async () => {
 });
 
 it('does not push while first contact is in flight and ignores completion after unmount', async () => {
-  let finish: ((value: { status: 'nothing-to-do' }) => void) | undefined;
+  let finish: ((value: { status: 'nothing-to-do'; shared: ReturnType<typeof emptySnapshot> }) => void) | undefined;
   mockReconcile.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
   const input = options();
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
@@ -174,7 +178,7 @@ it('does not push while first contact is in flight and ignores completion after 
   await advancePush();
   expect(mockPush).not.toHaveBeenCalled();
   await view.unmount();
-  await act(async () => finish?.({ status: 'nothing-to-do' }));
+  await act(async () => finish?.({ status: 'nothing-to-do', shared: emptySnapshot() }));
   expect(input.onAdoptRemote).not.toHaveBeenCalled();
 });
 

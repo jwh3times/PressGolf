@@ -341,7 +341,8 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
-1. On first contact, it pulls the signed-in account's 21 snapshot tables.
+1. On first contact, it pulls the signed-in account's 21 snapshot tables (its
+   own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
@@ -352,6 +353,18 @@ When the two Supabase public variables are present and a user is signed in,
    known remote snapshot.
 5. After a successful push, shared outings are pulled and merged into local
    data.
+
+A guest's phone holds the organiser's group, course and rounds once it has
+merged a shared outing, and the server refuses to let it write them. Every
+push therefore splits the phone's rows by owner first (`splitByOwner`), using
+the last pull of the shared outings, which carries each row's `owner_id`.
+Rows the account owns, or is adding, go up as its own. Of someone else's
+outing, only the tables a guest may write (`GUEST_WRITES`: scores and junk) go
+up, only where the phone changed them since that pull, and without an
+`owner_id`, so an edited cell stays the organiser's; a new junk claim takes the
+column's default and is the guest's. The rest of the organiser's day isn't
+pushed. Before this (#127), a guest's every push after joining failed on the
+organiser's group.
 
 The schema has 23 application tables: 21 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
