@@ -696,5 +696,10 @@ describe('AppStoreProvider', () => {
 
     await change(() => store.setGreens(course.id, []));
     expect(store.course!.greens).toEqual([]);
+
+    const bunker = { id: 'osm:way/1', kind: 'bunker' as const, hole: null, points: [{ lat: 45.5, lng: -122.6 }], source: 'osm' as const };
+    await change(() => store.setFeatures(course.id, [bunker]));
+    expect(store.course!.features).toEqual([bunker]);
+    expect(store.courses.find((c) => c.id === other.id)!.features).toEqual([]);
   });
 });

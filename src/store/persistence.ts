@@ -52,7 +52,7 @@ function dataKey(demoMode: boolean): string {
  * with outings, defaulted to "this was its own thing". Data saved before max
  * scores gets no max and no pick-ups, and data saved before handicaps plays off
  * the low man at 100% with its pops as typed, so nothing it already settled moves.
- * Courses saved before greens know none.
+ * Courses saved before greens, or before the course map, know none.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -78,7 +78,11 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
         handicapUpdatedAt: p.handicapUpdatedAt ?? null,
       })),
     })),
-    courses: (parsed.courses ?? []).map((course) => ({ ...withTees(course), greens: course.greens ?? [] })),
+    courses: (parsed.courses ?? []).map((course) => ({
+      ...withTees(course),
+      greens: course.greens ?? [],
+      features: course.features ?? [],
+    })),
     rounds,
     outings: (parsed.outings ?? []).map((outing) => ({ ...outing, ...houseRulesOrDefault(outing) })),
     activeGroupId: parsed.activeGroupId ?? null,

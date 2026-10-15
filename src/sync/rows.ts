@@ -23,6 +23,8 @@ import {
   type Course,
   type FieldGameConfig,
   type FieldGameKey,
+  type FeatureKind,
+  type FeatureSource,
   type GreenSource,
   type LatLng,
   type GameOptions,
@@ -103,6 +105,20 @@ export interface CourseGreenRow {
   back_lat: number | null;
   back_lng: number | null;
   source: GreenSource;
+}
+
+/**
+ * One thing on a course's map (#125): a bunker, some water, the course's edge.
+ * Its outline is one jsonb column, as `[lat, lng]` pairs: it is only ever read
+ * and written whole, and a column per point would be a row per point.
+ */
+export interface CourseFeatureRow {
+  course_id: string;
+  id: string;
+  kind: FeatureKind;
+  hole: number | null;
+  points: [number, number][];
+  source: FeatureSource;
 }
 
 export interface RoundRow {
@@ -242,6 +258,7 @@ export interface Snapshot {
   tees: TeeRow[];
   tee_holes: TeeHoleRow[];
   course_greens: CourseGreenRow[];
+  course_features: CourseFeatureRow[];
   rounds: RoundRow[];
   round_players: RoundPlayerRow[];
   scores: ScoreRow[];
@@ -274,6 +291,7 @@ export const TABLES: (keyof Snapshot)[] = [
   'tees',
   'tee_holes',
   'course_greens',
+  'course_features',
   'outings',
   'outing_field',
   'outing_field_games',
@@ -298,6 +316,7 @@ export function emptySnapshot(): Snapshot {
     tees: [],
     tee_holes: [],
     course_greens: [],
+    course_features: [],
     rounds: [],
     round_players: [],
     scores: [],
@@ -379,6 +398,16 @@ export function toRows(documents: Documents): Snapshot {
         back_lat: green.back?.lat ?? null,
         back_lng: green.back?.lng ?? null,
         source: green.source,
+      });
+    }
+    for (const feature of course.features) {
+      out.course_features.push({
+        course_id: course.id,
+        id: feature.id,
+        kind: feature.kind,
+        hole: feature.hole,
+        points: feature.points.map(({ lat, lng }) => [lat, lng]),
+        source: feature.source,
       });
     }
   }
@@ -570,6 +599,7 @@ export function fromRows(snapshot: Snapshot): Documents {
   const teesByCourse = groupBy(snapshot.tees, (r) => r.course_id);
   const holesByTee = groupBy(snapshot.tee_holes, (r) => r.tee_id);
   const greensByCourse = groupBy(snapshot.course_greens, (r) => r.course_id);
+  const featuresByCourse = groupBy(snapshot.course_features, (r) => r.course_id);
   const roundPlayers = groupBy(snapshot.round_players, (r) => r.round_id);
   const scores = groupBy(snapshot.scores, (r) => r.round_id);
   const junk = groupBy(snapshot.junk, (r) => r.round_id);
@@ -614,6 +644,17 @@ export function fromRows(snapshot: Snapshot): Documents {
         front: point(g.front_lat, g.front_lng),
         back: point(g.back_lat, g.back_lng),
         source: g.source,
+      })),
+    // In id order, so a course reads back the same whichever order the server sent it.
+    features: (featuresByCourse.get(row.id) ?? [])
+      .slice()
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .map((f) => ({
+        id: f.id,
+        kind: f.kind,
+        hole: f.hole,
+        points: f.points.map(([lat, lng]) => ({ lat, lng })),
+        source: f.source,
       })),
     createdAt: row.created_at,
   }));

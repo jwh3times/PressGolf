@@ -154,19 +154,28 @@ export interface FeatureOptions {
   fetcher?: Fetch;
 }
 
+/** The golf features the hole map draws (#125), besides the course itself and its water. */
+const GOLF_FEATURES = 'hole|green|bunker|water_hazard|lateral_water_hazard|penalty_area|fairway|tee|out_of_bounds';
+
 /**
- * Every hole line and green outline inside one course's boundary. Tries each
- * Overpass server in turn, going round again while there is time, and gives up
- * at once on an answer another try won't change.
+ * The course's own outline, and every hole line, green, hazard, fairway and tee
+ * inside it. Tries each Overpass server in turn, going round again while there
+ * is time, and gives up at once on an answer another try won't change.
+ *
+ * `out geom` rather than `out geom tags`: the tags form leaves out a
+ * relation's members, and so the rings of every multipolygon fairway.
  */
 export async function fetchCourseFeatures(
   match: Pick<CourseMatch, 'osmType' | 'osmId'>,
   { onRetry, fetcher = fetch }: FeatureOptions = {},
 ): Promise<OsmElement[]> {
   const query = `[out:json][timeout:25];
-${match.osmType}(${match.osmId});map_to_area->.course;
-(way["golf"="hole"](area.course);way["golf"="green"](area.course);relation["golf"="green"](area.course););
-out geom tags;`;
+${match.osmType}(${match.osmId})->.edge;
+.edge out geom;
+.edge map_to_area->.course;
+(way["golf"~"^(${GOLF_FEATURES})$"](area.course);relation["golf"~"^(${GOLF_FEATURES})$"](area.course);
+way["natural"="water"](area.course);relation["natural"="water"](area.course););
+out geom;`;
   const giveUpAt = Date.now() + OVERPASS_GIVE_UP_MS;
   let failure: OsmUnavailable | null = null;
   for (let attempt = 0; ; attempt++) {

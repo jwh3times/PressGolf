@@ -116,21 +116,25 @@ describe('dataset persistence', () => {
       name: 'Old Course',
       tees: [{ id: 'old_default', name: 'Default', slope: null, rating: null, holes }],
       greens: [],
+      features: [],
       createdAt: 1,
     });
     expect(loaded.rounds[0]).toMatchObject({ teeId: null, playerTees: {} });
   });
 
-  it('keeps a course\'s greens, and gives one saved before greens none', async () => {
+  it('keeps a course\'s greens and map, and gives one saved before them none', async () => {
     const [course] = buildDemoDataset(123).courses;
     const green = { number: 1, middle: { lat: 45.5, lng: -122.6 }, front: null, back: null, source: 'marked' };
-    const { greens: _greens, ...before } = course;
-    storage.getItem.mockResolvedValueOnce(JSON.stringify({ courses: [{ ...course, greens: [green] }, { ...before, id: 'before' }] }));
+    const bunker = { id: 'osm:way/1', kind: 'bunker', hole: null, points: [{ lat: 45.5, lng: -122.6 }], source: 'osm' };
+    const { greens: _greens, features: _features, ...before } = course;
+    storage.getItem.mockResolvedValueOnce(
+      JSON.stringify({ courses: [{ ...course, greens: [green], features: [bunker] }, { ...before, id: 'before' }] }),
+    );
 
     const loaded = await loadDataset(true);
 
-    expect(loaded.courses[0].greens).toEqual([green]);
-    expect(loaded.courses[1].greens).toEqual([]);
+    expect(loaded.courses[0]).toMatchObject({ greens: [green], features: [bunker] });
+    expect(loaded.courses[1]).toMatchObject({ greens: [], features: [] });
   });
 
   it('treats rounds saved before card entry as scored live', async () => {

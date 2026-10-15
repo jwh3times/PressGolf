@@ -161,6 +161,7 @@ const actions = {
   updateTee: jest.fn(),
   setGreen: jest.fn(),
   setGreens: jest.fn(),
+  setFeatures: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
   setPlayerTee: jest.fn(),
@@ -1105,7 +1106,8 @@ describe('management screen state matrices', () => {
     jest.mocked(findCourses).mockResolvedValue([match]);
     jest.mocked(fetchCourseFeatures).mockResolvedValue(torrey.elements as never);
     const marked = { number: 3, middle: { lat: 32.8977, lng: -117.2507 }, front: null, back: null, source: 'marked' as const };
-    useStoreValue({ courses: [{ ...course, greens: [marked] }] });
+    const drawn = { id: 'map:ob-1', kind: 'outOfBounds' as const, hole: null, points: [{ lat: 32.9, lng: -117.25 }, { lat: 32.91, lng: -117.25 }], source: 'map' as const };
+    useStoreValue({ courses: [{ ...course, greens: [marked], features: [drawn] }] });
     await render(<GreensScreen />);
 
     expect(screen.getByDisplayValue(course.name)).toBeOnTheScreen();
@@ -1119,11 +1121,16 @@ describe('management screen state matrices', () => {
     expect(screen.getByText(`Greens for 2 of ${course.tees[0].holes.length} holes`)).toBeOnTheScreen();
     expect(screen.getByText(/Not mapped: holes 1, 2, 4/)).toBeOnTheScreen();
     expect(screen.getByText('Hole 3 keeps the green you marked.')).toBeOnTheScreen();
+    expect(screen.getByText(/^Course map: \d+ bunkers, .* and the course edge\.$/)).toBeOnTheScreen();
 
-    await user.press(screen.getByRole('button', { name: 'Save 1 green' }));
+    await user.press(screen.getByRole('button', { name: 'Save 1 green and the course map' }));
     const [courseId, greens] = jest.mocked(actions.setGreens).mock.lastCall!;
     expect(courseId).toBe(course.id);
     expect(greens.map((g: { number: number; source: string }) => [g.number, g.source])).toEqual([[3, 'marked'], [8, 'osm']]);
+    const [mapCourseId, features] = jest.mocked(actions.setFeatures).mock.lastCall!;
+    expect(mapCourseId).toBe(course.id);
+    expect(features).toContainEqual(drawn);
+    expect(features.filter((f: { kind: string }) => f.kind === 'holeLine')).toHaveLength(2);
     expect(mockRouter.back).toHaveBeenCalled();
     expect(screen.getByRole('link', { name: /OpenStreetMap contributors/ })).toBeOnTheScreen();
   });
@@ -1163,13 +1170,16 @@ describe('management screen state matrices', () => {
     expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled();
   });
 
-  it('shows the greens a course has in the editor, and opens the OpenStreetMap search', async () => {
+  it('shows the greens and map a course has in the editor, and opens the OpenStreetMap import', async () => {
     const user = userEvent.setup();
     const green = { number: 1, middle: { lat: 1, lng: 1 }, front: null, back: null, source: 'osm' as const };
-    useStoreValue({ courses: [{ ...course, greens: [green] }] });
+    const bunker = { id: 'osm:way/1', kind: 'bunker' as const, hole: null, points: [{ lat: 1, lng: 1 }], source: 'osm' as const };
+    useStoreValue({ courses: [{ ...course, greens: [green], features: [bunker] }] });
     await render(<CourseScreen />);
-    expect(screen.getByText(`1 of ${course.tees[0].holes.length} greens saved, for yardage on the Score screen.`)).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Find greens on OpenStreetMap' }));
+    expect(
+      screen.getByText(`1 of ${course.tees[0].holes.length} greens saved, for yardage on the Score screen. The map has 1 bunker.`),
+    ).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Import from OpenStreetMap' }));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/greens', params: { id: course.id } });
     await user.press(screen.getByRole('button', { name: 'Place greens on a map' }));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/green-map', params: { id: course.id } });

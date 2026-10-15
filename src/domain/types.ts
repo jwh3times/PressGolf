@@ -101,6 +101,40 @@ export interface Green {
   source: GreenSource;
 }
 
+/**
+ * What a feature on the course map is (#125). Water is a penalty area: `water`
+ * is yellow-staked, `lateralWater` red. `courseEdge` is the mapped boundary,
+ * outside which is likely out of bounds; `outOfBounds` is a line the course's
+ * owner drew where the stakes are. `holeLine` runs tee to green for one hole.
+ */
+export type FeatureKind =
+  | 'bunker'
+  | 'water'
+  | 'lateralWater'
+  | 'fairway'
+  | 'green'
+  | 'tee'
+  | 'courseEdge'
+  | 'outOfBounds'
+  | 'holeLine';
+
+/** Where a feature came from: OpenStreetMap, or drawn on a map in the app. */
+export type FeatureSource = 'osm' | 'map';
+
+/**
+ * One thing on the course map. An area's outline is a ring, stored without
+ * repeating its first point; a `holeLine` or `outOfBounds` is a line, in order.
+ */
+export interface CourseFeature {
+  /** Stable across imports: `osm:way/123`, or an id made when drawn. */
+  id: string;
+  kind: FeatureKind;
+  /** The hole a `holeLine` belongs to; null for everything else. */
+  hole: number | null;
+  points: LatLng[];
+  source: FeatureSource;
+}
+
 export interface Course {
   id: CourseId;
   name: string;
@@ -108,6 +142,8 @@ export interface Course {
   tees: Tee[];
   /** Holes whose green is known, in hole order. Most courses start with none. */
   greens: Green[];
+  /** Hazards, fairways and the like, for the hole map. Most courses start with none. */
+  features: CourseFeature[];
   createdAt: number;
 }
 

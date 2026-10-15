@@ -77,6 +77,27 @@ describe('toRows / fromRows round trip', () => {
     expect(back[1].back).toBeNull();
   });
 
+  it('round-trips a course map, its outlines as [lat, lng] pairs, in id order whatever order the rows arrive', () => {
+    const course = {
+      ...makeTestCourse(),
+      features: [
+        { id: 'map:ob-1', kind: 'outOfBounds' as const, hole: null, points: [{ lat: 45.5, lng: -122.6 }, { lat: 45.51, lng: -122.6 }], source: 'map' as const },
+        { id: 'osm:way/7', kind: 'holeLine' as const, hole: 7, points: [{ lat: 45.5, lng: -122.61 }, { lat: 45.502, lng: -122.612 }], source: 'osm' as const },
+      ],
+    };
+    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [] });
+    expect(rows.course_features[1]).toEqual({
+      course_id: course.id,
+      id: 'osm:way/7',
+      kind: 'holeLine',
+      hole: 7,
+      points: [[45.5, -122.61], [45.502, -122.612]],
+      source: 'osm',
+    });
+    rows.course_features.reverse();
+    expect(fromRows(rows).courses[0].features).toEqual(course.features);
+  });
+
   it('round-trips a junk key whose player id contains a colon', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
     round.junk = { '4:odd:id:greenie': true };
