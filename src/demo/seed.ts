@@ -83,6 +83,8 @@ export function demoCourse(): Course {
       { id: DEMO_TEE_BLUE, name: 'Blue', slope: 131, rating: 71.8, holes: pineHollowHoles() },
       { id: DEMO_TEE_RED, name: 'Red', slope: 118, rating: 70.1, holes: pineHollowRed() },
     ],
+    // Pine Hollow is made up, so it has nowhere real to put a green.
+    greens: [],
     createdAt: 0,
   };
 }

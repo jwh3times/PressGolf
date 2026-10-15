@@ -679,5 +679,19 @@ describe('AppStoreProvider', () => {
     await change(() => store.createCourse(solo));
     expect(store.deleteTee(solo.id, solo.tees[0].id)).toBe(false);
   });
-});
 
+  it('saves a hole\'s green on its course, replacing an earlier one', async () => {
+    await mount();
+    const course = store.course!;
+    const other = makeCourse('Elsewhere');
+    await change(() => store.createCourse(other));
+    const green = { number: 3, middle: { lat: 45.5, lng: -122.6 }, front: null, back: null, source: 'marked' as const };
+    await change(() => store.setGreen(course.id, green));
+    expect(store.course!.greens).toEqual([green]);
+
+    const moved = { ...green, middle: { lat: 45.6, lng: -122.7 } };
+    await change(() => store.setGreen(course.id, moved));
+    expect(store.course!.greens).toEqual([moved]);
+    expect(store.courses.find((c) => c.id === other.id)!.greens).toEqual([]);
+  });
+});

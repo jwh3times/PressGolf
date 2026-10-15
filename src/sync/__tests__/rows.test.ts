@@ -64,6 +64,19 @@ describe('toRows / fromRows round trip', () => {
     expect(back.courses[0].tees).toEqual(course.tees);
   });
 
+  it('keeps greens in hole order, and front and back only as a pair', () => {
+    const course = demoDocuments().courses[0];
+    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [] });
+    expect(rows.course_greens[0]).toMatchObject({ number: 1, front_lat: null, front_lng: null, back_lat: null, back_lng: null });
+    rows.course_greens.reverse();
+    // A half-written point is no point at all.
+    rows.course_greens[0].back_lng = null;
+    const back = fromRows(rows).courses[0].greens;
+    expect(back.map((g) => g.number)).toEqual([1, 2]);
+    expect(back[1].front).toEqual(course.greens[1].front);
+    expect(back[1].back).toBeNull();
+  });
+
   it('round-trips a junk key whose player id contains a colon', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
     round.junk = { '4:odd:id:greenie': true };

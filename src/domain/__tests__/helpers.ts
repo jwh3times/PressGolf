@@ -19,6 +19,7 @@ export function makeTestCourse(holeCount = 18): Course {
     id: 'course1',
     name: 'Test Links',
     tees: [{ id: 'white', name: 'White', slope: null, rating: null, holes: makeTestHoles(holeCount) }],
+    greens: [],
     createdAt: 0,
   };
 }
