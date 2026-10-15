@@ -62,8 +62,11 @@ export default function GreensScreen() {
 
   const choose = (match: CourseMatch, matches: CourseMatch[]) =>
     run(
-      `Reading ${match.name}…`,
-      async () => ({ kind: 'preview', match, imported: greensFromOsm(await fetchCourseFeatures(match), holeCount) }),
+      `Reading ${match.name}… This can take a minute.`,
+      async () => {
+        const onRetry = () => setStep({ kind: 'busy', doing: 'OpenStreetMap is slow right now. Still trying…' });
+        return { kind: 'preview', match, imported: greensFromOsm(await fetchCourseFeatures(match, { onRetry }), holeCount) };
+      },
       { kind: 'results', matches },
     );
 
