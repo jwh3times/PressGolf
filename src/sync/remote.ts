@@ -10,7 +10,7 @@
  * What this gives you is durability — a phone in a lake stops being the end of
  * a season — and a second device.
  */
-import { conflictTarget, countDeletions, deletions, isEmpty, type Deletions } from './diff';
+import { changedRows, conflictTarget, countDeletions, deletions, isEmpty, splitByOwner, type Deletions } from './diff';
 import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
@@ -145,27 +145,35 @@ export interface PushResult {
 /**
  * Writes the phone's state up.
  *
- * `prune` removes rows the server still has and the phone no longer does. It
- * is refused for an empty local snapshot: a fresh install that has not pulled
- * yet would otherwise delete a season in order to "sync" it.
+ * `local` goes up as this account's own. `guest` is cells of someone else's
+ * shared card that this phone changed: they go up without an owner, so an
+ * edit leaves the row with whoever owns it, and a new one takes the column's
+ * default, this account. `prune` removes rows the server still has and the
+ * phone no longer does. It is refused for an empty local snapshot: a fresh
+ * install that has not pulled yet would otherwise delete a season in order to
+ * "sync" it.
  */
 export async function pushSnapshot(
   local: Snapshot,
-  options: { prune?: Deletions } = {},
+  options: { prune?: Deletions; guest?: Snapshot } = {},
 ): Promise<PushResult> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('This build has no server configured.');
   const ownerId = await requireUserId();
 
-  // Parents before children, so a foreign key always has something to point at.
-  for (const table of TABLES) {
-    const rows = snapshotRows(local, table).map((row) => ({ ...row, owner_id: ownerId }));
+  const upsert = async (table: keyof Snapshot, rows: Record<string, unknown>[]) => {
     for (const batch of chunked(rows)) {
-      const { error } = await supabase
-        .from(table)
-        .upsert(batch, { onConflict: conflictTarget(table) });
+      const { error } = await supabase.from(table).upsert(batch, { onConflict: conflictTarget(table) });
       if (error) throw new Error(`${table}: ${error.message}`);
     }
+  };
+  // Parents before children, so a foreign key always has something to point at.
+  for (const table of TABLES) {
+    await upsert(table, snapshotRows(local, table).map((row) => ({ ...row, owner_id: ownerId })));
+  }
+  // Someone else's card is already up there, parents and all.
+  if (options.guest) {
+    for (const table of TABLES) await upsert(table, snapshotRows(options.guest, table));
   }
 
   let deleted = 0;
@@ -184,17 +192,32 @@ export async function pushSnapshot(
     }
   }
 
-  return { upserted: countRows(local), deleted };
+  return { upserted: countRows(local) + (options.guest ? countRows(options.guest) : 0), deleted };
+}
+
+/**
+ * A push after first contact: what changed since `server`, this account's own
+ * as it stood after the last push, and the cells of shared cards changed since
+ * `shared`, the last pull of the shared outings. Returns this account's own
+ * rows, whole, for the next push to diff against.
+ */
+export async function pushChanges(local: Snapshot, server: Snapshot, shared: Snapshot): Promise<Snapshot> {
+  const { own, guest } = splitByOwner(local, shared, await requireUserId());
+  await pushSnapshot(changedRows(server, own), { prune: deletions(server, own), guest });
+  return own;
 }
 
 function snapshotRows(snapshot: Snapshot, table: keyof Snapshot): Record<string, unknown>[] {
   return snapshot[table] as unknown as Record<string, unknown>[];
 }
 
-export type SyncOutcome =
+/** Every outcome carries the shared outings as pulled, for the next push to split by. */
+export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
-  | { status: 'pushed'; upserted: number; deleted: number }
-  | { status: 'nothing-to-do' };
+  /** `own` is this account's rows as pushed, whole. */
+  | { status: 'pushed'; upserted: number; deleted: number; own: Snapshot }
+  | { status: 'nothing-to-do' }
+);
 
 /**
  * Reconciles one account's data, once.
@@ -207,15 +230,19 @@ export type SyncOutcome =
  */
 export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   const remote = await pullSnapshot();
+  // Before pushing, so a phone that already holds someone else's day, saved
+  // from an earlier session, knows which of its rows are theirs.
+  const shared = await pullSharedOutings();
 
   if (isEmpty(local) && !isEmpty(remote)) {
-    return { status: 'adopted-remote', rows: countRows(remote), snapshot: remote };
+    return { status: 'adopted-remote', rows: countRows(remote), snapshot: remote, shared };
   }
   if (isEmpty(local) && isEmpty(remote)) {
-    return { status: 'nothing-to-do' };
+    return { status: 'nothing-to-do', shared };
   }
 
-  const prune = deletions(remote, local);
-  const result = await pushSnapshot(local, { prune });
-  return { status: 'pushed', upserted: result.upserted, deleted: countDeletions(prune) };
+  const { own, guest } = splitByOwner(local, shared, await requireUserId());
+  const prune = deletions(remote, own);
+  const result = await pushSnapshot(own, { prune, guest });
+  return { status: 'pushed', upserted: result.upserted, deleted: countDeletions(prune), own, shared };
 }

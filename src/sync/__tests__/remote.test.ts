@@ -1,6 +1,6 @@
 import { emptySnapshot, TABLES, type Snapshot } from '../rows';
 import { getSupabase, requireUserId } from '../supabase';
-import { pullSharedOutings, pullSnapshot, pushSnapshot, reconcile } from '../remote';
+import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 
 jest.mock('../supabase', () => ({ getSupabase: jest.fn(), requireUserId: jest.fn() }));
 
@@ -265,7 +265,7 @@ describe('reconcile', () => {
 
   it('does nothing when both sides are empty', async () => {
     mockGetSupabase.mockReturnValue(reconciliationClient(emptySnapshot()) as never);
-    await expect(reconcile(emptySnapshot())).resolves.toEqual({ status: 'nothing-to-do' });
+    await expect(reconcile(emptySnapshot())).resolves.toEqual({ status: 'nothing-to-do', shared: emptySnapshot() });
   });
 
   it('adopts a non-empty remote on an empty phone', async () => {
@@ -280,6 +280,88 @@ describe('reconcile', () => {
     const local = snapshotWithGroup();
     const fake = reconciliationClient(remote);
     mockGetSupabase.mockReturnValue(fake as never);
-    await expect(reconcile(local)).resolves.toEqual({ status: 'pushed', upserted: 1, deleted: 1 });
+    await expect(reconcile(local)).resolves.toEqual({ status: 'pushed', upserted: 1, deleted: 1, own: local, shared: emptySnapshot() });
+  });
+
+  it("knows a shared day's rows before pushing: sends the guest's card edit, and none of the organiser's day", async () => {
+    // Ann's day, as the shared pull returns it, with owners.
+    const ann = 'owner-ann';
+    const tables: Partial<Record<keyof Snapshot | 'outing_members', Record<string, unknown>[]>> = {
+      outing_members: [{ outing_id: 'o1' }],
+      outings: [{ id: 'o1', group_id: 'g9', course_id: 'c9', owner_id: ann }],
+      groups: [{ id: 'g9', name: 'Ann', owner_id: ann }],
+      rounds: [{ id: 'r1', outing_id: 'o1', owner_id: ann }],
+      scores: [
+        { round_id: 'r1', player_id: 'p1', hole: 0, strokes: null, picked_up: false, owner_id: ann },
+        { round_id: 'r1', player_id: 'p1', hole: 1, strokes: 4, picked_up: false, owner_id: ann },
+      ],
+    };
+    const writes = new Map<string, ReturnType<typeof query>>();
+    mockGetSupabase.mockReturnValue({
+      from: jest.fn((table: keyof Snapshot | 'outing_members') => {
+        const builder = query({ data: tables[table] ?? [], error: null });
+        // The guest's own pull asks for its own rows, and Ann's day is none of them.
+        builder.eq.mockImplementation((column: string, value: unknown) => {
+          if (column === 'owner_id' && value !== ann) builder.setResult({ data: [], error: null });
+          return builder;
+        });
+        // Pushes follow pulls, so a table's last builder is the one that wrote, if any did.
+        writes.set(table, builder);
+        return builder;
+      }),
+    } as never);
+
+    // The guest's phone: its own group, Ann's day merged in, and one cell typed on her card.
+    const local = snapshotWithGroup();
+    local.outings.push({ id: 'o1', group_id: 'g9', course_id: 'c9' } as never);
+    local.groups.push({ id: 'g9', name: 'Ann' } as never);
+    local.rounds.push({ id: 'r1', outing_id: 'o1' } as never);
+    local.scores.push(
+      { round_id: 'r1', player_id: 'p1', hole: 0, strokes: 5, picked_up: false },
+      { round_id: 'r1', player_id: 'p1', hole: 1, strokes: 4, picked_up: false },
+    );
+
+    const outcome = await reconcile(local);
+    expect(outcome).toMatchObject({ status: 'pushed', upserted: 2 });
+    expect(writes.get('groups')?.upsert).toHaveBeenCalledWith([expect.objectContaining({ id: 'g1', owner_id: 'owner-1' })], expect.any(Object));
+    expect(writes.get('groups')?.upsert).toHaveBeenCalledTimes(1);
+    expect(writes.get('outings')?.upsert).not.toHaveBeenCalled();
+    expect(writes.get('rounds')?.upsert).not.toHaveBeenCalled();
+    // The changed cell, with no owner: it stays Ann's. The unchanged one isn't sent.
+    expect(writes.get('scores')?.upsert).toHaveBeenCalledWith(
+      [{ round_id: 'r1', player_id: 'p1', hole: 0, strokes: 5, picked_up: false }],
+      expect.any(Object),
+    );
+    expect(outcome.status === 'pushed' && outcome.own.groups.map((g) => g.id)).toEqual(['g1']);
+  });
+});
+
+describe('pushChanges', () => {
+  it('sends what changed since the last push, prunes what went, and returns the own rows whole', async () => {
+    const writes: { table: string; rows: unknown }[] = [];
+    const deletes: string[] = [];
+    mockGetSupabase.mockReturnValue({
+      from: jest.fn((table: string) => {
+        const builder = query();
+        builder.upsert.mockImplementation((rows: unknown) => {
+          writes.push({ table, rows });
+          return builder;
+        });
+        builder.delete.mockImplementation(() => {
+          deletes.push(table);
+          return builder;
+        });
+        return builder;
+      }),
+    } as never);
+    const server = snapshotWithGroup();
+    server.groups.push({ ...server.groups[0], id: 'gone' });
+    const local = snapshotWithGroup();
+    local.groups.push({ ...local.groups[0], id: 'new' });
+
+    const own = await pushChanges(local, server, emptySnapshot());
+    expect(writes).toEqual([{ table: 'groups', rows: [expect.objectContaining({ id: 'new', owner_id: 'owner-1' })] }]);
+    expect(deletes).toEqual(['groups']);
+    expect(own).toEqual(local);
   });
 });

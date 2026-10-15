@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { pullSharedOutings, pullSnapshot, pushSnapshot } from '../remote';
+import { mergeShared } from '../merge-shared';
+import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 import { fromRows, toRows, type Documents } from '../rows';
 import {
   getSupabase,
@@ -158,6 +159,48 @@ describe('sync against a local Supabase stack', () => {
     expect(shared.rounds.some((r) => outside.some((o) => o.id === r.id))).toBe(false);
     // Joining makes Ben a reader of the day, not an owner of anything.
     expect(fromRows(await pullSnapshot()).groups).toEqual([]);
+  });
+
+  it("lets a guest push after joining: the guest's score goes up, the organiser's rows stay hers", async () => {
+    const ann = await signUp('ann');
+    const season = await pushSeason('gp');
+    const outing = season.outings[0];
+    const { joinCode } = await hostOuting(outing.id);
+
+    // Ben keeps a group of his own, then joins Ann's day and merges it in, as his phone does.
+    await signUp('ben');
+    const own = demoDocuments(`${RUN}gpben`);
+    const mine: Documents = { groups: own.groups.slice(0, 1), courses: [], rounds: [], outings: [] };
+    await pushSnapshot(toRows(mine));
+    await joinOuting(joinCode, null, 'Ben');
+    const sharedRows = await pullSharedOutings();
+    const merged = mergeShared(mine, fromRows(sharedRows));
+    const shared = merged.rounds.find((r) => r.outingId === outing.id)!;
+    const scorer = shared.playerIds[0];
+    const claim = `0:${scorer}:sandie`;
+    const card = {
+      ...shared,
+      scores: { ...shared.scores, [scorer]: [7, ...shared.scores[scorer].slice(1)] },
+      junk: { ...shared.junk, [claim]: true as const },
+    };
+    const edited: Documents = { ...merged, rounds: merged.rounds.map((r) => (r.id === card.id ? card : r)) };
+    const renamed = { ...mine.groups[0], name: 'Ben after joining' };
+    const local = toRows({ ...edited, groups: edited.groups.map((g) => (g.id === renamed.id ? renamed : g)) });
+
+    // A push after first contact, as useDataSync makes it.
+    await pushChanges(local, await pullSnapshot(), sharedRows);
+    // And first contact again, as after the app restarts.
+    await expect(reconcile(local)).resolves.toMatchObject({ status: 'pushed' });
+
+    expect(fromRows(await pullSnapshot()).groups.find((g) => g.id === renamed.id)?.name).toBe('Ben after joining');
+    await signInAs(ann);
+    const back = fromRows(await pullSnapshot());
+    // Ben's score reached Ann's card and the cell is still hers (her pull reads only her own rows),
+    // and none of her day moved to Ben.
+    expect(back.rounds.find((r) => r.id === card.id)?.scores[scorer][0]).toBe(7);
+    // The junk he claimed is a new row, his own, and reaches her with the shared day.
+    expect(fromRows(await pullSharedOutings()).rounds.find((r) => r.id === card.id)?.junk[claim]).toBe(true);
+    expect(byId(back).groups.map((g) => g.id)).toEqual(byId(season).groups.map((g) => g.id));
   });
 
   it("carries one member's edits to the others, and none to a stranger", async () => {
