@@ -1115,7 +1115,7 @@ describe('management screen state matrices', () => {
     expect(findCourses).toHaveBeenCalledWith('Torrey Pines South');
 
     await user.press(screen.getByRole('button', { name: 'Torrey Pines South Course · San Diego, California' }));
-    expect(fetchCourseFeatures).toHaveBeenCalledWith(match);
+    expect(fetchCourseFeatures).toHaveBeenCalledWith(match, expect.objectContaining({ onRetry: expect.any(Function) }));
     expect(screen.getByText(`Greens for 2 of ${course.tees[0].holes.length} holes`)).toBeOnTheScreen();
     expect(screen.getByText(/Not mapped: holes 1, 2, 4/)).toBeOnTheScreen();
     expect(screen.getByText('Hole 3 keeps the green you marked.')).toBeOnTheScreen();
@@ -1145,6 +1145,22 @@ describe('management screen state matrices', () => {
 
     await user.press(screen.getByRole('button', { name: 'Search' }));
     expect(screen.getByText('OpenStreetMap is busy. Try again in a minute.')).toBeOnTheScreen();
+  });
+
+  it('says it is still trying while OpenStreetMap is slow', async () => {
+    const user = userEvent.setup();
+    const match = { osmType: 'relation' as const, osmId: 1, name: 'Goat Track', place: '', center: null };
+    jest.mocked(findCourses).mockResolvedValue([match]);
+    jest.mocked(fetchCourseFeatures).mockImplementationOnce((_match, options) => {
+      options?.onRetry?.();
+      return new Promise(() => {});
+    });
+    await render(<GreensScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Search' }));
+    await user.press(screen.getByRole('button', { name: 'Goat Track' }));
+    expect(screen.getByText('OpenStreetMap is slow right now. Still trying…')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled();
   });
 
   it('shows the greens a course has in the editor, and opens the OpenStreetMap search', async () => {

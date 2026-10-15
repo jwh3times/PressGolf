@@ -103,7 +103,15 @@ are called, only when someone taps (`src/osm/client.ts`):
   course" added, a second later, as the usage policy's one-request-a-second
   limit asks.
 - **Overpass** returns every `golf=hole` line and `golf=green` outline inside
-  the course's boundary.
+  the course's boundary. Its public servers are volunteer-run and often loaded
+  (on 2026-10-15 overpass-api.de took 20–45 s for a one-node query, or gave an
+  instant 502), so the import tries each server in `OVERPASS_URLS` in turn,
+  two seconds apart, gives each a minute, and keeps going for two minutes
+  before saying OpenStreetMap is busy. A 200 whose remark says the query was
+  cut short counts as busy, not as a course with fewer greens. A 4xx stops at
+  once. On the web the app sends no `User-Agent`: the browser names itself,
+  and the header would make each request a cross-origin preflight that
+  maps.mail.ru refuses.
 
 `greensFromOsm` (`src/osm/greens.ts`) matches each hole's line, by its `ref`
 number, to the green it ends in, or the nearest within 30 m. The middle is the
