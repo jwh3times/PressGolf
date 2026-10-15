@@ -136,6 +136,12 @@ export function GreenYardage({
               .filter(Boolean)
               .join(' · ')}
           </Mono>
+          {/* OpenStreetMap's licence asks for credit wherever its data shows. */}
+          {green.source === 'osm' ? (
+            <Mono size={10} style={styles.stale}>
+              GREEN © OPENSTREETMAP CONTRIBUTORS
+            </Mono>
+          ) : null}
         </Pressable>
         {markChip}
       </View>

@@ -9,7 +9,7 @@ Vegas, match play, and stroke play. Pops come from each player's Handicap Index
 and tee, in full or off the low man, or are typed in by hand. Outings can split
 a larger field into playing groups while settling field-wide skins or scats
 alongside each group's games. On the course, a tap gives the yardage to the
-green, once that green has been marked.
+green, from greens found on OpenStreetMap or marked standing on them.
 
 ## Quick start
 
@@ -113,10 +113,11 @@ pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full
   workflow in a browser, and the native date picker for a card's Played-on
   date does not render there, so a card entered on web is dated today.
-- Yardage needs each green marked by standing on it, once per course; nothing
-  fills greens in for you yet. It has been tested in Jest and on the web build,
-  not on a phone on a course. Web cannot mark a green, because marking confirms
-  through a native alert.
+- Yardage needs a course's greens: found on OpenStreetMap from the course
+  editor, which covers about half of courses, or marked by standing on each.
+  Finding them sends the course name to OpenStreetMap's public services. It has
+  been tested in Jest and on the web build, not on a phone on a course. Web
+  cannot mark a green, because marking confirms through a native alert.
 - Handicap indexes are typed in by hand. Keeping them in step with GHIN is
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
 - Themes: dark (the default, made for daylight), light, and a high-contrast

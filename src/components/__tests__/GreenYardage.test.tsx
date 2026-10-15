@@ -90,6 +90,7 @@ describe('GreenYardage', () => {
     expect(screen.getByText(`${yardsBetween(TEE, front)} FRONT · ${yardsBetween(TEE, back)} BACK`)).toBeOnTheScreen();
     // A browser may not say how accurate it is; nothing is made up in its place.
     expect(screen.getByText('LIVE')).toBeOnTheScreen();
+    expect(screen.getByText('GREEN © OPENSTREETMAP CONTRIBUTORS')).toBeOnTheScreen();
   });
 
   it('stops the GPS when it goes, such as on a change of hole', async () => {

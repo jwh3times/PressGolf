@@ -19,6 +19,9 @@ import ScoreScreen from '../(tabs)/score';
 import SettleScreen from '../(tabs)/settle';
 import CourseScreen from '../course/[id]';
 import CoursesScreen from '../courses';
+import GreensScreen from '../greens';
+import { fetchCourseFeatures, findCourses } from '../../osm/client';
+import torrey from '../../osm/__tests__/torrey-south.json';
 import FieldGamesScreen from '../field-games';
 import GroupsScreen from '../groups';
 import HistoryScreen from '../history';
@@ -76,6 +79,11 @@ jest.mock('expo-location', () => ({
   getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 45.5, longitude: -122.6, accuracy: 3 }, timestamp: 0 })),
 }));
 
+jest.mock('../../osm/client', () => ({
+  findCourses: jest.fn(),
+  fetchCourseFeatures: jest.fn(),
+}));
+
 jest.mock('../../store/AppStore', () => ({
   useStore: jest.fn(),
 }));
@@ -128,6 +136,7 @@ const actions = {
   addTee: jest.fn(),
   updateTee: jest.fn(),
   setGreen: jest.fn(),
+  setGreens: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
   setPlayerTee: jest.fn(),
@@ -246,6 +255,7 @@ describe('screen accessibility', () => {
     ['Roster', RosterScreen],
     ['Courses', CoursesScreen],
     ['Course', CourseScreen],
+    ['Greens', GreensScreen],
     ['New round', NewRoundScreen],
     ['Sides', SidesScreen],
     ['History', HistoryScreen],
@@ -1062,6 +1072,70 @@ describe('management screen state matrices', () => {
     expect(setting.setBase).toHaveBeenCalledWith('darkContrast');
     await user.press(screen.getByRole('radio', { name: 'Gold accent' }));
     expect(setting.setAccent).toHaveBeenCalledWith('gold');
+  });
+
+  it('finds a course\'s greens on OpenStreetMap, keeps the ones marked on the course, and saves the rest', async () => {
+    const user = userEvent.setup();
+    const match = { osmType: 'way' as const, osmId: 35679036, name: 'Torrey Pines South Course', place: 'San Diego, California' };
+    jest.mocked(findCourses).mockResolvedValue([match]);
+    jest.mocked(fetchCourseFeatures).mockResolvedValue(torrey.elements as never);
+    const marked = { number: 3, middle: { lat: 32.8977, lng: -117.2507 }, front: null, back: null, source: 'marked' as const };
+    useStoreValue({ courses: [{ ...course, greens: [marked] }] });
+    await render(<GreensScreen />);
+
+    expect(screen.getByDisplayValue(course.name)).toBeOnTheScreen();
+    await user.clear(screen.getByDisplayValue(course.name));
+    await user.type(screen.getByLabelText('Course name on OpenStreetMap'), 'Torrey Pines South');
+    await user.press(screen.getByRole('button', { name: 'Search' }));
+    expect(findCourses).toHaveBeenCalledWith('Torrey Pines South');
+
+    await user.press(screen.getByRole('button', { name: 'Torrey Pines South Course · San Diego, California' }));
+    expect(fetchCourseFeatures).toHaveBeenCalledWith(match);
+    expect(screen.getByText(`Greens for 2 of ${course.tees[0].holes.length} holes`)).toBeOnTheScreen();
+    expect(screen.getByText(/Not mapped: holes 1, 2, 4/)).toBeOnTheScreen();
+    expect(screen.getByText('Hole 3 keeps the green you marked.')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Save 1 green' }));
+    const [courseId, greens] = jest.mocked(actions.setGreens).mock.lastCall!;
+    expect(courseId).toBe(course.id);
+    expect(greens.map((g: { number: number; source: string }) => [g.number, g.source])).toEqual([[3, 'marked'], [8, 'osm']]);
+    expect(mockRouter.back).toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: /OpenStreetMap contributors/ })).toBeOnTheScreen();
+  });
+
+  it('says when OpenStreetMap has no such course, has no greens for it, or can\'t be reached', async () => {
+    const user = userEvent.setup();
+    const match = { osmType: 'relation' as const, osmId: 1, name: 'Goat Track', place: '' };
+    jest.mocked(findCourses).mockResolvedValueOnce([]).mockResolvedValueOnce([match]).mockRejectedValueOnce(new Error('OpenStreetMap is busy. Try again in a minute.'));
+    jest.mocked(fetchCourseFeatures).mockResolvedValue([]);
+    await render(<GreensScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Search' }));
+    expect(screen.getByText('No golf course by that name')).toBeOnTheScreen();
+
+    await act(async () => screen.getByLabelText('Course name on OpenStreetMap').props.onSubmitEditing?.());
+    await user.press(screen.getByRole('button', { name: 'Goat Track' }));
+    expect(screen.getByText('This course has no greens mapped yet.')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Search' }));
+    expect(screen.getByText('OpenStreetMap is busy. Try again in a minute.')).toBeOnTheScreen();
+  });
+
+  it('shows the greens a course has in the editor, and opens the OpenStreetMap search', async () => {
+    const user = userEvent.setup();
+    const green = { number: 1, middle: { lat: 1, lng: 1 }, front: null, back: null, source: 'osm' as const };
+    useStoreValue({ courses: [{ ...course, greens: [green] }] });
+    await render(<CourseScreen />);
+    expect(screen.getByText(`1 of ${course.tees[0].holes.length} greens saved, for yardage on the Score screen.`)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Find greens on OpenStreetMap' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/greens', params: { id: course.id } });
+  });
+
+  it('says a missing course is not found on the greens screen', async () => {
+    mockCourseId = 'missing';
+    await render(<GreensScreen />);
+    expect(screen.getByText('Course not found')).toBeOnTheScreen();
   });
 
   it('covers missing and duplicate-index course editor states', async () => {

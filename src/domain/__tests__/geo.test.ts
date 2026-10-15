@@ -4,6 +4,7 @@ import {
   MARK_ACCURACY_M,
   metresBetween,
   withGreen,
+  withImported,
   yardsBetween,
   yardsToGreen,
 } from '../geo';
@@ -91,5 +92,24 @@ describe('a course\'s greens', () => {
       [3, TEE],
       [5, GREEN_MIDDLE],
     ]);
+  });
+});
+
+describe('importing greens', () => {
+  it('fills holes with no green, keeps the course\'s own, and replaces an earlier import', () => {
+    const existing = [green(1), green(2, { source: 'osm' }), green(3, { source: 'map' })];
+    const imported = [1, 2, 3, 4].map((n) => green(n, { middle: TEE, source: 'osm' }));
+    const { greens, kept } = withImported(existing, imported);
+    expect(greens.map((g) => [g.number, g.source, g.middle])).toEqual([
+      [1, 'marked', GREEN_MIDDLE],
+      [2, 'osm', TEE],
+      [3, 'map', GREEN_MIDDLE],
+      [4, 'osm', TEE],
+    ]);
+    expect(kept).toEqual([1, 3]);
+  });
+
+  it('drops an earlier import\'s green for a hole the new import has nothing for', () => {
+    expect(withImported([green(2, { source: 'osm' })], []).greens).toEqual([]);
   });
 });
