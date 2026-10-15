@@ -85,6 +85,9 @@ restricted to the app, set as `androidGoogleMapsApiKey` in the
 such a build would fail on Android until one is added. iOS uses Apple Maps and
 needs no key.
 
+The hole map is drawn with `react-native-svg`, which is also in Expo Go, from
+the course map saved on the phone. It needs no key and no signal.
+
 ## Environment variables
 
 The app recognizes three public build-time variables:

@@ -47,6 +47,16 @@ substitute for assistive-technology use on both platforms.
   large-text screenshots, not asserted.
 - Shared text primitives control both font size and line height to prevent
   custom-font clipping at accessibility sizes.
+- The drawn hole map (#125) is one image to a screen reader, named with the
+  hole, the yards to the green and how many hazards are in play. Everything
+  it shows is also text below it: the yards to the green and to the target,
+  and each hazard's side, front, carry and far end, each read as one sentence.
+  Tapping the map to measure is pointer-only; the same targets (the green,
+  the line of play, 100, 150 and 200 out) are buttons. Red and yellow penalty
+  areas differ in outline and in their names, not in colour alone. The map's
+  hazards, edges and lines reach 3:1 (4.5:1 on the high-contrast bases)
+  against both the rough and the fairway in every theme
+  (`src/theme/__tests__/course-colors.test.ts`).
 
 Relevant tests and helpers:
 
@@ -55,6 +65,7 @@ Relevant tests and helpers:
 - `src/components/__tests__/TabBar.test.tsx`
 - `src/theme/__tests__/contrast.test.ts`
 - `src/theme/__tests__/themes.test.ts`
+- `src/theme/__tests__/course-colors.test.ts`
 - `src/theme/__tests__/type-scale.test.ts`
 - `src/hooks/__tests__/useLargeText.test.ts`
 

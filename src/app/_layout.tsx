@@ -79,6 +79,7 @@ function Root({ ready }: { ready: boolean }) {
                   <Stack.Screen name="course/[id]" options={{ animation: 'slide_from_right' }} />
                   <Stack.Screen name="greens" options={{ animation: 'slide_from_right' }} />
                   <Stack.Screen name="green-map" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="hole-map" options={{ animation: 'slide_from_right' }} />
                   <Stack.Screen name="new-round" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="new-outing" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="outing" options={{ animation: 'slide_from_right' }} />
