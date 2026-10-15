@@ -118,6 +118,28 @@ it('debounces later changes, pushes deletions, and merges changed shared data', 
   expect(view.result.current.status).toBe('synced');
 });
 
+it('after first contact, pushes only what changed since the server last had it', async () => {
+  const input = options();
+  const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+  await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+  const [first, ...rest] = documents.groups;
+  const renamed = { ...documents, groups: [{ ...first, name: 'Renamed' }, ...rest] };
+  await view.rerender({ ...input, documents: renamed });
+  await advancePush();
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+  const [sent] = mockPush.mock.calls[0];
+  expect(sent.groups).toEqual([expect.objectContaining({ id: first.id, name: 'Renamed' })]);
+  expect(sent.scores).toEqual([]);
+  expect(sent.courses).toEqual([]);
+
+  // The server now has the rename, so the next edit doesn't send it again.
+  await view.rerender({ ...input, documents: { ...renamed, outings: [] } });
+  await advancePush();
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(2));
+  expect(mockPush.mock.calls[1][0].groups).toEqual([]);
+});
+
 it('does not publish an unchanged shared merge', async () => {
   const input = options();
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
