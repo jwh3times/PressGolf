@@ -158,7 +158,9 @@ comes from the course edge and from lines the owner draws.
 
 **Map of hole N** on the Score screen, and **View the hole map** in the course
 editor, open `src/app/hole-map.tsx` for a course and hole, both carried in the
-URL. `holePlan` (`src/domain/hole-map.ts`) gathers the hole's line, its green,
+URL. Both appear once a hole has a green or the course has a map. A course
+whose greens were imported before the course map existed has no hazards, so
+the hole map offers to import it again; greens marked on the course are kept. `holePlan` (`src/domain/hole-map.ts`) gathers the hole's line, its green,
 everything within 60 m of the line (`CORRIDOR_M`), and the course's edge.
 `HoleDiagram` draws them with `react-native-svg`, turned so the hole plays up
 the screen, from the saved map alone: it needs no signal on the course, no map
