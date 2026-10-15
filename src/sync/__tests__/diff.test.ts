@@ -1,5 +1,5 @@
 import { buildDemoDataset } from '../../demo/seed';
-import { countDeletions, deletions, identify, isEmpty, KEYS } from '../diff';
+import { changedRows, countDeletions, deletions, identify, isEmpty, KEYS } from '../diff';
 import { emptySnapshot, toRows, TABLES, type Documents, type Snapshot } from '../rows';
 
 function demoRows(): Snapshot {
@@ -85,6 +85,45 @@ describe('deletions', () => {
     const local = demoRows();
     local.scores[0] = { ...local.scores[0], strokes: 11 };
     expect(countDeletions(deletions(remote, local))).toBe(0);
+  });
+});
+
+describe('changedRows', () => {
+  it('sends nothing when the server already holds every row', () => {
+    const rows = demoRows();
+    const changed = changedRows(structuredClone(rows), rows);
+    expect(TABLES.filter((table) => changed[table].length > 0)).toEqual([]);
+  });
+
+  it('sends the one score that changed and nothing else', () => {
+    const server = demoRows();
+    const local = structuredClone(server);
+    const edited = local.scores.findIndex((row) => row.strokes == null);
+    local.scores[edited] = { ...local.scores[edited], strokes: 5 };
+
+    const changed = changedRows(server, local);
+    expect(changed.scores).toEqual([local.scores[edited]]);
+    expect(TABLES.filter((table) => changed[table].length > 0)).toEqual(['scores']);
+  });
+
+  it('sends rows the server lacks, and a row whose nested value changed', () => {
+    const server = demoRows();
+    const local = structuredClone(server);
+    const added = { ...local.players[0], id: 'new-player' };
+    local.players.push(added);
+    local.course_greens.push({ course_id: local.courses[0].id, number: 1, middle_lat: 1, middle_lng: 2, front_lat: null, front_lng: null, back_lat: null, back_lng: null, source: 'map' });
+    server.course_greens.push({ ...local.course_greens.at(-1)!, middle_lat: 0 });
+
+    const changed = changedRows(server, local);
+    expect(changed.players).toEqual([added]);
+    expect(changed.course_greens).toEqual([local.course_greens.at(-1)]);
+  });
+
+  it('ignores columns only the server has', () => {
+    const local = demoRows();
+    const server = structuredClone(local);
+    server.groups = server.groups.map((row) => ({ ...row, owner_id: 'someone' }));
+    expect(changedRows(server, local).groups).toEqual([]);
   });
 });
 

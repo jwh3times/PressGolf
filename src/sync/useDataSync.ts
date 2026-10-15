@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { deletions } from './diff';
+import { changedRows, deletions } from './diff';
 import { pullSharedOutings, pushSnapshot, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
 import { fromRows, toRows, type Documents, type Snapshot } from './rows';
@@ -114,8 +114,8 @@ export function useDataSync(options: {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
           const local = toRows(documents);
-          const prune = deletions(serverHas.current ?? local, local);
-          await pushSnapshot(local, { prune });
+          const server = serverHas.current ?? local;
+          await pushSnapshot(changedRows(server, local), { prune: deletions(server, local) });
           serverHas.current = local;
           // Only now, with this phone's edits safely up, is it safe to let the
           // server's copy of a shared day win.
