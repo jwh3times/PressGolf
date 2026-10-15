@@ -19,6 +19,8 @@ type XY = [number, number];
 
 export interface HoleView {
   frame: Frame;
+  /** Degrees clockwise from north that point up the drawing. */
+  heading: number;
   minX: number;
   maxX: number;
   minY: number;
@@ -34,7 +36,8 @@ export function holeView(plan: HolePlan, extra: (LatLng | null)[]): HoleView | n
   const end = plan.green?.middle ?? plan.line?.at(-1) ?? null;
   const start = plan.tee ?? extra.find((p): p is LatLng => p != null) ?? null;
   if (!end) return null;
-  const view = frame(start ?? end, start ? bearing(start, end) : 0);
+  const heading = start ? bearing(start, end) : 0;
+  const view = frame(start ?? end, heading);
   const points = [...(plan.line ?? []), end, ...(start ? [start] : []), ...extra.filter((p): p is LatLng => p != null)].map(
     view.toXY,
   );
@@ -42,6 +45,7 @@ export function holeView(plan: HolePlan, extra: (LatLng | null)[]): HoleView | n
   const ys = points.map(([, y]) => y);
   return {
     frame: view,
+    heading,
     minX: Math.min(...xs) - SIDE_M,
     maxX: Math.max(...xs) + SIDE_M,
     minY: Math.min(...ys) - BEHIND_TEE_M,

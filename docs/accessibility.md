@@ -52,7 +52,8 @@ substitute for assistive-technology use on both platforms.
   it shows is also text below it: the yards to the green and to the target,
   and each hazard's side, front, carry and far end, each read as one sentence.
   Tapping the map to measure is pointer-only; the same targets (the green,
-  the line of play, 100, 150 and 200 out) are buttons. Red and yellow penalty
+  the line of play, 100, 150 and 200 out) are buttons. The Satellite switch
+  is a switch, with its state, and the satellite map is named for its hole. Red and yellow penalty
   areas differ in outline and in their names, not in colour alone. The map's
   hazards, edges and lines reach 3:1 (4.5:1 on the high-contrast bases)
   against both the rough and the fairway in every theme

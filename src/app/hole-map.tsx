@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
-import { HoleDiagram } from '../components/HoleDiagram';
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { HoleDiagram, holeView } from '../components/HoleDiagram';
+import { HoleSatellite } from '../components/HoleSatellite';
 import { ModalHeader, Screen } from '../components/Screen';
-import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono } from '../components/primitives';
+import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono, Switch } from '../components/primitives';
 import { yardsBetween, yardsToGreen } from '../domain/geo';
 import {
   aroundGreen,
@@ -69,6 +70,7 @@ export default function HoleMapScreen() {
   // The hole lives in the URL, not in state: on the web the params arrive after the first render.
   const hole = Math.min(Math.max(1, Number(params.hole) || 1), Math.max(1, holeCount));
   const [aim, setAim] = useState<Aim>({ kind: 'line' });
+  const [satellite, setSatellite] = useState(false);
   const { state, start } = useLiveLocation();
 
   // Asked for from the Score screen, where you are standing on the hole.
@@ -147,7 +149,18 @@ export default function HoleMapScreen() {
         </Card>
       ) : (
         <>
-          <HoleDiagram plan={plan} from={from} target={target} onTarget={(at) => setAim({ kind: 'point', at })} label={label} />
+          {satellite ? (
+            <SatelliteView plan={plan} from={from} fromTee={seat.fromTee} target={target} onTarget={(at) => setAim({ kind: 'point', at })} />
+          ) : (
+            <HoleDiagram plan={plan} from={from} target={target} onTarget={(at) => setAim({ kind: 'point', at })} label={label} />
+          )}
+          {/* Imagery is the phone's map provider's; the web has none. */}
+          {Platform.OS !== 'web' ? (
+            <View style={styles.row}>
+              <Body style={styles.copy}>Satellite imagery, when there’s signal</Body>
+              <Switch on={satellite} onToggle={() => setSatellite((on) => !on)} label="Satellite" />
+            </View>
+          ) : null}
 
           <View style={styles.row}>
             <Mono size={10.5} style={state.status === 'located' && state.live && !seat.fromTee ? styles.live : styles.quiet}>
@@ -258,6 +271,12 @@ export default function HoleMapScreen() {
       ) : null}
     </Screen>
   );
+}
+
+/** The satellite map, framed as the drawn one is, so switching keeps the hole where it was. */
+function SatelliteView(props: Omit<React.ComponentProps<typeof HoleSatellite>, 'view'>) {
+  const view = useMemo(() => holeView(props.plan, [props.from]), [props.plan, props.from]);
+  return view ? <HoleSatellite {...props} view={view} /> : null;
 }
 
 function HazardRow({ reading }: { reading: HazardReading }) {

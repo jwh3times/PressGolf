@@ -110,6 +110,18 @@ jest.mock('../../components/GreenMap', () => {
   };
 });
 
+// The satellite map is native; this stands in with a tap that reports a point.
+jest.mock('../../components/HoleSatellite', () => {
+  const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    HoleSatellite: ({ onTarget, plan }: { onTarget: (at: { lat: number; lng: number }) => void; plan: { number: number } }) => (
+      <Pressable accessibilityRole="button" accessibilityLabel={`Satellite map of hole ${plan.number}`} onPress={() => onTarget({ lat: 32.8985, lng: -117.2503 })}>
+        <Text>satellite</Text>
+      </Pressable>
+    ),
+  };
+});
+
 jest.mock('../../osm/client', () => ({
   findCourses: jest.fn(),
   fetchCourseFeatures: jest.fn(),
@@ -2077,6 +2089,21 @@ describe('the hole map', () => {
     });
     expect(screen.queryByRole('button', { name: 'Clear the point you tapped' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Measure to the middle of the green' })).toBeOnTheScreen();
+  });
+
+  it('switches to satellite imagery and back, keeping the target and the distances', async () => {
+    await open({ hole: '3' });
+    const user = userEvent.setup();
+    const satellite = screen.getByRole('switch', { name: 'Satellite' });
+    expect(satellite).not.toBeChecked();
+    await user.press(satellite);
+    expect(screen.getByRole('switch', { name: 'Satellite' })).toBeChecked();
+    expect(screen.queryByRole('image', { name: /^Drawn map/ })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Satellite map of hole 3' }));
+    expect(screen.getByRole('button', { name: 'Clear the point you tapped' })).toBeOnTheScreen();
+    expect(screen.getByText('TO THE MIDDLE')).toBeOnTheScreen();
+    await user.press(screen.getByRole('switch', { name: 'Satellite' }));
+    expect(drawing()).toBeOnTheScreen();
   });
 
   it('moves between holes through the URL', async () => {
