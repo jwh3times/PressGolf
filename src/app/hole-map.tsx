@@ -257,6 +257,22 @@ export default function HoleMapScreen() {
         </>
       )}
 
+      {mapped && course.features.length === 0 ? (
+        <Card style={styles.empty}>
+          <Body style={styles.copy}>
+            This course has its greens but not its bunkers, water and fairways. Import it from OpenStreetMap again to add
+            them; greens you marked are kept.
+          </Body>
+          <Chip
+            label="IMPORT THE COURSE MAP"
+            accessibilityLabel="Import the course map from OpenStreetMap"
+            active
+            color={colors.accent}
+            onPress={() => router.push({ pathname: '/greens', params: { id: course.id } })}
+          />
+        </Card>
+      ) : null}
+
       {fromOsm ? (
         <Pressable
           accessibilityRole="link"

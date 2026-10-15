@@ -2196,6 +2196,25 @@ describe('the hole map', () => {
     expect(screen.getByRole('link', { name: /OpenStreetMap contributors/ })).toBeOnTheScreen();
   });
 
+  it('maps a hole whose course has only its greens, and offers to import the rest', async () => {
+    const greensOnly = { ...mapped, features: [] };
+    useStoreValue({ course: greensOnly, courses: [greensOnly] });
+    const view = await render(<ScoreScreen />);
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 4' }));
+    expect(screen.queryByRole('button', { name: 'Map of hole 4' })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
+    await user.press(screen.getByRole('button', { name: 'Map of hole 3' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: greensOnly.id, hole: '3', live: '1' } });
+    await view.unmount();
+
+    mockParams = { course: greensOnly.id, hole: '3' };
+    await render(<HoleMapScreen />);
+    expect(screen.getByText(/This course has its greens but not its bunkers, water and fairways/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Import the course map from OpenStreetMap' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/greens', params: { id: greensOnly.id } });
+  });
+
   it('measures from the tee when the phone may not say where it is', async () => {
     jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({ granted: false } as never);
     await open({ hole: '3', live: '1' });

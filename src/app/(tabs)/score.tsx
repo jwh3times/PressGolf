@@ -170,7 +170,8 @@ export default function ScoreScreen() {
         green={greenFor(course.greens, holeInfo.number)}
         onMark={(green) => store.setGreen(course.id, green)}
       />
-      {course.features.length ? (
+      {/* Any hole with a green can be mapped, even before the course's hazards are imported. */}
+      {course.features.length || greenFor(course.greens, holeInfo.number) ? (
         <GhostButton
           label={`Map of hole ${holeInfo.number}`}
           onPress={() =>
