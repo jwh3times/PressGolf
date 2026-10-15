@@ -126,8 +126,9 @@ pass.
   been tested in Jest and on the web build, not on a phone on a course. Web
   cannot mark a green, because marking confirms through a native alert.
 - The hole map has been checked in Jest and in the web build on Torrey Pines
-  South's real map, not yet on a phone. It is drawn from the saved map; a
-  satellite view on phones is still to come (#125).
+  South's real map, not yet on a phone. It is drawn from the saved map, so it
+  works without signal; its satellite switch, on phones only, needs signal,
+  and on Android a store build needs the Google Maps key that isn't set up yet.
 - Handicap indexes are typed in by hand. Keeping them in step with GHIN is
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
 - Themes: dark (the default, made for daylight), light, and a high-contrast

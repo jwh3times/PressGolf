@@ -173,6 +173,17 @@ it through the landing area (`defaultTarget`), or the green. A lay-up button
 measures to a point 100, 150 or 200 yards short of the green along the line
 (`pointShort`), and a tap on the map measures to that point.
 
+On a phone, a **Satellite** switch swaps the drawing for `HoleSatellite`:
+`react-native-maps` imagery (Apple Maps on iOS, Google Maps on Android) with
+the same target, yards and taps, and only the trouble outlined (bunkers,
+water by stake colour, the course edge, out of bounds), since the picture
+shows the grass. Apple's camera takes an altitude and Google's a zoom, and
+neither documents how much ground a value shows, so the map first frames the
+hole's corners north-up (`fitToCoordinates`), then `turnedCamera` turns it to
+the hole's heading and comes in by the ratio of the two boxes, which scales
+either value on any screen. It needs signal for the imagery, and an Android
+store build needs the Google Maps key (below). The web has no switch.
+
 `hazardsBetween` lists each bunker and penalty area within 40 m of the line to
 the target and short of 30 m past it, nearest first: its side, the yards to
 its front and to its far end, and for one across the line, the carry.
