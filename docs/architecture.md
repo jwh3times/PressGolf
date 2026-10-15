@@ -92,8 +92,8 @@ would put the middle on the fringe. Marking again replaces the hole's green and
 keeps only the middle. The course owner's marks sync; outing guests read them,
 as they read the card.
 
-The course editor's **Find greens on OpenStreetMap** (`src/app/greens.tsx`)
-fills greens in from the map. About half of US courses are mapped well enough
+The course editor's **Import from OpenStreetMap** (`src/app/greens.tsx`)
+fills in the greens and the course map from OpenStreetMap. About half of US courses are mapped well enough
 (checked 2026-10-14: 85 of 194 in Oregon, 199 of 445 in North Carolina, had at
 least nine numbered holes and nine greens). Two public OpenStreetMap services
 are called, only when someone taps (`src/osm/client.ts`):
@@ -102,8 +102,10 @@ are called, only when someone taps (`src/osm/client.ts`):
   course (it can match a road instead), it searches once more with "golf
   course" added, a second later, as the usage policy's one-request-a-second
   limit asks.
-- **Overpass** returns every `golf=hole` line and `golf=green` outline inside
-  the course's boundary. Its public servers are volunteer-run and often loaded
+- **Overpass** returns the course's own outline and every hole line, green,
+  bunker, penalty area, fairway, tee and pond inside it. The query ends
+  `out geom`, not `out geom tags`: the tags form leaves out a relation's
+  members, and a third of fairways worldwide are multipolygon relations. Its public servers are volunteer-run and often loaded
   (on 2026-10-15 overpass-api.de took 20–45 s for a one-node query, or gave an
   instant 502), so the import tries each server in `OVERPASS_URLS` in turn,
   two seconds apart, gives each a minute, and keeps going for two minutes
@@ -123,6 +125,34 @@ for credit wherever its data shows, so the search screen says "© OpenStreetMap
 contributors" and links to its copyright page, and a yardage read from an
 imported green says "© OpenStreetMap", the short form its attribution
 guidelines accept, as a link to the same page.
+
+### Course map
+
+A course can also carry a map for the hole map and distances to trouble
+(#125): `Course.features`, synced as `course_features`, one row per feature,
+its outline a jsonb array of `[lat, lng]` pairs. Kinds are `bunker`, `water`
+(a yellow penalty area) and `lateralWater` (red), `fairway`, `green`, `tee`,
+`courseEdge` (the mapped boundary, outside which is likely out of bounds),
+`outOfBounds` (a line drawn in the app where the stakes are) and `holeLine`
+(tee to green, carrying its hole number). Areas are rings stored without
+repeating the first point; lines run in order.
+
+`featuresFromOsm` (`src/osm/features.ts`) reads them from the same Overpass
+reply as the greens: `golf=bunker`, `golf=water_hazard`,
+`golf=lateral_water_hazard`, `golf=penalty_area`, untagged `natural=water`,
+`golf=fairway`, `golf=green`, `golf=tee`, `golf=out_of_bounds`, `golf=hole` and
+the course's `leisure=golf_course` outline. A multipolygon's outer rings are
+joined from its member ways, each becoming its own feature; a ring that never
+closes is dropped. Outlines are simplified to half a metre (`SIMPLIFY_M`),
+harder if one would pass the database's 5,000 points, and rounded to six
+decimal places: Torrey Pines South keeps 2,962 points, about 71 KB. Ids such as
+`osm:way/123` are stable, and an import replaces the earlier one whole while
+keeping anything drawn in the app (`withImportedFeatures`).
+
+Measured 2026-10-15 across the 88 Oregon courses with at least nine holes and
+greens mapped: 81% have at least nine bunkers, 87% at least nine fairways, 85%
+a tagged water hazard, and 2% any `golf=out_of_bounds`. Out of bounds therefore
+comes from the course edge and from lines the owner draws.
 
 For a course nobody has mapped and nobody is standing on, **Place greens on a
 map** (`src/app/green-map.tsx`) shows a satellite map (`react-native-maps`:
@@ -266,7 +296,7 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
-1. On first contact, it pulls the signed-in account's 20 snapshot tables.
+1. On first contact, it pulls the signed-in account's 21 snapshot tables.
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
@@ -278,7 +308,7 @@ When the two Supabase public variables are present and a user is signed in,
 5. After a successful push, shared outings are pulled and merged into local
    data.
 
-The schema has 22 application tables: 20 snapshot tables plus
+The schema has 23 application tables: 21 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need.

@@ -4,8 +4,11 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import { Field } from '../components/Field';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, GhostButton, Mono, PrimaryButton } from '../components/primitives';
+import { describeFeatures, withImportedFeatures } from '../domain/course-map';
 import { withImported } from '../domain/geo';
+import type { CourseFeature } from '../domain/types';
 import { fetchCourseFeatures, findCourses, type CourseMatch } from '../osm/client';
+import { featuresFromOsm } from '../osm/features';
 import { greensFromOsm, type ImportedGreens } from '../osm/greens';
 import { useStore } from '../store/AppStore';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -15,14 +18,15 @@ type Step =
   | { kind: 'search' }
   | { kind: 'busy'; doing: string }
   | { kind: 'results'; matches: CourseMatch[] }
-  | { kind: 'preview'; match: CourseMatch; imported: ImportedGreens };
+  | { kind: 'preview'; match: CourseMatch; imported: ImportedGreens; features: CourseFeature[] };
 
 const holes = (numbers: number[]) => `${numbers.length === 1 ? 'hole' : 'holes'} ${numbers.join(', ')}`;
 
 /**
- * Finding a course's greens on OpenStreetMap (#8): search by name, pick the
- * course, see how many holes it accounts for, then save. Greens marked on the
- * course are kept; an earlier import is replaced.
+ * Importing a course from OpenStreetMap: its greens (#8) and its map of
+ * hazards, fairways and tees (#125). Search by name, pick the course, see how
+ * much of it is mapped, then save. Greens marked on the course and anything
+ * drawn in the app are kept; an earlier import is replaced.
  */
 export default function GreensScreen() {
   const styles = useStyles();
@@ -65,19 +69,25 @@ export default function GreensScreen() {
       `Reading ${match.name}… This can take a minute.`,
       async () => {
         const onRetry = () => setStep({ kind: 'busy', doing: 'OpenStreetMap is slow right now. Still trying…' });
-        return { kind: 'preview', match, imported: greensFromOsm(await fetchCourseFeatures(match, { onRetry }), holeCount) };
+        const elements = await fetchCourseFeatures(match, { onRetry });
+        return {
+          kind: 'preview',
+          match,
+          imported: greensFromOsm(elements, holeCount),
+          features: featuresFromOsm(elements, holeCount),
+        };
       },
       { kind: 'results', matches },
     );
 
   return (
     <Screen floatingTabBar={false}>
-      <ModalHeader eyebrow={course.name} title="Find greens" onClose={() => router.back()} closeLabel="Back" />
+      <ModalHeader eyebrow={course.name} title="From OpenStreetMap" onClose={() => router.back()} closeLabel="Back" />
 
       <Body style={styles.copy}>
-        Many courses are mapped on OpenStreetMap, hole by hole, with the outline of every green. Press
-        reads the front, middle and back of each green from them. Greens you marked standing on them
-        are kept.
+        Many courses are mapped on OpenStreetMap, hole by hole, with the outline of every green and the
+        bunkers, water and fairways around it. Press reads the front, middle and back of each green, and
+        the hazards for the hole map. Greens you marked standing on them are kept.
       </Body>
 
       <Field
@@ -126,9 +136,11 @@ export default function GreensScreen() {
         <Preview
           holeCount={holeCount}
           imported={step.imported}
+          features={step.features}
           kept={withImported(course.greens, step.imported.greens).kept}
           onSave={() => {
             store.setGreens(course.id, withImported(course.greens, step.imported.greens).greens);
+            store.setFeatures(course.id, withImportedFeatures(course.features, step.features));
             router.back();
           }}
         />
@@ -151,11 +163,13 @@ export default function GreensScreen() {
 function Preview({
   holeCount,
   imported,
+  features,
   kept,
   onSave,
 }: {
   holeCount: number;
   imported: ImportedGreens;
+  features: CourseFeature[];
   kept: number[];
   onSave: () => void;
 }) {
@@ -163,6 +177,9 @@ function Preview({
   const { colors } = useTheme();
   const found = imported.greens.length;
   const saving = found - kept.length;
+  const what = [saving > 0 ? `${saving} ${saving === 1 ? 'green' : 'greens'}` : null, features.length ? 'the course map' : null]
+    .filter(Boolean)
+    .join(' and ');
   return (
     <Card style={styles.preview}>
       <Eyebrow>{`Greens for ${found} of ${holeCount} holes`}</Eyebrow>
@@ -175,8 +192,11 @@ function Preview({
           {holes(kept).replace(/^h/, 'H')} {kept.length === 1 ? 'keeps' : 'keep'} the green you marked.
         </Body>
       ) : null}
-      {saving > 0 ? (
-        <PrimaryButton label={`Save ${saving} ${saving === 1 ? 'green' : 'greens'}`} onPress={onSave} />
+      <Body style={styles.copy}>
+        {features.length ? `Course map: ${describeFeatures(features)}.` : 'No hazards or fairways are mapped.'}
+      </Body>
+      {what ? (
+        <PrimaryButton label={`Save ${what}`} onPress={onSave} />
       ) : (
         <Body style={[styles.copy, { color: colors.clay }]}>
           {found ? 'Nothing new to save.' : 'This course has no greens mapped yet.'}

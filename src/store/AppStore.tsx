@@ -20,6 +20,7 @@ import type {
   FieldGameKey,
   GameKey,
   GameOptions,
+  CourseFeature,
   Green,
   Group,
   Hole,
@@ -115,6 +116,8 @@ export interface AppStore extends AppState {
   setGreen(courseId: string, green: Green): void;
   /** Replaces all of a course's greens, as an import does. */
   setGreens(courseId: string, greens: Green[]): void;
+  /** Replaces all of a course's map: its hazards, fairways and the like (#125). */
+  setFeatures(courseId: string, features: CourseFeature[]): void;
   deleteCourse(id: string): void;
 
   // Rounds
@@ -651,6 +654,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           courses: prev.courses.map((c) => (c.id === courseId ? { ...c, greens } : c)),
+        })),
+      setFeatures: (courseId, features) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, features } : c)),
         })),
       deleteCourse: (id) =>
         commit((prev) => ({

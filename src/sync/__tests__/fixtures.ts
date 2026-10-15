@@ -4,8 +4,8 @@ import type { Documents } from '../rows';
 /** The demo dataset is the broadest real data there is: two groups, a
  *  twenty-man outing with field pots, eighteen settled rounds and a live one.
  *  The demo has nobody pressing, no Wolf picks and no explicit match pairings
- *  (round robin is derived, not stored), and Pine Hollow has no greens, so
- *  one of each is added here —
+ *  (round robin is derived, not stored), and Pine Hollow has no greens or
+ *  course map, so one of each is added here —
  *  otherwise those tables would go untested and the gap would look like a
  *  passing suite. */
 export function demoDocuments(runPrefix?: string): Documents {
@@ -78,6 +78,22 @@ export function demoDocuments(runPrefix?: string): Documents {
               front: { lat: 45.5129, lng: -122.6129 },
               back: { lat: 45.5131, lng: -122.6131 },
               source: 'map' as const,
+            },
+          ],
+          features: [
+            {
+              id: 'osm:way/1001',
+              kind: 'bunker' as const,
+              hole: null,
+              points: [{ lat: 45.5128, lng: -122.6128 }, { lat: 45.5128, lng: -122.6126 }, { lat: 45.5127, lng: -122.6127 }],
+              source: 'osm' as const,
+            },
+            {
+              id: 'osm:way/1002',
+              kind: 'holeLine' as const,
+              hole: 2,
+              points: [{ lat: 45.5112, lng: -122.6101 }, { lat: 45.513, lng: -122.613 }],
+              source: 'osm' as const,
             },
           ],
         }

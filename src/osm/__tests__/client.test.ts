@@ -106,9 +106,11 @@ describe('fetchCourseFeatures', () => {
     expect(url).toBe(OVERPASS_URLS[0]);
     expect(init.method).toBe('POST');
     const query = decodeURIComponent(String(init.body).replace(/^data=/, ''));
-    expect(query).toContain('relation(16064599);map_to_area->.course;');
-    expect(query).toContain('way["golf"="hole"](area.course)');
-    expect(query).toContain('relation["golf"="green"](area.course)');
+    expect(query).toContain('relation(16064599)->.edge;\n.edge out geom;\n.edge map_to_area->.course;');
+    expect(query).toMatch(/way\["golf"~"\^\(hole\|green\|bunker\|water_hazard\|lateral_water_hazard\|[a-z_|]*fairway[a-z_|]*\)\$"\]\(area\.course\)/);
+    expect(query).toContain('relation["natural"="water"](area.course)');
+    // The tags-only form drops a relation's members, and with them every multipolygon's rings.
+    expect(query).not.toContain('out geom tags');
   });
 
   it('treats a reply with no elements as none', async () => {

@@ -4,7 +4,7 @@ import { greensFromOsm, type OsmElement } from '../greens';
 // (© OpenStreetMap contributors, ODbL). The card gives 200 and 175 yards.
 import torrey from './torrey-south.json';
 
-const elements = torrey.elements as OsmElement[];
+const elements = torrey.elements as unknown as OsmElement[];
 
 /** A square green `size` metres across, centred `north` metres north of (0, 0) at the equator. */
 function square(id: number, north: number, size = 30): OsmElement {

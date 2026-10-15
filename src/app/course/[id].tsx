@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Field } from '../../components/Field';
 import { ModalHeader, Screen } from '../../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
+import { describeFeatures } from '../../domain/course-map';
 import type { Hole, Tee } from '../../domain/types';
 import { useStore } from '../../store/AppStore';
 import { alpha } from '../../theme/color';
@@ -97,14 +98,15 @@ export default function CourseEditorScreen() {
       </View>
 
       <View style={{ gap: 8 }}>
-        <Eyebrow>Greens</Eyebrow>
+        <Eyebrow>Greens and course map</Eyebrow>
         <Body style={{ color: ink.soft, lineHeight: 19 }}>
           {course.greens.length
             ? `${course.greens.length} of ${tee.holes.length} greens saved, for yardage on the Score screen.`
             : 'No greens saved yet. With them, the Score screen gives the yardage to the green.'}
+          {course.features.length ? ` The map has ${describeFeatures(course.features)}.` : ''}
         </Body>
         <GhostButton
-          label="Find greens on OpenStreetMap"
+          label="Import from OpenStreetMap"
           onPress={() => router.push({ pathname: '/greens', params: { id: course.id } })}
         />
         <GhostButton
