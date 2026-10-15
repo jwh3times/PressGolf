@@ -76,7 +76,6 @@ A course can know where each hole's green is (`Course.greens`, synced as
 plays to the same green. Each has a middle, and optionally a front and back,
 which are always set as a pair. `source` records where the points came from:
 `marked` standing on the green, placed on a `map`, or `osm` (OpenStreetMap).
-Placing greens on a map is still to come (#8).
 
 On the Score screen's hole-by-hole view, `GreenYardage` shows the distance from
 the phone to the green. GPS runs only when asked: a tap watches the position
@@ -116,6 +115,16 @@ for credit wherever its data shows, so the search screen says "© OpenStreetMap
 contributors" and links to its copyright page, and a yardage read from an
 imported green says "© OpenStreetMap", the short form its attribution
 guidelines accept, as a link to the same page.
+
+For a course nobody has mapped and nobody is standing on, **Place greens on a
+map** (`src/app/green-map.tsx`) shows a satellite map (`react-native-maps`:
+Apple Maps on iOS, Google Maps on Android). Pick a hole and tap where its
+green's middle is; placing a new middle moves on to the next hole. Front and
+back can be placed once the middle is down, and any pin of the chosen hole can
+be dragged (`placePoint`). The map opens over the course's greens, or where the
+phone last was if location is already allowed, and the course name can be
+searched (Nominatim) to move the map there. `react-native-maps` has no web
+version, so `GreenMap.web.tsx` says to use the OpenStreetMap search instead.
 
 ### Max score and pick-ups
 
