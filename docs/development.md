@@ -78,6 +78,13 @@ plugin in `app.json` sets the one iOS prompt, "when in use", and turns off the
 plugin's default "always" and motion prompts, which the app never asks for.
 Android gets coarse and fine location and no background location.
 
+The greens map uses `react-native-maps`, which is in Expo Go and needs no key
+there. A store or development build for Android needs a Google Maps API key,
+restricted to the app, set as `androidGoogleMapsApiKey` in the
+`react-native-maps` config plugin. None is configured yet, so opening the map in
+such a build would fail on Android until one is added. iOS uses Apple Maps and
+needs no key.
+
 ## Environment variables
 
 The app recognizes three public build-time variables:

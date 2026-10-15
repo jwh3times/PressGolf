@@ -71,3 +71,15 @@ export function withImported(existing: Green[], imported: Green[]): { greens: Gr
     kept: imported.filter((g) => ownHoles.has(g.number)).map((g) => g.number),
   };
 }
+
+export type GreenPoint = 'middle' | 'front' | 'back';
+
+/**
+ * A hole's green with one point placed on a map. Front and back hang off a
+ * middle, so they can only be placed once the green has one.
+ */
+export function placePoint(existing: Green | null, number: number, point: GreenPoint, at: LatLng): Green | null {
+  if (point !== 'middle' && !existing) return null;
+  const base: Green = existing ?? { number, middle: at, front: null, back: null, source: 'map' };
+  return { ...base, [point]: at, source: 'map' };
+}

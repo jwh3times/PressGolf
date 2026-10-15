@@ -9,7 +9,8 @@ Vegas, match play, and stroke play. Pops come from each player's Handicap Index
 and tee, in full or off the low man, or are typed in by hand. Outings can split
 a larger field into playing groups while settling field-wide skins or scats
 alongside each group's games. On the course, a tap gives the yardage to the
-green, from greens found on OpenStreetMap or marked standing on them.
+green, from greens found on OpenStreetMap, placed on a satellite map, or marked
+standing on them.
 
 ## Quick start
 
@@ -114,7 +115,9 @@ pass.
   workflow in a browser, and the native date picker for a card's Played-on
   date does not render there, so a card entered on web is dated today.
 - Yardage needs a course's greens: found on OpenStreetMap from the course
-  editor, which covers about half of courses, or marked by standing on each.
+  editor, which covers about half of courses, placed on a map, or marked by
+  standing on each. The map has no web version, and an Android store build
+  needs a Google Maps key that isn't set up yet (Expo Go doesn't).
   Finding them sends the course name to OpenStreetMap's public services. It has
   been tested in Jest and on the web build, not on a phone on a course. Web
   cannot mark a green, because marking confirms through a native alert.

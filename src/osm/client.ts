@@ -1,3 +1,4 @@
+import type { LatLng } from '../domain/types';
 import type { OsmElement } from './greens';
 
 /**
@@ -21,11 +22,16 @@ export interface CourseMatch {
   name: string;
   /** Town, region and country, to tell two courses of the same name apart. */
   place: string;
+  /** Roughly the middle of the course, for putting a map over it. */
+  center: LatLng | null;
 }
 
 interface NominatimResult {
   osm_type: string;
   osm_id: number;
+  /** Nominatim gives coordinates as strings. */
+  lat?: string;
+  lon?: string;
   category?: string;
   type?: string;
   name?: string;
@@ -93,6 +99,7 @@ async function search(q: string, fetcher: Fetch): Promise<CourseMatch[]> {
       osmId: r.osm_id,
       name: r.name || r.display_name?.split(',')[0] || 'Golf course',
       place: placeOf(r.address),
+      center: r.lat && r.lon ? { lat: Number(r.lat), lng: Number(r.lon) } : null,
     }));
 }
 

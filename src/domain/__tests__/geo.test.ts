@@ -5,6 +5,7 @@ import {
   metresBetween,
   withGreen,
   withImported,
+  placePoint,
   yardsBetween,
   yardsToGreen,
 } from '../geo';
@@ -111,5 +112,19 @@ describe('importing greens', () => {
 
   it('drops an earlier import\'s green for a hole the new import has nothing for', () => {
     expect(withImported([green(2, { source: 'osm' })], []).greens).toEqual([]);
+  });
+});
+
+describe('placing a green on a map', () => {
+  it('starts a green from its middle, and moves any point of one already there', () => {
+    expect(placePoint(null, 4, 'middle', TEE)).toEqual({ number: 4, middle: TEE, front: null, back: null, source: 'map' });
+    const marked = green(3);
+    expect(placePoint(marked, 3, 'front', TEE)).toEqual({ ...marked, front: TEE, source: 'map' });
+    expect(placePoint(marked, 3, 'middle', TEE)).toEqual({ ...marked, middle: TEE, source: 'map' });
+  });
+
+  it('places no front or back before the green has a middle', () => {
+    expect(placePoint(null, 3, 'front', TEE)).toBeNull();
+    expect(placePoint(null, 3, 'back', TEE)).toBeNull();
   });
 });

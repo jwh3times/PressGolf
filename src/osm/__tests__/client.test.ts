@@ -9,6 +9,8 @@ const course = (extra: Record<string, unknown> = {}) => ({
   category: 'leisure',
   type: 'golf_course',
   name: 'Torrey Pines South Course',
+  lat: '32.8971363',
+  lon: '-117.247647',
   address: { city: 'San Diego', state: 'California', country: 'United States' },
   ...extra,
 });
@@ -28,8 +30,14 @@ describe('findCourses', () => {
     const found = await findCourses('Torrey Pines golf', fetcher as unknown as typeof fetch);
 
     expect(found).toEqual([
-      { osmType: 'way', osmId: 35679036, name: 'Torrey Pines South Course', place: 'San Diego, California, United States' },
-      { osmType: 'relation', osmId: 3, name: 'Rancho Park', place: 'Cheviot Hills' },
+      {
+        osmType: 'way',
+        osmId: 35679036,
+        name: 'Torrey Pines South Course',
+        place: 'San Diego, California, United States',
+        center: { lat: 32.8971363, lng: -117.247647 },
+      },
+      { osmType: 'relation', osmId: 3, name: 'Rancho Park', place: 'Cheviot Hills', center: { lat: 32.8971363, lng: -117.247647 } },
     ]);
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     expect(url.startsWith(`${NOMINATIM_URL}?`)).toBe(true);
@@ -49,10 +57,12 @@ describe('findCourses', () => {
     expect(new URL(fetcher.mock.calls[1][0] as string).searchParams.get('q')).toBe('Torrey Pines South golf course');
   });
 
-  it('gives a fallback name and no place when the result has neither', async () => {
-    const fetcher = jest.fn(() => reply([course({ name: undefined, display_name: undefined, address: undefined })]));
+  it('gives a fallback name, and no place or centre, when the result has none', async () => {
+    const fetcher = jest.fn(() =>
+      reply([course({ name: undefined, display_name: undefined, address: undefined, lat: undefined, lon: undefined })]),
+    );
     expect(await findCourses('golf', fetcher as unknown as typeof fetch)).toEqual([
-      { osmType: 'way', osmId: 35679036, name: 'Golf course', place: '' },
+      { osmType: 'way', osmId: 35679036, name: 'Golf course', place: '', center: null },
     ]);
   });
 });

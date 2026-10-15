@@ -20,6 +20,7 @@ import SettleScreen from '../(tabs)/settle';
 import CourseScreen from '../course/[id]';
 import CoursesScreen from '../courses';
 import GreensScreen from '../greens';
+import GreenMapScreen from '../green-map';
 import { fetchCourseFeatures, findCourses } from '../../osm/client';
 import torrey from '../../osm/__tests__/torrey-south.json';
 import FieldGamesScreen from '../field-games';
@@ -78,6 +79,29 @@ jest.mock('expo-location', () => ({
   watchPositionAsync: jest.fn(async () => ({ remove: jest.fn() })),
   getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 45.5, longitude: -122.6, accuracy: 3 }, timestamp: 0 })),
 }));
+
+// The native map can't run here; this stands in with buttons for a tap and a drag.
+jest.mock('../../components/GreenMap', () => {
+  const { Pressable, Text, View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    GreenMap: (props: {
+      selected: number;
+      focus: { lat: number; lng: number } | null;
+      onTap: (at: { lat: number; lng: number }) => void;
+      onDrag: (n: number, p: string, at: { lat: number; lng: number }) => void;
+    }) => (
+      <View>
+        <Text>{props.focus ? `focus ${props.focus.lat},${props.focus.lng}` : 'no focus'}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Tap the map" onPress={() => props.onTap({ lat: 1, lng: 2 })} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Drag hole 1's middle"
+          onPress={() => props.onDrag(1, 'middle', { lat: 3, lng: 4 })}
+        />
+      </View>
+    ),
+  };
+});
 
 jest.mock('../../osm/client', () => ({
   findCourses: jest.fn(),
@@ -256,6 +280,7 @@ describe('screen accessibility', () => {
     ['Courses', CoursesScreen],
     ['Course', CourseScreen],
     ['Greens', GreensScreen],
+    ['Green map', GreenMapScreen],
     ['New round', NewRoundScreen],
     ['Sides', SidesScreen],
     ['History', HistoryScreen],
@@ -1076,7 +1101,7 @@ describe('management screen state matrices', () => {
 
   it('finds a course\'s greens on OpenStreetMap, keeps the ones marked on the course, and saves the rest', async () => {
     const user = userEvent.setup();
-    const match = { osmType: 'way' as const, osmId: 35679036, name: 'Torrey Pines South Course', place: 'San Diego, California' };
+    const match = { osmType: 'way' as const, osmId: 35679036, name: 'Torrey Pines South Course', place: 'San Diego, California', center: null };
     jest.mocked(findCourses).mockResolvedValue([match]);
     jest.mocked(fetchCourseFeatures).mockResolvedValue(torrey.elements as never);
     const marked = { number: 3, middle: { lat: 32.8977, lng: -117.2507 }, front: null, back: null, source: 'marked' as const };
@@ -1105,7 +1130,7 @@ describe('management screen state matrices', () => {
 
   it('says when OpenStreetMap has no such course, has no greens for it, or can\'t be reached', async () => {
     const user = userEvent.setup();
-    const match = { osmType: 'relation' as const, osmId: 1, name: 'Goat Track', place: '' };
+    const match = { osmType: 'relation' as const, osmId: 1, name: 'Goat Track', place: '', center: null };
     jest.mocked(findCourses).mockResolvedValueOnce([]).mockResolvedValueOnce([match]).mockRejectedValueOnce(new Error('OpenStreetMap is busy. Try again in a minute.'));
     jest.mocked(fetchCourseFeatures).mockResolvedValue([]);
     await render(<GreensScreen />);
@@ -1130,12 +1155,69 @@ describe('management screen state matrices', () => {
     expect(screen.getByText(`1 of ${course.tees[0].holes.length} greens saved, for yardage on the Score screen.`)).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Find greens on OpenStreetMap' }));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/greens', params: { id: course.id } });
+    await user.press(screen.getByRole('button', { name: 'Place greens on a map' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/green-map', params: { id: course.id } });
   });
 
-  it('says a missing course is not found on the greens screen', async () => {
+  it('says a missing course is not found on the greens screens', async () => {
     mockCourseId = 'missing';
-    await render(<GreensScreen />);
+    const view = await render(<GreensScreen />);
     expect(screen.getByText('Course not found')).toBeOnTheScreen();
+    await view.unmount();
+    await render(<GreenMapScreen />);
+    expect(screen.getByText('Course not found')).toBeOnTheScreen();
+  });
+
+  it('places greens on the map hole after hole, then front and back, and drags a pin', async () => {
+    const user = userEvent.setup();
+    let greens: Parameters<AppStore['setGreen']>[1][] = [];
+    jest.mocked(actions.setGreen).mockImplementation((_id, green) => {
+      greens = [...greens.filter((g) => g.number !== green.number), green];
+    });
+    const show = () => useStoreValue({ courses: [{ ...course, greens }] });
+    show();
+    const view = await render(<GreenMapScreen />);
+
+    expect(screen.getByRole('button', { name: 'Place the front' })).toBeDisabled();
+    expect(screen.getByText('Tap the map where the middle of hole 1’s green is.')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Tap the map' }));
+    expect(actions.setGreen).toHaveBeenLastCalledWith(course.id, { number: 1, middle: { lat: 1, lng: 2 }, front: null, back: null, source: 'map' });
+    show();
+    await view.rerender(<GreenMapScreen />);
+    // A new middle moves on to the next hole.
+    expect(screen.getByRole('button', { name: 'Hole 2', selected: true })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Hole 1, green placed' })).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Hole 1, green placed' }));
+    await user.press(screen.getByRole('button', { name: 'Place the front' }));
+    expect(screen.getByText('Tap the map to put hole 1’s front there, or drag its pin.')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Tap the map' }));
+    expect(actions.setGreen).toHaveBeenLastCalledWith(course.id, expect.objectContaining({ number: 1, front: { lat: 1, lng: 2 } }));
+    show();
+    await view.rerender(<GreenMapScreen />);
+    // Moving a point of a green already there stays on its hole.
+    expect(screen.getByRole('button', { name: 'Hole 1, green placed', selected: true })).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: "Drag hole 1's middle" }));
+    expect(actions.setGreen).toHaveBeenLastCalledWith(course.id, expect.objectContaining({ number: 1, middle: { lat: 3, lng: 4 } }));
+  });
+
+  it('finds the course on the map by name, and says when it can\'t', async () => {
+    const user = userEvent.setup();
+    jest
+      .mocked(findCourses)
+      .mockResolvedValueOnce([{ osmType: 'way', osmId: 1, name: 'Chambers Bay', place: '', center: { lat: 47.2, lng: -122.57 } }])
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('OpenStreetMap is busy. Try again in a minute.'));
+    await render(<GreenMapScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Go' }));
+    expect(findCourses).toHaveBeenCalledWith(course.name);
+    expect(screen.getByText('focus 47.2,-122.57')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Go' }));
+    expect(screen.getByText(/doesn’t know a golf course by that name/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Go' }));
+    expect(screen.getByText('OpenStreetMap is busy. Try again in a minute.')).toBeOnTheScreen();
   });
 
   it('covers missing and duplicate-index course editor states', async () => {

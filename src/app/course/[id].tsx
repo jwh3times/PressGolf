@@ -107,6 +107,10 @@ export default function CourseEditorScreen() {
           label="Find greens on OpenStreetMap"
           onPress={() => router.push({ pathname: '/greens', params: { id: course.id } })}
         />
+        <GhostButton
+          label="Place greens on a map"
+          onPress={() => router.push({ pathname: '/green-map', params: { id: course.id } })}
+        />
       </View>
 
       {duplicateIndexes ? (
