@@ -2144,11 +2144,15 @@ describe('the hole map', () => {
 
     useStoreValue({ course: mapped });
     await render(<ScoreScreen />);
-    await user.press(screen.getByRole('button', { name: /^Map of hole \d+$/ }));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/hole-map',
-      params: { course: mapped.id, hole: expect.any(String), live: '1' },
-    });
+    // A hole the map can't draw shows nothing; one it can shows the hole, which opens the full map.
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.queryByRole('button', { name: 'Map of hole 1' })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
+    const preview = screen.getByRole('button', { name: 'Map of hole 3' });
+    expect(preview).toHaveProp('accessibilityHint', 'Opens the hole map, with distances to the green and to the hazards');
+    expect(screen.getByText('MAP OF HOLE 3')).toBeOnTheScreen();
+    await user.press(preview);
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', live: '1' } });
   });
 
   it('reads trouble around a player on a hole with no line: in a bunker, over red water, beside out of bounds', async () => {

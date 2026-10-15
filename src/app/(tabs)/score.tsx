@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CardGrid } from '../../components/CardGrid';
 import { GreenYardage } from '../../components/GreenYardage';
+import { HoleMapPreview } from '../../components/HoleMapPreview';
 import { Screen } from '../../components/Screen';
 import {
   Avatar,
@@ -84,6 +85,9 @@ export default function ScoreScreen() {
   const current = Math.min(hole, holeCount - 1);
   // The round's tee: what the header shows. A player on another tee sees their own par on their row.
   const holeInfo = ctx.holes[current];
+  // From the Score screen you are on the hole, so the map measures from you.
+  const openHoleMap = () =>
+    router.push({ pathname: '/hole-map', params: { course: course.id, hole: String(holeInfo.number), live: '1' } });
   const roster = ctx.players;
   const youId = group.youId;
 
@@ -170,14 +174,11 @@ export default function ScoreScreen() {
         green={greenFor(course.greens, holeInfo.number)}
         onMark={(green) => store.setGreen(course.id, green)}
       />
-      {/* Any hole with a green can be mapped, even before the course's hazards are imported. */}
-      {course.features.length || greenFor(course.greens, holeInfo.number) ? (
-        <GhostButton
-          label={`Map of hole ${holeInfo.number}`}
-          onPress={() =>
-            router.push({ pathname: '/hole-map', params: { course: course.id, hole: String(holeInfo.number), live: '1' } })
-          }
-        />
+      {/* A course with a map shows the hole; a hole with only a green can still be mapped. */}
+      {course.features.length ? (
+        <HoleMapPreview course={course} hole={holeInfo.number} onOpen={openHoleMap} />
+      ) : greenFor(course.greens, holeInfo.number) ? (
+        <GhostButton label={`Map of hole ${holeInfo.number}`} onPress={openHoleMap} />
       ) : null}
 
       {roster.map((player) => {

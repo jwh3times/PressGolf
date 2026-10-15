@@ -30,19 +30,31 @@ export interface HoleView {
 /**
  * The hole turned so that it plays up the screen, tee at the bottom, green at
  * the top, framed to the line of play, the green, and wherever the player and
- * the target are.
+ * the target are. `across` turns it a quarter further, to play left to right,
+ * for a drawing wider than it is tall.
  */
-export function holeView(plan: HolePlan, extra: (LatLng | null)[]): HoleView | null {
+export function holeView(plan: HolePlan, extra: (LatLng | null)[], across = false): HoleView | null {
   const end = plan.green?.middle ?? plan.line?.at(-1) ?? null;
   const start = plan.tee ?? extra.find((p): p is LatLng => p != null) ?? null;
   if (!end) return null;
-  const heading = start ? bearing(start, end) : 0;
+  // The heading that points up the drawing: along the hole, or a quarter left of it.
+  const heading = ((start ? bearing(start, end) : 0) - (across ? 90 : 0) + 360) % 360;
   const view = frame(start ?? end, heading);
   const points = [...(plan.line ?? []), end, ...(start ? [start] : []), ...extra.filter((p): p is LatLng => p != null)].map(
     view.toXY,
   );
   const xs = points.map(([x]) => x);
   const ys = points.map(([, y]) => y);
+  if (across) {
+    return {
+      frame: view,
+      heading,
+      minX: Math.min(...xs) - BEHIND_TEE_M,
+      maxX: Math.max(...xs) + PAST_GREEN_M,
+      minY: Math.min(...ys) - SIDE_M,
+      maxY: Math.max(...ys) + SIDE_M,
+    };
+  }
   return {
     frame: view,
     heading,
@@ -95,7 +107,8 @@ function styleFor(feature: CourseFeature, c: CourseColors) {
  * to play up the screen, with where you are, where you're aiming, and the
  * yards along the way. Drawn from the saved map, so it works with no signal
  * and on the web. Tap to measure to a point; screen readers get the same
- * distances as text beside it, and targets as buttons.
+ * distances as text beside it, and targets as buttons. Without `onTarget` it
+ * is only a picture, for a control around it to give a name and a press.
  */
 export function HoleDiagram({
   plan,
@@ -104,14 +117,17 @@ export function HoleDiagram({
   onTarget,
   label,
   height = 440,
+  across = false,
 }: {
   plan: HolePlan;
   from: LatLng | null;
   target: LatLng | null;
-  onTarget: (at: LatLng) => void;
-  /** What the drawing shows, for a screen reader. */
-  label: string;
+  onTarget?: (at: LatLng) => void;
+  /** What the drawing shows, for a screen reader. Needed when it can be tapped. */
+  label?: string;
   height?: number;
+  /** Play left to right rather than up the screen, for a short, wide drawing. */
+  across?: boolean;
 }) {
   const theme = useTheme();
   const c = courseColors(theme);
@@ -119,7 +135,7 @@ export function HoleDiagram({
   // Where a touch began. A ref, not state: the release can come before a render would.
   const touch = useRef<{ x: number; y: number } | null>(null);
   // The frame follows the hole and the player, not the target: a tap shouldn't move the map under the finger.
-  const view = useMemo(() => holeView(plan, [from]), [plan, from]);
+  const view = useMemo(() => holeView(plan, [from], across), [plan, from, across]);
   if (!view) return null;
   const { toPx, toXY } = fit(view, width || 1, height);
   const px = (p: LatLng) => toPx(view.frame.toXY(p));
@@ -135,27 +151,31 @@ export function HoleDiagram({
     const { locationX, locationY } = event.nativeEvent;
     const began = touch.current;
     touch.current = null;
-    if (began && Math.hypot(locationX - began.x, locationY - began.y) <= TAP_SLOP) {
+    if (began && onTarget && Math.hypot(locationX - began.x, locationY - began.y) <= TAP_SLOP) {
       onTarget(view.frame.toLatLng(toXY([locationX, locationY])));
     }
   };
 
   return (
     <View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={label}
+      {...(onTarget
+        ? {
+            accessible: true,
+            accessibilityRole: 'image' as const,
+            accessibilityLabel: label,
+            onStartShouldSetResponder: () => true,
+            onResponderGrant: (e: GestureResponderEvent) => {
+              touch.current = { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY };
+            },
+            onResponderRelease: release,
+            onResponderTerminationRequest: () => true,
+            onResponderTerminate: () => {
+              touch.current = null;
+            },
+          }
+        : { pointerEvents: 'none' as const })}
       style={[styles.box, { height, backgroundColor: c.ground }]}
       onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
-      onStartShouldSetResponder={() => true}
-      onResponderGrant={(e) => {
-        touch.current = { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY };
-      }}
-      onResponderRelease={release}
-      onResponderTerminationRequest={() => true}
-      onResponderTerminate={() => {
-        touch.current = null;
-      }}
     >
       {width > 0 ? (
         <Svg width={width} height={height} pointerEvents="none">

@@ -53,7 +53,10 @@ substitute for assistive-technology use on both platforms.
   and each hazard's side, front, carry and far end, each read as one sentence.
   Tapping the map to measure is pointer-only; the same targets (the green,
   the line of play, 100, 150 and 200 out) are buttons. The Satellite switch
-  is a switch, with its state, and the satellite map is named for its hole. Red and yellow penalty
+  is a switch, with its state, and the satellite map is named for its hole.
+  The preview under the Score screen's yardage is one button, "Map of hole
+  N", with a hint that it opens the map with distances; the drawing inside
+  it is hidden from screen readers. Red and yellow penalty
   areas differ in outline and in their names, not in colour alone. The map's
   hazards, edges and lines reach 3:1 (4.5:1 on the high-contrast bases)
   against both the rough and the fairway in every theme
