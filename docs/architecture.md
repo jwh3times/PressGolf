@@ -328,7 +328,9 @@ When the two Supabase public variables are present and a user is signed in,
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
-   then upserted in parent-before-child order.
+   then upserted in parent-before-child order. Only rows that differ from the
+   last known remote snapshot go up (`changedRows`), so an edit sends one
+   score, not the season.
 4. Rows deleted locally are pruned child-first after comparison with the last
    known remote snapshot.
 5. After a successful push, shared outings are pulled and merged into local
