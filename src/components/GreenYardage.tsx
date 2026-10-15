@@ -138,6 +138,20 @@ export function GreenYardage({
           </Mono>
         </Pressable>
         {markChip}
+        {/* OpenStreetMap's licence asks for credit wherever its data shows, with the licence a tap away. */}
+        {green.source === 'osm' ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Green from OpenStreetMap. Opens its copyright and licence page"
+            hitSlop={{ top: 14, bottom: 14 }}
+            onPress={() => void Linking.openURL('https://www.openstreetmap.org/copyright')}
+            style={styles.credit}
+          >
+            <Mono size={10} style={styles.stale}>
+              GREEN © OPENSTREETMAP
+            </Mono>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -182,5 +196,6 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     live: { color: colors.accent, letterSpacing: 1.2 },
     stale: { color: ink.soft, letterSpacing: 1.2 },
     finding: { color: ink.soft, letterSpacing: 1.2, paddingVertical: 14 },
+    credit: { width: '100%', minHeight: 20, justifyContent: 'center' },
   }),
 );

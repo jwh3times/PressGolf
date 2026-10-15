@@ -55,3 +55,19 @@ export function greenFor(greens: Green[], holeNumber: number): Green | null {
 export function withGreen(greens: Green[], green: Green): Green[] {
   return [...greens.filter((g) => g.number !== green.number), green].sort((a, b) => a.number - b.number);
 }
+
+/**
+ * Greens imported from OpenStreetMap, laid over the course's own. A green
+ * someone marked on the course or placed on a map is kept: they stood there,
+ * and the map may be years old. An earlier import is replaced. `kept` lists the
+ * holes where the import had a green but the course's own was kept.
+ */
+export function withImported(existing: Green[], imported: Green[]): { greens: Green[]; kept: number[] } {
+  const own = existing.filter((g) => g.source !== 'osm');
+  const ownHoles = new Set(own.map((g) => g.number));
+  const added = imported.filter((g) => !ownHoles.has(g.number));
+  return {
+    greens: [...own, ...added].sort((a, b) => a.number - b.number),
+    kept: imported.filter((g) => ownHoles.has(g.number)).map((g) => g.number),
+  };
+}

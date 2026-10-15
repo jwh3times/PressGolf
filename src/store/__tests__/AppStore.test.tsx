@@ -693,5 +693,8 @@ describe('AppStoreProvider', () => {
     await change(() => store.setGreen(course.id, moved));
     expect(store.course!.greens).toEqual([moved]);
     expect(store.courses.find((c) => c.id === other.id)!.greens).toEqual([]);
+
+    await change(() => store.setGreens(course.id, []));
+    expect(store.course!.greens).toEqual([]);
   });
 });

@@ -90,6 +90,9 @@ describe('GreenYardage', () => {
     expect(screen.getByText(`${yardsBetween(TEE, front)} FRONT · ${yardsBetween(TEE, back)} BACK`)).toBeOnTheScreen();
     // A browser may not say how accurate it is; nothing is made up in its place.
     expect(screen.getByText('LIVE')).toBeOnTheScreen();
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await user.press(screen.getByRole('link', { name: /Green from OpenStreetMap/ }));
+    expect(openURL).toHaveBeenCalledWith('https://www.openstreetmap.org/copyright');
   });
 
   it('stops the GPS when it goes, such as on a change of hole', async () => {

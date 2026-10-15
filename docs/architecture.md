@@ -76,8 +76,7 @@ A course can know where each hole's green is (`Course.greens`, synced as
 plays to the same green. Each has a middle, and optionally a front and back,
 which are always set as a pair. `source` records where the points came from:
 `marked` standing on the green, placed on a `map`, or `osm` (OpenStreetMap).
-Only marking is built so far; importing from OpenStreetMap and placing greens
-on a map are still to come (#8).
+Placing greens on a map is still to come (#8).
 
 On the Score screen's hole-by-hole view, `GreenYardage` shows the distance from
 the phone to the green. GPS runs only when asked: a tap watches the position
@@ -93,6 +92,30 @@ accuracy available and refuses one worse than 15 m (`MARK_ACCURACY_M`), which
 would put the middle on the fringe. Marking again replaces the hole's green and
 keeps only the middle. The course owner's marks sync; outing guests read them,
 as they read the card.
+
+The course editor's **Find greens on OpenStreetMap** (`src/app/greens.tsx`)
+fills greens in from the map. About half of US courses are mapped well enough
+(checked 2026-10-14: 85 of 194 in Oregon, 199 of 445 in North Carolina, had at
+least nine numbered holes and nine greens). Two public OpenStreetMap services
+are called, only when someone taps (`src/osm/client.ts`):
+
+- **Nominatim** finds the course by name. When a name alone finds no golf
+  course (it can match a road instead), it searches once more with "golf
+  course" added, a second later, as the usage policy's one-request-a-second
+  limit asks.
+- **Overpass** returns every `golf=hole` line and `golf=green` outline inside
+  the course's boundary.
+
+`greensFromOsm` (`src/osm/greens.ts`) matches each hole's line, by its `ref`
+number, to the green it ends in, or the nearest within 30 m. The middle is the
+outline's centre; front and back are where the line of play, carried on through
+the middle, crosses the outline. A hole two lines claim, as at a 27-hole club,
+is left out rather than guessed. The import keeps greens marked on the course
+and replaces an earlier import (`withImported`). OpenStreetMap's licence asks
+for credit wherever its data shows, so the search screen says "© OpenStreetMap
+contributors" and links to its copyright page, and a yardage read from an
+imported green says "© OpenStreetMap", the short form its attribution
+guidelines accept, as a link to the same page.
 
 ### Max score and pick-ups
 

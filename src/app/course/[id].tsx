@@ -96,6 +96,19 @@ export default function CourseEditorScreen() {
         </View>
       </View>
 
+      <View style={{ gap: 8 }}>
+        <Eyebrow>Greens</Eyebrow>
+        <Body style={{ color: ink.soft, lineHeight: 19 }}>
+          {course.greens.length
+            ? `${course.greens.length} of ${tee.holes.length} greens saved, for yardage on the Score screen.`
+            : 'No greens saved yet. With them, the Score screen gives the yardage to the green.'}
+        </Body>
+        <GhostButton
+          label="Find greens on OpenStreetMap"
+          onPress={() => router.push({ pathname: '/greens', params: { id: course.id } })}
+        />
+      </View>
+
       {duplicateIndexes ? (
         <Card style={styles.warning}>
           <Body style={{ color: colors.clay, lineHeight: 18 }}>

@@ -113,6 +113,8 @@ export interface AppStore extends AppState {
   deleteTee(courseId: string, teeId: TeeId): boolean;
   /** Saves where a hole's green is, replacing what the course had for that hole. */
   setGreen(courseId: string, green: Green): void;
+  /** Replaces all of a course's greens, as an import does. */
+  setGreens(courseId: string, greens: Green[]): void;
   deleteCourse(id: string): void;
 
   // Rounds
@@ -644,6 +646,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           courses: prev.courses.map((c) => (c.id === courseId ? { ...c, greens: withGreen(c.greens, green) } : c)),
+        })),
+      setGreens: (courseId, greens) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, greens } : c)),
         })),
       deleteCourse: (id) =>
         commit((prev) => ({
