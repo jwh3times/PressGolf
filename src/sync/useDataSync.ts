@@ -109,12 +109,12 @@ export function useDataSync(options: {
 
     const push = () => {
       if (inFlight.current || !serverHas.current) return;
+      const server = serverHas.current;
       inFlight.current = true;
       void (async () => {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
           const local = toRows(documents);
-          const server = serverHas.current ?? local;
           await pushSnapshot(changedRows(server, local), { prune: deletions(server, local) });
           serverHas.current = local;
           // Only now, with this phone's edits safely up, is it safe to let the
