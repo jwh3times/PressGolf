@@ -73,6 +73,11 @@ This project uses Continuous Native Generation. Configure native behavior in
 `app.json` or a config plugin. Generated `ios/` and `android/` folders are
 ignored and must not be committed or edited as source.
 
+Location (for yardage to the green) is foreground-only. The `expo-location`
+plugin in `app.json` sets the one iOS prompt, "when in use", and turns off the
+plugin's default "always" and motion prompts, which the app never asks for.
+Android gets coarse and fine location and no background location.
+
 ## Environment variables
 
 The app recognizes three public build-time variables:
