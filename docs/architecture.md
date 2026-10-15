@@ -112,8 +112,10 @@ outline's centre; front and back are where the line of play, carried on through
 the middle, crosses the outline. A hole two lines claim, as at a 27-hole club,
 is left out rather than guessed. The import keeps greens marked on the course
 and replaces an earlier import (`withImported`). OpenStreetMap's licence asks
-for credit wherever its data shows, so the search screen and any yardage read
-from an imported green say "© OpenStreetMap contributors".
+for credit wherever its data shows, so the search screen says "© OpenStreetMap
+contributors" and links to its copyright page, and a yardage read from an
+imported green says "© OpenStreetMap", the short form its attribution
+guidelines accept, as a link to the same page.
 
 ### Max score and pick-ups
 
