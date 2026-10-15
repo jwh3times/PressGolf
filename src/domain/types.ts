@@ -78,11 +78,36 @@ export interface Tee {
   holes: Hole[];
 }
 
+/** A point on the ground, in WGS84 degrees as GPS reports them. */
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+/** Where a green's position came from: marked standing on it, placed on a map, or OpenStreetMap. */
+export type GreenSource = 'marked' | 'map' | 'osm';
+
+/**
+ * Where one hole's green is. Kept per course rather than per tee: the green is
+ * the same whichever tee you play from. Front and back are optional, because a
+ * green marked by standing on it has only a middle.
+ */
+export interface Green {
+  /** 1-based hole number, matching `Hole.number`. */
+  number: number;
+  middle: LatLng;
+  front: LatLng | null;
+  back: LatLng | null;
+  source: GreenSource;
+}
+
 export interface Course {
   id: CourseId;
   name: string;
   /** Never empty. The first tee is the fallback for anyone without one. */
   tees: Tee[];
+  /** Holes whose green is known, in hole order. Most courses start with none. */
+  greens: Green[];
   createdAt: number;
 }
 

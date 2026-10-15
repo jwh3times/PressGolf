@@ -23,6 +23,8 @@ import {
   type Course,
   type FieldGameConfig,
   type FieldGameKey,
+  type GreenSource,
+  type LatLng,
   type GameOptions,
   type GamesConfig,
   type Group,
@@ -88,6 +90,19 @@ export interface TeeHoleRow {
   par: number;
   stroke_index: number;
   yards: number;
+}
+
+/** Where one hole's green is. Per course, not per tee: every tee plays to the same green. */
+export interface CourseGreenRow {
+  course_id: string;
+  number: number;
+  middle_lat: number;
+  middle_lng: number;
+  front_lat: number | null;
+  front_lng: number | null;
+  back_lat: number | null;
+  back_lng: number | null;
+  source: GreenSource;
 }
 
 export interface RoundRow {
@@ -226,6 +241,7 @@ export interface Snapshot {
   courses: CourseRow[];
   tees: TeeRow[];
   tee_holes: TeeHoleRow[];
+  course_greens: CourseGreenRow[];
   rounds: RoundRow[];
   round_players: RoundPlayerRow[];
   scores: ScoreRow[];
@@ -257,6 +273,7 @@ export const TABLES: (keyof Snapshot)[] = [
   'courses',
   'tees',
   'tee_holes',
+  'course_greens',
   'outings',
   'outing_field',
   'outing_field_games',
@@ -280,6 +297,7 @@ export function emptySnapshot(): Snapshot {
     courses: [],
     tees: [],
     tee_holes: [],
+    course_greens: [],
     rounds: [],
     round_players: [],
     scores: [],
@@ -350,6 +368,19 @@ export function toRows(documents: Documents): Snapshot {
         });
       }
     });
+    for (const green of course.greens) {
+      out.course_greens.push({
+        course_id: course.id,
+        number: green.number,
+        middle_lat: green.middle.lat,
+        middle_lng: green.middle.lng,
+        front_lat: green.front?.lat ?? null,
+        front_lng: green.front?.lng ?? null,
+        back_lat: green.back?.lat ?? null,
+        back_lng: green.back?.lng ?? null,
+        source: green.source,
+      });
+    }
   }
 
   for (const round of documents.rounds) {
@@ -529,10 +560,16 @@ function courseTees(courseId: string, rows: TeeRow[], holesByTee: Map<string, Te
     }));
 }
 
+/** A point from two nullable columns: both or neither. */
+function point(lat: number | null, lng: number | null): LatLng | null {
+  return lat == null || lng == null ? null : { lat, lng };
+}
+
 export function fromRows(snapshot: Snapshot): Documents {
   const playersByGroup = groupBy(snapshot.players, (r) => r.group_id);
   const teesByCourse = groupBy(snapshot.tees, (r) => r.course_id);
   const holesByTee = groupBy(snapshot.tee_holes, (r) => r.tee_id);
+  const greensByCourse = groupBy(snapshot.course_greens, (r) => r.course_id);
   const roundPlayers = groupBy(snapshot.round_players, (r) => r.round_id);
   const scores = groupBy(snapshot.scores, (r) => r.round_id);
   const junk = groupBy(snapshot.junk, (r) => r.round_id);
@@ -568,6 +605,16 @@ export function fromRows(snapshot: Snapshot): Documents {
     id: row.id,
     name: row.name,
     tees: courseTees(row.id, teesByCourse.get(row.id) ?? [], holesByTee),
+    greens: (greensByCourse.get(row.id) ?? [])
+      .slice()
+      .sort((a, b) => a.number - b.number)
+      .map((g) => ({
+        number: g.number,
+        middle: { lat: g.middle_lat, lng: g.middle_lng },
+        front: point(g.front_lat, g.front_lng),
+        back: point(g.back_lat, g.back_lng),
+        source: g.source,
+      })),
     createdAt: row.created_at,
   }));
 

@@ -69,6 +69,13 @@ jest.mock('../../auth/AuthProvider', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('expo-location', () => ({
+  Accuracy: { High: 4, Highest: 5 },
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  watchPositionAsync: jest.fn(async () => ({ remove: jest.fn() })),
+  getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 45.5, longitude: -122.6, accuracy: 3 }, timestamp: 0 })),
+}));
+
 jest.mock('../../store/AppStore', () => ({
   useStore: jest.fn(),
 }));
@@ -120,6 +127,7 @@ const actions = {
   updateHole: jest.fn(),
   addTee: jest.fn(),
   updateTee: jest.fn(),
+  setGreen: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
   setPlayerTee: jest.fn(),
@@ -1168,6 +1176,32 @@ describe('controls that say what they act on', () => {
   const allOn = Object.fromEntries(
     Object.entries(round.games).map(([key, config]) => [key, { ...config, on: true, stake: 500 }]),
   );
+
+  it('offers to mark a hole\'s green on Score, saves it on the course, and gives yardage where one is saved', async () => {
+    const user = userEvent.setup();
+    const alert = jest.spyOn(Alert, 'alert');
+    useStoreValue({ course: { ...course, greens: [] } });
+    const view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    await user.press(screen.getByRole('button', { name: 'Mark hole 1’s green' }));
+    const buttons = alert.mock.lastCall?.[2] as { text: string; onPress?: () => void }[];
+    await act(async () => buttons.find((b) => b.text === 'Mark')?.onPress?.());
+    expect(actions.setGreen).toHaveBeenCalledWith(course.id, {
+      number: 1,
+      middle: { lat: 45.5, lng: -122.6 },
+      front: null,
+      back: null,
+      source: 'marked',
+    });
+    await view.unmount();
+
+    const green = { number: 1, middle: { lat: 45.5, lng: -122.6 }, front: null, back: null, source: 'marked' as const };
+    useStoreValue({ course: { ...course, greens: [green] } });
+    await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.getByRole('button', { name: '⌖ YARDS TO GREEN' })).toBeOnTheScreen();
+    alert.mockRestore();
+  });
 
   it('names each junk chip, pick-up and clear on Score for its player', async () => {
     const user = userEvent.setup();

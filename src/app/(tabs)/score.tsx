@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CardGrid } from '../../components/CardGrid';
+import { GreenYardage } from '../../components/GreenYardage';
 import { Screen } from '../../components/Screen';
 import {
   Avatar,
@@ -19,6 +20,7 @@ import {
   StepperButton,
 } from '../../components/primitives';
 import { MANUAL_JUNK, RoundContext, matchStatus, money, wolfForHole, wolfPickForHole } from '../../domain/engine';
+import { greenFor } from '../../domain/geo';
 import type { JunkKind, PlayerId } from '../../domain/types';
 import {
   MAX_CONTROL_SCALE,
@@ -160,6 +162,14 @@ export default function ScoreScreen() {
           />
         ))}
       </View>
+
+      {/* Keyed by hole, so changing hole stops the GPS and clears the last reading. */}
+      <GreenYardage
+        key={holeInfo.number}
+        holeNumber={holeInfo.number}
+        green={greenFor(course.greens, holeInfo.number)}
+        onMark={(green) => store.setGreen(course.id, green)}
+      />
 
       {roster.map((player) => {
         const gross = ctx.gross(player.id, current);

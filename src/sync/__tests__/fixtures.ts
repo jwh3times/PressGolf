@@ -4,7 +4,8 @@ import type { Documents } from '../rows';
 /** The demo dataset is the broadest real data there is: two groups, a
  *  twenty-man outing with field pots, eighteen settled rounds and a live one.
  *  The demo has nobody pressing, no Wolf picks and no explicit match pairings
- *  (round robin is derived, not stored), so one of each is added here —
+ *  (round robin is derived, not stored), and Pine Hollow has no greens, so
+ *  one of each is added here —
  *  otherwise those tables would go untested and the gap would look like a
  *  passing suite. */
 export function demoDocuments(runPrefix?: string): Documents {
@@ -64,7 +65,25 @@ export function demoDocuments(runPrefix?: string): Documents {
       : g,
   );
   const outings = data.outings.map((o) => ({ ...o, maxScore: 'double_bogey' as const, strokes: 'full' as const, allowance: 80 }));
-  const documents: Documents = { groups, courses: data.courses, rounds, outings };
+  // One green marked standing on it, one with front and back from a map.
+  const courses = data.courses.map((c, i) =>
+    i === 0
+      ? {
+          ...c,
+          greens: [
+            { number: 1, middle: { lat: 45.512345, lng: -122.612345 }, front: null, back: null, source: 'marked' as const },
+            {
+              number: 2,
+              middle: { lat: 45.513, lng: -122.613 },
+              front: { lat: 45.5129, lng: -122.6129 },
+              back: { lat: 45.5131, lng: -122.6131 },
+              source: 'map' as const,
+            },
+          ],
+        }
+      : c,
+  );
+  const documents: Documents = { groups, courses, rounds, outings };
   if (!runPrefix) return documents;
   // Ids are global primary keys on the server, so a run against a shared
   // database gives every id its own prefix. Every demo id starts with demo_.

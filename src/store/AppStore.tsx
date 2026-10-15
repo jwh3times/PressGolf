@@ -12,6 +12,7 @@ import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
+import { withGreen } from '../domain/geo';
 import { withHandicapPops } from '../domain/handicap';
 import type {
   Course,
@@ -19,6 +20,7 @@ import type {
   FieldGameKey,
   GameKey,
   GameOptions,
+  Green,
   Group,
   Hole,
   JunkKind,
@@ -109,6 +111,8 @@ export interface AppStore extends AppState {
   updateTee(courseId: string, teeId: TeeId, patch: Partial<Pick<Tee, 'name' | 'slope' | 'rating'>>): void;
   /** False — and nothing changes — when it is the course's last tee or a saved round plays from it. */
   deleteTee(courseId: string, teeId: TeeId): boolean;
+  /** Saves where a hole's green is, replacing what the course had for that hole. */
+  setGreen(courseId: string, green: Green): void;
   deleteCourse(id: string): void;
 
   // Rounds
@@ -636,6 +640,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         }));
         return true;
       },
+      setGreen: (courseId, green) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, greens: withGreen(c.greens, green) } : c)),
+        })),
       deleteCourse: (id) =>
         commit((prev) => ({
           ...prev,

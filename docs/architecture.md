@@ -69,6 +69,31 @@ tee, which is what the hole header and the card grid show.
 A tee that a saved round was played from cannot be deleted, and neither can a
 course's last tee.
 
+### Greens and yardage
+
+A course can know where each hole's green is (`Course.greens`, synced as
+`course_greens`). Greens belong to the course, not a tee, because every tee
+plays to the same green. Each has a middle, and optionally a front and back,
+which are always set as a pair. `source` records where the points came from:
+`marked` standing on the green, placed on a `map`, or `osm` (OpenStreetMap).
+Only marking is built so far; importing from OpenStreetMap and placing greens
+on a map are still to come (#8).
+
+On the Score screen's hole-by-hole view, `GreenYardage` shows the distance from
+the phone to the green. GPS runs only when asked: a tap watches the position
+for a minute (`useLiveLocation`, `LIVE_FOR_MS`), then stops and leaves the last
+reading on screen until the next tap or a change of hole. The phone is also
+the scorecard, so four hours of continuous GPS is not an option. Distances are
+great-circle yards rounded to whole yards (`src/domain/geo.ts`), shown with the
+fix's accuracy, because consumer GPS is good to a few metres and nothing finer
+would be honest.
+
+A hole with no green offers to mark it. Marking takes one fix at the best
+accuracy available and refuses one worse than 15 m (`MARK_ACCURACY_M`), which
+would put the middle on the fringe. Marking again replaces the hole's green and
+keeps only the middle. The course owner's marks sync; outing guests read them,
+as they read the card.
+
 ### Max score and pick-ups
 
 A round carries a max-score rule in its options:
@@ -201,7 +226,7 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
-1. On first contact, it pulls the signed-in account's 18 snapshot tables.
+1. On first contact, it pulls the signed-in account's 20 snapshot tables.
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
@@ -211,7 +236,7 @@ When the two Supabase public variables are present and a user is signed in,
 5. After a successful push, shared outings are pulled and merged into local
    data.
 
-The schema has 20 application tables: 18 snapshot tables plus
+The schema has 22 application tables: 20 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need.
