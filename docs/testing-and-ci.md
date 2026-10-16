@@ -122,7 +122,10 @@ across a reload. The default theme is the one `screens.spec.ts` covers.
 with OpenStreetMap's answers replaced by the recorded Torrey Pines South (holes
 3 and 8 mapped). It covers the course guide, how hole 3 plays (in every base
 theme, for the grades' colours), the Score screen's summary line, a hole note,
-and turning on a practice round.
+and turning on a practice round. On the Score screen it photographs only the
+hole preview and its line; the rest of that page is covered by `score, hole by
+hole`, and its Next button and Course guide chip rendered a shade apart between
+runs there.
 
 Baselines only compare cleanly against the renderer that made them, so the CI
 job runs inside `mcr.microsoft.com/playwright:v<version>-noble`.
