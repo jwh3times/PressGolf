@@ -11,6 +11,7 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { withClub } from '../domain/bag';
+import { withNote } from '../domain/course-map';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
 import { withGreen } from '../domain/geo';
@@ -126,6 +127,8 @@ export interface AppStore extends AppState {
   setGreens(courseId: string, greens: Green[]): void;
   /** Replaces all of a course's map: its hazards, fairways and the like (#125). */
   setFeatures(courseId: string, features: CourseFeature[]): void;
+  /** Sets the owner's note on a hole, trimmed to fit (#136). A blank note takes it away. */
+  setNote(courseId: string, hole: number, text: string): void;
   deleteCourse(id: string): void;
 
   // The bag
@@ -682,6 +685,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           courses: prev.courses.map((c) => (c.id === courseId ? { ...c, features } : c)),
+        })),
+      setNote: (courseId, hole, text) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, notes: withNote(c.notes, hole, text) } : c)),
         })),
       deleteCourse: (id) =>
         commit((prev) => ({

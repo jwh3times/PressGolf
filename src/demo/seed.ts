@@ -86,6 +86,7 @@ export function demoCourse(): Course {
     // Pine Hollow is made up, so it has nowhere real to put a green.
     greens: [],
     features: [],
+    notes: [],
     createdAt: 0,
   };
 }

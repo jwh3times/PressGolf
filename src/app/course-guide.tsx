@@ -6,6 +6,7 @@ import { PracticeSwitch } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Mono } from '../components/primitives';
 import { holePlan } from '../domain/hole-map';
+import { noteFor } from '../domain/course-map';
 import { aimSentence, holeStrategy, zoneSummary } from '../domain/hole-strategy';
 import type { Course, Hole, TeeId } from '../domain/types';
 import { useStore } from '../store/AppStore';
@@ -82,6 +83,8 @@ function GuideHole({
   const lines = strategy
     ? strategy.zones.flatMap((z) => [zoneSummary(z), ...(z.aim ? [`Aim: ${aimSentence(z.zone, z.aim)}`] : [])])
     : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet'];
+  const note = noteFor(course.notes, hole.number);
+  if (note) lines.push(`Note: ${note}`);
   const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards}Y` : ''}`;
   return (
     <Pressable

@@ -43,6 +43,7 @@ insert into tee_holes (tee_id, course_id, number, par, stroke_index, yards) valu
 insert into course_greens (course_id, number, middle_lat, middle_lng, source) values ('c1', 1, 45.5, -122.6, 'marked');
 insert into course_features (course_id, id, kind, hole, points, source)
   values ('c1', 'osm:way/1', 'bunker', null, '[[45.5, -122.6], [45.5, -122.601], [45.501, -122.6]]', 'osm');
+insert into course_hole_notes (course_id, number, text) values ('c1', 1, 'Blind tee shot, aim at the steeple.');
 insert into outings (id, group_id, course_id, name, date, started_at, join_code)
   values ('o1', 'g1', 'c1', 'Saturday', 1, 1, 'ABC234');
 insert into outing_field (outing_id, player_id) values ('o1', 'p1'), ('o1', 'p2');
@@ -58,6 +59,7 @@ insert into courses (id, name, created_at) values ('c9', 'Somewhere else', 1);
 insert into course_greens (course_id, number, middle_lat, middle_lng, source) values ('c9', 1, 44.1, -121.3, 'marked');
 insert into course_features (course_id, id, kind, hole, points, source)
   values ('c9', 'osm:way/9', 'water', null, '[[44.1, -121.3], [44.1, -121.301], [44.101, -121.3]]', 'osm');
+insert into course_hole_notes (course_id, number, text) values ('c9', 1, 'Private note.');
 insert into rounds (id, group_id, course_id, name, started_at)
   values ('r9', 'g9', 'c9', 'Private', 1);
 insert into clubs (id, name, carry_yards, position) values ('k1', '7 iron', 150, 0);
@@ -77,6 +79,7 @@ select expect('stranger sees no tees',     (select count(*) from tees), 0);
 select expect('stranger sees no card',     (select count(*) from tee_holes), 0);
 select expect('stranger sees no greens',   (select count(*) from course_greens), 0);
 select expect('stranger sees no map',      (select count(*) from course_features), 0);
+select expect('stranger sees no notes',    (select count(*) from course_hole_notes), 0);
 select expect('stranger sees no bag',      (select count(*) from clubs), 0);
 
 -- ── The same stranger, now holding the code ─────────────────────────────────
@@ -91,6 +94,7 @@ select expect('guest sees the tees',           (select count(*) from tees), 1);
 select expect('guest sees the card',           (select count(*) from tee_holes), 1);
 select expect('guest sees the shared greens',  (select count(*) from course_greens where course_id = 'c1'), 1);
 select expect('guest sees the shared map',     (select count(*) from course_features where course_id = 'c1'), 1);
+select expect('guest sees the shared notes',   (select count(*) from course_hole_notes where course_id = 'c1'), 1);
 select expect('guest sees the field',          (select count(*) from players), 2);
 select expect('guest sees the organiser group',(select count(*) from groups where id = 'g1'), 1);
 
@@ -101,6 +105,7 @@ select expect('guest sees no private scores', (select count(*) from scores where
 select expect('guest sees no private course', (select count(*) from courses where id = 'c9'), 0);
 select expect('guest sees no private greens', (select count(*) from course_greens where course_id = 'c9'), 0);
 select expect('guest sees no private map',    (select count(*) from course_features where course_id = 'c9'), 0);
+select expect('guest sees no private notes',  (select count(*) from course_hole_notes where course_id = 'c9'), 0);
 select expect('guest sees no organiser bag',  (select count(*) from clubs), 0);
 
 -- ── What a guest may write ──────────────────────────────────────────────────
@@ -126,6 +131,8 @@ update course_greens set middle_lat = 0 where course_id = 'c1';
 delete from course_greens where course_id = 'c1';
 update course_features set kind = 'water' where course_id = 'c1';
 delete from course_features where course_id = 'c1';
+update course_hole_notes set text = 'Guest was here.' where course_id = 'c1';
+delete from course_hole_notes where course_id = 'c1';
 update clubs set carry_yards = 300;
 delete from clubs;
 -- A bag of his own is his to keep, and his alone.
@@ -137,6 +144,11 @@ do $$ begin
     values ('c1', 'map:guest', 'outOfBounds', null, '[[45.5, -122.6], [45.6, -122.6]]', 'map');
 exception when insufficient_privilege then null;
 end $$;
+do $$ begin
+  insert into course_hole_notes (course_id, number, text) values ('c1', 2, 'Guest note.');
+  raise exception 'FAILED: a guest wrote a note on the shared course';
+exception when insufficient_privilege then raise notice 'ok: guest can''t note the shared course';
+end $$;
 
 set request.jwt.claim.sub = :'alice';
 select expect('shared card untouched',  (select par from tee_holes where tee_id = 't1' and number = 1), 4);
@@ -144,6 +156,8 @@ select expect('shared tee untouched',   (select slope from tees where id = 't1')
 select expect('shared green untouched', (select count(*) from course_greens where course_id = 'c1' and middle_lat = 45.5), 1);
 select expect('shared map untouched',   (select count(*) from course_features where course_id = 'c1' and kind = 'bunker'), 1);
 select expect('guest drew nothing',     (select count(*) from course_features where id = 'map:guest'), 0);
+select expect('shared note untouched',  (select count(*) from course_hole_notes where course_id = 'c1' and number = 1 and text like 'Blind%'), 1);
+select expect('guest noted nothing',    (select count(*) from course_hole_notes where course_id = 'c1' and number = 2), 0);
 select expect('stake untouched',        (select stake from round_games where round_id = 'r1'), 500);
 select expect('private score untouched',(select strokes from scores where round_id = 'r9'), 3);
 select expect('private round survived', (select count(*) from rounds where id = 'r9'), 1);

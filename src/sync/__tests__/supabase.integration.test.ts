@@ -186,6 +186,13 @@ describe('sync against a local Supabase stack', () => {
     expect(shared.rounds.some((r) => outside.some((o) => o.id === r.id))).toBe(false);
     // Joining makes Ben a reader of the day, not an owner of anything.
     expect(fromRows(await pullSnapshot()).groups).toEqual([]);
+
+    // He reads the course owner's hole notes with the card, and can't add his own.
+    const course = season.courses.find((c) => c.id === outing.courseId)!;
+    expect(course.notes.length).toBeGreaterThan(0);
+    expect(shared.courses.find((c) => c.id === course.id)?.notes).toEqual(course.notes);
+    const { error } = await getSupabase()!.from('course_hole_notes').insert({ course_id: course.id, number: 9, text: 'Mine.' });
+    expect(error).not.toBeNull();
   });
 
   it("lets a guest push after joining: the guest's score goes up, the organiser's rows stay hers", async () => {

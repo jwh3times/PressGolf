@@ -144,7 +144,16 @@ export interface Course {
   greens: Green[];
   /** Hazards, fairways and the like, for the hole map. Most courses start with none. */
   features: CourseFeature[];
+  /** The course owner's notes on its holes (#136), in hole order. Most courses have none. */
+  notes: HoleNote[];
   createdAt: number;
+}
+
+/** What the course owner wants players to know about a hole: "Blind tee shot, aim at the steeple." */
+export interface HoleNote {
+  number: number;
+  /** Plain text, 1 to 280 characters. */
+  text: string;
 }
 
 // ─── The bag ────────────────────────────────────────────────────────────────

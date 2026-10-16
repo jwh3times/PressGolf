@@ -75,6 +75,16 @@ test('score, a mapped hole', async ({ page }) => {
   await expectAccessible(page);
 });
 
+test('a note on a hole, written on its map and read in the guide', async ({ page }) => {
+  await openHoleThree(page);
+  await page.getByRole('button', { name: 'Add a note on this hole' }).click();
+  await page.getByLabel('Note on hole 3').fill('Blind tee shot, aim at the steeple.');
+  await page.getByRole('button', { name: 'Save the note' }).click();
+  await expect(page.getByText('Blind tee shot, aim at the steeple.', { exact: true }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'Back' }).last().click();
+  await expect(page.getByRole('button', { name: /^Hole 3,.* Note: Blind tee shot, aim at the steeple\.$/ })).toBeVisible();
+});
+
 test('practice round, from the Score screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Back' }).last().click();
   await page.getByRole('button', { name: 'Done' }).last().click();

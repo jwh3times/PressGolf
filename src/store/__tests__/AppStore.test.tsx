@@ -709,6 +709,20 @@ describe('AppStoreProvider', () => {
     expect(store.courses.find((c) => c.id === other.id)!.features).toEqual([]);
   });
 
+  it('keeps the owner\'s note on a hole, trimmed to fit, in hole order, and takes a blank one away', async () => {
+    await mount();
+    const course = store.course!;
+    await change(() => store.setNote(course.id, 7, '  Blind tee shot, aim at the steeple.  '));
+    await change(() => store.setNote(course.id, 2, 'x'.repeat(300)));
+    expect(store.course!.notes.map((n) => n.number)).toEqual([2, 7]);
+    expect(store.course!.notes[1].text).toBe('Blind tee shot, aim at the steeple.');
+    expect(store.course!.notes[0].text).toHaveLength(280);
+    await change(() => store.setNote(course.id, 7, 'Driver off the deck.'));
+    expect(store.course!.notes.find((n) => n.number === 7)!.text).toBe('Driver off the deck.');
+    await change(() => store.setNote(course.id, 2, '   '));
+    expect(store.course!.notes.map((n) => n.number)).toEqual([7]);
+  });
+
   it('fills an empty bag, adds clubs in their place, types carries and takes clubs out', async () => {
     await mount({ ...buildDemoDataset(1_750_000_000_000), clubs: [] });
     const set = [

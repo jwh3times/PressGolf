@@ -98,6 +98,23 @@ describe('toRows / fromRows round trip', () => {
     expect(fromRows(rows).courses[0].features).toEqual(course.features);
   });
 
+  it('round-trips the owner\'s hole notes in hole order, whatever order the rows arrive', () => {
+    const course = {
+      ...makeTestCourse(),
+      notes: [
+        { number: 3, text: 'Blind tee shot, aim at the steeple.' },
+        { number: 12, text: 'The green runs away from you.' },
+      ],
+    };
+    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [], clubs: [] });
+    expect(rows.course_hole_notes).toEqual([
+      { course_id: course.id, number: 3, text: 'Blind tee shot, aim at the steeple.' },
+      { course_id: course.id, number: 12, text: 'The green runs away from you.' },
+    ]);
+    rows.course_hole_notes.reverse();
+    expect(fromRows(rows).courses[0].notes).toEqual(course.notes);
+  });
+
   it('round-trips the bag in its order, whatever order the rows arrive', () => {
     const clubs = [
       { id: 'k-driver', name: 'Driver', carry: 240 },

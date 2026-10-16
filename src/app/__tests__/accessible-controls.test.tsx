@@ -183,6 +183,7 @@ const actions = {
   setGreen: jest.fn(),
   setGreens: jest.fn(),
   setFeatures: jest.fn(),
+  setNote: jest.fn(),
   addClub: jest.fn(),
   fillBag: jest.fn(),
   setCarry: jest.fn(),
@@ -2399,6 +2400,36 @@ describe('the hole map', () => {
     await render(<CourseGuideScreen />);
     expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: / })).toBeOnTheScreen();
     expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
+  });
+
+  it('lets the course owner write, change and remove a note on a hole, and shows it in the guide', async () => {
+    const user = userEvent.setup();
+    let view = await open({ hole: '1' });
+    await user.press(screen.getByRole('button', { name: 'Add a note on this hole' }));
+    expect(screen.getByRole('button', { name: 'Save the note' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Note on hole 1'), 'Blind tee shot.');
+    expect(screen.getByText(/^15 of 280 characters\./)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Save the note' }));
+    expect(actions.setNote).toHaveBeenCalledWith(mapped.id, 1, 'Blind tee shot.');
+    await view.unmount();
+
+    const noted = { ...mapped, notes: [{ number: 3, text: 'Aim at the steeple.' }] };
+    useStoreValue({ courses: [noted], course: noted });
+    mockParams = { course: noted.id, hole: '3' };
+    view = await render(<HoleMapScreen />);
+    expect(screen.getByText('Aim at the steeple.')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Edit the note' }));
+    await user.press(screen.getByRole('button', { name: 'Cancel' }));
+    expect(actions.setNote).toHaveBeenCalledTimes(1);
+    await user.press(screen.getByRole('button', { name: 'Edit the note' }));
+    await user.clear(screen.getByLabelText('Note on hole 3'));
+    await user.press(screen.getByRole('button', { name: 'Remove the note' }));
+    expect(actions.setNote).toHaveBeenLastCalledWith(noted.id, 3, '');
+    await view.unmount();
+
+    mockParams = { course: noted.id };
+    await render(<CourseGuideScreen />);
+    expect(screen.getByRole('button', { name: /^Hole 3,.* Note: Aim at the steeple\.$/ })).toBeOnTheScreen();
   });
 
   it('opens the course guide from the course editor', async () => {
