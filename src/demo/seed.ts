@@ -1,6 +1,6 @@
 import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
 import { withHandicapPops } from '../domain/handicap';
-import type { Club, Course, Group, Hole, Outing, Player, PlayerId, Round } from '../domain/types';
+import type { Club, Course, Group, Hole, Outing, Player, PlayerId, PracticeMark, Round } from '../domain/types';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -388,6 +388,7 @@ export function buildDemoDataset(now = Date.now()): {
   rounds: Round[];
   outings: Outing[];
   clubs: Club[];
+  practice: Record<string, PracticeMark>;
   activeGroupId: string;
   activeRoundId: string;
   activeOutingId: string | null;
@@ -401,6 +402,7 @@ export function buildDemoDataset(now = Date.now()): {
     rounds: [...demoHistory(now), demoLiveRound(now), ...outing.rounds],
     outings: [outing.outing],
     clubs: demoBag(),
+    practice: {},
     activeGroupId: DEMO_GROUP_ID,
     activeRoundId: DEMO_ROUND_ID,
     activeOutingId: null,

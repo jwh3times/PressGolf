@@ -2,10 +2,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { HoleDiagram } from '../components/HoleDiagram';
+import { PracticeSwitch } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Mono } from '../components/primitives';
 import { holePlan } from '../domain/hole-map';
-import { holeStrategy, zoneSummary } from '../domain/hole-strategy';
+import { aimSentence, holeStrategy, zoneSummary } from '../domain/hole-strategy';
 import type { Course, Hole, TeeId } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
@@ -19,7 +20,7 @@ const DRAWING_HEIGHT = 96;
  * to look a course over before the round. A tap opens the hole's map.
  */
 export default function CourseGuideScreen() {
-  const params = useLocalSearchParams<{ course: string; tee?: string }>();
+  const params = useLocalSearchParams<{ course: string; tee?: string; round?: string }>();
   const store = useStore();
   const router = useRouter();
   const styles = useStyles();
@@ -34,35 +35,58 @@ export default function CourseGuideScreen() {
   }
 
   const tee = course.tees.find((t) => t.id === params.tee) ?? course.tees[0];
+  // In a round (opened from Score), aiming advice waits for this phone to mark it practice.
+  const practice = params.round ? (store.practice[params.round]?.on ?? false) : null;
   return (
     <Screen floatingTabBar={false}>
       <ModalHeader eyebrow={course.name} title="Course guide" onClose={() => router.back()} closeLabel="Back" />
       <Body style={styles.copy}>
         {`How each hole plays from the ${tee.name} tee, read from the course map. Tap a hole for its map and distances.`}
       </Body>
+      {params.round ? <PracticeSwitch on={practice === true} onChange={(on) => store.setPractice(params.round!, on)} /> : null}
       {tee.holes.map((hole) => (
         <GuideHole
           key={hole.number}
           course={course}
           hole={hole}
           teeId={tee.id}
-          onOpen={() => router.push({ pathname: '/hole-map', params: { course: course.id, hole: String(hole.number), tee: tee.id } })}
+          advice={practice !== false}
+          onOpen={() =>
+            router.push({
+              pathname: '/hole-map',
+              params: { course: course.id, hole: String(hole.number), tee: tee.id, ...(params.round ? { round: params.round } : {}) },
+            })
+          }
         />
       ))}
     </Screen>
   );
 }
 
-function GuideHole({ course, hole, teeId, onOpen }: { course: Course; hole: Hole; teeId: TeeId; onOpen: () => void }) {
+function GuideHole({
+  course,
+  hole,
+  teeId,
+  advice,
+  onOpen,
+}: {
+  course: Course;
+  hole: Hole;
+  teeId: TeeId;
+  advice: boolean;
+  onOpen: () => void;
+}) {
   const styles = useStyles();
   const plan = useMemo(() => holePlan(course, hole.number), [course, hole.number]);
-  const strategy = useMemo(() => holeStrategy(course, hole.number, { teeId }), [course, hole.number, teeId]);
-  const lines = strategy ? strategy.zones.map(zoneSummary) : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet'];
+  const strategy = useMemo(() => holeStrategy(course, hole.number, { teeId, advice }), [course, hole.number, teeId, advice]);
+  const lines = strategy
+    ? strategy.zones.flatMap((z) => [zoneSummary(z), ...(z.aim ? [`Aim: ${aimSentence(z.zone, z.aim)}`] : [])])
+    : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet'];
   const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards}Y` : ''}`;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Hole ${hole.number}, par ${hole.par}${hole.yards ? `, ${hole.yards} yards` : ''}. ${lines.join('. ')}.`}
+      accessibilityLabel={`Hole ${hole.number}, par ${hole.par}${hole.yards ? `, ${hole.yards} yards` : ''}. ${lines.map((l) => (l.endsWith('.') ? l : `${l}.`)).join(' ')}`}
       accessibilityHint="Opens the hole map"
       onPress={onOpen}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}

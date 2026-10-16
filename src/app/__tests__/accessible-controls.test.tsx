@@ -187,6 +187,7 @@ const actions = {
   fillBag: jest.fn(),
   setCarry: jest.fn(),
   removeClub: jest.fn(),
+  setPractice: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
   setPlayerTee: jest.fn(),
@@ -726,6 +727,30 @@ describe('setup and outing state matrices', () => {
     await user.press(screen.getByRole('button', { name: /Start · 2 players/ }));
     expect(actions.startRound).toHaveBeenCalled();
     expect(mockRouter.replace).toHaveBeenCalledWith('/format');
+    expect(actions.setPractice).not.toHaveBeenCalled();
+  });
+
+  it('starts a practice round once the Rule is explained, and offers none for a finished card', async () => {
+    const user = userEvent.setup();
+    const view = await render(<NewRoundScreen />);
+    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
+    expect(screen.getByText(/Rule 4\.3/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Make it a practice round' }));
+    expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
+    await user.press(screen.getByRole('button', { name: /^Start · / }));
+    const started = actions.startRound.mock.calls[0][0];
+    expect(actions.setPractice).toHaveBeenCalledWith(started.id, true);
+    await view.unmount();
+
+    mockParams = { mode: 'card' };
+    await render(<NewRoundScreen />);
+    expect(screen.queryByRole('switch', { name: 'Practice round' })).toBeNull();
+  });
+
+  it('marks in History a round that was played as practice on this phone', async () => {
+    useStoreValue({ practice: { [round.id]: { on: false, ever: true } } });
+    await render(<HistoryScreen />);
+    expect(screen.getByText('PRACTICE')).toBeOnTheScreen();
   });
 
   it('covers outing sharing, group summaries, pots, standings, and closing', async () => {
@@ -2218,7 +2243,7 @@ describe('the hole map', () => {
     expect(preview).toHaveProp('accessibilityHint', 'Opens the hole map, with distances to the green and to the hazards');
     expect(screen.getByText('MAP OF HOLE 3')).toBeOnTheScreen();
     await user.press(preview);
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', live: '1', tee: mapped.tees[0].id } });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', live: '1', tee: mapped.tees[0].id, round: round.id } });
   });
 
   it('reads trouble around a player on a hole with no line: in a bunker, over red water, beside out of bounds', async () => {
@@ -2275,7 +2300,7 @@ describe('the hole map', () => {
     expect(screen.queryByRole('button', { name: 'Map of hole 4' })).toBeNull();
     await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
     await user.press(screen.getByRole('button', { name: 'Map of hole 3' }));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: greensOnly.id, hole: '3', live: '1', tee: greensOnly.tees[0].id } });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: greensOnly.id, hole: '3', live: '1', tee: greensOnly.tees[0].id, round: round.id } });
     await view.unmount();
 
     mockParams = { course: greensOnly.id, hole: '3' };
@@ -2301,7 +2326,7 @@ describe('the hole map', () => {
     await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
     expect(screen.getByText('Green: likely OB long · bunker short · clear left, right')).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Open the course guide' }));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/course-guide', params: { course: mapped.id, tee: mapped.tees[0].id } });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/course-guide', params: { course: mapped.id, tee: mapped.tees[0].id, round: round.id } });
   });
 
   it('lists every hole in the course guide, and opens each one\'s map', async () => {
@@ -2309,7 +2334,9 @@ describe('the hole map', () => {
     mockParams = { course: mapped.id };
     const view = await render(<CourseGuideScreen />);
     expectEveryControlToHaveAName();
-    const three = screen.getByRole('button', { name: /^Hole 3, par \d, \d+ yards\. Green: likely OB long · bunker short · clear left, right\.$/ });
+    const three = screen.getByRole('button', {
+      name: /^Hole 3, par \d, \d+ yards\. Green: likely OB long · bunker short · clear left, right\. Aim: Aim at the middle of the green\. Short is safer than long\.$/,
+    });
     expect(screen.getByRole('button', { name: /^Hole 1, par \d, \d+ yards\. Not mapped yet\.$/ })).toBeOnTheScreen();
     expect(screen.getAllByRole('button', { name: /^Hole \d+,/ })).toHaveLength(mapped.tees[0].holes.length);
     await userEvent.setup().press(three);
@@ -2319,6 +2346,59 @@ describe('the hole map', () => {
     mockParams = { course: 'missing' };
     await render(<CourseGuideScreen />);
     expect(screen.getByText('Course not found')).toBeOnTheScreen();
+  });
+
+  it('says where to aim when looking a course over, but not in a counted round', async () => {
+    const view = await open({ hole: '3' });
+    expect(screen.getByLabelText('Aim: Aim at the middle of the green. Short is safer than long.')).toBeOnTheScreen();
+    expect(screen.queryByRole('switch', { name: 'Practice round' })).toBeNull();
+    await view.unmount();
+
+    await open({ hole: '3', round: round.id });
+    expect(screen.queryByLabelText(/^Aim:/)).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Practice round' })).not.toBeChecked();
+  });
+
+  it('explains the Rule before making a round practice, and says where to aim once it is', async () => {
+    const view = await open({ hole: '3', round: round.id });
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
+    expect(screen.getByText(/Rule 4\.3\). The first time costs two strokes/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Keep it a counted round' }));
+    expect(screen.queryByText(/Rule 4\.3/)).toBeNull();
+    expect(actions.setPractice).not.toHaveBeenCalled();
+    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
+    await user.press(screen.getByRole('button', { name: 'Make it a practice round' }));
+    expect(actions.setPractice).toHaveBeenCalledWith(round.id, true);
+    await view.unmount();
+
+    useStoreValue({ courses: [mapped], course: mapped, practice: { [round.id]: { on: true, ever: true } } });
+    mockParams = { course: mapped.id, hole: '3', round: round.id };
+    await render(<HoleMapScreen />);
+    expect(screen.getByLabelText(/^Aim: /)).toBeOnTheScreen();
+    expect(screen.getByText('Aiming advice is on for this round, on this phone.')).toBeOnTheScreen();
+    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
+    expect(actions.setPractice).toHaveBeenLastCalledWith(round.id, false);
+  });
+
+  it('gives the course guide aiming advice outside a round, and in one only when it is practice', async () => {
+    useStoreValue({ courses: [mapped] });
+    mockParams = { course: mapped.id };
+    let view = await render(<CourseGuideScreen />);
+    expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: Aim at the middle of the green\./ })).toBeOnTheScreen();
+    await view.unmount();
+
+    mockParams = { course: mapped.id, round: round.id };
+    view = await render(<CourseGuideScreen />);
+    expect(screen.queryByRole('button', { name: /Aim:/ })).toBeNull();
+    await userEvent.setup().press(screen.getByRole('button', { name: /^Hole 3,/ }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', tee: mapped.tees[0].id, round: round.id } });
+    await view.unmount();
+
+    useStoreValue({ courses: [mapped], practice: { [round.id]: { on: true, ever: true } } });
+    await render(<CourseGuideScreen />);
+    expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: / })).toBeOnTheScreen();
+    expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
   });
 
   it('opens the course guide from the course editor', async () => {

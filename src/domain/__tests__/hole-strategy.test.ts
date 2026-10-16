@@ -2,7 +2,7 @@ import { featuresFromOsm } from '../../osm/features';
 import { greensFromOsm, type OsmElement } from '../../osm/greens';
 import torrey from '../../osm/__tests__/torrey-south.json';
 import { frame } from '../hole-map';
-import { facingZone, holeStrategy, sideSentence, zoneSummary } from '../hole-strategy';
+import { aimSentence, facingZone, holeStrategy, sideSentence, zoneSummary } from '../hole-strategy';
 import type { Course, CourseFeature, FeatureKind, Green, LatLng } from '../types';
 import { makeTestCourse, withTee } from './helpers';
 
@@ -237,6 +237,45 @@ describe('a side, in words', () => {
     const three = hole(4, 160, [feature('water', box(140, 175, -40, -18))]);
     expect(sideSentence('green', sideOf(three, 4, 'green', 'left')!)).toBe('Left: bad. Water.');
     expect(sideSentence('teeShot', { side: 'across', grade: 'nothingMapped', causes: [] })).toBe('Across: nothing mapped.');
+  });
+});
+
+describe('aiming advice', () => {
+  const aim = (course: Course, number: number, name: string, advice = true) =>
+    holeStrategy(course, number, { advice })!.zones.find((z) => z.zone === name)!.aim;
+
+  it('is left out unless asked for', () => {
+    const course = hole(4, 160, [feature('water', box(140, 175, -40, -18))]);
+    expect(aim(course, 4, 'green', false)).toBeNull();
+    expect(holeStrategy(course, 4)!.zones[0].aim).toBeNull();
+  });
+
+  it('favours the side of the green away from the worse trouble, and says which of long and short is safer', () => {
+    const course = hole(4, 160, [
+      feature('water', box(140, 175, -40, -18)),
+      feature('bunker', box(150, 170, 14, 26)),
+      feature('bunker', box(130, 142, -8, 8)),
+    ]);
+    expect(aim(course, 4, 'green')).toEqual({ lean: 'right', safer: 'long' });
+    expect(aimSentence('green', aim(course, 4, 'green')!)).toBe('Favour the right half of the green. Long is safer than short.');
+  });
+
+  it('aims at the middle when both sides are as bad, and says nothing of depth when long and short are alike', () => {
+    const course = hole(4, 160, [feature('bunker', box(150, 170, 14, 26)), feature('bunker', box(150, 170, -26, -14))]);
+    expect(aim(course, 4, 'green')).toEqual({ lean: 'centre', safer: null });
+    expect(aimSentence('green', aim(course, 4, 'green')!)).toBe('Aim at the middle of the green.');
+  });
+
+  it('leans away from the course edge off the tee, and has nothing to say where nothing is mapped', () => {
+    const course = hole(1, 400, [
+      feature('fairway', box(150, 380, -18, 18)),
+      feature('water', box(260, 290, -45, -25)),
+      feature('courseEdge', box(-100, 500, -300, 50)),
+    ]);
+    expect(aim(course, 1, 'teeShot')).toEqual({ lean: 'left', safer: null });
+    expect(aimSentence('teeShot', aim(course, 1, 'teeShot')!)).toBe('Favour the left side.');
+    expect(aimSentence('secondShot', { lean: 'centre', safer: null })).toBe('Down the middle.');
+    expect(aim(hole(1, 400, [feature('bunker', box(380, 390, 20, 30))]), 1, 'teeShot')).toBeNull();
   });
 });
 

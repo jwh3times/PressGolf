@@ -41,9 +41,22 @@ export interface SideReading {
   causes: Cause[];
 }
 
+/**
+ * Where to aim, from the grades alone: away from the worse side, and, around
+ * the green, whether long or short is the safer miss. Line-of-play advice, so
+ * only given when looking a course over or in a practice round.
+ */
+export interface Aim {
+  lean: 'left' | 'centre' | 'right';
+  /** Around the green only, when long and short differ. */
+  safer: 'long' | 'short' | null;
+}
+
 export interface ZoneReading {
   zone: Zone;
   sides: SideReading[];
+  /** Null unless advice was asked for, or when the map is silent on the zone. */
+  aim: Aim | null;
 }
 
 export interface HoleStrategy {
@@ -112,6 +125,7 @@ function greenZone(plan: HolePlan): ZoneReading | null {
   return {
     zone: 'green',
     sides: (['short', 'long', 'left', 'right'] as const).map((s) => side(s, causes[s], mapped)),
+    aim: null,
   };
 }
 
@@ -234,7 +248,7 @@ function laneZone(plan: HolePlan, path: Path, zone: Zone, [from, to]: [number, n
     }
   }
 
-  return { zone, sides: (['left', 'right', 'across'] as const).map((s) => side(s, causes[s], mapped)) };
+  return { zone, sides: (['left', 'right', 'across'] as const).map((s) => side(s, causes[s], mapped)), aim: null };
 }
 
 /**
@@ -251,10 +265,27 @@ function teeForward(course: Course, number: number, teeId: TeeId | null | undefi
 export interface StrategyOptions {
   /** The tee being played; the course's first tee when missing. */
   teeId?: TeeId | null;
+  /** Include where to aim. Only outside a round, or in a practice round. */
+  advice?: boolean;
+}
+
+/** The better of two sides, or neither when they are graded alike. */
+function safer<T extends StrategySide>(zone: ZoneReading, a: T, b: T): T | null {
+  const [ga, gb] = [zone.sides.find((s) => s.side === a)!.grade, zone.sides.find((s) => s.side === b)!.grade];
+  if (RANK[ga] === RANK[gb]) return null;
+  return RANK[ga] > RANK[gb] ? a : b;
+}
+
+function aimFor(zone: ZoneReading): Aim | null {
+  if (zone.sides.every((s) => s.grade === 'nothingMapped')) return null;
+  return {
+    lean: safer(zone, 'left', 'right') ?? 'centre',
+    safer: zone.zone === 'green' ? safer(zone, 'long', 'short') : null,
+  };
 }
 
 /** How hole `number` plays, or null when the map has too little of it to say. */
-export function holeStrategy(course: Course, number: number, { teeId }: StrategyOptions = {}): HoleStrategy | null {
+export function holeStrategy(course: Course, number: number, { teeId, advice = false }: StrategyOptions = {}): HoleStrategy | null {
   const plan = holePlan(course, number);
   if (!plan.features.some((f) => isHazard(f) || f.kind === 'fairway')) return null;
   const green = greenZone(plan);
@@ -276,7 +307,7 @@ export function holeStrategy(course: Course, number: number, { teeId }: Strategy
     if (to > from) zones.push(laneZone(plan, path, 'secondShot', [from, to], (along) => Math.round((path.length - along) / YARD)));
   }
   zones.push(green);
-  return { hole: number, zones };
+  return { hole: number, zones: advice ? zones.map((z) => ({ ...z, aim: aimFor(z) })) : zones };
 }
 
 const ZONES: Zone[] = ['teeShot', 'secondShot', 'green'];
@@ -372,4 +403,18 @@ export function sideSentence(zone: Zone, reading: SideReading): string {
   const name = reading.side.charAt(0).toUpperCase() + reading.side.slice(1);
   const causes = sideCauses(zone, reading);
   return `${name}: ${GRADE_NAMES[reading.grade]}.${causes ? ` ${causes}.` : ''}`;
+}
+
+/** Where to aim, in words: "Favour the right half of the green. Long is safer than short." */
+export function aimSentence(zone: Zone, aim: Aim): string {
+  const where =
+    zone === 'green'
+      ? aim.lean === 'centre'
+        ? 'Aim at the middle of the green.'
+        : `Favour the ${aim.lean} half of the green.`
+      : aim.lean === 'centre'
+        ? 'Down the middle.'
+        : `Favour the ${aim.lean} side.`;
+  const depth = aim.safer ? ` ${aim.safer === 'long' ? 'Long is safer than short.' : 'Short is safer than long.'}` : '';
+  return where + depth;
 }

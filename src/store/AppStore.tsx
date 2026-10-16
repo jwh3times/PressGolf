@@ -31,7 +31,9 @@ import type {
   OutingSettlement,
   Player,
   PlayerId,
+  PracticeMark,
   Round,
+  RoundId,
   Settlement,
   Tee,
   TeeId,
@@ -48,6 +50,8 @@ interface Dataset {
   outings: Outing[];
   /** The phone owner's bag (#125). */
   clubs: Club[];
+  /** Rounds this phone marked as practice (#136). Saved here, never synced. */
+  practice: Record<RoundId, PracticeMark>;
   activeGroupId: string | null;
   activeRoundId: string | null;
   activeOutingId: string | null;
@@ -134,6 +138,11 @@ export interface AppStore extends AppState {
 
   // Rounds
   startRound(round: Round): void;
+  /**
+   * Marks a round as practice on this phone, or not, which decides whether
+   * aiming advice is shown in it. Once on, the round stays marked as having been.
+   */
+  setPractice(roundId: string, on: boolean): void;
   setActiveRound(id: string | null): void;
   completeRound(id: string): void;
   reopenRound(id: string): void;
@@ -178,6 +187,7 @@ const EMPTY_STATE: AppState = {
   rounds: [],
   outings: [],
   clubs: [],
+  practice: {},
   activeGroupId: null,
   activeRoundId: null,
   activeOutingId: null,
@@ -257,6 +267,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         rounds: next.rounds,
         outings: next.outings,
         clubs: next.clubs,
+        practice: next.practice,
         activeGroupId: next.activeGroupId,
         activeRoundId: next.activeRoundId,
         activeOutingId: next.activeOutingId,
@@ -527,6 +538,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
               rounds: [],
               outings: [],
               clubs: [],
+              practice: {},
               activeGroupId: null,
               activeRoundId: null,
               activeOutingId: null,
@@ -686,6 +698,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({ ...prev, clubs: prev.clubs.map((c) => (c.id === id ? { ...c, carry } : c)) })),
       removeClub: (id) => commit((prev) => ({ ...prev, clubs: prev.clubs.filter((c) => c.id !== id) })),
 
+      setPractice: (roundId, on) =>
+        commit((prev) => {
+          const was = prev.practice[roundId];
+          if ((was?.on ?? false) === on) return prev;
+          return { ...prev, practice: { ...prev.practice, [roundId]: { on, ever: on || (was?.ever ?? false) } } };
+        }),
+
       startRound: (created) =>
         commit((prev) => ({
           ...prev,
@@ -842,6 +861,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     rounds: stored.rounds,
     outings: stored.outings,
     clubs: stored.clubs,
+    practice: stored.practice,
     activeGroupId: stored.activeGroupId,
     activeRoundId: stored.activeRoundId,
     activeOutingId: stored.activeOutingId,

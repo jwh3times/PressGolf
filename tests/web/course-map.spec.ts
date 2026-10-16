@@ -75,6 +75,23 @@ test('score, a mapped hole', async ({ page }) => {
   await expectAccessible(page);
 });
 
+test('practice round, from the Score screen', async ({ page }) => {
+  await page.getByRole('button', { name: 'Back' }).last().click();
+  await page.getByRole('button', { name: 'Done' }).last().click();
+  await page.getByRole('button', { name: 'Done' }).last().click();
+  await openTab(page, 'Score');
+  await page.getByRole('button', { name: 'Go to hole 3' }).click();
+  await page.getByRole('button', { name: 'Open the course guide' }).click();
+  // A counted round: no aiming advice until the round is made practice, and the Rule comes first.
+  await expect(page.getByRole('button', { name: /Aim:/ })).toHaveCount(0);
+  await page.getByRole('switch', { name: 'Practice round' }).click();
+  await expect(page.getByText(/Rule 4\.3/)).toBeVisible();
+  await expectScreen(page, 'practice-round');
+  await expectAccessible(page);
+  await page.getByRole('button', { name: 'Make it a practice round' }).click();
+  await expect(page.getByRole('button', { name: /^Hole 3,.*Aim: / })).toBeVisible();
+});
+
 // The grades' colours, against every base: axe checks their contrast.
 const THEME_NAMES: Record<string, string> = {
   darkContrast: 'Dark, high contrast theme',

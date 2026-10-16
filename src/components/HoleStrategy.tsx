@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
+  aimSentence,
   facingZone,
   gradeName,
   holeStrategy,
@@ -66,6 +67,14 @@ export function HoleStrategyView({ strategy }: { strategy: HoleStrategy }) {
           {zone.sides.map((reading) => (
             <SideRow key={reading.side} zone={zone} reading={reading} />
           ))}
+          {zone.aim ? (
+            <View accessible accessibilityLabel={`Aim: ${aimSentence(zone.zone, zone.aim)}`} style={styles.aim}>
+              <Mono size={10.5} style={styles.quiet}>
+                AIM
+              </Mono>
+              <Body style={{ flex: 1, minWidth: 160 }}>{aimSentence(zone.zone, zone.aim)}</Body>
+            </View>
+          ) : null}
         </Card>
       ))}
       <Body style={styles.copy}>
@@ -143,6 +152,16 @@ const useStyles = makeStyles(({ ink, line }) =>
     },
     sideName: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.body, width: 56 },
     grade: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    aim: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'baseline',
+      columnGap: 12,
+      rowGap: 2,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: line.hair,
+    },
     dot: { width: 8, height: 8, borderRadius: radius.chip },
     copy: { color: ink.soft, lineHeight: 19 },
     quiet: { color: ink.soft, letterSpacing: 1.2 },

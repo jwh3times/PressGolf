@@ -162,6 +162,17 @@ export interface Club {
   carry: number | null;
 }
 
+/**
+ * A round this phone has marked as a practice round (#136), where aiming
+ * advice is shown. Kept on the phone only: each phone chooses for itself, and
+ * it never syncs.
+ */
+export interface PracticeMark {
+  on: boolean;
+  /** Stays true once the switch has been on, so History can say advice was used. */
+  ever: boolean;
+}
+
 // ─── Games ──────────────────────────────────────────────────────────────────
 
 export type GameKey =
@@ -513,5 +524,7 @@ export interface AppData {
   outings: Outing[];
   /** The phone's owner's clubs, longest first as they carry them. */
   clubs: Club[];
+  /** This phone's practice-round marks, by round. Never synced. */
+  practice: Record<RoundId, PracticeMark>;
   settings: AppSettings;
 }
