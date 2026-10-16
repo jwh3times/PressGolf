@@ -30,7 +30,7 @@ export interface HolePlan {
   features: CourseFeature[];
 }
 
-type XY = [number, number];
+export type XY = [number, number];
 
 /**
  * A flat frame for one hole, in metres: `origin` at (0, 0), `heading` (degrees
@@ -68,7 +68,7 @@ export function bearing(a: LatLng, b: LatLng): number {
 }
 
 /** The nearest point to `p` on the segment `a`–`b`, in a flat frame. */
-function nearestOnSegment(p: XY, a: XY, b: XY): XY {
+export function nearestOnSegment(p: XY, a: XY, b: XY): XY {
   const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
   const length2 = dx * dx + dy * dy;
   const t = length2 === 0 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length2));
@@ -78,16 +78,16 @@ function nearestOnSegment(p: XY, a: XY, b: XY): XY {
 const distance = (a: XY, b: XY) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 /** Segments of an outline: a ring closes on itself, a line doesn't. */
-function segments(points: XY[], closed: boolean): [XY, XY][] {
+export function segments(points: XY[], closed: boolean): [XY, XY][] {
   const out: [XY, XY][] = [];
   for (let i = 1; i < points.length; i++) out.push([points[i - 1], points[i]]);
   if (closed && points.length > 2) out.push([points[points.length - 1], points[0]]);
   return out;
 }
 
-const isLine = (f: CourseFeature) => f.kind === 'holeLine' || f.kind === 'outOfBounds';
+export const isLine = (f: CourseFeature) => f.kind === 'holeLine' || f.kind === 'outOfBounds';
 
-function inside([x, y]: XY, polygon: XY[]): boolean {
+export function inside([x, y]: XY, polygon: XY[]): boolean {
   let within = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const [xi, yi] = polygon[i];
@@ -98,7 +98,7 @@ function inside([x, y]: XY, polygon: XY[]): boolean {
 }
 
 /** The nearest point of a feature to `p`, and how far it is. Inside an area is no distance at all. */
-function nearestOf(p: XY, points: XY[], closed: boolean): { at: XY; metres: number } {
+export function nearestOf(p: XY, points: XY[], closed: boolean): { at: XY; metres: number } {
   if (closed && inside(p, points)) return { at: p, metres: 0 };
   let best = { at: points[0], metres: Infinity };
   for (const [a, b] of segments(points, closed)) {

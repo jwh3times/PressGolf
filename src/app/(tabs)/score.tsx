@@ -6,6 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CardGrid } from '../../components/CardGrid';
 import { GreenYardage } from '../../components/GreenYardage';
 import { HoleMapPreview } from '../../components/HoleMapPreview';
+import { HoleStrategyLine } from '../../components/HoleStrategy';
 import { Screen } from '../../components/Screen';
 import {
   Avatar,
@@ -22,7 +23,7 @@ import {
 } from '../../components/primitives';
 import { MANUAL_JUNK, RoundContext, matchStatus, money, wolfForHole, wolfPickForHole } from '../../domain/engine';
 import { greenFor } from '../../domain/geo';
-import type { JunkKind, PlayerId } from '../../domain/types';
+import type { JunkKind, LatLng, PlayerId } from '../../domain/types';
 import {
   MAX_CONTROL_SCALE,
   useAccessibilityControlScale,
@@ -49,6 +50,8 @@ export default function ScoreScreen() {
   );
 
   const [hole, setHole] = useState(0);
+  // The last fix the yardage card took, and on which hole: how the hole plays follows it.
+  const [position, setPosition] = useState<{ hole: number; at: LatLng } | null>(null);
   // Hole by hole on the course; the whole card for typing one in. A card round opens on the card.
   const [view, setView] = useState<'hole' | 'card' | null>(null);
 
@@ -87,9 +90,15 @@ export default function ScoreScreen() {
   const holeInfo = ctx.holes[current];
   // From the Score screen you are on the hole, so the map measures from you.
   const openHoleMap = () =>
-    router.push({ pathname: '/hole-map', params: { course: course.id, hole: String(holeInfo.number), live: '1' } });
+    router.push({
+      pathname: '/hole-map',
+      params: { course: course.id, hole: String(holeInfo.number), live: '1', tee: playedTee.id },
+    });
   const roster = ctx.players;
   const youId = group.youId;
+  // How the hole plays reads from your own tee, when you're on the card.
+  const playedTee = youId && round.playerIds.includes(youId) ? ctx.teeFor(youId) : ctx.tee;
+  const openGuide = () => router.push({ pathname: '/course-guide', params: { course: course.id, tee: playedTee.id } });
 
   const skinsGame = settlement.games.find((g) => g.key === 'skins');
   const carry = skinsGame?.carry ?? 1;
@@ -173,10 +182,25 @@ export default function ScoreScreen() {
         holeNumber={holeInfo.number}
         green={greenFor(course.greens, holeInfo.number)}
         onMark={(green) => store.setGreen(course.id, green)}
+        onPosition={(at) => setPosition({ hole: holeInfo.number, at })}
       />
       {/* A course with a map shows the hole; a hole with only a green can still be mapped. */}
       {course.features.length ? (
-        <HoleMapPreview course={course} hole={holeInfo.number} onOpen={openHoleMap} />
+        <>
+          <HoleMapPreview course={course} hole={holeInfo.number} onOpen={openHoleMap} />
+          <View style={styles.strategy}>
+            <View style={{ flex: 1, minWidth: 180 }}>
+              <HoleStrategyLine
+                key={holeInfo.number}
+                course={course}
+                hole={holeInfo.number}
+                teeId={playedTee.id}
+                position={position?.hole === holeInfo.number ? position.at : null}
+              />
+            </View>
+            <Chip label="COURSE GUIDE ›" accessibilityLabel="Open the course guide" onPress={openGuide} />
+          </View>
+        </>
       ) : greenFor(course.greens, holeInfo.number) ? (
         <GhostButton label={`Map of hole ${holeInfo.number}`} onPress={openHoleMap} />
       ) : null}
@@ -749,6 +773,7 @@ function CardActions() {
 
 const useStyles = makeStyles(({ colors, ink, line, fill }) =>
   StyleSheet.create({
+    strategy: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: CHIP_ROW_GAP },
     cardBanner: {
       gap: 8,
       padding: 14,
