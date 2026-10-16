@@ -18,6 +18,7 @@ interface StoredPayload {
   courses: AppData['courses'];
   rounds: AppData['rounds'];
   outings: AppData['outings'];
+  clubs: AppData['clubs'];
   activeGroupId: string | null;
   activeRoundId: string | null;
   activeOutingId: string | null;
@@ -34,6 +35,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   courses: [],
   rounds: [],
   outings: [],
+  clubs: [],
   activeGroupId: null,
   activeRoundId: null,
   activeOutingId: null,
@@ -52,7 +54,8 @@ function dataKey(demoMode: boolean): string {
  * with outings, defaulted to "this was its own thing". Data saved before max
  * scores gets no max and no pick-ups, and data saved before handicaps plays off
  * the low man at 100% with its pops as typed, so nothing it already settled moves.
- * Courses saved before greens, or before the course map, know none.
+ * Courses saved before greens, or before the course map, know none, and data
+ * saved before the bag has no clubs.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -85,6 +88,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     })),
     rounds,
     outings: (parsed.outings ?? []).map((outing) => ({ ...outing, ...houseRulesOrDefault(outing) })),
+    clubs: parsed.clubs ?? [],
     activeGroupId: parsed.activeGroupId ?? null,
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,

@@ -10,11 +10,13 @@ import React, {
 import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
+import { withClub } from '../domain/bag';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
 import { withGreen } from '../domain/geo';
 import { withHandicapPops } from '../domain/handicap';
 import type {
+  Club,
   Course,
   FieldGameConfig,
   FieldGameKey,
@@ -44,6 +46,8 @@ interface Dataset {
   courses: Course[];
   rounds: Round[];
   outings: Outing[];
+  /** The phone owner's bag (#125). */
+  clubs: Club[];
   activeGroupId: string | null;
   activeRoundId: string | null;
   activeOutingId: string | null;
@@ -120,6 +124,14 @@ export interface AppStore extends AppState {
   setFeatures(courseId: string, features: CourseFeature[]): void;
   deleteCourse(id: string): void;
 
+  // The bag
+  /** Adds a club where it belongs in the bag; nothing for a name already there. */
+  addClub(name: string): void;
+  /** A whole set of clubs, with no carries yet, for an empty bag. */
+  fillBag(clubs: Club[]): void;
+  setCarry(id: string, carry: number | null): void;
+  removeClub(id: string): void;
+
   // Rounds
   startRound(round: Round): void;
   setActiveRound(id: string | null): void;
@@ -165,6 +177,7 @@ const EMPTY_STATE: AppState = {
   courses: [],
   rounds: [],
   outings: [],
+  clubs: [],
   activeGroupId: null,
   activeRoundId: null,
   activeOutingId: null,
@@ -243,6 +256,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         courses: next.courses,
         rounds: next.rounds,
         outings: next.outings,
+        clubs: next.clubs,
         activeGroupId: next.activeGroupId,
         activeRoundId: next.activeRoundId,
         activeOutingId: next.activeOutingId,
@@ -309,21 +323,17 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       courses: state.courses,
       rounds: state.rounds,
       outings: state.outings,
+      clubs: state.clubs,
     }),
-    [state.groups, state.courses, state.rounds, state.outings],
+    [state.groups, state.courses, state.rounds, state.outings, state.clubs],
   );
 
   const adoptRemote = useCallback(
-    (remote: Documents) => {
+    (remote: Partial<Documents>) => {
       // A phone with nothing on it, signing in to an account that already has a
-      // season. Take what is there rather than pushing emptiness over it.
-      commit((prev) => ({
-        ...prev,
-        groups: remote.groups,
-        courses: remote.courses,
-        rounds: remote.rounds,
-        outings: remote.outings,
-      }));
+      // season. Take what is there rather than pushing emptiness over it. Only
+      // the bag comes when the phone has a season but no clubs yet.
+      commit((prev) => ({ ...prev, ...remote }));
     },
     [commit],
   );
@@ -516,6 +526,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
               courses: [],
               rounds: [],
               outings: [],
+              clubs: [],
               activeGroupId: null,
               activeRoundId: null,
               activeOutingId: null,
@@ -668,6 +679,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             g.defaultCourseId === id ? { ...g, defaultCourseId: null } : g,
           ),
         })),
+
+      addClub: (name) => commit((prev) => ({ ...prev, clubs: withClub(prev.clubs, name) })),
+      fillBag: (clubs) => commit((prev) => (prev.clubs.length ? prev : { ...prev, clubs })),
+      setCarry: (id, carry) =>
+        commit((prev) => ({ ...prev, clubs: prev.clubs.map((c) => (c.id === id ? { ...c, carry } : c)) })),
+      removeClub: (id) => commit((prev) => ({ ...prev, clubs: prev.clubs.filter((c) => c.id !== id) })),
 
       startRound: (created) =>
         commit((prev) => ({
@@ -824,6 +841,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     courses: stored.courses,
     rounds: stored.rounds,
     outings: stored.outings,
+    clubs: stored.clubs,
     activeGroupId: stored.activeGroupId,
     activeRoundId: stored.activeRoundId,
     activeOutingId: stored.activeOutingId,

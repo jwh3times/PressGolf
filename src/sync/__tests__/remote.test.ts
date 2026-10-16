@@ -336,6 +336,75 @@ describe('reconcile', () => {
   });
 });
 
+describe('reconcile, the bag', () => {
+  const club = (id: string, position = 0) => ({ id, name: '7 iron', carry_yards: 150, position });
+
+  /** The account as the server holds it, and every write and delete the phone sends. */
+  function recording(remote: Snapshot) {
+    const writes: { table: string; rows: Record<string, unknown>[] }[] = [];
+    const deletes: string[] = [];
+    mockGetSupabase.mockReturnValue({
+      from: jest.fn((table: keyof Snapshot) => {
+        const builder = query({ data: remote[table], error: null });
+        builder.upsert.mockImplementation((rows: Record<string, unknown>[]) => {
+          writes.push({ table, rows });
+          return builder;
+        });
+        builder.delete.mockImplementation(() => {
+          deletes.push(table);
+          return builder;
+        });
+        return builder;
+      }),
+    } as never);
+    return { writes, deletes };
+  }
+
+  it('keeps clubs typed on a fresh install that adopts a season with no bag', async () => {
+    const remote = snapshotWithGroup();
+    const local = { ...emptySnapshot(), clubs: [club('k1')] };
+    const { writes, deletes } = recording(remote);
+    const outcome = await reconcile(local);
+    expect(writes).toEqual([{ table: 'clubs', rows: [{ ...club('k1'), owner_id: 'owner-1' }] }]);
+    expect(deletes).toEqual([]);
+    expect(outcome).toMatchObject({ status: 'adopted-remote', rows: 2, snapshot: { groups: remote.groups, clubs: [club('k1')] } });
+  });
+
+  it("takes the account's bag on a fresh install, over any typed on it", async () => {
+    const remote = { ...snapshotWithGroup(), clubs: [club('k9')] };
+    const { writes } = recording(remote);
+    await expect(reconcile({ ...emptySnapshot(), clubs: [club('k1')] })).resolves.toMatchObject({ status: 'adopted-remote', snapshot: remote });
+    expect(writes).toEqual([]);
+  });
+
+  it('takes a bag when the account holds nothing else', async () => {
+    const remote = { ...emptySnapshot(), clubs: [club('k9')] };
+    recording(remote);
+    await expect(reconcile(emptySnapshot())).resolves.toMatchObject({ status: 'adopted-remote', rows: 1, snapshot: remote });
+  });
+
+  it("takes the account's bag on a phone with a season and no clubs, rather than deleting it", async () => {
+    const remote = { ...snapshotWithGroup(), clubs: [club('k9')] };
+    const { deletes } = recording(remote);
+    const outcome = await reconcile(snapshotWithGroup());
+    expect(deletes).toEqual([]);
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 0, own: { clubs: remote.clubs }, clubs: remote.clubs });
+  });
+
+  it("puts a phone's own bag over the account's, and sends a bag with no season", async () => {
+    const remote = { ...snapshotWithGroup(), clubs: [club('k9')] };
+    const { deletes } = recording(remote);
+    const outcome = await reconcile({ ...snapshotWithGroup(), clubs: [club('k1')] });
+    expect(deletes).toEqual(['clubs']);
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 1 });
+    expect(outcome).not.toHaveProperty('clubs');
+
+    const { writes } = recording(emptySnapshot());
+    await expect(reconcile({ ...emptySnapshot(), clubs: [club('k1')] })).resolves.toMatchObject({ status: 'pushed' });
+    expect(writes).toEqual([{ table: 'clubs', rows: [{ ...club('k1'), owner_id: 'owner-1' }] }]);
+  });
+});
+
 describe('pushChanges', () => {
   it('sends what changed since the last push, prunes what went, and returns the own rows whole', async () => {
     const writes: { table: string; rows: unknown }[] = [];

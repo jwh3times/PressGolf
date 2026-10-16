@@ -48,7 +48,8 @@ export function mergeShared(local: Documents, shared: Documents): Documents {
     ...shared.courses.filter((c) => !haveCourse.has(c.id)),
   ];
 
-  return { groups, courses, rounds, outings };
+  // A bag is its owner's alone, and never comes with an outing.
+  return { groups, courses, rounds, outings, clubs: local.clubs };
 }
 
 /** Whether a merge would actually change anything, so a no-op costs no render. */

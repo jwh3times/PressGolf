@@ -33,7 +33,8 @@ const PUSH_DELAY_MS = 2500;
 export function useDataSync(options: {
   enabled: boolean;
   documents: Documents;
-  onAdoptRemote: (documents: Documents) => void;
+  /** Takes the server's copy of what it names: everything, or only the bag. */
+  onAdoptRemote: (documents: Partial<Documents>) => void;
   onSharedData: (documents: Documents) => void;
 }): SyncState {
   const { enabled, documents, onAdoptRemote, onSharedData } = options;
@@ -88,6 +89,9 @@ export function useDataSync(options: {
           adopt.current(fromRows(outcome.snapshot));
         } else {
           serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
+          if (outcome.status === 'pushed' && outcome.clubs) {
+            adopt.current({ clubs: fromRows({ ...emptySnapshot(), clubs: outcome.clubs }).clubs });
+          }
         }
         setState({ status: 'synced', at: Date.now(), message: null });
       } catch (error) {

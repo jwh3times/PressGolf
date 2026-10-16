@@ -99,7 +99,7 @@ export function demoDocuments(runPrefix?: string): Documents {
         }
       : c,
   );
-  const documents: Documents = { groups, courses, rounds, outings };
+  const documents: Documents = { groups, courses, rounds, outings, clubs: data.clubs };
   if (!runPrefix) return documents;
   // Ids are global primary keys on the server, so a run against a shared
   // database gives every id its own prefix. Every demo id starts with demo_.

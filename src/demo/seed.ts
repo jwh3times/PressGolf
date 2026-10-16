@@ -1,6 +1,6 @@
 import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
 import { withHandicapPops } from '../domain/handicap';
-import type { Course, Group, Hole, Outing, Player, PlayerId, Round } from '../domain/types';
+import type { Club, Course, Group, Hole, Outing, Player, PlayerId, Round } from '../domain/types';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -362,11 +362,32 @@ export function demoOuting(
   return { outing, rounds: withHandicapPops(rounds, demoCourse(), society.players) };
 }
 
+/** A mid-handicap's bag, carries as a launch monitor might give them. Fixed ids keep the screenshots still. */
+export function demoBag(): Club[] {
+  const carries: [string, number][] = [
+    ['Driver', 235],
+    ['3 wood', 215],
+    ['5 wood', 200],
+    ['4 hybrid', 185],
+    ['5 iron', 172],
+    ['6 iron', 162],
+    ['7 iron', 151],
+    ['8 iron', 140],
+    ['9 iron', 129],
+    ['PW', 117],
+    ['GW', 104],
+    ['SW', 88],
+    ['LW', 70],
+  ];
+  return carries.map(([name, carry]) => ({ id: `demo_club_${name.replace(/ /g, '').toLowerCase()}`, name, carry }));
+}
+
 export function buildDemoDataset(now = Date.now()): {
   groups: Group[];
   courses: Course[];
   rounds: Round[];
   outings: Outing[];
+  clubs: Club[];
   activeGroupId: string;
   activeRoundId: string;
   activeOutingId: string | null;
@@ -379,6 +400,7 @@ export function buildDemoDataset(now = Date.now()): {
     courses: [demoCourse()],
     rounds: [...demoHistory(now), demoLiveRound(now), ...outing.rounds],
     outings: [outing.outing],
+    clubs: demoBag(),
     activeGroupId: DEMO_GROUP_ID,
     activeRoundId: DEMO_ROUND_ID,
     activeOutingId: null,

@@ -24,6 +24,7 @@ const documents = {
   courses: seeded.courses,
   rounds: seeded.rounds,
   outings: seeded.outings,
+  clubs: seeded.clubs,
 };
 
 function options(enabled = true) {
@@ -118,10 +119,20 @@ it('debounces later changes, pushes deletions, and merges changed shared data', 
   expect(view.result.current.status).toBe('synced');
 });
 
+it("takes the account's bag when first contact gave this phone one", async () => {
+  const input = options();
+  const clubs = toRows({ groups: [], courses: [], rounds: [], outings: [], clubs: seeded.clubs }).clubs;
+  const own = toRows(documents);
+  mockReconcile.mockResolvedValueOnce({ status: 'pushed', upserted: 1, deleted: 0, own, shared: emptySnapshot(), clubs });
+  const view = await renderHook(() => useDataSync(input));
+  await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  expect(input.onAdoptRemote).toHaveBeenCalledWith({ clubs: seeded.clubs });
+});
+
 it('pushes against what the server holds and the last shared pull, and keeps what each push returns', async () => {
   const input = options();
   const own = toRows({ ...documents, outings: [] });
-  const shared = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings });
+  const shared = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings, clubs: [] });
   mockReconcile.mockResolvedValueOnce({ status: 'pushed', upserted: 1, deleted: 0, own, shared });
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
   await waitFor(() => expect(view.result.current.status).toBe('synced'));
@@ -129,7 +140,7 @@ it('pushes against what the server holds and the last shared pull, and keeps wha
   const renamed = { ...documents, groups: [{ ...documents.groups[0], name: 'Renamed' }, ...documents.groups.slice(1)] };
   const afterFirst = toRows({ ...renamed, outings: [] });
   mockPush.mockResolvedValueOnce(afterFirst);
-  const pulled = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings.slice(0, 1) });
+  const pulled = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings.slice(0, 1), clubs: [] });
   mockPullShared.mockResolvedValueOnce(pulled);
   await view.rerender({ ...input, documents: renamed });
   await advancePush();

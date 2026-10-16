@@ -20,7 +20,7 @@ describe('toRows / fromRows round trip', () => {
 
   it('writes one row per cell of every card, empty boxes included', () => {
     const round = makeTestRound({ scores: [flat(4), flat(5), flat(4), flat(6)] });
-    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [] });
+    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] });
     expect(rows.scores).toHaveLength(4 * 18);
   });
 
@@ -28,14 +28,14 @@ describe('toRows / fromRows round trip', () => {
     const round = makeTestRound({ scores: [flat(4), flat(4), flat(4), flat(4)] });
     round.scores.a[5] = null;
     round.scores.a[6] = 0;
-    const back = fromRows(toRows({ groups: [], courses: [], rounds: [round], outings: [] }));
+    const back = fromRows(toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] }));
     expect(back.rounds[0].scores.a[5]).toBeNull();
     expect(back.rounds[0].scores.a[6]).toBe(0);
   });
 
   it('brings an all-empty card back at its full width', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
-    const back = fromRows(toRows({ groups: [], courses: [], rounds: [round], outings: [] }));
+    const back = fromRows(toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] }));
     for (const playerId of round.playerIds) {
       expect(back.rounds[0].scores[playerId]).toHaveLength(round.scores[playerId].length);
     }
@@ -44,20 +44,20 @@ describe('toRows / fromRows round trip', () => {
   it('preserves tee order, which is what Wolf rotates through', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
     round.playerIds = ['d', 'c', 'b', 'a'];
-    const back = fromRows(toRows({ groups: [], courses: [], rounds: [round], outings: [] }));
+    const back = fromRows(toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] }));
     expect(back.rounds[0].playerIds).toEqual(['d', 'c', 'b', 'a']);
   });
 
   it('preserves roster order, which is the default tee order', () => {
     const group = makeTestGroup(4);
     group.players.reverse();
-    const back = fromRows(toRows({ groups: [group], courses: [], rounds: [], outings: [] }));
+    const back = fromRows(toRows({ groups: [group], courses: [], rounds: [], outings: [], clubs: [] }));
     expect(back.groups[0].players.map((p) => p.id)).toEqual(group.players.map((p) => p.id));
   });
 
   it('keeps tees and holes in card order even when the rows arrive shuffled', () => {
     const course = withTee(makeTestCourse(), 'red', () => ({ yards: 320 }));
-    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [] });
+    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [], clubs: [] });
     rows.tees.reverse();
     rows.tee_holes.reverse();
     const back = fromRows(rows);
@@ -66,7 +66,7 @@ describe('toRows / fromRows round trip', () => {
 
   it('keeps greens in hole order, and front and back only as a pair', () => {
     const course = demoDocuments().courses[0];
-    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [] });
+    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [], clubs: [] });
     expect(rows.course_greens[0]).toMatchObject({ number: 1, front_lat: null, front_lng: null, back_lat: null, back_lng: null });
     rows.course_greens.reverse();
     // A half-written point is no point at all.
@@ -85,7 +85,7 @@ describe('toRows / fromRows round trip', () => {
         { id: 'osm:way/7', kind: 'holeLine' as const, hole: 7, points: [{ lat: 45.5, lng: -122.61 }, { lat: 45.502, lng: -122.612 }], source: 'osm' as const },
       ],
     };
-    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [] });
+    const rows = toRows({ groups: [], courses: [course], rounds: [], outings: [], clubs: [] });
     expect(rows.course_features[1]).toEqual({
       course_id: course.id,
       id: 'osm:way/7',
@@ -98,17 +98,31 @@ describe('toRows / fromRows round trip', () => {
     expect(fromRows(rows).courses[0].features).toEqual(course.features);
   });
 
+  it('round-trips the bag in its order, whatever order the rows arrive', () => {
+    const clubs = [
+      { id: 'k-driver', name: 'Driver', carry: 240 },
+      { id: 'k-wedge', name: '60° wedge', carry: null },
+    ];
+    const rows = toRows({ groups: [], courses: [], rounds: [], outings: [], clubs });
+    expect(rows.clubs).toEqual([
+      { id: 'k-driver', name: 'Driver', carry_yards: 240, position: 0 },
+      { id: 'k-wedge', name: '60° wedge', carry_yards: null, position: 1 },
+    ]);
+    rows.clubs.reverse();
+    expect(fromRows(rows).clubs).toEqual(clubs);
+  });
+
   it('round-trips a junk key whose player id contains a colon', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
     round.junk = { '4:odd:id:greenie': true };
-    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [] });
+    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] });
     expect(rows.junk[0]).toMatchObject({ hole: 4, player_id: 'odd:id', kind: 'greenie' });
     expect(fromRows(rows).rounds[0].junk).toEqual(round.junk);
   });
 
   it('writes a row for every format, on or off, so a stake is never lost', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
-    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [] });
+    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] });
     expect(rows.round_games).toHaveLength(GAME_KEYS.length);
   });
 
@@ -131,7 +145,7 @@ describe('snapshot helpers', () => {
   it('starts empty', () => {
     const snapshot = emptySnapshot();
     expect(countRows(snapshot)).toBe(0);
-    expect(fromRows(snapshot)).toEqual({ groups: [], courses: [], rounds: [], outings: [] });
+    expect(fromRows(snapshot)).toEqual({ groups: [], courses: [], rounds: [], outings: [], clubs: [] });
   });
 
   it('counts every row it holds', () => {
@@ -234,7 +248,7 @@ describe('snapshot helpers', () => {
     round.junk = { malformed: true, ':also-bad': true, '2:a:greenie': true };
     delete round.pops[round.playerIds[0]];
     delete round.scores[round.playerIds[0]];
-    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [] });
+    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] });
     expect(rows.junk).toHaveLength(1);
     expect(rows.round_players[0].pops).toBe(0);
     expect(rows.scores.every((score) => score.player_id !== round.playerIds[0])).toBe(true);

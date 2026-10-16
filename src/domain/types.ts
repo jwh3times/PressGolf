@@ -147,6 +147,21 @@ export interface Course {
   createdAt: number;
 }
 
+// ─── The bag ────────────────────────────────────────────────────────────────
+
+/**
+ * One club in the bag (#125): how far its owner carries it, as they typed it.
+ * The bag belongs to whoever uses this phone, not to a group's player, and it
+ * is never shared with an outing. The id is stable, so shots tracked later can
+ * say which club hit them.
+ */
+export interface Club {
+  id: string;
+  name: string;
+  /** Average carry in yards, in the air, on a full swing; null until typed. */
+  carry: number | null;
+}
+
 // ─── Games ──────────────────────────────────────────────────────────────────
 
 export type GameKey =
@@ -496,5 +511,7 @@ export interface AppData {
   courses: Course[];
   rounds: Round[];
   outings: Outing[];
+  /** The phone's owner's clubs, longest first as they carry them. */
+  clubs: Club[];
   settings: AppSettings;
 }

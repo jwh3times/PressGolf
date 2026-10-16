@@ -57,6 +57,7 @@ function stored(data: Dataset) {
     courses: data.courses,
     rounds: data.rounds,
     outings: data.outings,
+    clubs: data.clubs,
     activeGroupId: data.activeGroupId,
     activeRoundId: data.activeRoundId,
     activeOutingId: data.activeOutingId,
@@ -112,6 +113,8 @@ async function startIndexedRound(): Promise<string[]> {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // A dataset queued for a load that never came would otherwise open the next test.
+  mockLoadDataset.mockReset();
   mockUseAuth.mockReturnValue({
     status: 'signed-in',
     email: 'golfer@example.com',
@@ -150,7 +153,7 @@ describe('AppStoreProvider', () => {
     expect(mockUseDataSync).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
 
     const syncOptions = mockUseDataSync.mock.calls.at(-1)?.[0];
-    const replacement = { groups: [], courses: [], rounds: [], outings: [] };
+    const replacement = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
     await change(() => syncOptions?.onAdoptRemote(replacement));
     expect(store.groups).toEqual([]);
     await change(() => syncOptions?.onSharedData({ ...replacement, groups: data.groups }));
@@ -168,6 +171,7 @@ describe('AppStoreProvider', () => {
       courses: [],
       rounds: [],
       outings: [],
+      clubs: [],
       activeGroupId: null,
       activeRoundId: null,
       activeOutingId: null,
@@ -701,5 +705,37 @@ describe('AppStoreProvider', () => {
     await change(() => store.setFeatures(course.id, [bunker]));
     expect(store.course!.features).toEqual([bunker]);
     expect(store.courses.find((c) => c.id === other.id)!.features).toEqual([]);
+  });
+
+  it('fills an empty bag, adds clubs in their place, types carries and takes clubs out', async () => {
+    await mount({ ...buildDemoDataset(1_750_000_000_000), clubs: [] });
+    const set = [
+      { id: 'k1', name: 'Driver', carry: null },
+      { id: 'k2', name: '9 iron', carry: null },
+    ];
+    await change(() => store.fillBag(set));
+    expect(store.clubs).toEqual(set);
+    // A full bag is not replaced by another.
+    await change(() => store.fillBag([{ id: 'k9', name: 'PW', carry: null }]));
+    expect(store.clubs).toEqual(set);
+
+    await change(() => store.addClub('7 iron'));
+    expect(store.clubs.map((c) => c.name)).toEqual(['Driver', '7 iron', '9 iron']);
+    await change(() => store.setCarry('k1', 245));
+    expect(store.clubs[0].carry).toBe(245);
+    await change(() => store.removeClub('k2'));
+    expect(store.clubs.map((c) => c.name)).toEqual(['Driver', '7 iron']);
+  });
+
+  it('starts the demo with a bag, and takes only a bag from the server when that is all it sends', async () => {
+    await mount();
+    expect(store.clubs.length).toBeGreaterThan(0);
+    const groups = store.groups;
+    const syncOptions = mockUseDataSync.mock.calls.at(-1)?.[0];
+    expect(syncOptions?.documents.clubs).toBe(store.clubs);
+    const clubs = [{ id: 'k1', name: 'Driver', carry: 250 }];
+    await change(() => syncOptions?.onAdoptRemote({ clubs }));
+    expect(store.clubs).toEqual(clubs);
+    expect(store.groups).toBe(groups);
   });
 });

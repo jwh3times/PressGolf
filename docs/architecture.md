@@ -209,6 +209,28 @@ phone last was if location is already allowed, and the course name can be
 searched (Nominatim) to move the map there. `react-native-maps` has no web
 version, so `GreenMap.web.tsx` says to use the OpenStreetMap search instead.
 
+### The bag
+
+**My bag** (Settings, `src/app/bag.tsx`) keeps how far the phone's owner
+carries each club, in the air on a full swing, in whole yards (#125):
+`AppData.clubs`, synced as `clubs`. A bag belongs to the account, not to a
+group's player, because the same golfer plays in several groups; no outing
+shares it, so the table has owner policies only. Its order is the bag's,
+longest first, stored as each club's `position`. A club's id is stable so that
+shots tracked later can name the club that hit them.
+
+An empty bag starts from thirteen clubs with no carries (`starterBag`), and
+named clubs go in where a bag holds them (`withClub`); any other name goes at
+the end. A carry is 1–450 yards (`parseCarry`). A club typed as carrying
+further than a longer club above it is flagged (`outOfOrder`), since that is
+usually a slip; two clubs carrying the same is not.
+
+A chart of your own distances, made before the round, is allowed in a counted
+round (Rule 4.3a), so the bag is plain information and is always on. Nothing
+reads it yet: the hole strategy and the practice-round suggestions will. How
+widely each club's shots scatter is left to them, to be modelled from
+published shot data and later from tracked shots, rather than guessed here.
+
 ### Max score and pick-ups
 
 A round carries a max-score rule in its options:
@@ -341,10 +363,13 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
-1. On first contact, it pulls the signed-in account's 21 snapshot tables (its
+1. On first contact, it pulls the signed-in account's 22 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
-   dataset is pushed.
+   dataset is pushed. The bag is settled on its own: a phone with no clubs
+   takes the account's, rather than pruning it, and a fresh install keeps clubs
+   typed before signing in when the account has none. A phone holding only a
+   bag still counts as fresh, so it can never prune a season.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one
@@ -366,7 +391,7 @@ column's default and is the guest's. The rest of the organiser's day isn't
 pushed. Before this (#127), a guest's every push after joining failed on the
 organiser's group.
 
-The schema has 23 application tables: 21 snapshot tables plus
+The schema has 24 application tables: 22 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need.

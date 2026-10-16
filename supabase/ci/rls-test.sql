@@ -60,6 +60,7 @@ insert into course_features (course_id, id, kind, hole, points, source)
   values ('c9', 'osm:way/9', 'water', null, '[[44.1, -121.3], [44.1, -121.301], [44.101, -121.3]]', 'osm');
 insert into rounds (id, group_id, course_id, name, started_at)
   values ('r9', 'g9', 'c9', 'Private', 1);
+insert into clubs (id, name, carry_yards, position) values ('k1', '7 iron', 150, 0);
 insert into scores (round_id, player_id, hole, strokes) values ('r9', 'p1', 0, 3);
 
 -- ── A stranger, holding no code ─────────────────────────────────────────────
@@ -76,6 +77,7 @@ select expect('stranger sees no tees',     (select count(*) from tees), 0);
 select expect('stranger sees no card',     (select count(*) from tee_holes), 0);
 select expect('stranger sees no greens',   (select count(*) from course_greens), 0);
 select expect('stranger sees no map',      (select count(*) from course_features), 0);
+select expect('stranger sees no bag',      (select count(*) from clubs), 0);
 
 -- ── The same stranger, now holding the code ─────────────────────────────────
 
@@ -99,6 +101,7 @@ select expect('guest sees no private scores', (select count(*) from scores where
 select expect('guest sees no private course', (select count(*) from courses where id = 'c9'), 0);
 select expect('guest sees no private greens', (select count(*) from course_greens where course_id = 'c9'), 0);
 select expect('guest sees no private map',    (select count(*) from course_features where course_id = 'c9'), 0);
+select expect('guest sees no organiser bag',  (select count(*) from clubs), 0);
 
 -- ── What a guest may write ──────────────────────────────────────────────────
 
@@ -123,6 +126,11 @@ update course_greens set middle_lat = 0 where course_id = 'c1';
 delete from course_greens where course_id = 'c1';
 update course_features set kind = 'water' where course_id = 'c1';
 delete from course_features where course_id = 'c1';
+update clubs set carry_yards = 300;
+delete from clubs;
+-- A bag of his own is his to keep, and his alone.
+insert into clubs (id, name, carry_yards, position) values ('k2', 'Driver', 260, 0);
+select expect('guest sees only his own bag', (select count(*) from clubs), 1);
 -- A refused insert raises, where a refused update or delete just finds no rows.
 do $$ begin
   insert into course_features (course_id, id, kind, hole, points, source)
@@ -141,6 +149,8 @@ select expect('private score untouched',(select strokes from scores where round_
 select expect('private round survived', (select count(*) from rounds where id = 'r9'), 1);
 select expect('shared round survived',  (select count(*) from rounds where id = 'r1'), 1);
 select expect('outing survived',        (select count(*) from outings where id = 'o1'), 1);
+select expect('bag untouched',          (select carry_yards from clubs where id = 'k1'), 150);
+select expect('sees only her own bag',  (select count(*) from clubs), 1);
 
 -- The organiser joined her own outing when she shared it, which is the only
 -- reason she can see what her guests wrote.

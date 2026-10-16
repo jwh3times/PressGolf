@@ -20,6 +20,7 @@ import { houseRulesOrDefault } from '../domain/formats';
 import {
   FIELD_GAME_KEYS,
   GAME_KEYS,
+  type Club,
   type Course,
   type FieldGameConfig,
   type FieldGameKey,
@@ -119,6 +120,14 @@ export interface CourseFeatureRow {
   hole: number | null;
   points: [number, number][];
   source: FeatureSource;
+}
+
+/** One club in the bag (#125). The bag's order is the clubs' `position`, longest first. */
+export interface ClubRow {
+  id: string;
+  name: string;
+  carry_yards: number | null;
+  position: number;
 }
 
 export interface RoundRow {
@@ -273,6 +282,7 @@ export interface Snapshot {
   outing_field: OutingFieldRow[];
   outing_field_games: OutingFieldGameRow[];
   outing_field_entrants: OutingFieldEntrantRow[];
+  clubs: ClubRow[];
 }
 
 /** The document-shaped data the app actually holds. */
@@ -281,6 +291,7 @@ export interface Documents {
   courses: Course[];
   rounds: Round[];
   outings: Outing[];
+  clubs: Club[];
 }
 
 export const TABLES: (keyof Snapshot)[] = [
@@ -306,6 +317,8 @@ export const TABLES: (keyof Snapshot)[] = [
   'round_options',
   'round_teams',
   'round_pairings',
+  // Nothing refers to a club, or is referred to by one, yet.
+  'clubs',
 ];
 
 export function emptySnapshot(): Snapshot {
@@ -331,6 +344,7 @@ export function emptySnapshot(): Snapshot {
     outing_field: [],
     outing_field_games: [],
     outing_field_entrants: [],
+    clubs: [],
   };
 }
 
@@ -550,6 +564,10 @@ export function toRows(documents: Documents): Snapshot {
       }
     }
   }
+
+  documents.clubs.forEach((club, position) => {
+    out.clubs.push({ id: club.id, name: club.name, carry_yards: club.carry, position });
+  });
 
   return out;
 }
@@ -796,7 +814,12 @@ export function fromRows(snapshot: Snapshot): Documents {
       .map((round) => round.id);
   }
 
-  return { groups, courses, rounds, outings };
+  const clubs: Club[] = snapshot.clubs
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((row) => ({ id: row.id, name: row.name, carry: row.carry_yards }));
+
+  return { groups, courses, rounds, outings, clubs };
 }
 
 /** Rows in a snapshot, for logs and for deciding whether a push is worth making. */
