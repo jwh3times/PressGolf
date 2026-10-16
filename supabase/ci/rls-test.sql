@@ -146,7 +146,8 @@ exception when insufficient_privilege then null;
 end $$;
 do $$ begin
   insert into course_hole_notes (course_id, number, text) values ('c1', 2, 'Guest note.');
-exception when insufficient_privilege then null;
+  raise exception 'FAILED: a guest wrote a note on the shared course';
+exception when insufficient_privilege then raise notice 'ok: guest can''t note the shared course';
 end $$;
 
 set request.jwt.claim.sub = :'alice';
