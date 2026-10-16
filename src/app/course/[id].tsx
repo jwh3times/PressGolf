@@ -119,6 +119,12 @@ export default function CourseEditorScreen() {
             onPress={() => router.push({ pathname: '/hole-map', params: { course: course.id, hole: '1' } })}
           />
         ) : null}
+        {course.features.length ? (
+          <GhostButton
+            label="Course guide"
+            onPress={() => router.push({ pathname: '/course-guide', params: { course: course.id } })}
+          />
+        ) : null}
       </View>
 
       {duplicateIndexes ? (

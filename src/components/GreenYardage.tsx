@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { goodEnoughToMark, MARK_ACCURACY_M, yardsToGreen } from '../domain/geo';
-import type { Green } from '../domain/types';
+import type { Green, LatLng } from '../domain/types';
 import { useLiveLocation, type Fix } from '../hooks/useLiveLocation';
 import { makeStyles, useTheme } from '../theme/theme';
 import { radius } from '../theme/tokens';
@@ -28,15 +28,27 @@ export function GreenYardage({
   holeNumber,
   green,
   onMark,
+  onPosition,
 }: {
   holeNumber: number;
   green: Green | null;
   onMark: (green: Green) => void;
+  /** Each new fix, for what else on the screen follows where you are. */
+  onPosition?: (position: LatLng) => void;
 }) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { state, start, fixNow } = useLiveLocation();
   const [marking, setMarking] = useState(false);
+  const located = state.status === 'located' ? state.fix.position : null;
+
+  const report = useRef(onPosition);
+  useEffect(() => {
+    report.current = onPosition;
+  });
+  useEffect(() => {
+    if (located) report.current?.(located);
+  }, [located]);
 
   const mark = async () => {
     setMarking(true);

@@ -19,6 +19,7 @@ import ScoreScreen from '../(tabs)/score';
 import SettleScreen from '../(tabs)/settle';
 import BagScreen from '../bag';
 import CourseScreen from '../course/[id]';
+import CourseGuideScreen from '../course-guide';
 import CoursesScreen from '../courses';
 import GreensScreen from '../greens';
 import GreenMapScreen from '../green-map';
@@ -2217,7 +2218,7 @@ describe('the hole map', () => {
     expect(preview).toHaveProp('accessibilityHint', 'Opens the hole map, with distances to the green and to the hazards');
     expect(screen.getByText('MAP OF HOLE 3')).toBeOnTheScreen();
     await user.press(preview);
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', live: '1' } });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', live: '1', tee: mapped.tees[0].id } });
   });
 
   it('reads trouble around a player on a hole with no line: in a bunker, over red water, beside out of bounds', async () => {
@@ -2274,7 +2275,7 @@ describe('the hole map', () => {
     expect(screen.queryByRole('button', { name: 'Map of hole 4' })).toBeNull();
     await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
     await user.press(screen.getByRole('button', { name: 'Map of hole 3' }));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: greensOnly.id, hole: '3', live: '1' } });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: greensOnly.id, hole: '3', live: '1', tee: greensOnly.tees[0].id } });
     await view.unmount();
 
     mockParams = { course: greensOnly.id, hole: '3' };
@@ -2282,6 +2283,49 @@ describe('the hole map', () => {
     expect(screen.getByText(/This course has its greens but not its bunkers, water and fairways/)).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Import the course map from OpenStreetMap' }));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/greens', params: { id: greensOnly.id } });
+  });
+
+  it('says how the hole plays, side by side around the green', async () => {
+    await open({ hole: '3' });
+    expect(screen.getByText('How the hole plays')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Short: some trouble. Bunker.')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Long: worst. Likely out of bounds (the course edge).')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Left: clear.')).toBeOnTheScreen();
+    expect(screen.getByText(/allowed in a counted round/)).toBeOnTheScreen();
+  });
+
+  it('sums up the hole under the preview on Score, and opens the course guide from the tee being played', async () => {
+    useStoreValue({ course: mapped, courses: [mapped] });
+    await render(<ScoreScreen />);
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
+    expect(screen.getByText('Green: likely OB long · bunker short · clear left, right')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Open the course guide' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/course-guide', params: { course: mapped.id, tee: mapped.tees[0].id } });
+  });
+
+  it('lists every hole in the course guide, and opens each one\'s map', async () => {
+    useStoreValue({ courses: [mapped] });
+    mockParams = { course: mapped.id };
+    const view = await render(<CourseGuideScreen />);
+    expectEveryControlToHaveAName();
+    const three = screen.getByRole('button', { name: /^Hole 3, par \d, \d+ yards\. Green: likely OB long · bunker short · clear left, right\.$/ });
+    expect(screen.getByRole('button', { name: /^Hole 1, par \d, \d+ yards\. Not mapped yet\.$/ })).toBeOnTheScreen();
+    expect(screen.getAllByRole('button', { name: /^Hole \d+,/ })).toHaveLength(mapped.tees[0].holes.length);
+    await userEvent.setup().press(three);
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', tee: mapped.tees[0].id } });
+    await view.unmount();
+
+    mockParams = { course: 'missing' };
+    await render(<CourseGuideScreen />);
+    expect(screen.getByText('Course not found')).toBeOnTheScreen();
+  });
+
+  it('opens the course guide from the course editor', async () => {
+    useStoreValue({ courses: [mapped] });
+    await render(<CourseScreen />);
+    await userEvent.setup().press(screen.getByRole('button', { name: 'Course guide' }));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/course-guide', params: { course: mapped.id } });
   });
 
   it('measures from the tee when the phone may not say where it is', async () => {

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { HoleDiagram, holeView } from '../components/HoleDiagram';
 import { HoleSatellite } from '../components/HoleSatellite';
+import { HoleStrategyView } from '../components/HoleStrategy';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono, Switch } from '../components/primitives';
 import { yardsBetween, yardsToGreen } from '../domain/geo';
@@ -17,6 +18,7 @@ import {
   type EdgeReading,
   type HazardReading,
 } from '../domain/hole-map';
+import { holeStrategy } from '../domain/hole-strategy';
 import type { LatLng } from '../domain/types';
 import { useLiveLocation } from '../hooks/useLiveLocation';
 import { useStore } from '../store/AppStore';
@@ -62,7 +64,7 @@ type Aim = { kind: 'line' } | { kind: 'short'; yards: number } | { kind: 'point'
 export default function HoleMapScreen() {
   const styles = useStyles();
   const { colors, ink } = useTheme();
-  const params = useLocalSearchParams<{ course: string; hole: string; live?: string }>();
+  const params = useLocalSearchParams<{ course: string; hole: string; live?: string; tee?: string }>();
   const store = useStore();
   const router = useRouter();
   const course = store.courses.find((c) => c.id === params.course);
@@ -79,6 +81,8 @@ export default function HoleMapScreen() {
   }, [params.live, start]);
 
   const plan = useMemo(() => (course ? holePlan(course, hole) : null), [course, hole]);
+  // The tee being played, from the Score screen; looking the course over, its first tee.
+  const strategy = useMemo(() => (course ? holeStrategy(course, hole, { teeId: params.tee }) : null), [course, hole, params.tee]);
 
   if (!course || !plan) {
     return (
@@ -91,7 +95,7 @@ export default function HoleMapScreen() {
   const position = state.status === 'located' ? state.fix.position : null;
   const seat = vantage(plan, position);
   const from = seat?.from ?? null;
-  const card = course.tees[0].holes[hole - 1];
+  const card = (course.tees.find((t) => t.id === params.tee) ?? course.tees[0]).holes[hole - 1];
   const go = (n: number) => {
     router.setParams({ hole: String(n) });
     setAim({ kind: 'line' });
@@ -254,6 +258,8 @@ export default function HoleMapScreen() {
               ))}
             </View>
           ) : null}
+
+          {strategy ? <HoleStrategyView strategy={strategy} /> : null}
         </>
       )}
 
