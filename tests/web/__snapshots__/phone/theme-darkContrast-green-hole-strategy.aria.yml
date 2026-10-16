@@ -11,5 +11,5 @@
 - button "Measure to the middle of the green": THE GREEN
 - button /Measure to \d+ yards short of the green/: /\d+ OUT/
 - button /Measure to \d+ yards short of the green/: /\d+ OUT/
-- text: /Or tap the map to measure to any point\. \d+ TO THE MIDDLE \d+ FRONT · \d+ BACK In play Bunker, across the line \d+ FRONT · \d+ CARRY Course edge, \d+ yards right of the target\. The course edge is where the map ends; the white stakes are what count\. How the hole plays Green Short SOME TROUBLE Bunker Long WORST Likely out of bounds \(the course edge\) Left CLEAR Right CLEAR Read from the course map, the same for everyone, so it’s allowed in a counted round\. Only what’s mapped is counted\./
+- text: /Or tap the map to measure to any point\. \d+ TO THE MIDDLE \d+ FRONT · \d+ BACK In play Bunker, across the line \d+ FRONT · \d+ CARRY Course edge, \d+ yards right of the target\. The course edge is where the map ends; the white stakes are what count\. How the hole plays Green Short SOME TROUBLE Bunker Long WORST Likely out of bounds \(the course edge\) Left CLEAR Right CLEAR AIM Aim at the middle of the green\. Short is safer than long\. Read from the course map, the same for everyone, so it’s allowed in a counted round\. Only what’s mapped is counted\./
 - link "Map data © OpenStreetMap contributors. Opens its copyright and licence page": MAP © OPENSTREETMAP CONTRIBUTORS

@@ -3,16 +3,16 @@
 - text: How each hole plays from the Blue tee, read from the course map. Tap a hole for its map and distances.
 - button /Hole 1, par 4, \d+ yards\. Not mapped yet\./: Hole 1 PAR 4 · 398Y Not mapped yet
 - button /Hole 2, par 5, \d+ yards\. Not mapped yet\./: Hole 2 PAR 5 · 540Y Not mapped yet
-- 'button /Hole 3, par 4, \d+ yards\. Green: likely OB long · bunker short · clear left, right\./':
+- 'button /Hole 3, par 4, \d+ yards\. Green: likely OB long · bunker short · clear left, right\. Aim: Aim at the middle of the green\. Short is safer than long\./':
   - img
-  - text: "Hole 3 PAR 4 · 421Y Green: likely OB long · bunker short · clear left, right"
+  - text: "Hole 3 PAR 4 · 421Y Green: likely OB long · bunker short · clear left, right Aim: Aim at the middle of the green. Short is safer than long."
 - button /Hole 4, par 3, \d+ yards\. Not mapped yet\./: Hole 4 PAR 3 · 168Y Not mapped yet
 - button /Hole 5, par 4, \d+ yards\. Not mapped yet\./: Hole 5 PAR 4 · 447Y Not mapped yet
 - button /Hole 6, par 4, \d+ yards\. Not mapped yet\./: Hole 6 PAR 4 · 382Y Not mapped yet
 - button /Hole 7, par 5, \d+ yards\. Not mapped yet\./: Hole 7 PAR 5 · 515Y Not mapped yet
-- 'button /Hole 8, par 3, \d+ yards\. Green: bunker short, long · clear left, right\./':
+- 'button /Hole 8, par 3, \d+ yards\. Green: bunker short, long · clear left, right\. Aim: Aim at the middle of the green\./':
   - img
-  - text: "Hole 8 PAR 3 · 192Y Green: bunker short, long · clear left, right"
+  - text: "Hole 8 PAR 3 · 192Y Green: bunker short, long · clear left, right Aim: Aim at the middle of the green."
 - button /Hole 9, par 4, \d+ yards\. Not mapped yet\./: Hole 9 PAR 4 · 404Y Not mapped yet
 - button /Hole \d+, par 4, \d+ yards\. Not mapped yet\./: /Hole \d+ PAR 4 · 410Y Not mapped yet/
 - button /Hole \d+, par 4, \d+ yards\. Not mapped yet\./: /Hole \d+ PAR 4 · 436Y Not mapped yet/

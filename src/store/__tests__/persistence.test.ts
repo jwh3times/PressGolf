@@ -145,6 +145,14 @@ describe('dataset persistence', () => {
     expect((await loadDataset(false)).clubs).toEqual([]);
   });
 
+  it('keeps practice-round marks, and gives data saved before them none', async () => {
+    const practice = { r1: { on: false, ever: true } };
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ practice }));
+    expect((await loadDataset(false)).practice).toEqual(practice);
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ groups: [] }));
+    expect((await loadDataset(false)).practice).toEqual({});
+  });
+
   it('treats rounds saved before card entry as scored live', async () => {
     const dataset = buildDemoDataset(123);
     const round = { ...dataset.rounds[0] } as Record<string, unknown>;

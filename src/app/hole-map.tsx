@@ -4,6 +4,7 @@ import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { HoleDiagram, holeView } from '../components/HoleDiagram';
 import { HoleSatellite } from '../components/HoleSatellite';
 import { HoleStrategyView } from '../components/HoleStrategy';
+import { PracticeSwitch } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono, Switch } from '../components/primitives';
 import { yardsBetween, yardsToGreen } from '../domain/geo';
@@ -64,7 +65,7 @@ type Aim = { kind: 'line' } | { kind: 'short'; yards: number } | { kind: 'point'
 export default function HoleMapScreen() {
   const styles = useStyles();
   const { colors, ink } = useTheme();
-  const params = useLocalSearchParams<{ course: string; hole: string; live?: string; tee?: string }>();
+  const params = useLocalSearchParams<{ course: string; hole: string; live?: string; tee?: string; round?: string }>();
   const store = useStore();
   const router = useRouter();
   const course = store.courses.find((c) => c.id === params.course);
@@ -81,8 +82,14 @@ export default function HoleMapScreen() {
   }, [params.live, start]);
 
   const plan = useMemo(() => (course ? holePlan(course, hole) : null), [course, hole]);
+  // In a round (opened from Score), aiming advice waits for this phone to mark it practice.
+  const practice = params.round ? (store.practice[params.round]?.on ?? false) : null;
+  const advice = practice !== false;
   // The tee being played, from the Score screen; looking the course over, its first tee.
-  const strategy = useMemo(() => (course ? holeStrategy(course, hole, { teeId: params.tee }) : null), [course, hole, params.tee]);
+  const strategy = useMemo(
+    () => (course ? holeStrategy(course, hole, { teeId: params.tee, advice }) : null),
+    [course, hole, params.tee, advice],
+  );
 
   if (!course || !plan) {
     return (
@@ -260,6 +267,9 @@ export default function HoleMapScreen() {
           ) : null}
 
           {strategy ? <HoleStrategyView strategy={strategy} /> : null}
+          {strategy && params.round ? (
+            <PracticeSwitch on={practice === true} onChange={(on) => store.setPractice(params.round!, on)} />
+          ) : null}
         </>
       )}
 

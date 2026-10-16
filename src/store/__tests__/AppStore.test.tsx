@@ -58,6 +58,7 @@ function stored(data: Dataset) {
     rounds: data.rounds,
     outings: data.outings,
     clubs: data.clubs,
+    practice: data.practice,
     activeGroupId: data.activeGroupId,
     activeRoundId: data.activeRoundId,
     activeOutingId: data.activeOutingId,
@@ -172,6 +173,7 @@ describe('AppStoreProvider', () => {
       rounds: [],
       outings: [],
       clubs: [],
+      practice: {},
       activeGroupId: null,
       activeRoundId: null,
       activeOutingId: null,
@@ -737,5 +739,23 @@ describe('AppStoreProvider', () => {
     await change(() => syncOptions?.onAdoptRemote({ clubs }));
     expect(store.clubs).toEqual(clubs);
     expect(store.groups).toBe(groups);
+  });
+
+  it('marks a round as practice on this phone, remembers it was, saves it, and never syncs it', async () => {
+    await mount();
+    const id = store.round!.id;
+    expect(store.practice[id]).toBeUndefined();
+    await change(() => store.setPractice(id, true));
+    expect(store.practice[id]).toEqual({ on: true, ever: true });
+    await change(() => store.setPractice(id, false));
+    expect(store.practice[id]).toEqual({ on: false, ever: true });
+    const unchanged = store.practice;
+    await change(() => store.setPractice(id, false));
+    expect(store.practice).toBe(unchanged);
+
+    await new Promise((resolve) => setTimeout(resolve, 275));
+    expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ practice: { [id]: { on: false, ever: true } } }));
+    const syncOptions = mockUseDataSync.mock.calls.at(-1)?.[0];
+    expect(Object.keys(syncOptions!.documents)).not.toContain('practice');
   });
 });

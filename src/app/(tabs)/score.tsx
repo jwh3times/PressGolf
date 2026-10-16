@@ -92,13 +92,14 @@ export default function ScoreScreen() {
   const openHoleMap = () =>
     router.push({
       pathname: '/hole-map',
-      params: { course: course.id, hole: String(holeInfo.number), live: '1', tee: playedTee.id },
+      params: { course: course.id, hole: String(holeInfo.number), live: '1', tee: playedTee.id, round: round.id },
     });
   const roster = ctx.players;
   const youId = group.youId;
   // How the hole plays reads from your own tee, when you're on the card.
   const playedTee = youId && round.playerIds.includes(youId) ? ctx.teeFor(youId) : ctx.tee;
-  const openGuide = () => router.push({ pathname: '/course-guide', params: { course: course.id, tee: playedTee.id } });
+  const openGuide = () =>
+    router.push({ pathname: '/course-guide', params: { course: course.id, tee: playedTee.id, round: round.id } });
 
   const skinsGame = settlement.games.find((g) => g.key === 'skins');
   const carry = skinsGame?.carry ?? 1;

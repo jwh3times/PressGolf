@@ -2,6 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { PracticeSwitch } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import {
   Avatar,
@@ -45,6 +46,7 @@ export default function NewRoundScreen() {
     group?.defaultCourseId ?? store.courses[0]?.id ?? null,
   );
   const [selected, setSelected] = useState<PlayerId[]>(group?.players.map((p) => p.id) ?? []);
+  const [practice, setPractice] = useState(false);
 
   if (!group) {
     return (
@@ -79,7 +81,9 @@ export default function NewRoundScreen() {
     if (cardMode) {
       store.startCard(makeRound(group, course, ordered, { entry: 'card', playedOn: playedOn.getTime(), teeId }));
     } else {
-      store.startRound(makeRound(group, course, ordered, { teeId }));
+      const round = makeRound(group, course, ordered, { teeId });
+      store.startRound(round);
+      if (practice) store.setPractice(round.id, true);
     }
     router.replace('/format');
   };
@@ -220,6 +224,9 @@ export default function NewRoundScreen() {
           Tee order sets the Wolf rotation. Reorder players in the roster if it matters.
         </Text>
       </View>
+
+      {/* A finished card has no aiming to do. */}
+      {cardMode ? null : <PracticeSwitch on={practice} onChange={setPractice} />}
 
       <PrimaryButton
         label={
