@@ -41,16 +41,21 @@ updates:
       # Not matched by react-native-* below: it lives under a scope. Expo pins it
       # exactly, and 9.1.0 to 9.2.1 failed expo-doctor (#45).
       - dependency-name: "@react-native-community/datetimepicker"
+      # Matched by react-native-* below, which lets patches through, but Expo
+      # pins both exactly: react-native-svg 15.15.4 to 15.15.5 failed
+      # expo-doctor (#142).
+      - dependency-name: react-native-svg
+      - dependency-name: react-native-maps
 
       # Pinned with `~` to a minor instead, so a patch inside that minor is
       # exactly what the SDK expects and is left to come through. Covers
       # react-native-web at ~0.21.0, gesture-handler, screens, safe-area-context.
       #
-      # The glob also catches packages Expo pins exactly — react-native-svg,
-      # react-native-reanimated and a dozen others — for which a patch would slip
-      # past this rule. None of them is a direct dependency today. If one becomes
-      # a direct dependency, name it in the exact list above; expo-doctor is the
-      # net in the meantime.
+      # The glob also catches packages Expo pins exactly — react-native-reanimated
+      # and a dozen others — for which a patch would slip past this rule. When
+      # one becomes a direct dependency, name it in the exact list above, as
+      # react-native-svg and react-native-maps are; expo-doctor is the net in the
+      # meantime.
       - dependency-name: react-native-*
         update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: "@types/react"
