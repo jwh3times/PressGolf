@@ -53,6 +53,20 @@ test('roster', async ({ page }) => {
   await expectAccessible(page);
 });
 
+test('bag', async ({ page }) => {
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: /My bag/ }).click();
+  await expect(page.getByLabel('Driver carry, in yards')).toHaveValue('235');
+  await expectScreen(page, 'bag');
+  await expectAccessible(page);
+
+  // A carry typed in stays when the bag is opened again.
+  await page.getByLabel('7 iron carry, in yards').fill('155');
+  await page.getByRole('button', { name: 'Done' }).last().click();
+  await page.getByRole('button', { name: /My bag/ }).click();
+  await expect(page.getByLabel('7 iron carry, in yards')).toHaveValue('155');
+});
+
 test('history', async ({ page }) => {
   await page.getByRole('button', { name: /18 rounds/ }).click();
   await expect(page.getByRole('button', { name: /Pine Hollow LIVE/ })).toBeVisible();

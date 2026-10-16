@@ -17,6 +17,7 @@ import FormatScreen from '../(tabs)/format';
 import HomeScreen from '../(tabs)/index';
 import ScoreScreen from '../(tabs)/score';
 import SettleScreen from '../(tabs)/settle';
+import BagScreen from '../bag';
 import CourseScreen from '../course/[id]';
 import CoursesScreen from '../courses';
 import GreensScreen from '../greens';
@@ -181,6 +182,10 @@ const actions = {
   setGreen: jest.fn(),
   setGreens: jest.fn(),
   setFeatures: jest.fn(),
+  addClub: jest.fn(),
+  fillBag: jest.fn(),
+  setCarry: jest.fn(),
+  removeClub: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
   setPlayerTee: jest.fn(),
@@ -305,6 +310,7 @@ describe('screen accessibility', () => {
     ['Sides', SidesScreen],
     ['History', HistoryScreen],
     ['Join', JoinScreen],
+    ['My bag', BagScreen],
   ])('%s gives every button an accessible name', async (_name, ScreenComponent) => {
     expect.hasAssertions();
     await render(<ScreenComponent />);
@@ -1087,6 +1093,65 @@ describe('management screen state matrices', () => {
     expect(actions.eraseLiveData).toHaveBeenCalled();
     expect(screen.queryByText('Account')).not.toBeOnTheScreen();
     alert.mockRestore();
+  });
+
+  it('opens the bag from Settings', async () => {
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    await user.press(screen.getByRole('button', { name: /^My bag/ }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/bag');
+  });
+
+  it('starts an empty bag from a full set', async () => {
+    const user = userEvent.setup();
+    useStoreValue({ clubs: [] });
+    await render(<BagScreen />);
+    expect(screen.getByText('No clubs yet')).toBeTruthy();
+    await user.press(screen.getByRole('button', { name: 'Start with a full set' }));
+    expect(actions.fillBag).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ name: 'Driver', carry: null })]));
+    expect(actions.fillBag.mock.calls[0][0]).toHaveLength(13);
+  });
+
+  it('types carries, flags one out of order or out of range, and adds and removes clubs', async () => {
+    const user = userEvent.setup();
+    const clubs = [
+      { id: 'k6', name: '6 iron', carry: 165 },
+      { id: 'k7', name: '7 iron', carry: 175 },
+      { id: 'k8', name: '8 iron', carry: null },
+    ];
+    useStoreValue({ clubs });
+    await render(<BagScreen />);
+    expect(screen.getByText('3 clubs')).toBeTruthy();
+    expect(screen.getByText('Carries further than your 6 iron.')).toBeTruthy();
+
+    const eight = screen.getByLabelText('8 iron carry, in yards');
+    await user.type(eight, '145');
+    expect(actions.setCarry).toHaveBeenLastCalledWith('k8', 145);
+    await user.clear(eight);
+    await user.type(eight, '600');
+    expect(actions.setCarry).toHaveBeenLastCalledWith('k8', null);
+    expect(screen.getByText('A carry is 1 to 450 yards.')).toBeTruthy();
+
+    await user.press(screen.getByRole('button', { name: 'Remove 7 iron' }));
+    expect(actions.removeClub).toHaveBeenCalledWith('k7');
+
+    await user.press(screen.getByRole('button', { name: 'Add a club' }));
+    expect(screen.queryByRole('button', { name: 'Add 6 iron' })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Add Driver' }));
+    expect(actions.addClub).toHaveBeenCalledWith('Driver');
+    await user.type(screen.getByLabelText('Another club'), '60° wedge');
+    await user.press(screen.getByRole('button', { name: 'Add' }));
+    expect(actions.addClub).toHaveBeenLastCalledWith('60° wedge');
+    expect(screen.getByLabelText('Another club').props.value).toBe('');
+    await user.press(screen.getByRole('button', { name: 'Done adding' }));
+    expect(screen.getByRole('button', { name: 'Add a club' })).toBeTruthy();
+  });
+
+  it('says a full bag holds no more', async () => {
+    useStoreValue({ clubs: Array.from({ length: 20 }, (_, i) => ({ id: `k${i}`, name: `Club ${i}`, carry: null })) });
+    await render(<BagScreen />);
+    expect(screen.getByText('20 clubs is as many as a bag holds here.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add a club' })).toBeNull();
   });
 
   it('offers the four themes and four accents, and says which is chosen', async () => {

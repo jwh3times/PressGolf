@@ -5,10 +5,10 @@ import type { Documents } from '../rows';
 
 function local(): Documents {
   const data = buildDemoDataset(1_700_000_000_000);
-  return { groups: data.groups, courses: data.courses, rounds: data.rounds, outings: data.outings };
+  return { groups: data.groups, courses: data.courses, rounds: data.rounds, outings: data.outings, clubs: data.clubs };
 }
 
-const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [] };
+const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
 
 describe('mergeShared', () => {
   it('leaves everything alone when nothing is shared', () => {
@@ -35,6 +35,12 @@ describe('mergeShared', () => {
     const untouched = mine.rounds.find((r) => r.outingId === null)!;
     const merged = mergeShared(mine, { ...NOTHING, outings: [mine.outings[0]], rounds: [] });
     expect(merged.rounds).toContain(untouched);
+  });
+
+  it('keeps the bag on this phone: an outing brings none', () => {
+    const clubs = [{ id: 'k1', name: 'Driver', carry: 240 }];
+    const merged = mergeShared({ ...NOTHING, clubs }, { ...NOTHING, outings: [local().outings[0]], clubs: [{ id: 'k9', name: 'PW', carry: 1 }] });
+    expect(merged.clubs).toBe(clubs);
   });
 
   it('adds a joined outing this phone has never seen', () => {

@@ -197,6 +197,7 @@ export default function SettingsScreen() {
         {[
           { label: 'Roster and group', href: '/roster' as const },
           { label: 'Courses', href: '/courses' as const },
+          { label: 'My bag', href: '/bag' as const },
           { label: 'Sides and rivals', href: '/sides' as const },
           { label: 'Round history', href: '/history' as const },
           { label: 'Set up an outing', href: '/new-outing' as const },

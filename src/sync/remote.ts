@@ -214,8 +214,11 @@ function snapshotRows(snapshot: Snapshot, table: keyof Snapshot): Record<string,
 /** Every outcome carries the shared outings as pulled, for the next push to split by. */
 export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
-  /** `own` is this account's rows as pushed, whole. */
-  | { status: 'pushed'; upserted: number; deleted: number; own: Snapshot }
+  /**
+   * `own` is this account's rows as pushed, whole. `clubs` is set when the
+   * phone had no bag and took the account's, for the app to take too.
+   */
+  | { status: 'pushed'; upserted: number; deleted: number; own: Snapshot; clubs?: Snapshot['clubs'] }
   | { status: 'nothing-to-do' }
 );
 
@@ -227,6 +230,12 @@ export type SyncOutcome = { shared: Snapshot } & (
  * wins. That is honest for a single person's own season across their own
  * devices, and it is why the pull happens first — a fresh install adopts what
  * is already there rather than flattening it.
+ *
+ * The bag is settled on its own, because a phone often has a season and no
+ * bag: one that synced before the bag existed, or a second device. A phone
+ * with no clubs takes the account's; one with clubs is the side asking, and
+ * wins. A fresh install that adopts the account's season keeps clubs typed on
+ * it before signing in when the account has none.
  */
 export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   const remote = await pullSnapshot();
@@ -234,15 +243,29 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   // from an earlier session, knows which of its rows are theirs.
   const shared = await pullSharedOutings();
 
-  if (isEmpty(local) && !isEmpty(remote)) {
-    return { status: 'adopted-remote', rows: countRows(remote), snapshot: remote, shared };
+  const takesBag = local.clubs.length === 0 && remote.clubs.length > 0;
+  if (isEmpty(local) && (!isEmpty(remote) || takesBag)) {
+    if (remote.clubs.length > 0 || local.clubs.length === 0) {
+      return { status: 'adopted-remote', rows: countRows(remote), snapshot: remote, shared };
+    }
+    await pushSnapshot({ ...emptySnapshot(), clubs: local.clubs });
+    const snapshot = { ...remote, clubs: local.clubs };
+    return { status: 'adopted-remote', rows: countRows(snapshot), snapshot, shared };
   }
-  if (isEmpty(local) && isEmpty(remote)) {
+  if (isEmpty(local) && isEmpty(remote) && local.clubs.length === 0) {
     return { status: 'nothing-to-do', shared };
   }
 
-  const { own, guest } = splitByOwner(local, shared, await requireUserId());
+  const mine = takesBag ? { ...local, clubs: remote.clubs } : local;
+  const { own, guest } = splitByOwner(mine, shared, await requireUserId());
   const prune = deletions(remote, own);
   const result = await pushSnapshot(own, { prune, guest });
-  return { status: 'pushed', upserted: result.upserted, deleted: countDeletions(prune), own, shared };
+  return {
+    status: 'pushed',
+    upserted: result.upserted,
+    deleted: countDeletions(prune),
+    own,
+    shared,
+    ...(takesBag ? { clubs: remote.clubs } : {}),
+  };
 }

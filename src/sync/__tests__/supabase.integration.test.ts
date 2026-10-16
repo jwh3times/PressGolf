@@ -77,6 +77,7 @@ function byId(documents: Documents): Documents {
     courses: sorted(documents.courses),
     rounds: sorted(documents.rounds),
     outings: sorted(documents.outings),
+    clubs: documents.clubs,
   };
 }
 
@@ -138,6 +139,32 @@ describe('sync against a local Supabase stack', () => {
     expect(after.rounds.some((r) => r.id === round.id)).toBe(true);
   });
 
+  it("keeps a bag its owner's: a guest of her day never sees it, and her second phone takes it", async () => {
+    const ann = await signUp('ann');
+    const season = await pushSeason('bag');
+    expect(season.clubs.length).toBeGreaterThan(0);
+    const { joinCode } = await hostOuting(season.outings[0].id);
+
+    const ben = await signUp('ben');
+    await joinOuting(joinCode, null, 'Ben');
+    expect((await pullSharedOutings()).clubs).toEqual([]);
+    const supabase = getSupabase()!;
+    const { data: seen } = await supabase.from('clubs').select('id').eq('id', season.clubs[0].id);
+    expect(seen).toEqual([]);
+    const { error: overwrite } = await supabase
+      .from('clubs')
+      .upsert({ id: season.clubs[0].id, name: 'Taken', position: 0, owner_id: ben.id }, { onConflict: 'id' });
+    expect(overwrite).not.toBeNull();
+
+    // A phone holding her season from before the bag, meeting the server for the first time.
+    await signInAs(ann);
+    const outcome = await reconcile(toRows({ ...season, clubs: [] }));
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 0 });
+    expect(outcome.status === 'pushed' && fromRows({ ...outcome.own }).clubs).toEqual(season.clubs);
+    expect(outcome.status === 'pushed' && outcome.clubs?.length).toBe(season.clubs.length);
+    expect(fromRows(await pullSnapshot()).clubs).toEqual(season.clubs);
+  });
+
   it('lets a guest into a shared outing by code, and into nothing else', async () => {
     await signUp('ann');
     const season = await pushSeason('join');
@@ -170,7 +197,7 @@ describe('sync against a local Supabase stack', () => {
     // Ben keeps a group of his own, then joins Ann's day and merges it in, as his phone does.
     await signUp('ben');
     const own = demoDocuments(`${RUN}gpben`);
-    const mine: Documents = { groups: own.groups.slice(0, 1), courses: [], rounds: [], outings: [] };
+    const mine: Documents = { groups: own.groups.slice(0, 1), courses: [], rounds: [], outings: [], clubs: [] };
     await pushSnapshot(toRows(mine));
     await joinOuting(joinCode, null, 'Ben');
     const sharedRows = await pullSharedOutings();

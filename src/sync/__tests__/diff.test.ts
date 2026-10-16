@@ -9,6 +9,7 @@ function demoRows(): Snapshot {
     courses: data.courses,
     rounds: data.rounds,
     outings: data.outings,
+    clubs: data.clubs,
   };
   return toRows(documents);
 }
@@ -185,6 +186,10 @@ describe('isEmpty', () => {
 
   it('is false once there is anything worth keeping', () => {
     expect(isEmpty(demoRows())).toBe(false);
+  });
+
+  it('is true for a phone holding only a bag, which must not prune a season', () => {
+    expect(isEmpty({ ...emptySnapshot(), clubs: [{ id: 'k1', name: 'Driver', carry_yards: 240, position: 0 }] })).toBe(true);
   });
 
   it('is false for a phone holding only a course', () => {

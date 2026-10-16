@@ -1,0 +1,81 @@
+- text: Settings My bag
+- button "Done"
+- text: /How far each club carries in the air on a full swing, in yards\. Distances you wrote down yourself before the round are allowed in a counted one\. \d+ clubs Driver/
+- textbox "Driver carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove Driver": ×
+- text: 3 wood
+- textbox "3 wood carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 3 wood": ×
+- text: 5 wood
+- textbox "5 wood carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 5 wood": ×
+- text: 4 hybrid
+- textbox "4 hybrid carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 4 hybrid": ×
+- text: 5 iron
+- textbox "5 iron carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 5 iron": ×
+- text: 6 iron
+- textbox "6 iron carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 6 iron": ×
+- text: 7 iron
+- textbox "7 iron carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 7 iron": ×
+- text: 8 iron
+- textbox "8 iron carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 8 iron": ×
+- text: 9 iron
+- textbox "9 iron carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove 9 iron": ×
+- text: PW
+- textbox "PW carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove PW": ×
+- text: GW
+- textbox "GW carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove GW": ×
+- text: SW
+- textbox "SW carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove SW": ×
+- text: LW
+- textbox "LW carry, in yards":
+  - /placeholder: —
+  - text: /\d+/
+- text: yd
+- button "Remove LW": ×
+- button "Add a club"

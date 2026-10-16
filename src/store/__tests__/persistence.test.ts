@@ -137,6 +137,14 @@ describe('dataset persistence', () => {
     expect(loaded.courses[1]).toMatchObject({ greens: [], features: [] });
   });
 
+  it('keeps the bag, and gives data saved before it none', async () => {
+    const clubs = [{ id: 'k1', name: 'Driver', carry: 240 }];
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ clubs }));
+    expect((await loadDataset(false)).clubs).toEqual(clubs);
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ groups: [] }));
+    expect((await loadDataset(false)).clubs).toEqual([]);
+  });
+
   it('treats rounds saved before card entry as scored live', async () => {
     const dataset = buildDemoDataset(123);
     const round = { ...dataset.rounds[0] } as Record<string, unknown>;
