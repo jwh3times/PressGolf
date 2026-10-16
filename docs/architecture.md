@@ -244,7 +244,9 @@ Under the Score screen's preview, one line follows the shot the player faces
 (`facingZone`): the tee shot until 100 yards from the tee, then on a par 5 the
 second shot while 200 yards or more from the green, then the green. It never
 steps back during a hole, so a jumpy fix can't flick it, and with no fix it
-stays put. Position only picks which fixed reading to show.
+stays put. Position only picks which fixed reading to show, and it comes from
+the yardage card: until the player taps for yardage on a hole, the line stays
+on the tee shot.
 
 **Where to aim** (`Aim`, `aimSentence`) comes from the grades: away from the
 worse side, or the middle when both are alike, and around the green whether
@@ -269,7 +271,10 @@ theirs as well as the row.
 points can be dragged, and a line can be limited to chosen holes, for internal
 out of bounds. The side away from the hole is out. Saving makes a line the
 owner's (`source: 'map'`): an imported line keeps its OpenStreetMap id, and a
-later import leaves it as the owner left it (`withImportedFeatures`). The web
+later import leaves it as the owner left it (`withImportedFeatures`). Deleting
+an imported line doesn't stick, since nothing records the deletion and the
+next import brings it back; the editor says so, and limiting the line to a
+hole it doesn't touch takes it out of play instead. The web
 has no satellite map, so lines are drawn on a phone and read everywhere.
 
 ### The bag

@@ -298,6 +298,12 @@ function BoundsPanel({
             <GhostButton label="Undo the last point" onPress={() => onChange({ ...draft, points: draft.points.slice(0, -1) })} />
           ) : null}
           {draft.index != null ? <GhostButton label="Delete the line" onPress={() => onDelete(draft)} /> : null}
+          {draft.index != null && draft.id.startsWith('osm:') ? (
+            <Body style={styles.hint}>
+              This line came from OpenStreetMap: importing the course again brings it back if it’s deleted. To stop it
+              counting, limit it to a hole it doesn’t touch.
+            </Body>
+          ) : null}
           <GhostButton label="Cancel" onPress={() => onChange(null)} />
         </Card>
       ) : (

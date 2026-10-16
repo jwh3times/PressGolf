@@ -2436,7 +2436,7 @@ describe('the hole map', () => {
     const view = await open({ hole: '3', round: round.id });
     const user = userEvent.setup();
     await user.press(screen.getByRole('switch', { name: 'Practice round' }));
-    expect(screen.getByText(/Rule 4\.3\). The first time costs two strokes/)).toBeOnTheScreen();
+    expect(screen.getByText(/Rule 4\.3a\)\. The first time costs two strokes/)).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Keep it a counted round' }));
     expect(screen.queryByText(/Rule 4\.3/)).toBeNull();
     expect(actions.setPractice).not.toHaveBeenCalled();

@@ -272,14 +272,15 @@ export interface StrategyOptions {
   advice?: boolean;
 }
 
-/** The better of two sides, or neither when they are graded alike. */
+/** The better of two sides, or neither when they are graded alike or the map is silent on one. */
 function safer<T extends StrategySide>(zone: ZoneReading, a: T, b: T): T | null {
   const [ga, gb] = [zone.sides.find((s) => s.side === a)!.grade, zone.sides.find((s) => s.side === b)!.grade];
-  if (RANK[ga] === RANK[gb]) return null;
+  if (RANK[ga] === RANK[gb] || ga === 'nothingMapped' || gb === 'nothingMapped') return null;
   return RANK[ga] > RANK[gb] ? a : b;
 }
 
-function aimFor(zone: ZoneReading): Aim | null {
+/** Where to aim in a zone, from its grades alone; null when the map is silent on all of it. */
+export function aimFor(zone: ZoneReading): Aim | null {
   if (zone.sides.every((s) => s.grade === 'nothingMapped')) return null;
   return {
     lean: safer(zone, 'left', 'right') ?? 'centre',
@@ -315,7 +316,7 @@ export function holeStrategy(course: Course, number: number, { teeId, advice = f
 
 const ZONES: Zone[] = ['teeShot', 'secondShot', 'green'];
 /** Past this far from the tee, the tee shot has been played. */
-export const OFF_THE_TEE_YARDS = 100;
+const OFF_THE_TEE_YARDS = 100;
 
 /**
  * The zone whose reading fits the shot a player faces on hole `number`, for
