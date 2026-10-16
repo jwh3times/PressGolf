@@ -117,6 +117,7 @@ describe('dataset persistence', () => {
       tees: [{ id: 'old_default', name: 'Default', slope: null, rating: null, holes }],
       greens: [],
       features: [],
+      notes: [],
       createdAt: 1,
     });
     expect(loaded.rounds[0]).toMatchObject({ teeId: null, playerTees: {} });

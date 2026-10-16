@@ -1,4 +1,4 @@
-import type { CourseFeature, FeatureKind } from './types';
+import type { CourseFeature, FeatureKind, HoleNote } from './types';
 
 /**
  * The course map (#125): what is where on the ground, for the hole map and the
@@ -20,6 +20,21 @@ export function withImportedFeatures(existing: CourseFeature[], imported: Course
 }
 
 /** Kinds a player plays around, as against the ground they play on. */
+/** A hole note's longest: room for a sentence or two on the hole map and in the course guide. */
+export const MAX_NOTE = 280;
+
+/** The course owner's note on hole `number`, if there is one. */
+export function noteFor(notes: HoleNote[], number: number): string | null {
+  return notes.find((n) => n.number === number)?.text ?? null;
+}
+
+/** The notes with hole `number`'s set to `text`, trimmed to fit; a blank note takes it away. In hole order. */
+export function withNote(notes: HoleNote[], number: number, text: string): HoleNote[] {
+  const kept = notes.filter((n) => n.number !== number);
+  const trimmed = text.trim().slice(0, MAX_NOTE).trim();
+  return trimmed ? [...kept, { number, text: trimmed }].sort((a, b) => a.number - b.number) : kept;
+}
+
 export const HAZARD_KINDS: ReadonlySet<FeatureKind> = new Set(['bunker', 'water', 'lateralWater', 'outOfBounds']);
 
 const NAMES: Partial<Record<FeatureKind, [string, string]>> = {

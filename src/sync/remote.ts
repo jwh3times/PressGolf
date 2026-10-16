@@ -133,6 +133,7 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   await add('tee_holes', 'course_id', courseIds);
   await add('course_greens', 'course_id', courseIds);
   await add('course_features', 'course_id', courseIds);
+  await add('course_hole_notes', 'course_id', courseIds);
 
   return snapshot;
 }

@@ -122,6 +122,13 @@ export interface CourseFeatureRow {
   source: FeatureSource;
 }
 
+/** The course owner's note on one hole (#136). */
+export interface CourseHoleNoteRow {
+  course_id: string;
+  number: number;
+  text: string;
+}
+
 /** One club in the bag (#125). The bag's order is the clubs' `position`, longest first. */
 export interface ClubRow {
   id: string;
@@ -268,6 +275,7 @@ export interface Snapshot {
   tee_holes: TeeHoleRow[];
   course_greens: CourseGreenRow[];
   course_features: CourseFeatureRow[];
+  course_hole_notes: CourseHoleNoteRow[];
   rounds: RoundRow[];
   round_players: RoundPlayerRow[];
   scores: ScoreRow[];
@@ -303,6 +311,7 @@ export const TABLES: (keyof Snapshot)[] = [
   'tee_holes',
   'course_greens',
   'course_features',
+  'course_hole_notes',
   'outings',
   'outing_field',
   'outing_field_games',
@@ -330,6 +339,7 @@ export function emptySnapshot(): Snapshot {
     tee_holes: [],
     course_greens: [],
     course_features: [],
+    course_hole_notes: [],
     rounds: [],
     round_players: [],
     scores: [],
@@ -423,6 +433,9 @@ export function toRows(documents: Documents): Snapshot {
         points: feature.points.map(({ lat, lng }) => [lat, lng]),
         source: feature.source,
       });
+    }
+    for (const note of course.notes) {
+      out.course_hole_notes.push({ course_id: course.id, number: note.number, text: note.text });
     }
   }
 
@@ -618,6 +631,7 @@ export function fromRows(snapshot: Snapshot): Documents {
   const holesByTee = groupBy(snapshot.tee_holes, (r) => r.tee_id);
   const greensByCourse = groupBy(snapshot.course_greens, (r) => r.course_id);
   const featuresByCourse = groupBy(snapshot.course_features, (r) => r.course_id);
+  const notesByCourse = groupBy(snapshot.course_hole_notes, (r) => r.course_id);
   const roundPlayers = groupBy(snapshot.round_players, (r) => r.round_id);
   const scores = groupBy(snapshot.scores, (r) => r.round_id);
   const junk = groupBy(snapshot.junk, (r) => r.round_id);
@@ -674,6 +688,10 @@ export function fromRows(snapshot: Snapshot): Documents {
         points: f.points.map(([lat, lng]) => ({ lat, lng })),
         source: f.source,
       })),
+    notes: (notesByCourse.get(row.id) ?? [])
+      .slice()
+      .sort((a, b) => a.number - b.number)
+      .map((n) => ({ number: n.number, text: n.text })),
     createdAt: row.created_at,
   }));
 

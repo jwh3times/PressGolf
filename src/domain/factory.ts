@@ -77,6 +77,7 @@ export function makeCourse(name: string, holeCount: 9 | 18 = 18): Course {
     tees: [{ id: makeId('t'), name: 'Default', slope: null, rating: null, holes }],
     greens: [],
     features: [],
+    notes: [],
     createdAt: Date.now(),
   };
 }

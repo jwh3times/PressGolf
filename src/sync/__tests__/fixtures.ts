@@ -4,8 +4,8 @@ import type { Documents } from '../rows';
 /** The demo dataset is the broadest real data there is: two groups, a
  *  twenty-man outing with field pots, eighteen settled rounds and a live one.
  *  The demo has nobody pressing, no Wolf picks and no explicit match pairings
- *  (round robin is derived, not stored), and Pine Hollow has no greens or
- *  course map, so one of each is added here —
+ *  (round robin is derived, not stored), and Pine Hollow has no greens,
+ *  course map or hole notes, so one of each is added here —
  *  otherwise those tables would go untested and the gap would look like a
  *  passing suite. */
 export function demoDocuments(runPrefix?: string): Documents {
@@ -96,6 +96,7 @@ export function demoDocuments(runPrefix?: string): Documents {
               source: 'osm' as const,
             },
           ],
+          notes: [{ number: 2, text: 'Blind tee shot, aim at the steeple.' }],
         }
       : c,
   );

@@ -3,10 +3,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { HoleDiagram, holeView } from '../components/HoleDiagram';
 import { HoleSatellite } from '../components/HoleSatellite';
+import { HoleNoteCard } from '../components/HoleNote';
 import { HoleStrategyView } from '../components/HoleStrategy';
 import { PracticeSwitch } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono, Switch } from '../components/primitives';
+import { noteFor } from '../domain/course-map';
 import { yardsBetween, yardsToGreen } from '../domain/geo';
 import {
   aroundGreen,
@@ -272,6 +274,8 @@ export default function HoleMapScreen() {
           ) : null}
         </>
       )}
+
+      <HoleNoteCard key={hole} hole={hole} note={noteFor(course.notes, hole)} onSave={(text) => store.setNote(course.id, hole, text)} />
 
       {mapped && course.features.length === 0 ? (
         <Card style={styles.empty}>
