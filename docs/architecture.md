@@ -263,8 +263,7 @@ The course's owner can leave a **note** on each hole (`Course.notes`, synced as
 `course_hole_notes`): plain text up to 280 characters (`MAX_NOTE`), written on
 the hole map and shown there and in the course guide, in any round, as a
 yardage book would be. Guests of a shared outing read it. Only the course's
-owner may write one: the insert and update policies check that the course is
-theirs as well as the row.
+owner may write one, as with every row hung from a course (see below).
 
 **Draw out of bounds**, on the course editor's satellite map
 (`src/app/green-map.tsx`), draws a line along the stakes: taps add points,
@@ -456,13 +455,21 @@ outing, only the tables a guest may write (`GUEST_WRITES`: scores and junk) go
 up, only where the phone changed them since that pull, and without an
 `owner_id`, so an edited cell stays the organiser's; a new junk claim takes the
 column's default and is the guest's. The rest of the organiser's day isn't
-pushed. Before this (#127), a guest's every push after joining failed on the
-organiser's group.
+pushed, nor is what the phone added under it beyond cells and junk: a player
+on her roster, a tee on her course, a press in her round, a round in her
+outing. Those stay on the phone. A round or outing of the guest's own may
+still be on her group and course. Before this (#127), a guest's every push
+after joining failed on the organiser's group.
 
 The schema has 25 application tables: 23 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
-they need.
+they need. Every owner write also checks the row it hangs from (`owns_group`,
+`owns_course`, `owns_outing`, `owns_round`): a player goes on the writer's own
+roster, a green on their own course, a press in their own round. A round or
+outing may be on a group or course shared with the writer. An organiser adds
+their own membership directly when sharing; a guest joins only through
+`join_outing`, with the code.
 
 This path provides local-first scoring, account backup, and shared snapshots.
 It is not currently an instant, conflict-free multi-device feed. A device that

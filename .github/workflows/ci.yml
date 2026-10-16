@@ -159,16 +159,21 @@ jobs:
       - name: Stand in for what Supabase provides
         run: $PSQL -q -f supabase/ci/stubs.sql
 
-      - name: Apply every migration, in order
+      # Twice, to prove it is safe to repeat, and before the rest: a later
+      # migration replaces some of its policies, which a second run would undo.
+      - name: Apply the baseline twice
+        run: |
+          $PSQL -q -f supabase/migrations/20260921000000_initial_schema.sql
+          $PSQL -q -f supabase/migrations/20260921000000_initial_schema.sql
+
+      - name: Apply every later migration, in order
         run: |
           shopt -s nullglob
           for file in supabase/migrations/*.sql; do
+            [ "$file" = supabase/migrations/20260921000000_initial_schema.sql ] && continue
             echo "── $file"
             $PSQL -q -f "$file"
           done
-
-      - name: Apply them again, to prove the baseline is safe to repeat
-        run: $PSQL -q -f supabase/migrations/20260921000000_initial_schema.sql
 
       - name: Row-level security holds two accounts apart
         run: $PSQL -f supabase/ci/rls-test.sql
