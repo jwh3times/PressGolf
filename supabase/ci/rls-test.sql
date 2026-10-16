@@ -28,6 +28,18 @@ begin
 end
 $$;
 
+-- A write the policies must refuse. A refused insert raises; so does an update
+-- that would leave its row somewhere the writer can't put it.
+create or replace function refused(label text, statement text)
+returns void language plpgsql as $$
+begin
+  execute statement;
+  raise exception 'FAILED: % — the write went through', label;
+exception when insufficient_privilege then
+  raise notice 'ok: %', label;
+end
+$$;
+
 -- ── Alice sets up a day, and keeps a private season of her own ──────────────
 
 set role authenticated;
@@ -64,6 +76,7 @@ insert into round_games (round_id, key, enabled, stake) values ('r1', 'nassau', 
 
 -- Nothing to do with the outing. Bob must never see any of this.
 insert into groups (id, name, created_at) values ('g9', 'Private fourball', 1);
+insert into players (id, group_id, name, initials, color) values ('p9', 'g9', 'Pat', 'PT', '#8BE0AE');
 insert into courses (id, name, created_at) values ('c9', 'Somewhere else', 1);
 insert into course_greens (course_id, number, middle_lat, middle_lng, source) values ('c9', 1, 44.1, -121.3, 'marked');
 insert into course_features (course_id, id, kind, hole, points, source)
@@ -72,6 +85,9 @@ insert into course_hole_notes (course_id, number, text) values ('c9', 1, 'Privat
 insert into rounds (id, group_id, course_id, name, started_at)
   values ('r9', 'g9', 'c9', 'Private', 1);
 insert into clubs (id, name, carry_yards, position) values ('k1', '7 iron', 150, 0);
+-- Not shared: nobody holds its code.
+insert into outings (id, group_id, course_id, name, date, started_at)
+  values ('o9', 'g9', 'c9', 'Private day', 1, 1);
 insert into scores (round_id, player_id, hole, strokes) values ('r9', 'p1', 0, 3);
 
 -- ── A stranger, holding no code ─────────────────────────────────────────────
@@ -148,16 +164,60 @@ delete from clubs;
 insert into clubs (id, name, carry_yards, position) values ('k2', 'Driver', 260, 0);
 select expect('guest sees only his own bag', (select count(*) from clubs), 1);
 -- A refused insert raises, where a refused update or delete just finds no rows.
-do $$ begin
+select refused('guest can''t draw on the shared course', $q$
   insert into course_features (course_id, id, kind, hole, points, source)
-    values ('c1', 'map:guest', 'outOfBounds', null, '[[45.5, -122.6], [45.6, -122.6]]', 'map');
-exception when insufficient_privilege then null;
-end $$;
-do $$ begin
-  insert into course_hole_notes (course_id, number, text) values ('c1', 2, 'Guest note.');
-  raise exception 'FAILED: a guest wrote a note on the shared course';
-exception when insufficient_privilege then raise notice 'ok: guest can''t note the shared course';
-end $$;
+    values ('c1', 'map:guest', 'outOfBounds', null, '[[45.5, -122.6], [45.6, -122.6]]', 'map') $q$);
+select refused('guest can''t note the shared course', $q$
+  insert into course_hole_notes (course_id, number, text) values ('c1', 2, 'Guest note.') $q$);
+select refused('guest can''t add a tee to the shared course', $q$
+  insert into tees (id, course_id, name) values ('t-guest', 'c1', 'Guest') $q$);
+select refused('guest can''t add a hole to the shared card', $q$
+  insert into tee_holes (tee_id, course_id, number, par, stroke_index, yards) values ('t1', 'c1', 2, 4, 1, 400) $q$);
+select refused('guest can''t mark a green on the shared course', $q$
+  insert into course_greens (course_id, number, middle_lat, middle_lng, source) values ('c1', 2, 45.5, -122.6, 'marked') $q$);
+select refused('guest can''t add to the organiser''s roster', $q$
+  insert into players (id, group_id, name, initials, color) values ('p-guest', 'g1', 'Guest', 'GU', '#8BE0AE') $q$);
+select refused('guest can''t press in the shared round', $q$
+  insert into presses (id, round_id, by_player, against_player, start_hole, end_hole, stake) values ('x-guest', 'r1', 'p2', 'p1', 0, 8, 100) $q$);
+select refused('guest can''t pick for the wolf in the shared round', $q$
+  insert into wolf_picks (round_id, hole, wolf, partner) values ('r1', 1, 'p2', null) $q$);
+select refused('guest can''t add a game to the shared round', $q$
+  insert into round_games (round_id, key, enabled, stake) values ('r1', 'skins', true, 100) $q$);
+select refused('guest can''t join a player to the shared round', $q$
+  insert into round_players (round_id, player_id, tee_order) values ('r1', 'p2', 1) $q$);
+select refused('guest can''t add to the shared field', $q$
+  insert into outing_field (outing_id, player_id) values ('o1', 'p-guest') $q$);
+select refused('guest can''t add a round to the shared outing', $q$
+  insert into rounds (id, group_id, course_id, outing_id, name, started_at) values ('r-guest', 'g1', 'c1', 'o1', 'Group 2', 1) $q$);
+select refused('guest can''t start a round on a private group and course', $q$
+  insert into rounds (id, group_id, course_id, name, started_at) values ('r-guest-private', 'g9', 'c9', 'Private', 1) $q$);
+select refused('guest can''t set up an outing on a private group and course', $q$
+  insert into outings (id, group_id, course_id, name, date, started_at) values ('o-guest', 'g9', 'c9', 'Mine', 1, 1) $q$);
+select refused('guest can''t join an outing without its code', $q$
+  insert into outing_members (outing_id, user_id) values ('o9', auth.uid()) $q$);
+select refused('guest can''t move his membership to another outing', $q$
+  update outing_members set outing_id = 'o9' where outing_id = 'o1' and user_id = auth.uid() $q$);
+select expect('guest sees no private outing', (select count(*) from outings where id = 'o9'), 0);
+
+-- His own round and outing may be on the group and course he was shared, as
+-- he'd play them again; a private player can't be put in his field.
+insert into rounds (id, group_id, course_id, name, started_at) values ('r-bob', 'g1', 'c1', 'Rematch', 1);
+insert into round_games (round_id, key, enabled, stake) values ('r-bob', 'skins', true, 100);
+insert into outings (id, group_id, course_id, name, date, started_at) values ('o-bob', 'g1', 'c1', 'Rematch day', 1, 1);
+insert into outing_field (outing_id, player_id) values ('o-bob', 'p2');
+select expect('guest plays the shared group and course again', (select count(*) from rounds where id = 'r-bob'), 1);
+select refused('guest can''t field a private player', $q$
+  insert into outing_field (outing_id, player_id) values ('o-bob', 'p9') $q$);
+-- Nor take a row of his own somewhere he couldn't put it.
+insert into courses (id, name, created_at) values ('c-bob', 'His course', 1);
+insert into course_greens (course_id, number, middle_lat, middle_lng, source) values ('c-bob', 1, 40, -120, 'marked');
+select refused('guest can''t move his green to a private course', $q$
+  update course_greens set course_id = 'c9' where course_id = 'c-bob' $q$);
+select refused('guest can''t move his game into the shared round', $q$
+  update round_games set round_id = 'r1' where round_id = 'r-bob' $q$);
+-- A junk claim on the shared card is still his to make.
+insert into junk (round_id, hole, player_id, kind) values ('r1', 0, 'p2', 'greenie');
+select expect('guest claimed junk on the shared card', (select count(*) from junk where round_id = 'r1' and player_id = 'p2'), 1);
 
 set request.jwt.claim.sub = :'alice';
 select expect('shared card untouched',  (select par from tee_holes where tee_id = 't1' and number = 1), 4);
@@ -167,6 +227,11 @@ select expect('shared map untouched',   (select count(*) from course_features wh
 select expect('guest drew nothing',     (select count(*) from course_features where id = 'map:guest'), 0);
 select expect('shared note untouched',  (select count(*) from course_hole_notes where course_id = 'c1' and number = 1 and text like 'Blind%'), 1);
 select expect('guest noted nothing',    (select count(*) from course_hole_notes where course_id = 'c1' and number = 2), 0);
+select expect('roster untouched',       (select count(*) from players where group_id = 'g1'), 2);
+select expect('shared course untouched',(select count(*) from tees where course_id = 'c1'), 1);
+select expect('no press of his',        (select count(*) from presses where round_id = 'r1'), 0);
+select expect('no round of his in her outing', (select count(*) from rounds where outing_id = 'o1'), 1);
+select expect('private green untouched',(select count(*) from course_greens where course_id = 'c9'), 1);
 select expect('stake untouched',        (select stake from round_games where round_id = 'r1'), 500);
 select expect('private score untouched',(select strokes from scores where round_id = 'r9'), 3);
 select expect('private round survived', (select count(*) from rounds where id = 'r9'), 1);
