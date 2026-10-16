@@ -26,7 +26,7 @@ maintain parallel release branches yet.
 - The phone is the source of truth for active scoring. Live data is stored in
   AsyncStorage and optionally copied to Supabase.
 - Supabase row-level security separates owners and grants outing members only
-  the shared access required to join and score. CI exercises 24 isolation and
+  the shared access required to join and score. CI exercises 77 isolation and
   write-boundary assertions against Postgres 16.
 - Demo and live data use different storage namespaces, and demo data is never
   uploaded.

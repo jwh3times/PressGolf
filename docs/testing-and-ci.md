@@ -83,7 +83,7 @@ figures, are authoritative.
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
 | **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't |
-| **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 49 account-isolation assertions pass |
+| **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 77 account-isolation and write-boundary assertions pass (October 2026) |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
 On a push to `main`, another job applies pending migrations to the linked

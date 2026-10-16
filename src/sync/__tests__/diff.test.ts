@@ -172,6 +172,56 @@ describe('splitByOwner', () => {
     expect([...GUEST_WRITES]).toEqual(['scores', 'junk']);
   });
 
+  it('holds back what the phone added under their day, but not a junk claim on their card', () => {
+    const { own, shared, local } = phone();
+    const group = shared.groups[0].id;
+    const press = { ...local.presses[0], id: 'press-mine', round_id: 'ann-round' };
+    const pick = { ...local.wolf_picks[0], round_id: 'ann-round', hole: 17 };
+    const player = { ...local.players[0], id: 'p-mine', group_id: group };
+    const junk = { ...local.junk[0], round_id: 'ann-round', hole: 17 };
+    local.presses.push(press);
+    local.wolf_picks.push(pick);
+    local.players.push(player);
+    local.junk.push(junk);
+    const split = splitByOwner(local, shared, me);
+    expect(split.own.presses).toEqual(own.presses);
+    expect(split.own.wolf_picks).toEqual(own.wolf_picks);
+    expect(split.own.players).toEqual(own.players);
+    expect(split.own.junk).toEqual([...own.junk, junk]);
+  });
+
+  it('holds back a tee, green or note added to their course, and keeps a round of its own played there', () => {
+    const { own, shared, local } = phone();
+    shared.courses = local.courses.slice(0, 1).map((row) => ({ ...row, id: 'ann-course', owner_id: ann }));
+    local.courses.push({ ...local.courses[0], id: 'ann-course' });
+    local.tees.push({ ...local.tees[0], id: 'tee-mine', course_id: 'ann-course' });
+    local.course_greens.push({ ...local.course_greens[0], course_id: 'ann-course' });
+    local.course_hole_notes.push({ course_id: 'ann-course', number: 1, text: 'Mine.' });
+    const round = { ...local.rounds[0], id: 'round-mine', course_id: 'ann-course', group_id: shared.groups[0].id, outing_id: null };
+    local.rounds.push(round);
+    const split = splitByOwner(local, shared, me);
+    expect(split.own.courses).toEqual(own.courses);
+    expect(split.own.tees).toEqual(own.tees);
+    expect(split.own.course_greens).toEqual(own.course_greens);
+    expect(split.own.course_hole_notes).toEqual(own.course_hole_notes);
+    expect(split.own.rounds).toEqual([...own.rounds, round]);
+  });
+
+  it('holds back a round added to their outing, and everything on it, its card included', () => {
+    const { own, shared, local } = phone();
+    shared.outings = local.outings.slice(0, 1).map((row) => ({ ...row, id: 'ann-outing', owner_id: ann }));
+    local.outings.push({ ...local.outings[0], id: 'ann-outing' });
+    local.rounds.push({ ...local.rounds[0], id: 'round-in-hers', outing_id: 'ann-outing' });
+    local.scores.push({ ...local.scores[0], round_id: 'round-in-hers' });
+    local.round_games.push({ ...local.round_games[0], round_id: 'round-in-hers' });
+    const split = splitByOwner(local, shared, me);
+    expect(split.own.outings).toEqual(own.outings);
+    expect(split.own.rounds).toEqual(own.rounds);
+    expect(split.own.scores).toEqual(own.scores);
+    expect(split.own.round_games).toEqual(own.round_games);
+    expect(split.guest.scores.some((row) => row.round_id === 'round-in-hers')).toBe(false);
+  });
+
   it('treats rows the shared pull says are this account\'s own as its own: the organiser\'s own day', () => {
     const { shared, local } = phone();
     const mine = { ...shared, groups: shared.groups.map((row) => ({ ...row, owner_id: me })) };

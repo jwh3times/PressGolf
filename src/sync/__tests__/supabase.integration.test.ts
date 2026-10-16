@@ -240,6 +240,34 @@ describe('sync against a local Supabase stack', () => {
     expect(byId(back).groups.map((g) => g.id)).toEqual(byId(season).groups.map((g) => g.id));
   });
 
+  it("keeps a press a guest adds to the organiser's round on his phone, and lets him play her course again", async () => {
+    const ann = await signUp('ann');
+    const season = await pushSeason('gx');
+    const outing = season.outings[0];
+    const { joinCode } = await hostOuting(outing.id);
+
+    await signUp('ben');
+    await joinOuting(joinCode, null, 'Ben');
+    const sharedRows = await pullSharedOutings();
+    const merged = mergeShared({ groups: [], courses: [], rounds: [], outings: [], clubs: [] }, fromRows(sharedRows));
+    const theirs = merged.rounds.find((r) => r.outingId === outing.id)!;
+    const [by, against] = theirs.playerIds;
+    const press = { id: `${RUN}gx-press`, by, against, startHole: 9, endHole: 17, stake: 100 };
+    // A round of his own on her group and course, as he'd play them again another day.
+    const rematch = { ...theirs, id: `${RUN}gx-rematch`, outingId: null, presses: [] };
+    const local = toRows({
+      ...merged,
+      rounds: [...merged.rounds.map((r) => (r.id === theirs.id ? { ...r, presses: [...r.presses, press] } : r)), rematch],
+    });
+
+    await expect(pushChanges(local, await pullSnapshot(), sharedRows)).resolves.toBeDefined();
+    expect(fromRows(await pullSnapshot()).rounds.map((r) => r.id)).toEqual([rematch.id]);
+
+    await signInAs(ann);
+    const day = fromRows(await pullSharedOutings()).rounds.find((r) => r.id === theirs.id)!;
+    expect(day.presses.map((p) => p.id)).not.toContain(press.id);
+  });
+
   it("carries one member's edits to the others, and none to a stranger", async () => {
     const ann = await signUp('ann');
     const season = await pushSeason('log');
