@@ -19,7 +19,11 @@ export function withImportedFeatures(existing: CourseFeature[], imported: Course
   return [...drawn, ...imported.filter((f) => !drawnIds.has(f.id))].sort(byId);
 }
 
-/** Kinds a player plays around, as against the ground they play on. */
+/** The map with `feature` added, or put in place of the one with its id. In id order. */
+export function withFeature(features: CourseFeature[], feature: CourseFeature): CourseFeature[] {
+  return [...features.filter((f) => f.id !== feature.id), feature].sort(byId);
+}
+
 /** A hole note's longest: room for a sentence or two on the hole map and in the course guide. */
 export const MAX_NOTE = 280;
 
@@ -35,6 +39,7 @@ export function withNote(notes: HoleNote[], number: number, text: string): HoleN
   return trimmed ? [...kept, { number, text: trimmed }].sort((a, b) => a.number - b.number) : kept;
 }
 
+/** Kinds a player plays around, as against the ground they play on. */
 export const HAZARD_KINDS: ReadonlySet<FeatureKind> = new Set(['bunker', 'water', 'lateralWater', 'outOfBounds']);
 
 const NAMES: Partial<Record<FeatureKind, [string, string]>> = {

@@ -61,6 +61,16 @@ substitute for assistive-technology use on both platforms.
   hazards, edges and lines reach 3:1 (4.5:1 on the high-contrast bases)
   against both the rough and the fairway in every theme
   (`src/theme/__tests__/course-colors.test.ts`).
+- How each hole plays (#136) is text: each side of each zone is read as one
+  sentence ("Right: bad. Water, 260–290 off the tee."), and the grade's colour
+  only backs up its name, which is always written. axe checks the grades'
+  colours in every base theme on the web build. Each hole in the course guide
+  is one button whose name carries its par, yards, summary, aiming advice and
+  note. The practice-round switch shows its saved state, and stays off while
+  the Rule is explained, until "Make it a practice round" is pressed.
+- Drawing out-of-bounds lines is pointer-only: the points go where the map is
+  tapped, and there is no other way to place them. Choosing, limiting and
+  deleting a line are buttons, and the map is named for what a tap will do.
 
 Relevant tests and helpers:
 

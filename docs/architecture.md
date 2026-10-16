@@ -209,6 +209,74 @@ phone last was if location is already allowed, and the course name can be
 searched (Nominatim) to move the map there. `react-native-maps` has no web
 version, so `GreenMap.web.tsx` says to use the OpenStreetMap search instead.
 
+### How each hole plays
+
+`holeStrategy` (`src/domain/hole-strategy.ts`, #136) reads a mapped hole the
+same way for everyone, from the course map alone, like a yardage book, which
+is what lets the Rules of Golf allow it in a counted round. It reads up to
+three zones:
+
+- **Around the green**: short, long, left and right, along the line of
+  approach from the hole line's last bend. A bunker or penalty area within
+  35 m of the middle (`GREENSIDE_M`) takes the side its nearest point is on;
+  out of bounds counts within 55 m (`EDGE_NOTICE_M`).
+- **The tee shot**, on par 4s and 5s: left, right and across the line, 180 to
+  280 yards from the tee being played (`TEE_SHOT_YARDS`), stopping 40 yards
+  short of the green. The map's line starts at the back of the tees, so the
+  zone and every yard in it move forward by the longest tee's yards less the
+  played tee's. Outside a round it reads from the course's first tee.
+- **The second shot**, on par 5s: 80 to 200 yards short of the green
+  (`SECOND_SHOT_YARDS`), in yards to the green, for laying up.
+
+Each side is graded `worst` (an out-of-bounds line, or the course edge as
+likely out of bounds), `bad` (water of either colour), `someTrouble`
+(bunkers) or `clear`, with every cause and its yards. A zone with no hazard or
+fairway mapped in it says `nothingMapped` rather than claim a side is clear,
+and a hole with none at all has no strategy. Out-of-bounds lines count on the
+holes they're limited to (`CourseFeature.holes`, every hole when missing), and
+once the owner has drawn one that counts for a hole (`source: 'map'`), the
+course edge stops counting there.
+
+It shows as **How the hole plays** on the hole map, and in the **course
+guide** (`src/app/course-guide.tsx`), which lists every hole with its drawing,
+par, yards, one summary line per zone (`zoneSummary`) and the owner's note.
+Under the Score screen's preview, one line follows the shot the player faces
+(`facingZone`): the tee shot until 100 yards from the tee, then on a par 5 the
+second shot while 200 yards or more from the green, then the green. It never
+steps back during a hole, so a jumpy fix can't flick it, and with no fix it
+stays put. Position only picks which fixed reading to show, and it comes from
+the yardage card: until the player taps for yardage on a hole, the line stays
+on the tee shot.
+
+**Where to aim** (`Aim`, `aimSentence`) comes from the grades: away from the
+worse side, or the middle when both are alike, and around the green whether
+long or short is the safer miss. That is line-of-play advice, which Rule 4.3a
+doesn't allow from a device in a counted round. So it shows when looking a
+course over outside a round, and in a round only when this phone has marked it
+as a **practice round** (`AppData.practice`, by round id). The switch is on New
+round, the hole map and the course guide, and explains the Rule and its
+penalty before turning on. The mark is kept on the phone and never synced,
+since each phone chooses for itself; `ever` stays set once it has been on, for
+History's "Practice". It changes nothing about scores, games or money.
+
+The course's owner can leave a **note** on each hole (`Course.notes`, synced as
+`course_hole_notes`): plain text up to 280 characters (`MAX_NOTE`), written on
+the hole map and shown there and in the course guide, in any round, as a
+yardage book would be. Guests of a shared outing read it. Only the course's
+owner may write one: the insert and update policies check that the course is
+theirs as well as the row.
+
+**Draw out of bounds**, on the course editor's satellite map
+(`src/app/green-map.tsx`), draws a line along the stakes: taps add points,
+points can be dragged, and a line can be limited to chosen holes, for internal
+out of bounds. The side away from the hole is out. Saving makes a line the
+owner's (`source: 'map'`): an imported line keeps its OpenStreetMap id, and a
+later import leaves it as the owner left it (`withImportedFeatures`). Deleting
+an imported line doesn't stick, since nothing records the deletion and the
+next import brings it back; the editor says so, and limiting the line to a
+hole it doesn't touch takes it out of play instead. The web
+has no satellite map, so lines are drawn on a phone and read everywhere.
+
 ### The bag
 
 **My bag** (Settings, `src/app/bag.tsx`) keeps how far the phone's owner
@@ -227,7 +295,7 @@ usually a slip; two clubs carrying the same is not.
 
 A chart of your own distances, made before the round, is allowed in a counted
 round (Rule 4.3a), so the bag is plain information and is always on. Nothing
-reads it yet: the hole strategy and the practice-round suggestions will. How
+reads it yet: the practice-round suggestions will. How
 widely each club's shots scatter is left to them, to be modelled from
 published shot data and later from tracked shots, rather than guessed here.
 
@@ -363,7 +431,7 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
-1. On first contact, it pulls the signed-in account's 22 snapshot tables (its
+1. On first contact, it pulls the signed-in account's 23 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed. The bag is settled on its own: a phone with no clubs
@@ -391,7 +459,7 @@ column's default and is the guest's. The rest of the organiser's day isn't
 pushed. Before this (#127), a guest's every push after joining failed on the
 organiser's group.
 
-The schema has 24 application tables: 22 snapshot tables plus
+The schema has 25 application tables: 23 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need.

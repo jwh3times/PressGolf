@@ -2,7 +2,7 @@ import { featuresFromOsm } from '../../osm/features';
 import { greensFromOsm, type OsmElement } from '../../osm/greens';
 import torrey from '../../osm/__tests__/torrey-south.json';
 import { frame } from '../hole-map';
-import { aimSentence, facingZone, holeStrategy, sideSentence, zoneSummary } from '../hole-strategy';
+import { aimFor, aimSentence, facingZone, holeStrategy, sideSentence, zoneSummary } from '../hole-strategy';
 import type { Course, CourseFeature, FeatureKind, Green, LatLng } from '../types';
 import { makeTestCourse, withTee } from './helpers';
 
@@ -76,6 +76,12 @@ describe('grading', () => {
     // A line from OpenStreetMap is out of bounds too, but leaves the edge counting.
     const imported = feature('outOfBounds', [at(100, 35), at(220, 35)]);
     expect(grades(hole(4, 160, [bunkerShort(), edge(), imported]), 4, 'green')).toMatchObject({ long: 'worst', right: 'worst' });
+  });
+
+  it('counts a line limited to chosen holes only on those holes, and leaves the edge counting elsewhere', () => {
+    const limited: CourseFeature = { ...feature('outOfBounds', [at(100, 35), at(220, 35)]), source: 'map', holes: [7] };
+    expect(grades(hole(4, 160, [bunkerShort(), edge(), limited]), 4, 'green')).toMatchObject({ long: 'worst', right: 'clear' });
+    expect(grades(hole(4, 160, [bunkerShort(), edge(), { ...limited, holes: [4, 7] }]), 4, 'green')).toMatchObject({ long: 'clear', right: 'worst' });
   });
 
   it('calls a side clear only where something around the green is mapped', () => {
@@ -264,6 +270,17 @@ describe('aiming advice', () => {
     const course = hole(4, 160, [feature('bunker', box(150, 170, 14, 26)), feature('bunker', box(150, 170, -26, -14))]);
     expect(aim(course, 4, 'green')).toEqual({ lean: 'centre', safer: null });
     expect(aimSentence('green', aim(course, 4, 'green')!)).toBe('Aim at the middle of the green.');
+  });
+
+  it('never prefers a side the map is silent on', () => {
+    // A bunker right of the green and nothing else mapped near it: the right is known, the left isn't.
+    const course = hole(4, 160, [feature('bunker', box(150, 170, 14, 26)), feature('courseEdge', box(-100, 175, -300, 300))]);
+    const sides = grades(course, 4, 'green');
+    expect(sides).toMatchObject({ right: 'someTrouble', long: 'worst' });
+    const read = holeStrategy(course, 4, { advice: true })!.zones[0];
+    // Every side is graded here, so this checks the rule, below, on a zone with one side unknown.
+    const unknownLeft = { ...read, sides: read.sides.map((s) => (s.side === 'left' ? { ...s, grade: 'nothingMapped' as const, causes: [] } : s)) };
+    expect(aimSentence('green', aimFor(unknownLeft)!)).toBe('Aim at the middle of the green. Short is safer than long.');
   });
 
   it('leans away from the course edge off the tee, and has nothing to say where nothing is mapped', () => {

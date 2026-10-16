@@ -80,7 +80,16 @@ export function demoDocuments(runPrefix?: string): Documents {
               source: 'map' as const,
             },
           ],
+          // In id order, as the server sends them back.
           features: [
+            {
+              id: 'map:ob-1',
+              kind: 'outOfBounds' as const,
+              hole: null,
+              points: [{ lat: 45.5112, lng: -122.6105 }, { lat: 45.513, lng: -122.6135 }],
+              holes: [2],
+              source: 'map' as const,
+            },
             {
               id: 'osm:way/1001',
               kind: 'bunker' as const,

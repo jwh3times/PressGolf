@@ -1,8 +1,8 @@
 - text: Pine Hollow Course guide
 - button "Back"
 - text: How each hole plays from the Blue tee, read from the course map. Tap a hole for its map and distances. Practice round Shows where to aim on each hole, on this phone only. Scores, games and money work the same.
-- switch "Practice round" [checked]
-- text: In a round that counts, the Rules of Golf don’t allow a device to suggest where to aim or which club to hit (Rule 4.3). The first time costs two strokes, or the hole in match play; the second is disqualification.
+- switch "Practice round"
+- text: In a round that counts, the Rules of Golf don’t allow a device to suggest where to aim or which club to hit (Rule 4.3a). The first time costs two strokes, or the hole in match play; the second is disqualification.
 - button "Make it a practice round"
 - button "Keep it a counted round"
 - button /Hole 1, par 4, \d+ yards\. Not mapped yet\./: Hole 1 PAR 4 · 398Y Not mapped yet

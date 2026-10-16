@@ -113,6 +113,10 @@ export default function CourseEditorScreen() {
           label="Place greens on a map"
           onPress={() => router.push({ pathname: '/green-map', params: { id: course.id } })}
         />
+        <GhostButton
+          label="Draw out of bounds"
+          onPress={() => router.push({ pathname: '/green-map', params: { id: course.id, mode: 'bounds' } })}
+        />
         {course.features.length || course.greens.length ? (
           <GhostButton
             label="View the hole map"

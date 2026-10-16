@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { HoleDiagram } from '../components/HoleDiagram';
-import { PracticeSwitch } from '../components/PracticeRound';
+import { PracticeSwitch, useAdvice } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Mono } from '../components/primitives';
 import { holePlan } from '../domain/hole-map';
@@ -26,6 +26,7 @@ export default function CourseGuideScreen() {
   const router = useRouter();
   const styles = useStyles();
   const course = store.courses.find((c) => c.id === params.course);
+  const { advice, practice } = useAdvice(params.round);
 
   if (!course) {
     return (
@@ -36,8 +37,6 @@ export default function CourseGuideScreen() {
   }
 
   const tee = course.tees.find((t) => t.id === params.tee) ?? course.tees[0];
-  // In a round (opened from Score), aiming advice waits for this phone to mark it practice.
-  const practice = params.round ? (store.practice[params.round]?.on ?? false) : null;
   return (
     <Screen floatingTabBar={false}>
       <ModalHeader eyebrow={course.name} title="Course guide" onClose={() => router.back()} closeLabel="Back" />
@@ -51,7 +50,7 @@ export default function CourseGuideScreen() {
           course={course}
           hole={hole}
           teeId={tee.id}
-          advice={practice !== false}
+          advice={advice}
           onOpen={() =>
             router.push({
               pathname: '/hole-map',
@@ -102,8 +101,9 @@ function GuideHole({
             {meta}
           </Mono>
         </View>
-        {lines.map((line) => (
-          <Body key={line} style={styles.copy}>
+        {lines.map((line, i) => (
+          // Two zones can read alike, so not keyed by their words.
+          <Body key={i} style={styles.copy}>
             {line}
           </Body>
         ))}

@@ -85,7 +85,7 @@ export function segments(points: XY[], closed: boolean): [XY, XY][] {
   return out;
 }
 
-export const isLine = (f: CourseFeature) => f.kind === 'holeLine' || f.kind === 'outOfBounds';
+const isLine = (f: CourseFeature) => f.kind === 'holeLine' || f.kind === 'outOfBounds';
 
 export function inside([x, y]: XY, polygon: XY[]): boolean {
   let within = false;

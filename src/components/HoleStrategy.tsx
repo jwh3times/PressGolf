@@ -23,7 +23,7 @@ import { fonts, radius } from '../theme/tokens';
 import { Body, Card, Eyebrow, Mono } from './primitives';
 
 /** Colour backs up the grade's name, never stands in for it. */
-export function gradeColor(theme: Theme, grade: Grade): string {
+function gradeColor(theme: Theme, grade: Grade): string {
   switch (grade) {
     case 'worst':
       return theme.colors.clay;

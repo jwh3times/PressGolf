@@ -98,15 +98,27 @@ jest.mock('../../components/GreenMap', () => {
       focus: { lat: number; lng: number } | null;
       onTap: (at: { lat: number; lng: number }) => void;
       onDrag: (n: number, p: string, at: { lat: number; lng: number }) => void;
+      lines?: { id: string }[];
+      onPickLine?: (id: string) => void;
+      editing?: unknown[] | null;
+      onDragPoint?: (index: number, at: { lat: number; lng: number }) => void;
+      label?: string;
     }) => (
       <View>
         <Text>{props.focus ? `focus ${props.focus.lat},${props.focus.lng}` : 'no focus'}</Text>
+        {props.label ? <Text>{props.label}</Text> : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Tap the map" onPress={() => props.onTap({ lat: 1, lng: 2 })} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Drag hole 1's middle"
           onPress={() => props.onDrag(1, 'middle', { lat: 3, lng: 4 })}
         />
+        {(props.lines ?? []).map((line) => (
+          <Pressable key={line.id} accessibilityRole="button" accessibilityLabel={`Tap line ${line.id}`} onPress={() => props.onPickLine?.(line.id)} />
+        ))}
+        {props.editing?.length ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Drag the first point" onPress={() => props.onDragPoint?.(0, { lat: 5, lng: 6 })} />
+        ) : null}
       </View>
     ),
   };
@@ -1305,6 +1317,66 @@ describe('management screen state matrices', () => {
     expect(screen.getByText('Course not found')).toBeOnTheScreen();
   });
 
+  it('draws an out-of-bounds line along the stakes, limits it to a hole, and saves it as the owner\'s', async () => {
+    const user = userEvent.setup();
+    const bunker = { id: 'osm:way/1', kind: 'bunker' as const, hole: null, points: [{ lat: 0, lng: 0 }], source: 'osm' as const };
+    useStoreValue({ courses: [{ ...course, features: [bunker] }] });
+    await render(<GreenMapScreen />);
+    await user.press(screen.getByRole('button', { name: 'Draw out of bounds' }));
+    expect(screen.getByText('Out of bounds')).toBeOnTheScreen();
+    expect(screen.getByText('No out-of-bounds lines yet')).toBeOnTheScreen();
+    expect(screen.getByText('Satellite map of the course’s out-of-bounds lines. Tap one to change it.')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Draw a new line' }));
+    expect(screen.getByRole('button', { name: 'Save the line' })).toBeDisabled();
+    await user.press(screen.getByRole('button', { name: 'Tap the map' }));
+    await user.press(screen.getByRole('button', { name: 'Tap the map' }));
+    await user.press(screen.getByRole('button', { name: 'Tap the map' }));
+    expect(screen.getByText('3 POINTS')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Undo the last point' }));
+    await user.press(screen.getByRole('button', { name: 'Drag the first point' }));
+    await user.press(screen.getByRole('button', { name: 'Hole 3 only' }));
+    await user.press(screen.getByRole('button', { name: 'Hole 4 only' }));
+    await user.press(screen.getByRole('button', { name: 'Hole 4 only' }));
+    expect(screen.getByRole('button', { name: 'Every hole', selected: false })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Save the line' }));
+    const [courseId, saved] = jest.mocked(actions.setFeatures).mock.calls[0];
+    expect(courseId).toBe(course.id);
+    expect(saved).toEqual([
+      expect.objectContaining({ kind: 'outOfBounds', hole: null, points: [{ lat: 5, lng: 6 }, { lat: 1, lng: 2 }], holes: [3], source: 'map' }),
+      bunker,
+    ]);
+    expect(saved[0].id).toMatch(/^map:ob-/);
+  });
+
+  it('changes an imported out-of-bounds line into the owner\'s, and deletes one', async () => {
+    const user = userEvent.setup();
+    const imported = { id: 'osm:way/5', kind: 'outOfBounds' as const, hole: null, points: [{ lat: 0, lng: 0 }, { lat: 0, lng: 1 }], source: 'osm' as const };
+    const limited = { ...imported, id: 'map:ob-x', holes: [7, 2], source: 'map' as const };
+    useStoreValue({ courses: [{ ...course, features: [imported, limited] }] });
+    mockParams = { mode: 'bounds' };
+    await render(<GreenMapScreen />);
+    expect(screen.getByRole('button', { name: 'Line 1 · every hole · from OpenStreetMap' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Line 2 · holes 2, 7' })).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Tap line osm:way/5' }));
+    expect(screen.getByText('Line 1')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Hole 9 only' }));
+    await user.press(screen.getByRole('button', { name: 'Every hole' }));
+    await user.press(screen.getByRole('button', { name: 'Save the line' }));
+    expect(actions.setFeatures).toHaveBeenLastCalledWith(course.id, [limited, { ...imported, source: 'map' }]);
+
+    await user.press(screen.getByRole('button', { name: 'Line 2 · holes 2, 7' }));
+    await user.press(screen.getByRole('button', { name: 'Cancel' }));
+    await user.press(screen.getByRole('button', { name: 'Line 2 · holes 2, 7' }));
+    await user.press(screen.getByRole('button', { name: 'Delete the line' }));
+    expect(actions.setFeatures).toHaveBeenLastCalledWith(course.id, [imported]);
+
+    // Back on greens, the map places greens again.
+    await user.press(screen.getByRole('button', { name: 'Place greens' }));
+    expect(screen.getByText('Greens on a map')).toBeOnTheScreen();
+  });
+
   it('places greens on the map hole after hole, then front and back, and drags a pin', async () => {
     const user = userEvent.setup();
     let greens: Parameters<AppStore['setGreen']>[1][] = [];
@@ -2364,7 +2436,7 @@ describe('the hole map', () => {
     const view = await open({ hole: '3', round: round.id });
     const user = userEvent.setup();
     await user.press(screen.getByRole('switch', { name: 'Practice round' }));
-    expect(screen.getByText(/Rule 4\.3\). The first time costs two strokes/)).toBeOnTheScreen();
+    expect(screen.getByText(/Rule 4\.3a\)\. The first time costs two strokes/)).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Keep it a counted round' }));
     expect(screen.queryByText(/Rule 4\.3/)).toBeNull();
     expect(actions.setPractice).not.toHaveBeenCalled();

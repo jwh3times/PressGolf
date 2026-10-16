@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
 import { fonts } from '../theme/tokens';
 import { Body, Card, GhostButton, PrimaryButton, Switch } from './primitives';
 
 /** Why aiming advice waits for a practice round: Rule 4.3a, and what breaking it costs. */
-export const PRACTICE_RULE =
-  'In a round that counts, the Rules of Golf don’t allow a device to suggest where to aim or which club to hit (Rule 4.3). The first time costs two strokes, or the hole in match play; the second is disqualification.';
+const PRACTICE_RULE =
+  'In a round that counts, the Rules of Golf don’t allow a device to suggest where to aim or which club to hit (Rule 4.3a). The first time costs two strokes, or the hole in match play; the second is disqualification.';
+
+/**
+ * Whether a screen opened for `roundId` may say where to aim. Looking a course
+ * over outside a round, always; in a round, only once this phone has marked
+ * it practice. `practice` is null outside a round, where there's no switch.
+ */
+export function useAdvice(roundId: string | undefined): { advice: boolean; practice: boolean | null } {
+  const store = useStore();
+  const practice = roundId ? (store.practice[roundId]?.on ?? false) : null;
+  return { advice: practice !== false, practice };
+}
 
 /**
  * The practice-round switch (#136). Turning it on explains the Rule and asks
@@ -28,7 +40,7 @@ export function PracticeSwitch({ on, onChange }: { on: boolean; onChange: (on: b
           </Body>
         </View>
         <Switch
-          on={on || asking}
+          on={on}
           onToggle={() => {
             if (on) onChange(false);
             else setAsking((now) => !now);

@@ -71,6 +71,8 @@ test('score, a mapped hole', async ({ page }) => {
   await openTab(page, 'Score');
   await page.getByRole('button', { name: 'Go to hole 3' }).click();
   await expect(page.getByText(/^Green: /)).toBeVisible();
+  // The drawing sizes itself to the card once laid out.
+  await expect(page.getByRole('button', { name: 'Map of hole 3' }).locator('svg')).toBeVisible();
   await expectScreen(page, 'score-mapped-hole');
   await expectAccessible(page);
 });

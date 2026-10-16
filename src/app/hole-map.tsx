@@ -5,7 +5,7 @@ import { HoleDiagram, holeView } from '../components/HoleDiagram';
 import { HoleSatellite } from '../components/HoleSatellite';
 import { HoleNoteCard } from '../components/HoleNote';
 import { HoleStrategyView } from '../components/HoleStrategy';
-import { PracticeSwitch } from '../components/PracticeRound';
+import { PracticeSwitch, useAdvice } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono, Switch } from '../components/primitives';
 import { noteFor } from '../domain/course-map';
@@ -84,9 +84,7 @@ export default function HoleMapScreen() {
   }, [params.live, start]);
 
   const plan = useMemo(() => (course ? holePlan(course, hole) : null), [course, hole]);
-  // In a round (opened from Score), aiming advice waits for this phone to mark it practice.
-  const practice = params.round ? (store.practice[params.round]?.on ?? false) : null;
-  const advice = practice !== false;
+  const { advice, practice } = useAdvice(params.round);
   // The tee being played, from the Score screen; looking the course over, its first tee.
   const strategy = useMemo(
     () => (course ? holeStrategy(course, hole, { teeId: params.tee, advice }) : null),

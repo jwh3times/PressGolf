@@ -14,7 +14,8 @@ jest.mock('react-native-maps', () => {
     return <View testID="map" {...props} />;
   });
   const Marker = (props: Record<string, unknown>) => <View testID={`pin-${String(props.identifier)}`} {...props} />;
-  return { __esModule: true, default: MapView, Marker };
+  const Polyline = (props: Record<string, unknown>) => <View testID="line" {...props} />;
+  return { __esModule: true, default: MapView, Marker, Polyline };
 });
 
 jest.mock('expo-location', () => ({
@@ -73,6 +74,35 @@ describe('GreenMap', () => {
     expect(screen.getByTestId('pin-2-back')).toHaveProp('title', 'Hole 2, back');
     await act(async () => screen.getByTestId('pin-2-front').props.onDragEnd(coordinate(4, 5)));
     expect(onDrag).toHaveBeenCalledWith(2, 'front', { lat: 4, lng: 5 });
+  });
+
+  it('draws the out-of-bounds lines, picks one when tapped, and lets the line being drawn move point by point', async () => {
+    const onPickLine = jest.fn();
+    const onDragPoint = jest.fn();
+    const line = { id: 'map:ob-1', points: [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }] };
+    await render(
+      <GreenMap
+        greens={[]}
+        selected={0}
+        onTap={jest.fn()}
+        onDrag={jest.fn()}
+        focus={null}
+        lines={[line]}
+        onPickLine={onPickLine}
+        editing={[{ lat: 3, lng: 3 }, { lat: 4, lng: 4 }]}
+        onDragPoint={onDragPoint}
+        label="Out-of-bounds map"
+      />,
+    );
+    expect(screen.getByTestId('map')).toHaveProp('accessibilityLabel', 'Out-of-bounds map');
+    const [drawn, editing] = screen.getAllByTestId('line');
+    expect(drawn).toHaveProp('coordinates', [{ latitude: 1, longitude: 1 }, { latitude: 2, longitude: 2 }]);
+    await act(async () => drawn.props.onPress());
+    expect(onPickLine).toHaveBeenCalledWith('map:ob-1');
+    expect(editing).toHaveProp('coordinates', [{ latitude: 3, longitude: 3 }, { latitude: 4, longitude: 4 }]);
+    expect(screen.getByTestId('pin-ob-1')).toHaveProp('draggable', true);
+    await act(async () => screen.getByTestId('pin-ob-1').props.onDragEnd(coordinate(5, 6)));
+    expect(onDragPoint).toHaveBeenCalledWith(1, { lat: 5, lng: 6 });
   });
 
   it('moves to a course found by name', async () => {

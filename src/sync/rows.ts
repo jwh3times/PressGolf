@@ -119,6 +119,8 @@ export interface CourseFeatureRow {
   kind: FeatureKind;
   hole: number | null;
   points: [number, number][];
+  /** The holes an out-of-bounds line is limited to; null for every hole. */
+  holes: number[] | null;
   source: FeatureSource;
 }
 
@@ -431,6 +433,7 @@ export function toRows(documents: Documents): Snapshot {
         kind: feature.kind,
         hole: feature.hole,
         points: feature.points.map(({ lat, lng }) => [lat, lng]),
+        holes: feature.holes?.length ? feature.holes : null,
         source: feature.source,
       });
     }
@@ -686,6 +689,7 @@ export function fromRows(snapshot: Snapshot): Documents {
         kind: f.kind,
         hole: f.hole,
         points: f.points.map(([lat, lng]) => ({ lat, lng })),
+        ...(f.holes?.length ? { holes: f.holes } : {}),
         source: f.source,
       })),
     notes: (notesByCourse.get(row.id) ?? [])
