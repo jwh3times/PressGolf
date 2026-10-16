@@ -12,8 +12,14 @@ alongside each group's games. On the course, a tap gives the yardage to the
 green, from greens found on OpenStreetMap, placed on a satellite map, or marked
 standing on them. Courses imported from OpenStreetMap also get a drawn map of
 each hole, with the yards to the green, to a target, and to and over every
-bunker and penalty area in play. A player's bag keeps how far they carry each
-club, typed in once and backed up with their account.
+bunker and penalty area in play. Each mapped hole also says how it plays:
+which misses run into out of bounds, water or bunkers, around the green, off
+the tee and on a par 5's lay-up, hole by hole or in a course guide. Where to
+aim is shown when looking a course over, or in a round its scorer marks as
+practice, since the Rules of Golf don't allow it in a counted one. A course's
+owner can leave a note on each hole and draw its out-of-bounds lines. A
+player's bag keeps how far they carry each club, typed in once and backed up
+with their account.
 
 ## Quick start
 
@@ -90,7 +96,7 @@ As of October 2026:
   Supabase stack (real auth, API, row-level security and realtime) with two
   accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 44 row-level-security assertions against Postgres 16.
+  database migration plus 51 row-level-security assertions against Postgres 16.
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
   posting to the ledger on an Android emulator and iOS simulator.
@@ -130,10 +136,16 @@ pass.
   South's real map, not yet on a phone. It is drawn from the saved map, so it
   works without signal; its satellite switch, on phones only, needs signal,
   and on Android a store build needs the Google Maps key that isn't set up yet.
-- The bag (Settings → My bag) is typed in by hand; nothing reads it yet. It is
-  the first part of the hole strategy and practice-round suggestions in
-  [#125](https://github.com/jwh3times/PressGolf/issues/125). Checked in Jest and
-  the web build, not yet on a phone.
+- The bag (Settings → My bag) is typed in by hand; nothing reads it yet. The
+  practice-round club suggestions in
+  [#125](https://github.com/jwh3times/PressGolf/issues/125) will. Checked on an
+  iPhone, except at the largest text size and on a second device.
+- How each hole plays ([#136](https://github.com/jwh3times/PressGolf/issues/136))
+  is only as good as the course's map: a side is called clear only where
+  something nearby is mapped, and the course edge counts as likely out of
+  bounds until the owner draws lines. The practice-round mark stays on the
+  phone that set it. Out-of-bounds lines are drawn on the satellite map, on a
+  phone only. Checked in Jest and the web build, not yet on a phone.
 - Handicap indexes are typed in by hand. Keeping them in step with GHIN is
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).
 - Themes: dark (the default, made for daylight), light, and a high-contrast

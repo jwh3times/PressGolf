@@ -78,6 +78,12 @@ describe('grading', () => {
     expect(grades(hole(4, 160, [bunkerShort(), edge(), imported]), 4, 'green')).toMatchObject({ long: 'worst', right: 'worst' });
   });
 
+  it('counts a line limited to chosen holes only on those holes, and leaves the edge counting elsewhere', () => {
+    const limited: CourseFeature = { ...feature('outOfBounds', [at(100, 35), at(220, 35)]), source: 'map', holes: [7] };
+    expect(grades(hole(4, 160, [bunkerShort(), edge(), limited]), 4, 'green')).toMatchObject({ long: 'worst', right: 'clear' });
+    expect(grades(hole(4, 160, [bunkerShort(), edge(), { ...limited, holes: [4, 7] }]), 4, 'green')).toMatchObject({ long: 'clear', right: 'worst' });
+  });
+
   it('calls a side clear only where something around the green is mapped', () => {
     const bare = hole(4, 160, [edge(), feature('bunker', box(60, 70, 0, 10))]);
     expect(grades(bare, 4, 'green')).toEqual({ short: 'nothingMapped', long: 'worst', left: 'nothingMapped', right: 'nothingMapped' });

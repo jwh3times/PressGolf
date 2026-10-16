@@ -83,7 +83,7 @@ figures, are authoritative.
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
 | **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't |
-| **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 44 account-isolation assertions pass |
+| **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 51 account-isolation assertions pass |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
 On a push to `main`, another job applies pending migrations to the linked
@@ -117,6 +117,12 @@ default: Home, Score (hole by hole) and Settle in dark high contrast, light,
 light high contrast, and light with the violet accent, each opened from a saved
 choice. It also chooses a theme in Settings and checks it is used and kept
 across a reload. The default theme is the one `screens.spec.ts` covers.
+
+`tests/web/course-map.spec.ts` imports a course map the way a player would,
+with OpenStreetMap's answers replaced by the recorded Torrey Pines South (holes
+3 and 8 mapped). It covers the course guide, how hole 3 plays (in every base
+theme, for the grades' colours), the Score screen's summary line, a hole note,
+and turning on a practice round.
 
 Baselines only compare cleanly against the renderer that made them, so the CI
 job runs inside `mcr.microsoft.com/playwright:v<version>-noble`.

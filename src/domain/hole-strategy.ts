@@ -84,9 +84,12 @@ function side(sideName: StrategySide, causes: Cause[], mapped: boolean): SideRea
   return { side: sideName, grade: GRADE_OF[sorted[0].kind], causes: sorted };
 }
 
-/** The out-of-bounds that counts on this hole: the course's edge, unless the owner has drawn lines for it. */
+/**
+ * The out-of-bounds that counts on this hole: its lines, less any limited to
+ * other holes, and the course's edge unless the owner has drawn lines for it.
+ */
 function boundaries(plan: HolePlan): CourseFeature[] {
-  const lines = plan.features.filter((f) => f.kind === 'outOfBounds');
+  const lines = plan.features.filter((f) => f.kind === 'outOfBounds' && (!f.holes?.length || f.holes.includes(plan.number)));
   if (lines.some((f) => f.source === 'map')) return lines;
   return [...lines, ...plan.features.filter((f) => f.kind === 'courseEdge')];
 }

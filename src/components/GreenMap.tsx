@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import MapView, { Marker, type Region } from 'react-native-maps';
+import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 import type { GreenPoint } from '../domain/geo';
 import type { Green, LatLng } from '../domain/types';
 import { useTheme } from '../theme/theme';
@@ -15,6 +15,14 @@ export interface GreenMapProps {
   onDrag: (number: number, point: GreenPoint, at: LatLng) => void;
   /** Where to move the map, such as a course found by name. A new object moves it again. */
   focus: LatLng | null;
+  /** The course's out-of-bounds lines (#136); a tap on one picks it. */
+  lines?: { id: string; points: LatLng[] }[];
+  onPickLine?: (id: string) => void;
+  /** The line being drawn or changed: drawn bright, its points draggable. */
+  editing?: LatLng[] | null;
+  onDragPoint?: (index: number, at: LatLng) => void;
+  /** What a screen reader says the map is for; placing the chosen hole's green unless told otherwise. */
+  label?: string;
 }
 
 /** How much ground a fresh view of one spot covers: about a golf hole across. */
@@ -42,7 +50,18 @@ const toCoordinate = ({ lat, lng }: LatLng) => ({ latitude: lat, longitude: lng 
  * move it. Apple Maps on iOS; Google Maps on Android, which needs an API key in
  * a store build but not in Expo Go.
  */
-export function GreenMap({ greens, selected, onTap, onDrag, focus }: GreenMapProps) {
+export function GreenMap({
+  greens,
+  selected,
+  onTap,
+  onDrag,
+  focus,
+  lines = [],
+  onPickLine,
+  editing,
+  onDragPoint,
+  label,
+}: GreenMapProps) {
   const { colors, ink } = useTheme();
   const map = useRef<MapView>(null);
   // Where the map opens, fixed at first render: later greens shouldn't yank the view about.
@@ -90,7 +109,7 @@ export function GreenMap({ greens, selected, onTap, onDrag, focus }: GreenMapPro
       mapType="satellite"
       initialRegion={initial}
       showsUserLocation
-      accessibilityLabel={`Satellite map. Tap where hole ${selected}'s green is.`}
+      accessibilityLabel={label ?? `Satellite map. Tap where hole ${selected}'s green is.`}
       onPress={(event) => onTap(toLatLng(event.nativeEvent.coordinate))}
     >
       {greens.flatMap((green) => [
@@ -98,6 +117,29 @@ export function GreenMap({ greens, selected, onTap, onDrag, focus }: GreenMapPro
         ...(green.number === selected && green.front ? [pin(green, 'front', green.front)] : []),
         ...(green.number === selected && green.back ? [pin(green, 'back', green.back)] : []),
       ])}
+      {lines.map((line) => (
+        <Polyline
+          key={line.id}
+          coordinates={line.points.map(toCoordinate)}
+          strokeColor="#FFFFFF"
+          strokeWidth={3}
+          lineDashPattern={[8, 6]}
+          tappable
+          onPress={() => onPickLine?.(line.id)}
+        />
+      ))}
+      {editing?.length ? <Polyline coordinates={editing.map(toCoordinate)} strokeColor={colors.accent} strokeWidth={4} /> : null}
+      {editing?.map((at, index) => (
+        <Marker
+          key={`ob-${index}`}
+          identifier={`ob-${index}`}
+          coordinate={toCoordinate(at)}
+          title={`Point ${index + 1}`}
+          pinColor={colors.gold}
+          draggable
+          onDragEnd={(event) => onDragPoint?.(index, toLatLng(event.nativeEvent.coordinate))}
+        />
+      ))}
     </MapView>
   );
 }

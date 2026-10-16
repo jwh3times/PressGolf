@@ -44,6 +44,15 @@ insert into course_greens (course_id, number, middle_lat, middle_lng, source) va
 insert into course_features (course_id, id, kind, hole, points, source)
   values ('c1', 'osm:way/1', 'bunker', null, '[[45.5, -122.6], [45.5, -122.601], [45.501, -122.6]]', 'osm');
 insert into course_hole_notes (course_id, number, text) values ('c1', 1, 'Blind tee shot, aim at the steeple.');
+-- Internal out of bounds, for hole 1 only. Only out of bounds may be limited to holes.
+insert into course_features (course_id, id, kind, hole, points, holes, source)
+  values ('c1', 'map:ob-1', 'outOfBounds', null, '[[45.5, -122.6], [45.6, -122.6]]', '{1}', 'map');
+do $$ begin
+  insert into course_features (course_id, id, kind, hole, points, holes, source)
+    values ('c1', 'map:bunker', 'bunker', null, '[[45.5, -122.6], [45.5, -122.601], [45.501, -122.6]]', '{1}', 'map');
+  raise exception 'FAILED: a bunker was limited to holes';
+exception when check_violation then raise notice 'ok: only out of bounds is limited to holes';
+end $$;
 insert into outings (id, group_id, course_id, name, date, started_at, join_code)
   values ('o1', 'g1', 'c1', 'Saturday', 1, 1, 'ABC234');
 insert into outing_field (outing_id, player_id) values ('o1', 'p1'), ('o1', 'p2');
@@ -93,7 +102,7 @@ select expect('guest sees the course',         (select count(*) from courses whe
 select expect('guest sees the tees',           (select count(*) from tees), 1);
 select expect('guest sees the card',           (select count(*) from tee_holes), 1);
 select expect('guest sees the shared greens',  (select count(*) from course_greens where course_id = 'c1'), 1);
-select expect('guest sees the shared map',     (select count(*) from course_features where course_id = 'c1'), 1);
+select expect('guest sees the shared map',     (select count(*) from course_features where course_id = 'c1'), 2);
 select expect('guest sees the shared notes',   (select count(*) from course_hole_notes where course_id = 'c1'), 1);
 select expect('guest sees the field',          (select count(*) from players), 2);
 select expect('guest sees the organiser group',(select count(*) from groups where id = 'g1'), 1);

@@ -118,7 +118,11 @@ export type FeatureKind =
   | 'outOfBounds'
   | 'holeLine';
 
-/** Where a feature came from: OpenStreetMap, or drawn on a map in the app. */
+/**
+ * Where a feature came from: OpenStreetMap, or drawn on a map in the app. An
+ * imported line the owner changes becomes `map` and keeps its id, so a later
+ * import leaves it as they left it.
+ */
 export type FeatureSource = 'osm' | 'map';
 
 /**
@@ -132,6 +136,11 @@ export interface CourseFeature {
   /** The hole a `holeLine` belongs to; null for everything else. */
   hole: number | null;
   points: LatLng[];
+  /**
+   * An out-of-bounds line that applies only to these holes, such as internal
+   * out of bounds between two holes (#136). Missing or empty: every hole.
+   */
+  holes?: number[];
   source: FeatureSource;
 }
 

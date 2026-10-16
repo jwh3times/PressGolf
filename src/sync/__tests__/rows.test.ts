@@ -81,7 +81,14 @@ describe('toRows / fromRows round trip', () => {
     const course = {
       ...makeTestCourse(),
       features: [
-        { id: 'map:ob-1', kind: 'outOfBounds' as const, hole: null, points: [{ lat: 45.5, lng: -122.6 }, { lat: 45.51, lng: -122.6 }], source: 'map' as const },
+        {
+          id: 'map:ob-1',
+          kind: 'outOfBounds' as const,
+          hole: null,
+          points: [{ lat: 45.5, lng: -122.6 }, { lat: 45.51, lng: -122.6 }],
+          holes: [3, 4],
+          source: 'map' as const,
+        },
         { id: 'osm:way/7', kind: 'holeLine' as const, hole: 7, points: [{ lat: 45.5, lng: -122.61 }, { lat: 45.502, lng: -122.612 }], source: 'osm' as const },
       ],
     };
@@ -92,8 +99,10 @@ describe('toRows / fromRows round trip', () => {
       kind: 'holeLine',
       hole: 7,
       points: [[45.5, -122.61], [45.502, -122.612]],
+      holes: null,
       source: 'osm',
     });
+    expect(rows.course_features[0].holes).toEqual([3, 4]);
     rows.course_features.reverse();
     expect(fromRows(rows).courses[0].features).toEqual(course.features);
   });
