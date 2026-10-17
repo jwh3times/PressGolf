@@ -1,5 +1,5 @@
 import { makeId } from './factory';
-import type { Club } from './types';
+import type { Club, Group, UsualScore } from './types';
 
 /**
  * The bag (#125): each club the player carries and how far it carries, typed
@@ -67,7 +67,8 @@ export function parseCarry(text: string): number | null {
   return value >= 1 && value <= MAX_CARRY ? value : null;
 }
 
-const rank = (name: string) => CLUB_NAMES.findIndex((n) => n.toLowerCase() === name.trim().toLowerCase());
+/** Where a club comes in a bag, longest first; -1 for a name the bag doesn't know. */
+export const rank = (name: string) => CLUB_NAMES.findIndex((n) => n.toLowerCase() === name.trim().toLowerCase());
 
 /** The named clubs not yet in the bag, in bag order, for adding one. */
 export function clubsToAdd(bag: Club[]): string[] {
@@ -108,4 +109,27 @@ export function outOfOrder(bag: Club[]): { id: string; passes: string }[] {
     else longest = club;
   }
   return out;
+}
+
+const USUAL_SCORES: { score: UsualScore; below: number }[] = [
+  { score: '70s', below: 80 },
+  { score: '80s', below: 90 },
+  { score: '90s', below: 100 },
+  { score: '100s', below: Infinity },
+];
+
+/**
+ * The usual score the club suggestions use (#146): the one the player chose;
+ * before that, about 72 plus the handicap index of their player in their first
+ * group; failing that, a starting guess of the 90s.
+ */
+export function usualScoreFor(
+  chosen: UsualScore | null,
+  groups: Group[],
+): { score: UsualScore; from: 'chosen' | 'handicap' | 'guess' } {
+  if (chosen) return { score: chosen, from: 'chosen' };
+  const group = groups[0];
+  const index = group?.players.find((p) => p.id === group.youId)?.handicapIndex;
+  if (index == null) return { score: '90s', from: 'guess' };
+  return { score: USUAL_SCORES.find((u) => 72 + index < u.below)!.score, from: 'handicap' };
 }

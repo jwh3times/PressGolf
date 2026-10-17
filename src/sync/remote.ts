@@ -217,9 +217,17 @@ export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
   /**
    * `own` is this account's rows as pushed, whole. `clubs` is set when the
-   * phone had no bag and took the account's, for the app to take too.
+   * phone had no bag and took the account's, for the app to take too, and
+   * `bag_settings` likewise.
    */
-  | { status: 'pushed'; upserted: number; deleted: number; own: Snapshot; clubs?: Snapshot['clubs'] }
+  | {
+      status: 'pushed';
+      upserted: number;
+      deleted: number;
+      own: Snapshot;
+      clubs?: Snapshot['clubs'];
+      bag_settings?: Snapshot['bag_settings'];
+    }
   | { status: 'nothing-to-do' }
 );
 
@@ -236,7 +244,8 @@ export type SyncOutcome = { shared: Snapshot } & (
  * bag: one that synced before the bag existed, or a second device. A phone
  * with no clubs takes the account's; one with clubs is the side asking, and
  * wins. A fresh install that adopts the account's season keeps clubs typed on
- * it before signing in when the account has none.
+ * it before signing in when the account has none. The bag's settings (#146)
+ * are settled the same way, apart from the clubs.
  */
 export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   const remote = await pullSnapshot();
@@ -245,19 +254,31 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   const shared = await pullSharedOutings();
 
   const takesBag = local.clubs.length === 0 && remote.clubs.length > 0;
-  if (isEmpty(local) && (!isEmpty(remote) || takesBag)) {
-    if (remote.clubs.length > 0 || local.clubs.length === 0) {
-      return { status: 'adopted-remote', rows: countRows(remote), snapshot: remote, shared };
-    }
-    await pushSnapshot({ ...emptySnapshot(), clubs: local.clubs });
-    const snapshot = { ...remote, clubs: local.clubs };
+  const takesSettings = local.bag_settings.length === 0 && remote.bag_settings.length > 0;
+  if (isEmpty(local) && (!isEmpty(remote) || takesBag || takesSettings)) {
+    // The account's bag and settings when it has them; otherwise what this phone has, sent up.
+    const kept = {
+      ...emptySnapshot(),
+      clubs: remote.clubs.length > 0 ? [] : local.clubs,
+      bag_settings: remote.bag_settings.length > 0 ? [] : local.bag_settings,
+    };
+    if (countRows(kept) > 0) await pushSnapshot(kept);
+    const snapshot = {
+      ...remote,
+      clubs: remote.clubs.length > 0 ? remote.clubs : local.clubs,
+      bag_settings: remote.bag_settings.length > 0 ? remote.bag_settings : local.bag_settings,
+    };
     return { status: 'adopted-remote', rows: countRows(snapshot), snapshot, shared };
   }
-  if (isEmpty(local) && isEmpty(remote) && local.clubs.length === 0) {
+  if (isEmpty(local) && isEmpty(remote) && local.clubs.length === 0 && local.bag_settings.length === 0) {
     return { status: 'nothing-to-do', shared };
   }
 
-  const mine = takesBag ? { ...local, clubs: remote.clubs } : local;
+  const mine = {
+    ...local,
+    ...(takesBag ? { clubs: remote.clubs } : {}),
+    ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
+  };
   const { own, guest } = splitByOwner(mine, shared, await requireUserId());
   const prune = deletions(remote, own);
   const result = await pushSnapshot(own, { prune, guest });
@@ -268,5 +289,6 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
     own,
     shared,
     ...(takesBag ? { clubs: remote.clubs } : {}),
+    ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
   };
 }

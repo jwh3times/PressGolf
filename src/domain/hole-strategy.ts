@@ -88,7 +88,7 @@ function side(sideName: StrategySide, causes: Cause[], mapped: boolean): SideRea
  * The out-of-bounds that counts on this hole: its lines, less any limited to
  * other holes, and the course's edge unless the owner has drawn lines for it.
  */
-function boundaries(plan: HolePlan): CourseFeature[] {
+export function boundaries(plan: HolePlan): CourseFeature[] {
   const lines = plan.features.filter((f) => f.kind === 'outOfBounds' && (!f.holes?.length || f.holes.includes(plan.number)));
   if (lines.some((f) => f.source === 'map')) return lines;
   return [...lines, ...plan.features.filter((f) => f.kind === 'courseEdge')];
@@ -258,7 +258,7 @@ function laneZone(plan: HolePlan, path: Path, zone: Zone, [from, to]: [number, n
  * Metres from the back of the tees (where the hole's line starts, as mappers
  * draw it) to the tee being played: the longest tee's yards less this tee's.
  */
-function teeForward(course: Course, number: number, teeId: TeeId | null | undefined): number {
+export function teeForward(course: Course, number: number, teeId: TeeId | null | undefined): number {
   const tee = course.tees.find((t) => t.id === teeId) ?? course.tees[0];
   const yards = tee.holes.find((h) => h.number === number)?.yards ?? 0;
   const longest = Math.max(...course.tees.map((t) => t.holes.find((h) => h.number === number)?.yards ?? 0));

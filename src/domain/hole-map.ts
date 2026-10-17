@@ -87,11 +87,16 @@ export function segments(points: XY[], closed: boolean): [XY, XY][] {
 
 const isLine = (f: CourseFeature) => f.kind === 'holeLine' || f.kind === 'outOfBounds';
 
-export function inside([x, y]: XY, polygon: XY[]): boolean {
+export function inside(p: XY, polygon: XY[]): boolean {
+  // Indexed rather than destructured: compiled for the phone, destructuring a pair costs a helper call, and this runs thousands of times a suggestion.
+  const x = p[0];
+  const y = p[1];
   let within = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i];
-    const [xj, yj] = polygon[j];
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) within = !within;
   }
   return within;

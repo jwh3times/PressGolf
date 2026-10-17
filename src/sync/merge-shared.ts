@@ -49,7 +49,7 @@ export function mergeShared(local: Documents, shared: Documents): Documents {
   ];
 
   // A bag is its owner's alone, and never comes with an outing.
-  return { groups, courses, rounds, outings, clubs: local.clubs };
+  return { groups, courses, rounds, outings, clubs: local.clubs, ...(local.usualScore ? { usualScore: local.usualScore } : {}) };
 }
 
 /** Whether a merge would actually change anything, so a no-op costs no render. */

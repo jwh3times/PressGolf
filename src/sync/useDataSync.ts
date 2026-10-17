@@ -89,8 +89,12 @@ export function useDataSync(options: {
           adopt.current(fromRows(outcome.snapshot));
         } else {
           serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
-          if (outcome.status === 'pushed' && outcome.clubs) {
-            adopt.current({ clubs: fromRows({ ...emptySnapshot(), clubs: outcome.clubs }).clubs });
+          if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings)) {
+            const bag = fromRows({ ...emptySnapshot(), clubs: outcome.clubs ?? [], bag_settings: outcome.bag_settings ?? [] });
+            adopt.current({
+              ...(outcome.clubs ? { clubs: bag.clubs } : {}),
+              ...(bag.usualScore ? { usualScore: bag.usualScore } : {}),
+            });
           }
         }
         setState({ status: 'synced', at: Date.now(), message: null });

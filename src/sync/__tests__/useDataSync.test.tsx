@@ -129,6 +129,21 @@ it("takes the account's bag when first contact gave this phone one", async () =>
   expect(input.onAdoptRemote).toHaveBeenCalledWith({ clubs: seeded.clubs });
 });
 
+it("takes the account's usual score on its own when first contact gave this phone one", async () => {
+  const input = options();
+  mockReconcile.mockResolvedValueOnce({
+    status: 'pushed',
+    upserted: 1,
+    deleted: 0,
+    own: toRows(documents),
+    shared: emptySnapshot(),
+    bag_settings: [{ id: 'bag', usual_score: '70s' }],
+  });
+  const view = await renderHook(() => useDataSync(input));
+  await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  expect(input.onAdoptRemote).toHaveBeenCalledWith({ usualScore: '70s' });
+});
+
 it('pushes against what the server holds and the last shared pull, and keeps what each push returns', async () => {
   const input = options();
   const own = toRows({ ...documents, outings: [] });
