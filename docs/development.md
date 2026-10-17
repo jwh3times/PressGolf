@@ -79,11 +79,12 @@ plugin's default "always" and motion prompts, which the app never asks for.
 Android gets coarse and fine location and no background location.
 
 The greens map uses `react-native-maps`, which is in Expo Go and needs no key
-there. A store or development build for Android needs a Google Maps API key,
-restricted to the app, set as `androidGoogleMapsApiKey` in the
-`react-native-maps` config plugin. None is configured yet, so opening the map in
-such a build would fail on Android until one is added. iOS uses Apple Maps and
-needs no key.
+there. A store or development build for Android needs a Google Maps API key.
+`app.config.js` passes `GOOGLE_MAPS_ANDROID_API_KEY` to the `react-native-maps`
+config plugin as `androidGoogleMapsApiKey`, and the plugin writes it into the
+Android manifest. A build without the variable has no key, and its map stays
+blank on Android. iOS uses Apple Maps and needs no key. Where the key lives and
+how it is restricted is under [Google Maps key](#google-maps-key-android).
 
 The hole map is drawn with `react-native-svg`, which is also in Expo Go, from
 the course map saved on the phone. It needs no key and no signal. Its
@@ -103,6 +104,10 @@ The app recognizes three public build-time variables:
 Expo embeds every `EXPO_PUBLIC_` value in the app bundle. Never put a Supabase
 service-role key, database password, or any other secret in one of these
 variables.
+
+One more build-time variable, `GOOGLE_MAPS_ANDROID_API_KEY`, is read by
+`app.config.js` for the Android map, not by the app's code. See
+[Google Maps key](#google-maps-key-android).
 
 For a personal Supabase project, place the URL and client key in an ignored
 `.env.local` file:
@@ -231,6 +236,34 @@ npx eas-cli@latest submit --profile production --platform ios
 The project ID and owner are already set in `app.json`; do not rerun the initial
 EAS configuration flow. Configure the two Supabase public values in the EAS
 `preview` and `production` environments when cloud builds need server access.
+
+### Google Maps key (Android)
+
+The key is in 1Password at `op://PressGolf/Google Maps/android_api_key`, and in
+EAS as `GOOGLE_MAPS_ANDROID_API_KEY` in the `development`, `preview` and
+`production` environments. It is a *sensitive* variable, not a *secret* one,
+because EAS doesn't give secret variables to `app.config.js`. The key is
+readable by anyone holding an APK anyway, so its protection is its restriction
+in Google Cloud, not its secrecy:
+
+- **Application restriction:** Android apps, package `com.press.golf`, with
+  the SHA-1 fingerprint of every certificate that signs a build. For EAS builds
+  that's the keystore under the project's **Credentials** on expo.dev. For a
+  Play Store install it's also the app signing key in the Play Console (**App
+  integrity → Play app signing**), once the first upload has created it.
+- **API restriction:** Maps SDK for Android only.
+
+To set or rotate it in EAS without printing the value:
+
+```bash
+npx eas-cli@latest env:set --name GOOGLE_MAPS_ANDROID_API_KEY \
+  --value "$(op read 'op://PressGolf/Google Maps/android_api_key')" \
+  --environment development --environment preview --environment production \
+  --visibility sensitive --non-interactive
+```
+
+For a local `npx expo run:android`, set the variable for that one command:
+`GOOGLE_MAPS_ANDROID_API_KEY="$(op read 'op://PressGolf/Google Maps/android_api_key')" npx expo run:android`.
 
 ## Troubleshooting
 
