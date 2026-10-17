@@ -1,6 +1,12 @@
 - text: Settings My bag
 - button "Done"
-- text: /How far each club carries in the air on a full swing, in yards\. Distances you wrote down yourself before the round are allowed in a counted one\. \d+ clubs Driver/
+- text: How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before the round are allowed in a counted one. Usual score
+- radiogroup "Usual score":
+  - radio /\d+[hmsp]+/: 70S
+  - radio /\d+[hmsp]+/ [checked]: 80S
+  - radio /\d+[hmsp]+/: 90S
+  - radio /\d+[hmsp]+ or more/: 100S OR MORE
+- text: /Over \d+ holes\. Club suggestions in a practice round spread your shots the way published figures say they spread for golfers who score like this\. \d+ clubs Driver/
 - textbox "Driver carry, in yards":
   - /placeholder: —
   - text: /\d+/

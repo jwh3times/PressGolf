@@ -107,7 +107,53 @@ test('practice round, from the Score screen', async ({ page }) => {
   await expectScreen(page, 'practice-round');
   await expectAccessible(page);
   await page.getByRole('button', { name: 'Make it a practice round' }).click();
-  await expect(page.getByRole('button', { name: /^Hole 3,.*Aim: / })).toBeVisible();
+  // With a bag, the club off the tee is the advice for the shot from the tee.
+  await expect(page.getByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim / })).toBeVisible();
+});
+
+test('club suggestion, on the hole map', async ({ page }) => {
+  await openHoleThree(page);
+  // Looking the course over, outside a round: the club from the tee, and what it rests on.
+  const card = page.getByText('Club suggestion', { exact: true }).locator('xpath=..');
+  await expect(card.getByText(/^Based on published shot patterns for golfers who usually shoot in the 80s/)).toBeVisible();
+  await expect(card).toHaveScreenshot('club-suggestion-card.png');
+  await expectAccessible(page);
+
+  await page.getByRole('button', { name: 'Lie: Tee, read from the map. Change it' }).click();
+  await page.getByRole('radio', { name: 'Fairway' }).click();
+  await expect(page.getByRole('button', { name: 'Lie: Fairway. Change it' })).toBeVisible();
+});
+
+test('club suggestion, planned from a point on the hole map', async ({ page }) => {
+  await openHoleThree(page);
+  const drawing = page.getByRole('img', { name: /^Drawn map of hole 3/ }).last();
+  await drawing.scrollIntoViewIfNeeded();
+  const box = (await drawing.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.6);
+  await page.getByRole('button', { name: 'Plan the next shot from the point you tapped' }).click();
+  await expect(page.getByText('From the point you tapped.')).toBeVisible();
+  await expect(page.getByText('FROM THE POINT YOU TAPPED', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Plan from the tee again' }).click();
+  await expect(page.getByText('From the point you tapped.')).toHaveCount(0);
+});
+
+test('club suggestion, on Score in a practice round', async ({ page }) => {
+  await page.getByRole('button', { name: 'Back' }).last().click();
+  await page.getByRole('button', { name: 'Done' }).last().click();
+  await page.getByRole('button', { name: 'Done' }).last().click();
+  await openTab(page, 'Score');
+  await page.getByRole('button', { name: 'Go to hole 3' }).click();
+  // A counted round: no club suggested.
+  await expect(page.getByRole('button', { name: /^Club suggestion/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Open the course guide' }).click();
+  await page.getByRole('switch', { name: 'Practice round' }).click();
+  await page.getByRole('button', { name: 'Make it a practice round' }).click();
+  await expect(page.getByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim / })).toBeVisible();
+  await page.getByRole('button', { name: 'Back' }).last().click();
+  const line = page.getByRole('button', { name: /^Club suggestion: .+ · aim / }).last();
+  await expect(line).toBeVisible();
+  await expect(line).toHaveScreenshot('score-club-suggestion.png');
+  await expectAccessible(page);
 });
 
 // The grades' colours, against every base: axe checks their contrast.

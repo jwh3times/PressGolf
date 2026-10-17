@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CardGrid } from '../../components/CardGrid';
+import { ScoreClubSuggestion } from '../../components/ClubSuggestion';
 import { GreenYardage } from '../../components/GreenYardage';
 import { HoleMapPreview } from '../../components/HoleMapPreview';
 import { HoleStrategyLine } from '../../components/HoleStrategy';
@@ -204,6 +205,18 @@ export default function ScoreScreen() {
         </>
       ) : greenFor(course.greens, holeInfo.number) ? (
         <GhostButton label={`Map of hole ${holeInfo.number}`} onPress={openHoleMap} />
+      ) : null}
+      {/* Club advice: only in a round this phone has made a practice round (Rule 4.3a). */}
+      {store.practice[round.id]?.on && greenFor(course.greens, holeInfo.number) ? (
+        <ScoreClubSuggestion
+          // Keyed by hole, as GreenYardage is, under a name of its own beside it.
+          key={`suggestion-${holeInfo.number}`}
+          course={course}
+          hole={holeInfo.number}
+          teeId={playedTee.id}
+          from={position?.hole === holeInfo.number ? position.at : null}
+          onOpen={openHoleMap}
+        />
       ) : null}
 
       {roster.map((player) => {

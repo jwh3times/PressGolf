@@ -517,13 +517,16 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
   const longest = carried.reduce((a, b) => (b.carry > a.carry ? b : a));
   const luck = draws(input.seed);
 
+  const reachOf = (club: Club & { carry: number }) => club.carry * YARD * (1 + ROLL[clubKind(club.name, club.carry)]);
+  // Off the tee of a hole no club reaches, the choice is the driver or less; otherwise short of the green is laying up.
+  const driverOrLess = offTheTee && reachOf(longest) < toHole - ground.greenRadius;
   const options: ShotOption[] = [];
   for (const club of carried) {
-    const reach = club.carry * YARD * (1 + ROLL[clubKind(club.name, club.carry)]);
+    const reach = reachOf(club);
     if (reach > toHole + ground.greenRadius + PAST_GREEN) continue;
     const going = reach >= toHole - ground.greenRadius;
     const base = going ? ground.hole : ahead(ground, reach);
-    const approach: Approach = going ? 'go' : offTheTee ? (club === longest ? 'driver' : 'less') : 'layUp';
+    const approach: Approach = going ? 'go' : driverOrLess ? (club === longest ? 'driver' : 'less') : 'layUp';
     const aims = aimPoints(ground, base, going).map(({ at, aim }) => {
       const result = simulate(ground, golfer, lie, { club, approach, at, aim }, luck);
       return { club: club.name, approach, aim, odds: oddsOf(result.finishes), ...result };
@@ -542,7 +545,8 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
   const level = options.filter((o) => o.expected <= lowest + LEVEL);
   const pool = level.some(fullSwing) ? level.filter(fullSwing) : level;
   const best = pool.reduce((a, b) => (b.expected < a.expected ? b : a));
-  const others = options.filter((o) => o.approach !== best.approach && o.expected <= best.expected + SECOND_WITHIN);
+  // A second option is another way to play it: never a lay-up to a part-swing.
+  const others = options.filter((o) => o.approach !== best.approach && o.expected <= best.expected + SECOND_WITHIN && fullSwing(o));
   const second = others.length ? others.reduce((a, b) => (b.expected < a.expected ? b : a)) : null;
 
   return {
@@ -593,3 +597,14 @@ export function teeLine(result: ClubSuggestion): string | null {
   if (result.status !== 'suggested' || !result.best) return null;
   return `Off the tee: ${result.best.club}, aim ${result.best.aim.words}`;
 }
+
+const sentence = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+
+/** Where to aim, as a sentence: "Aim at the left-centre of the green.", "Aim 10 yards left of the line." */
+export function aimPhrase(aim: AimPoint): string {
+  if (aim.across === 'line') return aim.words === 'down the line' ? 'Aim down the line.' : `Aim ${aim.words} of the line.`;
+  return `Aim at the ${aim.words} of the ${aim.across}.`;
+}
+
+/** The odds, or the second option, as a sentence of their own: "About 1 in 5 finds a bunker." */
+export const asSentence = (text: string | null) => (text ? sentence(text) : null);

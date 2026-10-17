@@ -78,9 +78,11 @@ export interface HoleSatelliteProps {
   target: LatLng | null;
   onTarget: (at: LatLng) => void;
   height?: number;
+  /** Where about two in three of a suggested club's shots finish (#146). */
+  pattern?: LatLng[] | null;
 }
 
-export function HoleSatellite({ plan, view, from, fromTee, target, onTarget, height = 440 }: HoleSatelliteProps) {
+export function HoleSatellite({ plan, view, from, fromTee, target, onTarget, height = 440, pattern = null }: HoleSatelliteProps) {
   const map = useRef<MapView>(null);
   const [width, setWidth] = useState(0);
   // Set while the map is framing the corners north-up, before it is turned.
@@ -136,6 +138,9 @@ export function HoleSatellite({ plan, view, from, fromTee, target, onTarget, hei
               />
             );
           })}
+          {pattern ? (
+            <Polygon coordinates={pattern.map(toCoordinate)} strokeColor="#FFFFFF" fillColor="rgba(255,255,255,0.18)" strokeWidth={2} />
+          ) : null}
           {legs.map(([a, b], i) => (
             <Polyline key={`leg-${i}`} coordinates={[toCoordinate(a), toCoordinate(b)]} strokeColor="#FFFFFF" strokeWidth={3} />
           ))}

@@ -123,14 +123,24 @@ describe('laying up', () => {
     expect(secondLine(result)).toBeNull();
   });
 
-  it('offers going for it as well, when that costs little more', () => {
-    // 200 out, a bunker short-right: the 3 wood can get there, a lay-up is close.
-    const course = hole(2, 500, [feature('bunker', box(470, 484, 0, 25))]);
+  it('offers laying up as well, when going for it is only a little better', () => {
+    // 200 out on a par 5, water across short of the green.
+    const course = hole(2, 500, [feature('water', box(470, 484, -40, 40))]);
     const result = suggestShot(input(course, 2, { from: at(300), usualScore: '80s' }));
     expect(result.best!.approach).toBe('go');
     expect(result.second!.approach).toBe('layUp');
     expect(result.second!.expected - result.best!.expected).toBeLessThanOrEqual(0.33);
     expect(secondLine(result)).toBe(`or lay up: ${result.second!.club} to ${result.second!.leaves}`);
+    // To a full swing with a club in the bag, not a part-wedge.
+    expect(result.second!.leaves!).toBeGreaterThanOrEqual(65);
+  });
+
+  it('offers going for it as well, when laying up is only a little better', () => {
+    const course = hole(2, 500, [feature('water', box(470, 484, -40, 40))]);
+    const result = suggestShot(input(course, 2, { from: at(260), usualScore: '80s' }));
+    expect(result.best!.approach).toBe('layUp');
+    expect(result.second!.approach).toBe('go');
+    expect(secondLine(result)).toBe(`or go for the green: ${result.second!.club}`);
   });
 
   it('says less than a full wedge inside the shortest full swing', () => {
@@ -148,6 +158,14 @@ describe('off the tee', () => {
     expect(['driver', 'less']).toContain(result.best!.approach);
     expect(result.best!.aim.words).toMatch(/^(left edge|left-centre|centre|right-centre|right edge)$/);
     expect(teeLine(result)).toBe(`Off the tee: ${result.best!.club}, aim ${result.best!.aim.words}`);
+  });
+
+  it('calls a shorter club a lay-up off the tee of a hole the bag can reach', () => {
+    // A long par 4 of 240: the driver gets there, so anything shorter lays up.
+    const course = hole(1, 240, [feature('water', box(200, 222, -40, 40))]);
+    const result = suggestShot(input(course, 1));
+    const approaches = [result.best!, ...(result.second ? [result.second] : [])].map((o) => o.approach);
+    expect(approaches.every((a) => a === 'go' || a === 'layUp')).toBe(true);
   });
 
   it('says the aim in yards off the line where no fairway is mapped', () => {

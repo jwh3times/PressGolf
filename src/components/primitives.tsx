@@ -478,6 +478,7 @@ export function Chip({
   color: chosen,
   onPress,
   disabled,
+  radio = false,
 }: {
   label: string;
   /** When the visible label alone is ambiguous, e.g. a tee name repeated for every player. */
@@ -486,14 +487,16 @@ export function Chip({
   color?: string;
   onPress?: () => void;
   disabled?: boolean;
+  /** One of a set to choose between, in a `radiogroup`: read as checked or not, rather than selected. */
+  radio?: boolean;
 }) {
   const theme = useTheme();
   const color = theme.tint(chosen ?? theme.colors.clay);
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={radio ? 'radio' : 'button'}
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: !!active }}
+      {...(radio ? { 'aria-checked': !!active } : { accessibilityState: { selected: !!active } })}
       disabled={!!disabled}
       onPress={disabled ? undefined : onPress}
       // The pill is drawn small; the box around it is what a finger gets. The
