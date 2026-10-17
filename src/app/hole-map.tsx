@@ -22,7 +22,7 @@ import {
   type EdgeReading,
   type HazardReading,
 } from '../domain/hole-map';
-import { facingZone, holeStrategy } from '../domain/hole-strategy';
+import { facingZone, holeStrategy, withoutAim } from '../domain/hole-strategy';
 import type { LatLng } from '../domain/types';
 import { useLiveLocation } from '../hooks/useLiveLocation';
 import { useStore } from '../store/AppStore';
@@ -98,13 +98,12 @@ export default function HoleMapScreen() {
   const seat = plan ? vantage(plan, position) : null;
   // Suggestions are from the player where they are on the hole, from a point they tapped, or from the tee.
   const shotFrom = planFrom ?? (seat && !seat.fromTee ? seat.from : null);
-  const suggestion = useClubSuggestion({ course, hole, teeId: params.tee, from: shotFrom, enabled: advice && plan?.green != null });
+  const suggestion = useClubSuggestion({ course, hole, teeId: params.tee, from: shotFrom, enabled: advice });
   const suggested = suggestion?.result.status === 'suggested';
   // The suggestion's aim stands in for the hole strategy's on the shot it is for: one aim, never two.
   const strategy = useMemo(() => {
     if (!advised || !suggested || !course) return advised;
-    const zone = facingZone(course, hole, shotFrom, null, { teeId: params.tee });
-    return { ...advised, zones: advised.zones.map((z) => (z.zone === zone ? { ...z, aim: null } : z)) };
+    return withoutAim(advised, facingZone(course, hole, shotFrom, null, { teeId: params.tee }));
   }, [advised, suggested, course, hole, shotFrom, params.tee]);
 
   if (!course || !plan) {

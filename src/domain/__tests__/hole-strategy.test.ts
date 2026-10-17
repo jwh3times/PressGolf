@@ -296,6 +296,16 @@ describe('aiming advice', () => {
   });
 });
 
+describe('a course mapped in pieces', () => {
+  it('counts the line as off the course only outside every part of its edge', () => {
+    // Hole 1, a par 4 of 400, inside one part; another part of the course lies far off.
+    const here = feature('courseEdge', box(-50, 450, -300, 300));
+    const elsewhere = feature('courseEdge', box(2000, 2400, 1000, 1400));
+    const tee = holeStrategy(hole(1, 400, [here, elsewhere, feature('fairway', box(40, 380, -15, 15))]), 1)!.zones.find((z) => z.zone === 'teeShot')!;
+    expect(tee.sides.find((s) => s.side === 'across')!.grade).toBe('clear');
+  });
+});
+
 describe('a real hole: Torrey Pines South, the third', () => {
   it('reads the bunkers short of the green and the course edge behind it', () => {
     const elements = torrey.elements as unknown as OsmElement[];

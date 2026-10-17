@@ -111,11 +111,12 @@ export function outOfOrder(bag: Club[]): { id: string; passes: string }[] {
   return out;
 }
 
-const USUAL_SCORES: { score: UsualScore; below: number }[] = [
-  { score: '70s', below: 80 },
-  { score: '80s', below: 90 },
-  { score: '90s', below: 100 },
-  { score: '100s', below: Infinity },
+/** The usual scores to choose from: as the bag says them, as a sentence says them, and the score each stops below. */
+export const USUAL_SCORES: { score: UsualScore; label: string; shoots: string; below: number }[] = [
+  { score: '70s', label: '70s', shoots: 'in the 70s', below: 80 },
+  { score: '80s', label: '80s', shoots: 'in the 80s', below: 90 },
+  { score: '90s', label: '90s', shoots: 'in the 90s', below: 100 },
+  { score: '100s', label: '100s or more', shoots: '100 or more', below: Infinity },
 ];
 
 /**

@@ -102,7 +102,7 @@ const YARD = 0.9144;
 const ORIGIN_XY: XY = [0, 0];
 const SAMPLES = 400;
 /** Fewer carries than this, and there is too little of the bag to choose from. */
-const MIN_CARRIES = 3;
+export const MIN_CARRIES = 3;
 /** A shot this much shorter than the shortest full swing is a part-swing, which isn't simulated. */
 const PARTIAL_YARDS = 10;
 /** A green without an outline: as deep as its front and back, or about 25 yards across. */
@@ -174,7 +174,7 @@ interface Ground {
   outLines: [XY, XY][];
   path: XY[];
   /** What each square metre is, once asked: shots land in clusters, and outlines can run to hundreds of points. */
-  known: Map<number, Ground_>;
+  known: Map<number, Surface>;
 }
 
 function groundFor(plan: HolePlan, start: LatLng): Ground {
@@ -212,10 +212,10 @@ function groundFor(plan: HolePlan, start: LatLng): Ground {
   };
 }
 
-type Ground_ = 'green' | 'fairway' | 'tee' | 'rough' | 'sand' | 'water' | 'lateralWater' | 'outOfBounds';
+type Surface = 'green' | 'fairway' | 'tee' | 'rough' | 'sand' | 'water' | 'lateralWater' | 'outOfBounds';
 
 /** What a point is, to the nearest metre. */
-function groundAt(ground: Ground, p: XY): Ground_ {
+function groundAt(ground: Ground, p: XY): Surface {
   const i = Math.round(p[0]);
   const j = Math.round(p[1]);
   const key = i * 100_003 + j;
@@ -227,13 +227,19 @@ function groundAt(ground: Ground, p: XY): Ground_ {
   return found;
 }
 
-/** What a point is: out of bounds first, then water, sand, the green, fairway or tee; anything else is rough. */
-function classify(ground: Ground, p: XY): Ground_ {
-  if (ground.edges.some((e) => !within(p, e))) return 'outOfBounds';
-  let found: Ground_ = 'rough';
+const isWater = (surface: string) => surface === 'water' || surface === 'lateralWater';
+
+/**
+ * What a point is: out of bounds first, then water, sand, the green, fairway
+ * or tee; anything else is rough. Out of bounds is outside every part of the
+ * course's edge: an import keeps each part of a course in pieces as its own.
+ */
+function classify(ground: Ground, p: XY): Surface {
+  if (ground.edges.length > 0 && !ground.edges.some((e) => within(p, e))) return 'outOfBounds';
+  let found: Surface = 'rough';
   for (const a of ground.areas) {
     if (!within(p, a)) continue;
-    if (a.kind === 'water' || a.kind === 'lateralWater') return a.kind;
+    if (isWater(a.kind)) return a.kind as Surface;
     if (a.kind === 'bunker') found = 'sand';
     else if (found === 'rough') found = a.kind === 'tee' ? 'tee' : 'fairway';
   }
@@ -251,7 +257,7 @@ function entry(ground: Ground, a: XY, b: XY): XY {
   let best = b;
   let nearest = Infinity;
   for (const area of ground.areas) {
-    if (area.kind !== 'water' && area.kind !== 'lateralWater') continue;
+    if (!isWater(area.kind)) continue;
     for (const [c, d] of segments(area.ring, true)) {
       if (!crosses(a, b, c, d)) continue;
       const den = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]);
@@ -344,8 +350,11 @@ function aimPoints(ground: Ground, base: XY, going: boolean): { at: XY; aim: Aim
 
 // ─── Simulating a shot ──────────────────────────────────────────────────────
 
+/** A club with its carry typed: the only clubs a suggestion can use. */
+type CarriedClub = Club & { carry: number };
+
 interface Candidate {
-  club: Club & { carry: number };
+  club: CarriedClub;
   approach: Approach;
   at: XY;
   aim: AimPoint;
@@ -385,7 +394,7 @@ function simulate(
     const end: XY = [landing[0] + way[0] * flight * share, landing[1] + way[1] * flight * share];
     const ends = share > 0 ? groundAt(ground, end) : landed;
     const out = ends === 'outOfBounds' || ground.outLines.some((line) => crosses(ORIGIN_XY, end, line[0], line[1]));
-    const wet = !out && (landed === 'water' || landed === 'lateralWater' || ends === 'water' || ends === 'lateralWater');
+    const wet = !out && (isWater(landed) || isWater(ends));
 
     let value: number;
     let finish: Finish;
@@ -395,7 +404,7 @@ function simulate(
       value = 2 + fromHere;
       finish = 'outOfBounds';
     } else if (wet) {
-      const crossed = entry(ground, [0, 0], landed === 'water' || landed === 'lateralWater' ? landing : end);
+      const crossed = entry(ground, ORIGIN_XY, isWater(landed) ? landing : end);
       const red = landed === 'lateralWater' || ends === 'lateralWater';
       // Red: beside where it crossed. Yellow: back on the line from the hole through it.
       const away = distance(crossed, ground.hole) || 1;
@@ -407,8 +416,7 @@ function simulate(
       rest = crossed;
     } else {
       finish = ends === 'tee' ? 'fairway' : (ends as Finish);
-      const lieThere: Lie | 'green' = finish === 'green' ? 'green' : finish === 'sand' ? 'sand' : finish === 'fairway' ? 'fairway' : 'rough';
-      value = 1 + strokesToHoleOut(golfer, distance(end, ground.hole) / YARD, lieThere);
+      value = 1 + strokesToHoleOut(golfer, distance(end, ground.hole) / YARD, lieOf(ends) === 'tee' ? 'fairway' : lieOf(ends));
     }
     counts[finish] += 1;
     total += value;
@@ -456,12 +464,9 @@ function oddsOf(finishes: Record<Finish, number>): string | null {
 
 // ─── Choosing ───────────────────────────────────────────────────────────────
 
-function lieAt(ground: Ground, start: XY): Lie | 'green' {
-  const g = groundAt(ground, start);
-  if (g === 'green') return 'green';
-  if (g === 'sand') return 'sand';
-  if (g === 'tee') return 'tee';
-  return g === 'fairway' ? 'fairway' : 'rough';
+/** The lie a ball has on a surface: the green, sand, a tee, fairway, or rough for anything else that isn't a penalty. */
+function lieOf(surface: Surface): Lie | 'green' {
+  return surface === 'green' || surface === 'sand' || surface === 'tee' || surface === 'fairway' ? surface : 'rough';
 }
 
 function startOf(input: SuggestionInput, plan: HolePlan): LatLng | null {
@@ -480,11 +485,14 @@ function startOf(input: SuggestionInput, plan: HolePlan): LatLng | null {
   return plan.line[0];
 }
 
+/** The option with the fewest expected strokes. */
+const cheapest = (options: ShotOption[]) => options.reduce((a, b) => (b.expected < a.expected ? b : a));
+
 /** Which club to hit and where to aim, for the shot from `input.from`, or the tee. */
 export function suggestShot(input: SuggestionInput): ClubSuggestion {
   const plan = holePlan(input.course, input.hole);
   const fairwayMapped = plan.features.some((f) => f.kind === 'fairway');
-  const empty = (status: ClubSuggestion['status'], from: LatLng | null, lie: Lie = 'tee', extra: Partial<ClubSuggestion> = {}): ClubSuggestion => ({
+  const outcome = (status: ClubSuggestion['status'], from: LatLng | null, lie: Lie = 'tee', extra: Partial<ClubSuggestion> = {}): ClubSuggestion => ({
     status,
     from,
     lie,
@@ -493,23 +501,23 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
     second: null,
     partial: null,
     missing: null,
-    caveats: [fairwayMapped ? 'trees' : 'littleMapped'],
+    caveats: fairwayMapped ? ['trees'] : ['trees', 'littleMapped'],
     ...extra,
   });
-  if (!plan.green) return empty('noGreen', input.from);
+  if (!plan.green) return outcome('noGreen', input.from);
   const start = startOf(input, plan);
-  if (!start) return empty('noTee', null);
+  if (!start) return outcome('noTee', null);
 
   const ground = groundFor(plan, start);
-  const read = input.from ? lieAt(ground, [0, 0]) : 'tee';
-  if (read === 'green') return empty('onGreen', start, 'fairway');
+  const read = input.from ? lieOf(groundAt(ground, ORIGIN_XY)) : 'tee';
+  if (read === 'green') return outcome('onGreen', start, 'fairway');
   const lie = input.lie ?? read;
 
-  const carried = input.bag.filter((c): c is Club & { carry: number } => c.carry != null);
-  if (carried.length < MIN_CARRIES) return empty('fewCarries', start, lie);
+  const carried = input.bag.filter((c): c is CarriedClub => c.carry != null);
+  if (carried.length < MIN_CARRIES) return outcome('fewCarries', start, lie);
   const toHole = distance([0, 0], ground.hole);
   const shortest = carried.reduce((a, b) => (b.carry < a.carry ? b : a));
-  if (toHole / YARD < shortest.carry - PARTIAL_YARDS) return empty('partial', start, lie, { partial: shortest.name });
+  if (toHole / YARD < shortest.carry - PARTIAL_YARDS) return outcome('partial', start, lie, { partial: shortest.name });
 
   const golfer = GOLFERS[input.usualScore];
   const card = (input.course.tees.find((t) => t.id === input.teeId) ?? input.course.tees[0]).holes.find((h) => h.number === input.hole);
@@ -517,7 +525,7 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
   const longest = carried.reduce((a, b) => (b.carry > a.carry ? b : a));
   const luck = draws(input.seed);
 
-  const reachOf = (club: Club & { carry: number }) => club.carry * YARD * (1 + ROLL[clubKind(club.name, club.carry)]);
+  const reachOf = (club: CarriedClub) => club.carry * YARD * (1 + ROLL[clubKind(club.name, club.carry)]);
   // Off the tee of a hole no club reaches, the choice is the driver or less; otherwise short of the green is laying up.
   const driverOrLess = offTheTee && reachOf(longest) < toHole - ground.greenRadius;
   const options: ShotOption[] = [];
@@ -534,23 +542,23 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
     // The club's best aim, the middlemost of those level with it.
     const top = Math.min(...aims.map((a) => a.expected));
     const middle = Math.floor(aims.length / 2);
-    const level = aims.map((a, i) => ({ a, i })).filter(({ a }) => a.expected <= top + SAME_AIM);
-    options.push(level.reduce((x, y) => (Math.abs(y.i - middle) < Math.abs(x.i - middle) ? y : x)).a);
+    const levelAims = aims.map((a, i) => ({ a, i })).filter(({ a }) => a.expected <= top + SAME_AIM);
+    options.push(levelAims.reduce((x, y) => (Math.abs(y.i - middle) < Math.abs(x.i - middle) ? y : x)).a);
   }
-  if (options.length === 0) return empty('fewCarries', start, lie);
+  if (options.length === 0) return outcome('fewCarries', start, lie);
 
   const lowest = Math.min(...options.map((o) => o.expected));
   // Among options level with the best, one that leaves a full swing next, or goes for the green.
   const fullSwing = (o: ShotOption) => o.leaves == null || o.leaves >= shortest.carry - NEAR_ENOUGH_YARDS;
   const level = options.filter((o) => o.expected <= lowest + LEVEL);
   const pool = level.some(fullSwing) ? level.filter(fullSwing) : level;
-  const best = pool.reduce((a, b) => (b.expected < a.expected ? b : a));
+  const best = cheapest(pool);
   // A second option is another way to play it: never a lay-up to a part-swing.
   const others = options.filter((o) => o.approach !== best.approach && o.expected <= best.expected + SECOND_WITHIN && fullSwing(o));
-  const second = others.length ? others.reduce((a, b) => (b.expected < a.expected ? b : a)) : null;
+  const second = others.length ? cheapest(others) : null;
 
   return {
-    ...empty('suggested', start, lie),
+    ...outcome('suggested', start, lie),
     best,
     second,
     missing: best.approach === 'go' ? missingClub(input.bag, carried, toHole / YARD, best.club) : null,
@@ -558,8 +566,8 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
 }
 
 /** A club with no carry, between the carried clubs either side of the shot, when the best club is some way off it. */
-function missingClub(bag: Club[], carried: (Club & { carry: number })[], yards: number, chosen: string): string | null {
-  const reach = (c: Club & { carry: number }) => c.carry * (1 + ROLL[clubKind(c.name, c.carry)]);
+function missingClub(bag: Club[], carried: CarriedClub[], yards: number, chosen: string): string | null {
+  const reach = (c: CarriedClub) => c.carry * (1 + ROLL[clubKind(c.name, c.carry)]);
   const picked = carried.find((c) => c.name === chosen)!;
   if (Math.abs(reach(picked) - yards) <= NEAR_ENOUGH_YARDS) return null;
   const longer = carried.filter((c) => reach(c) >= yards).sort((a, b) => reach(a) - reach(b))[0];

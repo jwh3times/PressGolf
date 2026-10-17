@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { usualScoreFor } from '../domain/bag';
+import { USUAL_SCORES, usualScoreFor } from '../domain/bag';
 import {
   aimPhrase,
   asSentence,
+  MIN_CARRIES,
   secondLine,
   suggestShot,
   suggestionLine,
@@ -15,6 +16,7 @@ import type { Course, LatLng, TeeId, UsualScore } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
+import { useAdvice } from './PracticeRound';
 import { Body, Chip, CHIP_ROW_GAP, Eyebrow } from './primitives';
 
 /**
@@ -109,7 +111,7 @@ export function useTeeSuggestion({ course, hole, teeId, enabled = true }: Omit<S
   const key = `${course?.id}:${hole}:tee`;
   const lie = useSyncExternalStore(subscribe, () => picked.get(key), () => picked.get(key));
   // Too few carries for a suggestion, and the guide says nothing of clubs: no need to work it out.
-  const enough = store.clubs.filter((c) => c.carry != null).length >= 3;
+  const enough = store.clubs.filter((c) => c.carry != null).length >= MIN_CARRIES;
   const inputs = useMemo(
     () => (enabled && course && enough ? { course, hole, teeId, from: null, lie, bag: store.clubs, usualScore, seed: hash(key) } : null),
     [enabled, enough, course, hole, teeId, lie, store.clubs, usualScore, key],
@@ -150,7 +152,6 @@ const LIES: { lie: Lie; name: string }[] = [
   { lie: 'rough', name: 'Rough' },
   { lie: 'sand', name: 'Sand' },
 ];
-const SHOOTS: Record<UsualScore, string> = { '70s': 'in the 70s', '80s': 'in the 80s', '90s': 'in the 90s', '100s': '100 or more' };
 
 /** The hole map's card: the suggestion, what it rests on, the lie, and what the map leaves out. */
 export function ClubSuggestionCard({
@@ -233,7 +234,7 @@ export function ClubSuggestionCard({
 
       {shows ? (
         <Body style={styles.copy}>
-          {`Based on published shot patterns for golfers who usually shoot ${SHOOTS[usualScore]}, and your bag’s carries.`}
+          {`Based on published shot patterns for golfers who usually shoot ${USUAL_SCORES.find((u) => u.score === usualScore)!.shoots}, and your bag’s carries.`}
         </Body>
       ) : null}
       <Body style={styles.copy}>
@@ -260,24 +261,30 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     chips: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: CHIP_ROW_GAP },
     club: { fontFamily: fonts.sansSemi, fontSize: 15, color: ink.full },
     copy: { color: ink.soft, lineHeight: 19 },
-    quiet: { color: ink.soft, letterSpacing: 1.2 },
   }),
 );
 
-/** The Score screen's suggestion for one hole: keyed by hole, so each starts from its tee. */
+/**
+ * The Score screen's suggestion for one hole: keyed by hole, so each starts
+ * from its tee. Club advice, so only in a round this phone has made practice
+ * (Rule 4.3a).
+ */
 export function ScoreClubSuggestion({
   course,
   hole,
   teeId,
+  roundId,
   from,
   onOpen,
 }: {
   course: Course;
   hole: number;
   teeId: TeeId;
+  roundId: string;
   from: LatLng | null;
   onOpen: () => void;
 }) {
-  const suggestion = useClubSuggestion({ course, hole, teeId, from });
+  const { advice } = useAdvice(roundId);
+  const suggestion = useClubSuggestion({ course, hole, teeId, from, enabled: advice });
   return suggestion ? <ClubSuggestionLine suggestion={suggestion} onOpen={onOpen} /> : null;
 }

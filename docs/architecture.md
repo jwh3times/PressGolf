@@ -485,11 +485,11 @@ When the two Supabase public variables are present and a user is signed in,
 1. On first contact, it pulls the signed-in account's 24 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
-   dataset is pushed. The bag is settled on its own: a phone with no clubs
-   takes the account's, rather than pruning it, and a fresh install keeps clubs
-   typed before signing in when the account has none. The usual score
-   (`bag_settings`) is settled the same way, apart from the clubs. A phone holding only a
-   bag still counts as fresh, so it can never prune a season.
+   dataset is pushed. The bag is settled on its own: a phone with no clubs takes
+   the account's, rather than pruning it, and a fresh install keeps clubs typed
+   before signing in when the account has none. The usual score (`bag_settings`)
+   is settled the same way, apart from the clubs. A phone holding only a bag
+   still counts as fresh, so it can never prune a season.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one

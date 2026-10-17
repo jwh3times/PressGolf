@@ -72,11 +72,12 @@ export type ClubKind = 'wood' | 'long' | 'short' | 'wedge';
  * Roll after landing on fairway, as a share of carry. Estimates, for tracked
  * shots (phase 5) to replace: about 7% for a driver is the one figure found
  * (TrackMan, second-hand), and the rest step down with the landing angle
- * TrackMan publishes for each club. Half that in rough or on the green.
+ * TrackMan publishes for each club. Half that in rough, and a quarter on the
+ * green, which holds a ball better than either.
  */
 export const ROLL: Record<ClubKind, number> = { wood: 0.07, long: 0.05, short: 0.03, wedge: 0.01 };
 export const ROLL_IN_ROUGH = 0.5;
-export const ROLL_ON_GREEN = 0.5;
+export const ROLL_ON_GREEN = 0.25;
 
 /** What kind of club a name is, for its roll: by name, or by carry for a name the bag doesn't know. */
 export function clubKind(name: string, carry: number): ClubKind {

@@ -221,7 +221,33 @@ describe('the lie', () => {
 describe('caveats', () => {
   it('always says trees are not mapped, and says little is mapped without a fairway', () => {
     expect(suggestShot(input(hole(1, 400, []), 1)).caveats).toEqual(['trees']);
-    expect(suggestShot(input(hole(1, 400, [], { fairway: false }), 1)).caveats).toEqual(['littleMapped']);
+    expect(suggestShot(input(hole(1, 400, [], { fairway: false }), 1)).caveats).toEqual(['trees', 'littleMapped']);
+  });
+});
+
+describe('the course edge', () => {
+  it('is out of bounds outside every part of it, not outside any one: a course can be mapped in pieces', () => {
+    const here = feature('courseEdge', box(-30, 200, -60, 60));
+    const elsewhere = feature('courseEdge', box(1000, 1300, 500, 800));
+    const result = suggestShot(input(hole(4, 150, [here, elsewhere], { fairway: false }), 4));
+    expect(result.best!.finishes.outOfBounds).toBe(0);
+    // Close down the right, the edge of the part the hole is in still counts.
+    const tight = feature('courseEdge', box(-30, 200, -60, 10));
+    expect(suggestShot(input(hole(4, 150, [tight, elsewhere], { fairway: false }), 4, { usualScore: '100s' })).best!.finishes.outOfBounds).toBeGreaterThan(0);
+  });
+});
+
+describe('a green with no outline', () => {
+  it('is as deep as its front and back, or about 25 yards across', () => {
+    const marked = (front: number, back: number): Course => ({
+      ...makeTestCourse(),
+      greens: [{ number: 4, middle: at(150), front: at(front), back: at(back), source: 'marked' }],
+      features: [feature('holeLine', [at(0), at(150)], 4)],
+    });
+    const deep = suggestShot(input(marked(130, 170), 4));
+    const plain = suggestShot(input({ ...marked(130, 170), greens: [green(4, at(150))] }, 4));
+    expect(deep.status).toBe('suggested');
+    expect(deep.best!.finishes.green).toBeGreaterThan(plain.best!.finishes.green);
   });
 });
 

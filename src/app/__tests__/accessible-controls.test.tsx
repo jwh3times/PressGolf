@@ -2421,6 +2421,9 @@ describe('the hole map', () => {
     useStoreValue({ course: mapped, courses: [mapped], practice: { [round.id]: { on: true, ever: true } } });
     let view = await render(<ScoreScreen />);
     const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    // Hole 1 has no green on the map, so there is nothing to aim at yet.
+    expect(screen.getByRole('button', { name: 'Club suggestion: Mark the green for suggestions.' })).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
     const line = screen.getByRole('button', { name: /^Club suggestion: .+ · aim .+\./ });
     await user.press(line);

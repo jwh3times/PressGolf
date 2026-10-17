@@ -206,18 +206,16 @@ export default function ScoreScreen() {
       ) : greenFor(course.greens, holeInfo.number) ? (
         <GhostButton label={`Map of hole ${holeInfo.number}`} onPress={openHoleMap} />
       ) : null}
-      {/* Club advice: only in a round this phone has made a practice round (Rule 4.3a). */}
-      {store.practice[round.id]?.on && greenFor(course.greens, holeInfo.number) ? (
-        <ScoreClubSuggestion
-          // Keyed by hole, as GreenYardage is, under a name of its own beside it.
-          key={`suggestion-${holeInfo.number}`}
-          course={course}
-          hole={holeInfo.number}
-          teeId={playedTee.id}
-          from={position?.hole === holeInfo.number ? position.at : null}
-          onOpen={openHoleMap}
-        />
-      ) : null}
+      <ScoreClubSuggestion
+        // Keyed by hole, as GreenYardage is, under a name of its own beside it.
+        key={`suggestion-${holeInfo.number}`}
+        course={course}
+        hole={holeInfo.number}
+        teeId={playedTee.id}
+        roundId={round.id}
+        from={position?.hole === holeInfo.number ? position.at : null}
+        onOpen={openHoleMap}
+      />
 
       {roster.map((player) => {
         const gross = ctx.gross(player.id, current);

@@ -9,7 +9,7 @@ import { Body, Mono } from '../components/primitives';
 import { holePlan } from '../domain/hole-map';
 import { noteFor } from '../domain/course-map';
 import { teeLine } from '../domain/club-suggestion';
-import { aimSentence, facingZone, holeStrategy, zoneSummary } from '../domain/hole-strategy';
+import { aimSentence, facingZone, holeStrategy, withoutAim, zoneSummary } from '../domain/hole-strategy';
 import type { Course, Hole, TeeId } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
@@ -81,17 +81,17 @@ function GuideHole({
 }) {
   const styles = useStyles();
   const plan = useMemo(() => holePlan(course, hole.number), [course, hole.number]);
-  const strategy = useMemo(() => holeStrategy(course, hole.number, { teeId, advice }), [course, hole.number, teeId, advice]);
+  const advised = useMemo(() => holeStrategy(course, hole.number, { teeId, advice }), [course, hole.number, teeId, advice]);
   const tee = useTeeSuggestion({ course, hole: hole.number, teeId, enabled: advice && plan.green != null });
   const fromTee = tee ? teeLine(tee) : null;
   // The tee shot's club and aim stand in for the hole strategy's aim on it: one aim, never two.
   const teeZone = fromTee ? facingZone(course, hole.number, null, null, { teeId }) : null;
+  const strategy = advised && teeZone ? withoutAim(advised, teeZone) : advised;
   const lines = strategy
-    ? strategy.zones.flatMap((z) =>
-        z.zone === teeZone && fromTee
-          ? [zoneSummary(z), fromTee]
-          : [zoneSummary(z), ...(z.aim ? [`Aim: ${aimSentence(z.zone, z.aim)}`] : [])],
-      )
+    ? strategy.zones.flatMap((z) => [
+        zoneSummary(z),
+        ...(z.zone === teeZone && fromTee ? [fromTee] : z.aim ? [`Aim: ${aimSentence(z.zone, z.aim)}`] : []),
+      ])
     : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet', ...(fromTee ? [fromTee] : [])];
   const note = noteFor(course.notes, hole.number);
   if (note) lines.push(`Note: ${note}`);

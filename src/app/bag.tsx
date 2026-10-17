@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Field } from '../components/Field';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Chip, CHIP_ROW_GAP, EmptyState, Eyebrow, GhostButton, Mono, PrimaryButton } from '../components/primitives';
-import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag, usualScoreFor } from '../domain/bag';
-import type { Club, UsualScore } from '../domain/types';
+import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag, USUAL_SCORES, usualScoreFor } from '../domain/bag';
+import type { Club } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
@@ -16,13 +16,6 @@ import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
  * (#146). Distances you wrote down yourself before the round are allowed in a
  * counted one, so this is plain information; nothing here suggests a club.
  */
-
-const USUAL_SCORES: { score: UsualScore; label: string }[] = [
-  { score: '70s', label: '70s' },
-  { score: '80s', label: '80s' },
-  { score: '90s', label: '90s' },
-  { score: '100s', label: '100s or more' },
-];
 export default function BagScreen() {
   const styles = useStyles();
   const { ink } = useTheme();
