@@ -403,6 +403,30 @@ describe('reconcile, the bag', () => {
     await expect(reconcile({ ...emptySnapshot(), clubs: [club('k1')] })).resolves.toMatchObject({ status: 'pushed' });
     expect(writes).toEqual([{ table: 'clubs', rows: [{ ...club('k1'), owner_id: 'owner-1' }] }]);
   });
+
+  const settings = (usual_score: '70s' | '90s') => [{ id: 'bag' as const, usual_score }];
+
+  it('keeps a usual score set on a fresh install that adopts a season without one', async () => {
+    const remote = snapshotWithGroup();
+    const { writes } = recording(remote);
+    const outcome = await reconcile({ ...emptySnapshot(), bag_settings: settings('70s') });
+    expect(writes).toEqual([{ table: 'bag_settings', rows: [{ id: 'bag', usual_score: '70s', owner_id: 'owner-1' }] }]);
+    expect(outcome).toMatchObject({ status: 'adopted-remote', snapshot: { groups: remote.groups, bag_settings: settings('70s') } });
+  });
+
+  it("takes the account's usual score on a phone with a season and none, rather than deleting it", async () => {
+    const remote = { ...snapshotWithGroup(), bag_settings: settings('90s') };
+    const { deletes } = recording(remote);
+    const outcome = await reconcile(snapshotWithGroup());
+    expect(deletes).toEqual([]);
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 0, bag_settings: settings('90s') });
+    expect(outcome).not.toHaveProperty('clubs');
+  });
+
+  it('has nothing to do only when the phone has no usual score either', async () => {
+    recording(emptySnapshot());
+    await expect(reconcile({ ...emptySnapshot(), bag_settings: settings('70s') })).resolves.toMatchObject({ status: 'pushed' });
+  });
 });
 
 describe('pushChanges', () => {

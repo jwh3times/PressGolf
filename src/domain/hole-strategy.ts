@@ -88,7 +88,7 @@ function side(sideName: StrategySide, causes: Cause[], mapped: boolean): SideRea
  * The out-of-bounds that counts on this hole: its lines, less any limited to
  * other holes, and the course's edge unless the owner has drawn lines for it.
  */
-function boundaries(plan: HolePlan): CourseFeature[] {
+export function boundaries(plan: HolePlan): CourseFeature[] {
   const lines = plan.features.filter((f) => f.kind === 'outOfBounds' && (!f.holes?.length || f.holes.includes(plan.number)));
   if (lines.some((f) => f.source === 'map')) return lines;
   return [...lines, ...plan.features.filter((f) => f.kind === 'courseEdge')];
@@ -230,14 +230,16 @@ function laneZone(plan: HolePlan, path: Path, zone: Zone, [from, to]: [number, n
     causes[which].push({ kind: f.kind as TroubleKind, yards: span(near.map((p) => p.along)) });
   }
 
+  // Off the course is outside every part of its edge: an import keeps each part of a course in pieces as its own.
+  const edges = boundaries(plan)
+    .filter((f) => f.kind === 'courseEdge')
+    .map((f) => f.points.map(path.toXY));
+  const offCourse = edges.length ? line.filter((p) => !edges.some((ring) => inside(p, ring))) : [];
+  if (offCourse.length) causes.across.push({ kind: 'courseEdge', yards: span(offCourse.map((p) => project(path, p).along)) });
   for (const f of boundaries(plan)) {
     const ring = f.kind === 'courseEdge';
+    if (ring && offCourse.length) continue;
     const points = f.points.map(path.toXY);
-    const outside = ring ? line.filter((p) => !inside(p, points)) : [];
-    if (outside.length) {
-      causes.across.push({ kind: f.kind as TroubleKind, yards: span(outside.map((p) => project(path, p).along)) });
-      continue;
-    }
     const near = densify(points, ring)
       .map((p) => project(path, p))
       .filter((p) => Math.abs(p.off) <= EDGE_NOTICE_M);
@@ -258,7 +260,7 @@ function laneZone(plan: HolePlan, path: Path, zone: Zone, [from, to]: [number, n
  * Metres from the back of the tees (where the hole's line starts, as mappers
  * draw it) to the tee being played: the longest tee's yards less this tee's.
  */
-function teeForward(course: Course, number: number, teeId: TeeId | null | undefined): number {
+export function teeForward(course: Course, number: number, teeId: TeeId | null | undefined): number {
   const tee = course.tees.find((t) => t.id === teeId) ?? course.tees[0];
   const yards = tee.holes.find((h) => h.number === number)?.yards ?? 0;
   const longest = Math.max(...course.tees.map((t) => t.holes.find((h) => h.number === number)?.yards ?? 0));
@@ -270,6 +272,14 @@ export interface StrategyOptions {
   teeId?: TeeId | null;
   /** Include where to aim. Only outside a round, or in a practice round. */
   advice?: boolean;
+}
+
+/**
+ * The strategy with no aim for one zone: where a club suggestion (#146) says
+ * where to aim for that shot, it is the only aim given.
+ */
+export function withoutAim(strategy: HoleStrategy, zone: Zone | null): HoleStrategy {
+  return { ...strategy, zones: strategy.zones.map((z) => (z.zone === zone ? { ...z, aim: null } : z)) };
 }
 
 /** The better of two sides, or neither when they are graded alike or the map is silent on one. */

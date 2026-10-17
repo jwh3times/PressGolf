@@ -65,6 +65,12 @@ test('bag', async ({ page }) => {
   await page.getByRole('button', { name: 'Done' }).last().click();
   await page.getByRole('button', { name: /My bag/ }).click();
   await expect(page.getByLabel('7 iron carry, in yards')).toHaveValue('155');
+
+  // So does the usual score chosen.
+  await page.getByRole('radio', { name: '90s' }).click();
+  await page.getByRole('button', { name: 'Done' }).last().click();
+  await page.getByRole('button', { name: /My bag/ }).click();
+  await expect(page.getByRole('radio', { name: '90s' })).toBeChecked();
 });
 
 test('history', async ({ page }) => {

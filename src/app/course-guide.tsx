@@ -1,13 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTeeSuggestion } from '../components/ClubSuggestion';
 import { HoleDiagram } from '../components/HoleDiagram';
 import { PracticeSwitch, useAdvice } from '../components/PracticeRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Mono } from '../components/primitives';
 import { holePlan } from '../domain/hole-map';
 import { noteFor } from '../domain/course-map';
-import { aimSentence, holeStrategy, zoneSummary } from '../domain/hole-strategy';
+import { teeLine } from '../domain/club-suggestion';
+import { aimSentence, facingZone, holeStrategy, withoutAim, zoneSummary } from '../domain/hole-strategy';
 import type { Course, Hole, TeeId } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
@@ -18,7 +20,8 @@ const DRAWING_HEIGHT = 96;
 
 /**
  * Every hole on one page (#136): its drawing, par and yards, and how it plays,
- * to look a course over before the round. A tap opens the hole's map.
+ * to look a course over before the round; where advice is allowed, the club
+ * to hit from the tee (#146). A tap opens the hole's map.
  */
 export default function CourseGuideScreen() {
   const params = useLocalSearchParams<{ course: string; tee?: string; round?: string }>();
@@ -78,10 +81,18 @@ function GuideHole({
 }) {
   const styles = useStyles();
   const plan = useMemo(() => holePlan(course, hole.number), [course, hole.number]);
-  const strategy = useMemo(() => holeStrategy(course, hole.number, { teeId, advice }), [course, hole.number, teeId, advice]);
+  const advised = useMemo(() => holeStrategy(course, hole.number, { teeId, advice }), [course, hole.number, teeId, advice]);
+  const tee = useTeeSuggestion({ course, hole: hole.number, teeId, enabled: advice && plan.green != null });
+  const fromTee = tee ? teeLine(tee) : null;
+  // The tee shot's club and aim stand in for the hole strategy's aim on it: one aim, never two.
+  const teeZone = fromTee ? facingZone(course, hole.number, null, null, { teeId }) : null;
+  const strategy = advised && teeZone ? withoutAim(advised, teeZone) : advised;
   const lines = strategy
-    ? strategy.zones.flatMap((z) => [zoneSummary(z), ...(z.aim ? [`Aim: ${aimSentence(z.zone, z.aim)}`] : [])])
-    : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet'];
+    ? strategy.zones.flatMap((z) => [
+        zoneSummary(z),
+        ...(z.zone === teeZone && fromTee ? [fromTee] : z.aim ? [`Aim: ${aimSentence(z.zone, z.aim)}`] : []),
+      ])
+    : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet', ...(fromTee ? [fromTee] : [])];
   const note = noteFor(course.notes, hole.number);
   if (note) lines.push(`Note: ${note}`);
   const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards}Y` : ''}`;

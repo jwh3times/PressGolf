@@ -33,6 +33,7 @@ import type {
   Player,
   PlayerId,
   PracticeMark,
+  UsualScore,
   Round,
   RoundId,
   Settlement,
@@ -51,6 +52,8 @@ interface Dataset {
   outings: Outing[];
   /** The phone owner's bag (#125). */
   clubs: Club[];
+  /** How the bag's owner usually scores, once they've said (#146). */
+  usualScore: UsualScore | null;
   /** Rounds this phone marked as practice (#136). Saved here, never synced. */
   practice: Record<RoundId, PracticeMark>;
   activeGroupId: string | null;
@@ -138,6 +141,7 @@ export interface AppStore extends AppState {
   fillBag(clubs: Club[]): void;
   setCarry(id: string, carry: number | null): void;
   removeClub(id: string): void;
+  setUsualScore(score: UsualScore): void;
 
   // Rounds
   startRound(round: Round): void;
@@ -190,6 +194,7 @@ const EMPTY_STATE: AppState = {
   rounds: [],
   outings: [],
   clubs: [],
+  usualScore: null,
   practice: {},
   activeGroupId: null,
   activeRoundId: null,
@@ -270,6 +275,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         rounds: next.rounds,
         outings: next.outings,
         clubs: next.clubs,
+        usualScore: next.usualScore,
         practice: next.practice,
         activeGroupId: next.activeGroupId,
         activeRoundId: next.activeRoundId,
@@ -338,8 +344,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       rounds: state.rounds,
       outings: state.outings,
       clubs: state.clubs,
+      ...(state.usualScore ? { usualScore: state.usualScore } : {}),
     }),
-    [state.groups, state.courses, state.rounds, state.outings, state.clubs],
+    [state.groups, state.courses, state.rounds, state.outings, state.clubs, state.usualScore],
   );
 
   const adoptRemote = useCallback(
@@ -541,6 +548,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
               rounds: [],
               outings: [],
               clubs: [],
+              usualScore: null,
               practice: {},
               activeGroupId: null,
               activeRoundId: null,
@@ -705,6 +713,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setCarry: (id, carry) =>
         commit((prev) => ({ ...prev, clubs: prev.clubs.map((c) => (c.id === id ? { ...c, carry } : c)) })),
       removeClub: (id) => commit((prev) => ({ ...prev, clubs: prev.clubs.filter((c) => c.id !== id) })),
+      setUsualScore: (usualScore) => commit((prev) => (prev.usualScore === usualScore ? prev : { ...prev, usualScore })),
 
       setPractice: (roundId, on) =>
         commit((prev) => {
@@ -869,6 +878,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     rounds: stored.rounds,
     outings: stored.outings,
     clubs: stored.clubs,
+    usualScore: stored.usualScore,
     practice: stored.practice,
     activeGroupId: stored.activeGroupId,
     activeRoundId: stored.activeRoundId,

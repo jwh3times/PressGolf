@@ -68,6 +68,10 @@ substitute for assistive-technology use on both platforms.
   is one button whose name carries its par, yards, summary, aiming advice and
   note. The practice-round switch shows its saved state, and stays off while
   the Rule is explained, until "Make it a practice round" is pressed.
+- Club suggestions (#146) are text: the Score screen's line is one button whose
+  name reads the club, the aim and the odds, and the hole map's card says the
+  same in sentences. The shot-pattern oval is decorative. The lie and the usual
+  score are radio groups, read as checked or not.
 - Drawing out-of-bounds lines is pointer-only: the points go where the map is
   tapped, and there is no other way to place them. Choosing, limiting and
   deleting a line are buttons, and the map is named for what a tap will do.

@@ -22,6 +22,7 @@ import {
   GAME_KEYS,
   type Club,
   type Course,
+  type UsualScore,
   type FieldGameConfig,
   type FieldGameKey,
   type FeatureKind,
@@ -137,6 +138,16 @@ export interface ClubRow {
   name: string;
   carry_yards: number | null;
   position: number;
+}
+
+/**
+ * The bag's settings (#146), one row an account: for now, how its owner
+ * usually scores. Keyed by its owner on the server; `id` is always 'bag', so
+ * the phone, which holds no owner, can name the row.
+ */
+export interface BagSettingsRow {
+  id: 'bag';
+  usual_score: UsualScore;
 }
 
 export interface RoundRow {
@@ -293,6 +304,7 @@ export interface Snapshot {
   outing_field_games: OutingFieldGameRow[];
   outing_field_entrants: OutingFieldEntrantRow[];
   clubs: ClubRow[];
+  bag_settings: BagSettingsRow[];
 }
 
 /** The document-shaped data the app actually holds. */
@@ -302,6 +314,8 @@ export interface Documents {
   rounds: Round[];
   outings: Outing[];
   clubs: Club[];
+  /** Set once the bag's owner has said how they usually score. */
+  usualScore?: UsualScore;
 }
 
 export const TABLES: (keyof Snapshot)[] = [
@@ -330,6 +344,7 @@ export const TABLES: (keyof Snapshot)[] = [
   'round_pairings',
   // Nothing refers to a club, or is referred to by one, yet.
   'clubs',
+  'bag_settings',
 ];
 
 export function emptySnapshot(): Snapshot {
@@ -357,6 +372,7 @@ export function emptySnapshot(): Snapshot {
     outing_field_games: [],
     outing_field_entrants: [],
     clubs: [],
+    bag_settings: [],
   };
 }
 
@@ -584,6 +600,7 @@ export function toRows(documents: Documents): Snapshot {
   documents.clubs.forEach((club, position) => {
     out.clubs.push({ id: club.id, name: club.name, carry_yards: club.carry, position });
   });
+  if (documents.usualScore) out.bag_settings.push({ id: 'bag', usual_score: documents.usualScore });
 
   return out;
 }
@@ -841,7 +858,8 @@ export function fromRows(snapshot: Snapshot): Documents {
     .sort((a, b) => a.position - b.position)
     .map((row) => ({ id: row.id, name: row.name, carry: row.carry_yards }));
 
-  return { groups, courses, rounds, outings, clubs };
+  const settings = snapshot.bag_settings[0];
+  return { groups, courses, rounds, outings, clubs, ...(settings ? { usualScore: settings.usual_score } : {}) };
 }
 
 /** Rows in a snapshot, for logs and for deciding whether a push is worth making. */

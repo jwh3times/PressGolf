@@ -181,6 +181,12 @@ export interface Club {
 }
 
 /**
+ * How the bag's owner usually scores (#146), which sets how widely the club
+ * suggestions spread their shots: the decade of a usual 18-hole score.
+ */
+export type UsualScore = '70s' | '80s' | '90s' | '100s';
+
+/**
  * A round this phone has marked as a practice round (#136), where aiming
  * advice is shown. Kept on the phone only: each phone chooses for itself, and
  * it never syncs.
@@ -542,6 +548,8 @@ export interface AppData {
   outings: Outing[];
   /** The phone's owner's clubs, longest first as they carry them. */
   clubs: Club[];
+  /** How the bag's owner usually scores, once they've said; synced with the bag. */
+  usualScore: UsualScore | null;
   /** This phone's practice-round marks, by round. Never synced. */
   practice: Record<RoundId, PracticeMark>;
   settings: AppSettings;

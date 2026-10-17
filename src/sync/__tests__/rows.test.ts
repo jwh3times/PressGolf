@@ -138,6 +138,14 @@ describe('toRows / fromRows round trip', () => {
     expect(fromRows(rows).clubs).toEqual(clubs);
   });
 
+  it('round-trips how the bag\'s owner usually scores, as one row, and no row until they say', () => {
+    const rows = toRows({ groups: [], courses: [], rounds: [], outings: [], clubs: [], usualScore: '90s' });
+    expect(rows.bag_settings).toEqual([{ id: 'bag', usual_score: '90s' }]);
+    expect(fromRows(rows).usualScore).toBe('90s');
+    expect(toRows({ groups: [], courses: [], rounds: [], outings: [], clubs: [] }).bag_settings).toEqual([]);
+    expect(fromRows(emptySnapshot())).not.toHaveProperty('usualScore');
+  });
+
   it('round-trips a junk key whose player id contains a colon', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
     round.junk = { '4:odd:id:greenie': true };

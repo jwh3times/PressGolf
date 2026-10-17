@@ -4,16 +4,17 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Field } from '../components/Field';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Chip, CHIP_ROW_GAP, EmptyState, Eyebrow, GhostButton, Mono, PrimaryButton } from '../components/primitives';
-import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag } from '../domain/bag';
+import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag, USUAL_SCORES, usualScoreFor } from '../domain/bag';
 import type { Club } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
 
 /**
- * The bag (#125): each club and how far it carries, typed in by the player.
- * Distances you wrote down yourself before the round are allowed in a counted
- * one, so this is plain information; nothing here suggests a club.
+ * The bag (#125): each club and how far it carries, typed in by the player,
+ * and how they usually score, which club suggestions in a practice round use
+ * (#146). Distances you wrote down yourself before the round are allowed in a
+ * counted one, so this is plain information; nothing here suggests a club.
  */
 export default function BagScreen() {
   const styles = useStyles();
@@ -24,6 +25,7 @@ export default function BagScreen() {
   const [other, setOther] = useState('');
 
   const passes = new Map(outOfOrder(store.clubs).map((w) => [w.id, w.passes]));
+  const usual = usualScoreFor(store.usualScore, store.groups);
   const full = store.clubs.length >= MAX_CLUBS;
   const addOther = () => {
     if (!other.trim()) return;
@@ -39,6 +41,25 @@ export default function BagScreen() {
         How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before
         the round are allowed in a counted one.
       </Body>
+
+      <View style={{ gap: 8 }}>
+        <Eyebrow>Usual score</Eyebrow>
+        <View accessibilityRole="radiogroup" accessibilityLabel="Usual score" style={styles.chips}>
+          {USUAL_SCORES.map(({ score, label }) => (
+            <Chip
+              key={score}
+              radio
+              label={label.toUpperCase()}
+              accessibilityLabel={label}
+              active={usual.score === score}
+              onPress={() => store.setUsualScore(score)}
+            />
+          ))}
+        </View>
+        <Body style={{ color: ink.soft, lineHeight: 19 }}>
+          {`Over 18 holes${usual.from === 'guess' ? ' (a starting guess)' : usual.from === 'handicap' ? ' (from your handicap)' : ''}. Club suggestions in a practice round spread your shots the way published figures say they spread for golfers who score like this.`}
+        </Body>
+      </View>
 
       {store.clubs.length === 0 ? (
         <EmptyState

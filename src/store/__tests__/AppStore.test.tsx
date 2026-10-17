@@ -58,6 +58,7 @@ function stored(data: Dataset) {
     rounds: data.rounds,
     outings: data.outings,
     clubs: data.clubs,
+    usualScore: data.usualScore,
     practice: data.practice,
     activeGroupId: data.activeGroupId,
     activeRoundId: data.activeRoundId,
@@ -173,6 +174,7 @@ describe('AppStoreProvider', () => {
       rounds: [],
       outings: [],
       clubs: [],
+      usualScore: null,
       practice: {},
       activeGroupId: null,
       activeRoundId: null,
@@ -741,6 +743,18 @@ describe('AppStoreProvider', () => {
     expect(store.clubs[0].carry).toBe(245);
     await change(() => store.removeClub('k2'));
     expect(store.clubs.map((c) => c.name)).toEqual(['Driver', '7 iron']);
+  });
+
+  it('sets how the bag\'s owner usually scores, saves it and syncs it with the bag, and takes the account\'s', async () => {
+    await mount({ ...buildDemoDataset(1_750_000_000_000), usualScore: null });
+    expect(store.usualScore).toBeNull();
+    expect(mockUseDataSync.mock.calls.at(-1)?.[0].documents.usualScore).toBeUndefined();
+    await change(() => store.setUsualScore('100s'));
+    expect(store.usualScore).toBe('100s');
+    expect(mockUseDataSync.mock.calls.at(-1)?.[0].documents.usualScore).toBe('100s');
+    await waitFor(() => expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ usualScore: '100s' })));
+    await change(() => mockUseDataSync.mock.calls.at(-1)?.[0].onAdoptRemote({ usualScore: '70s' }));
+    expect(store.usualScore).toBe('70s');
   });
 
   it('starts the demo with a bag, and takes only a bag from the server when that is all it sends', async () => {

@@ -200,6 +200,7 @@ const actions = {
   fillBag: jest.fn(),
   setCarry: jest.fn(),
   removeClub: jest.fn(),
+  setUsualScore: jest.fn(),
   setPractice: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
@@ -1132,6 +1133,30 @@ describe('management screen state matrices', () => {
     expect(actions.eraseLiveData).toHaveBeenCalled();
     expect(screen.queryByText('Account')).not.toBeOnTheScreen();
     alert.mockRestore();
+  });
+
+  it('chooses how the bag\'s owner usually scores, starting from their handicap or a guess', async () => {
+    const user = userEvent.setup();
+    useStoreValue({ usualScore: '80s' });
+    let view = await render(<BagScreen />);
+    expect(screen.getByRole('radio', { name: '80s' })).toBeChecked();
+    expect(screen.getByText(/^Over 18 holes\. Club suggestions/)).toBeTruthy();
+    await user.press(screen.getByRole('radio', { name: '100s or more' }));
+    expect(actions.setUsualScore).toHaveBeenCalledWith('100s');
+    await view.unmount();
+
+    useStoreValue({ usualScore: null, groups: [] });
+    view = await render(<BagScreen />);
+    expect(screen.getByRole('radio', { name: '90s' })).toBeChecked();
+    expect(screen.getByText(/^Over 18 holes \(a starting guess\)\./)).toBeTruthy();
+    await view.unmount();
+
+    const yours = { ...roundStore.groups[0], youId: roundStore.groups[0].players[0].id };
+    yours.players = yours.players.map((p, i) => (i === 0 ? { ...p, handicapIndex: 4 } : p));
+    useStoreValue({ usualScore: null, groups: [yours] });
+    await render(<BagScreen />);
+    expect(screen.getByRole('radio', { name: '70s' })).toBeChecked();
+    expect(screen.getByText(/^Over 18 holes \(from your handicap\)\./)).toBeTruthy();
   });
 
   it('opens the bag from Settings', async () => {
@@ -2210,8 +2235,8 @@ describe('the hole map', () => {
   const elements = torrey.elements as unknown as OsmElement[];
   // Pine Hollow's card, with Torrey Pines South's map: holes 3 and 8 have lines and greens.
   const mapped = { ...course, features: featuresFromOsm(elements, 18), greens: greensFromOsm(elements, 18).greens };
-  const open = async (params: Record<string, string>) => {
-    useStoreValue({ courses: [mapped], course: mapped });
+  const open = async (params: Record<string, string>, overrides: Partial<AppStore> = {}) => {
+    useStoreValue({ courses: [mapped], course: mapped, ...overrides });
     mockParams = { course: mapped.id, ...params };
     return render(<HoleMapScreen />);
   };
@@ -2392,6 +2417,25 @@ describe('the hole map', () => {
     expect(screen.getByText(/allowed in a counted round/)).toBeOnTheScreen();
   });
 
+  it('suggests a club on Score in a practice round, opening the hole map, and none in a counted one', async () => {
+    useStoreValue({ course: mapped, courses: [mapped], practice: { [round.id]: { on: true, ever: true } } });
+    let view = await render(<ScoreScreen />);
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    // Hole 1 has no green on the map, so there is nothing to aim at yet.
+    expect(screen.getByRole('button', { name: 'Club suggestion: Mark the green for suggestions.' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
+    const line = screen.getByRole('button', { name: /^Club suggestion: .+ · aim .+\./ });
+    await user.press(line);
+    expect(mockRouter.push).toHaveBeenCalledWith(expect.objectContaining({ pathname: '/hole-map', params: expect.objectContaining({ hole: '3', round: round.id }) }));
+    await view.unmount();
+
+    useStoreValue({ course: mapped, courses: [mapped] });
+    view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
+    expect(screen.queryByRole('button', { name: /^Club suggestion/ })).toBeNull();
+  });
+
   it('sums up the hole under the preview on Score, and opens the course guide from the tee being played', async () => {
     useStoreValue({ course: mapped, courses: [mapped] });
     await render(<ScoreScreen />);
@@ -2403,7 +2447,8 @@ describe('the hole map', () => {
   });
 
   it('lists every hole in the course guide, and opens each one\'s map', async () => {
-    useStoreValue({ courses: [mapped] });
+    // No carries, so no club to suggest: the hole strategy's aim is the advice.
+    useStoreValue({ courses: [mapped], clubs: [] });
     mockParams = { course: mapped.id };
     const view = await render(<CourseGuideScreen />);
     expectEveryControlToHaveAName();
@@ -2422,7 +2467,8 @@ describe('the hole map', () => {
   });
 
   it('says where to aim when looking a course over, but not in a counted round', async () => {
-    const view = await open({ hole: '3' });
+    // With no carries in the bag there is no club to suggest, so the hole strategy's aim stands.
+    const view = await open({ hole: '3' }, { clubs: [] });
     expect(screen.getByLabelText('Aim: Aim at the middle of the green. Short is safer than long.')).toBeOnTheScreen();
     expect(screen.queryByRole('switch', { name: 'Practice round' })).toBeNull();
     await view.unmount();
@@ -2445,7 +2491,7 @@ describe('the hole map', () => {
     expect(actions.setPractice).toHaveBeenCalledWith(round.id, true);
     await view.unmount();
 
-    useStoreValue({ courses: [mapped], course: mapped, practice: { [round.id]: { on: true, ever: true } } });
+    useStoreValue({ courses: [mapped], course: mapped, clubs: [], practice: { [round.id]: { on: true, ever: true } } });
     mockParams = { course: mapped.id, hole: '3', round: round.id };
     await render(<HoleMapScreen />);
     expect(screen.getByLabelText(/^Aim: /)).toBeOnTheScreen();
@@ -2454,8 +2500,57 @@ describe('the hole map', () => {
     expect(actions.setPractice).toHaveBeenLastCalledWith(round.id, false);
   });
 
-  it('gives the course guide aiming advice outside a round, and in one only when it is practice', async () => {
+  it('suggests a club in a practice round in place of the aim for that shot, and none in a counted one', async () => {
+    const practice = { [round.id]: { on: true, ever: true } };
+    const view = await open({ hole: '3', round: round.id }, { practice });
+    expect(screen.getByText('Club suggestion')).toBeOnTheScreen();
+    expect(screen.getByText(/^Aim (at the .+ of the (green|fairway)|down the line|\d+ yards (left|right) of the line)\.$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Based on published shot patterns for golfers who usually shoot in the 80s, and your bag’s carries\.$/)).toBeOnTheScreen();
+    expect(screen.getByText('Trees aren’t on the map.')).toBeOnTheScreen();
+    // The suggestion's aim is the one aim given for the shot from the tee.
+    expect(screen.queryByLabelText(/^Aim: /)).toBeNull();
+    expectEveryControlToHaveAName();
+    await view.unmount();
+
+    await open({ hole: '3', round: round.id });
+    expect(screen.queryByText('Club suggestion')).toBeNull();
+  });
+
+  it('lets the player change the lie, and plan from a point they tap and back', async () => {
+    await open({ hole: '8' });
+    await layOut();
+    const user = userEvent.setup();
+    expect(screen.getByRole('button', { name: 'Lie: Tee, read from the map. Change it' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Lie: Tee, read from the map. Change it' }));
+    await user.press(screen.getByRole('radio', { name: 'Sand' }));
+    expect(screen.getByRole('button', { name: 'Lie: Sand. Change it' })).toBeOnTheScreen();
+
+    await act(async () => {
+      drawing().props.onResponderGrant({ nativeEvent: { locationX: 180, locationY: 200 } });
+      drawing().props.onResponderRelease({ nativeEvent: { locationX: 180, locationY: 200 } });
+    });
+    await user.press(screen.getByRole('button', { name: 'Plan the next shot from the point you tapped' }));
+    expect(screen.getByText('From the point you tapped.')).toBeOnTheScreen();
+    expect(screen.getByText('FROM THE POINT YOU TAPPED')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Plan from the tee again' }));
+    expect(screen.queryByText('From the point you tapped.')).toBeNull();
+    expect(screen.getByText('FROM THE TEE')).toBeOnTheScreen();
+  });
+
+  it('says the club off the tee in the course guide, in place of the aim for the tee shot', async () => {
     useStoreValue({ courses: [mapped] });
+    mockParams = { course: mapped.id };
+    await render(<CourseGuideScreen />);
+    const three = await screen.findByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim .+\.$/ });
+    expect(three).not.toHaveAccessibleName(/Aim: Aim at/);
+    // Each mapped hole's comes in its own turn.
+    expect(await screen.findByRole('button', { name: /^Hole 8,.*Off the tee: / })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Hole 1, par \d, \d+ yards\. Not mapped yet\.$/ })).toBeOnTheScreen();
+  });
+
+  it('gives the course guide aiming advice outside a round, and in one only when it is practice', async () => {
+    // No carries, so no club to suggest: the hole strategy's aim is the advice.
+    useStoreValue({ courses: [mapped], clubs: [] });
     mockParams = { course: mapped.id };
     let view = await render(<CourseGuideScreen />);
     expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: Aim at the middle of the green\./ })).toBeOnTheScreen();
@@ -2468,7 +2563,7 @@ describe('the hole map', () => {
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', tee: mapped.tees[0].id, round: round.id } });
     await view.unmount();
 
-    useStoreValue({ courses: [mapped], practice: { [round.id]: { on: true, ever: true } } });
+    useStoreValue({ courses: [mapped], clubs: [], practice: { [round.id]: { on: true, ever: true } } });
     await render(<CourseGuideScreen />);
     expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: / })).toBeOnTheScreen();
     expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
@@ -2501,7 +2596,8 @@ describe('the hole map', () => {
 
     mockParams = { course: noted.id };
     await render(<CourseGuideScreen />);
-    expect(screen.getByRole('button', { name: /^Hole 3,.* Note: Aim at the steeple\.$/ })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: /^Hole 3,.*Off the tee: .* Note: Aim at the steeple\.$/ })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: /^Hole 8,.*Off the tee: / })).toBeOnTheScreen();
   });
 
   it('opens the course guide from the course editor', async () => {

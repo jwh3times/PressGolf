@@ -18,8 +18,10 @@ the tee and on a par 5's lay-up, hole by hole or in a course guide. Where to
 aim is shown when looking a course over, or in a round its scorer marks as
 practice, since the Rules of Golf don't allow it in a counted one. A course's
 owner can leave a note on each hole and draw its out-of-bounds lines. A
-player's bag keeps how far they carry each club, typed in once and backed up
-with their account.
+player's bag keeps how far they carry each club and how they usually score,
+typed in once and backed up with their account. In a practice round, or
+looking a course over, the app suggests a club, where to aim and when to lay
+up, by simulating each club's spread of shots from where the player stands.
 
 ## Quick start
 
@@ -96,7 +98,7 @@ As of October 2026:
   Supabase stack (real auth, API, row-level security and realtime) with two
   accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 77 row-level-security assertions against Postgres 16.
+  database migration plus 82 row-level-security assertions against Postgres 16.
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
   posting to the ledger on an Android emulator and iOS simulator.
@@ -136,10 +138,13 @@ pass.
   South's real map, not yet on a phone. It is drawn from the saved map, so it
   works without signal; its satellite switch, on phones only, needs signal,
   and on Android a store build needs the Google Maps key that isn't set up yet.
-- The bag (Settings → My bag) is typed in by hand; nothing reads it yet. The
-  practice-round club suggestions in
-  [#125](https://github.com/jwh3times/PressGolf/issues/125) will. Checked on an
-  iPhone, except at the largest text size and on a second device.
+- The bag (Settings → My bag) is typed in by hand. Checked on an iPhone,
+  except at the largest text size and on a second device.
+- Club suggestions ([#146](https://github.com/jwh3times/PressGolf/issues/146))
+  rest on published shot patterns by usual score, the bag's typed carries and
+  the course map. Trees, wind, slope and pin positions aren't known, and roll
+  after landing is an estimate. They have been checked in Jest and on the web
+  build, not yet on a phone on a course.
 - How each hole plays ([#136](https://github.com/jwh3times/PressGolf/issues/136))
   is only as good as the course's map: a side is called clear only where
   something nearby is mapped, and the course edge counts as likely out of

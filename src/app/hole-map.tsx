@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ClubSuggestionCard, useClubSuggestion } from '../components/ClubSuggestion';
 import { HoleDiagram, holeView } from '../components/HoleDiagram';
 import { HoleSatellite } from '../components/HoleSatellite';
 import { HoleNoteCard } from '../components/HoleNote';
@@ -21,7 +22,7 @@ import {
   type EdgeReading,
   type HazardReading,
 } from '../domain/hole-map';
-import { holeStrategy } from '../domain/hole-strategy';
+import { facingZone, holeStrategy, withoutAim } from '../domain/hole-strategy';
 import type { LatLng } from '../domain/types';
 import { useLiveLocation } from '../hooks/useLiveLocation';
 import { useStore } from '../store/AppStore';
@@ -61,8 +62,9 @@ type Aim = { kind: 'line' } | { kind: 'short'; yards: number } | { kind: 'point'
 /**
  * One hole of the course map (#125): the drawn hole, and the yards from where
  * you are to the green, to a target, and to and past every hazard between.
- * Distances only, which the Rules allow during a round: no club advice. Away
- * from the course, it measures from the tee, to look a hole over beforehand.
+ * Distances, which the Rules allow during a round; club and aiming advice
+ * (#136, #146) only outside one, or in a practice round. Away from the
+ * course, it measures from the tee, to look a hole over beforehand.
  */
 export default function HoleMapScreen() {
   const styles = useStyles();
@@ -75,6 +77,8 @@ export default function HoleMapScreen() {
   // The hole lives in the URL, not in state: on the web the params arrive after the first render.
   const hole = Math.min(Math.max(1, Number(params.hole) || 1), Math.max(1, holeCount));
   const [aim, setAim] = useState<Aim>({ kind: 'line' });
+  // A point the player tapped and chose to plan the next shot from.
+  const [planFrom, setPlanFrom] = useState<LatLng | null>(null);
   const [satellite, setSatellite] = useState(false);
   const { state, start } = useLiveLocation();
 
@@ -86,10 +90,21 @@ export default function HoleMapScreen() {
   const plan = useMemo(() => (course ? holePlan(course, hole) : null), [course, hole]);
   const { advice, practice } = useAdvice(params.round);
   // The tee being played, from the Score screen; looking the course over, its first tee.
-  const strategy = useMemo(
+  const advised = useMemo(
     () => (course ? holeStrategy(course, hole, { teeId: params.tee, advice }) : null),
     [course, hole, params.tee, advice],
   );
+  const position = state.status === 'located' ? state.fix.position : null;
+  const seat = plan ? vantage(plan, position) : null;
+  // Suggestions are from the player where they are on the hole, from a point they tapped, or from the tee.
+  const shotFrom = planFrom ?? (seat && !seat.fromTee ? seat.from : null);
+  const suggestion = useClubSuggestion({ course, hole, teeId: params.tee, from: shotFrom, enabled: advice });
+  const suggested = suggestion?.result.status === 'suggested';
+  // The suggestion's aim stands in for the hole strategy's on the shot it is for: one aim, never two.
+  const strategy = useMemo(() => {
+    if (!advised || !suggested || !course) return advised;
+    return withoutAim(advised, facingZone(course, hole, shotFrom, null, { teeId: params.tee }));
+  }, [advised, suggested, course, hole, shotFrom, params.tee]);
 
   if (!course || !plan) {
     return (
@@ -99,13 +114,12 @@ export default function HoleMapScreen() {
     );
   }
 
-  const position = state.status === 'located' ? state.fix.position : null;
-  const seat = vantage(plan, position);
-  const from = seat?.from ?? null;
+  const from = planFrom ?? seat?.from ?? null;
   const card = (course.tees.find((t) => t.id === params.tee) ?? course.tees[0]).holes[hole - 1];
   const go = (n: number) => {
     router.setParams({ hole: String(n) });
     setAim({ kind: 'line' });
+    setPlanFrom(null);
   };
 
   const target = !from
@@ -161,9 +175,23 @@ export default function HoleMapScreen() {
       ) : (
         <>
           {satellite ? (
-            <SatelliteView plan={plan} from={from} fromTee={seat.fromTee} target={target} onTarget={(at) => setAim({ kind: 'point', at })} />
+            <SatelliteView
+              plan={plan}
+              from={from}
+              fromTee={seat.fromTee && !planFrom}
+              target={target}
+              pattern={suggestion?.result.best?.pattern ?? null}
+              onTarget={(at) => setAim({ kind: 'point', at })}
+            />
           ) : (
-            <HoleDiagram plan={plan} from={from} target={target} onTarget={(at) => setAim({ kind: 'point', at })} label={label} />
+            <HoleDiagram
+              plan={plan}
+              from={from}
+              target={target}
+              pattern={suggestion?.result.best?.pattern ?? null}
+              onTarget={(at) => setAim({ kind: 'point', at })}
+              label={label}
+            />
           )}
           {/* Imagery is the phone's map provider's; the web has none. */}
           {Platform.OS !== 'web' ? (
@@ -175,7 +203,9 @@ export default function HoleMapScreen() {
 
           <View style={styles.row}>
             <Mono size={10.5} style={state.status === 'located' && state.live && !seat.fromTee ? styles.live : styles.quiet}>
-              {seat.fromTee
+              {planFrom
+                ? 'FROM THE POINT YOU TAPPED'
+                : seat.fromTee
                 ? position
                   ? 'FROM THE TEE · YOU ARE NOT ON THIS HOLE'
                   : 'FROM THE TEE'
@@ -240,7 +270,28 @@ export default function HoleMapScreen() {
                 {`${yardsBetween(from, target)} to the target${plan.green ? `, then ${yardsBetween(target, plan.green.middle)} to the green` : ''}.`}
               </Body>
             ) : null}
+            {suggestion && aim.kind === 'point' ? (
+              <View style={styles.chips}>
+                <Chip
+                  label="PLAN FROM HERE"
+                  accessibilityLabel="Plan the next shot from the point you tapped"
+                  onPress={() => {
+                    setPlanFrom(aim.at);
+                    setAim({ kind: 'line' });
+                  }}
+                />
+              </View>
+            ) : null}
           </Card>
+
+          {suggestion ? (
+            <ClubSuggestionCard
+              suggestion={suggestion}
+              planning={planFrom != null}
+              located={!seat.fromTee}
+              onBack={() => setPlanFrom(null)}
+            />
+          ) : null}
 
           <View style={{ gap: 8 }}>
             <Eyebrow>{hazards.length || edges.length ? 'In play' : 'Nothing in play'}</Eyebrow>

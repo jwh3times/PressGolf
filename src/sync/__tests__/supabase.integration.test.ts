@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { mergeShared } from '../merge-shared';
 import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
-import { fromRows, toRows, type Documents } from '../rows';
+import { emptySnapshot, fromRows, toRows, type Documents } from '../rows';
 import {
   getSupabase,
   hostOuting,
@@ -78,6 +78,7 @@ function byId(documents: Documents): Documents {
     rounds: sorted(documents.rounds),
     outings: sorted(documents.outings),
     clubs: documents.clubs,
+    usualScore: documents.usualScore,
   };
 }
 
@@ -143,14 +144,18 @@ describe('sync against a local Supabase stack', () => {
     const ann = await signUp('ann');
     const season = await pushSeason('bag');
     expect(season.clubs.length).toBeGreaterThan(0);
+    expect(season.usualScore).toBeDefined();
     const { joinCode } = await hostOuting(season.outings[0].id);
 
     const ben = await signUp('ben');
     await joinOuting(joinCode, null, 'Ben');
     expect((await pullSharedOutings()).clubs).toEqual([]);
+    expect((await pullSharedOutings()).bag_settings).toEqual([]);
     const supabase = getSupabase()!;
     const { data: seen } = await supabase.from('clubs').select('id').eq('id', season.clubs[0].id);
     expect(seen).toEqual([]);
+    const { data: scores } = await supabase.from('bag_settings').select('usual_score');
+    expect(scores).toEqual([]);
     const { error: overwrite } = await supabase
       .from('clubs')
       .upsert({ id: season.clubs[0].id, name: 'Taken', position: 0, owner_id: ben.id }, { onConflict: 'id' });
@@ -158,11 +163,18 @@ describe('sync against a local Supabase stack', () => {
 
     // A phone holding her season from before the bag, meeting the server for the first time.
     await signInAs(ann);
-    const outcome = await reconcile(toRows({ ...season, clubs: [] }));
+    const { usualScore: _none, ...before } = season;
+    const outcome = await reconcile(toRows({ ...before, clubs: [] }));
     expect(outcome).toMatchObject({ status: 'pushed', deleted: 0 });
     expect(outcome.status === 'pushed' && fromRows({ ...outcome.own }).clubs).toEqual(season.clubs);
     expect(outcome.status === 'pushed' && outcome.clubs?.length).toBe(season.clubs.length);
+    expect(outcome.status === 'pushed' && fromRows({ ...emptySnapshot(), bag_settings: outcome.bag_settings ?? [] }).usualScore).toBe(season.usualScore);
     expect(fromRows(await pullSnapshot()).clubs).toEqual(season.clubs);
+
+    // And a change to it goes up over the one there: one row an account.
+    const server = await pullSnapshot();
+    await pushChanges(toRows({ ...season, usualScore: '100s' }), server, emptySnapshot());
+    expect((await pullSnapshot()).bag_settings).toEqual([expect.objectContaining({ id: 'bag', usual_score: '100s' })]);
   });
 
   it('lets a guest into a shared outing by code, and into nothing else', async () => {

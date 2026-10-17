@@ -293,10 +293,62 @@ further than a longer club above it is flagged (`outOfOrder`), since that is
 usually a slip; two clubs carrying the same is not.
 
 A chart of your own distances, made before the round, is allowed in a counted
-round (Rule 4.3a), so the bag is plain information and is always on. Nothing
-reads it yet: the practice-round suggestions will. How
-widely each club's shots scatter is left to them, to be modelled from
-published shot data and later from tracked shots, rather than guessed here.
+round (Rule 4.3a), so the bag is plain information and is always on.
+
+The bag also keeps how its owner usually scores (`AppData.usualScore`: the
+70s, 80s, 90s or 100s or more), which sets how widely club suggestions spread
+their shots. Until they choose, it is about 72 plus the handicap index of their
+player in their first group, or a starting guess of the 90s (`usualScoreFor`).
+It syncs as `bag_settings`, one owner-only row an account, keyed by its owner
+and an `id` that is always `bag`, since the phone's rows carry no owner.
+
+### Club suggestions
+
+In a practice round, or looking a course over outside a round, the app
+suggests a club, where to aim and, when it is close, a second way to play the
+shot (#146). `suggestShot` (`src/domain/club-suggestion.ts`) is pure: given
+the course, the hole, where the shot is from (the tee when it isn't known),
+the lie, the bag, the usual score and a seed, it returns the suggestion.
+
+- **The shot pattern** (`src/domain/shot-model.ts`) follows Broadie and Ko
+  (WSC 2009): direction error is normal, its standard deviation by usual score
+  from Broadie's Golfmetrics paper (Science and Golf V, 2008, Table 1); the
+  distance error is a share of the shot, fitted so the median leave from 125
+  yards matches that paper's Table 2; and a share of mishits, from its awful
+  shots a round (eq. 2), fly 40–80% of the carry. Rough and sand widen it.
+- **Each finish** is read from the map (out of bounds, water, sand, the green,
+  fairway; anything else rough) and scored by strokes to hole out: Broadie's
+  PGA Tour table (Interfaces 42(2), 2012, Table B.1) plus what a golfer of the
+  usual score adds, from the published tee regressions, and putting through
+  the paper's half-holed and two-putt distances. Out of bounds is stroke and
+  distance; water is a penalty stroke and a drop back on the line, or beside
+  where it crossed for red water.
+- **Choosing**: every club with a carry, aimed at five points across the green,
+  the fairway, or the line where neither is mapped, with the same 400 draws
+  for each. The fewest expected strokes wins; among options within a tenth of
+  a stroke, one that leaves a full swing next; and the middlemost of a club's
+  aims that are level. A second option of another approach (going for the
+  green against laying up, or the driver against less off the tee of a hole no
+  club reaches) shows within a third of a stroke, and never as a lay-up to a
+  part-swing.
+- **Roll** after landing is a share of carry by kind of club: estimates, for
+  tracked shots to replace.
+
+The tests check the model against Broadie's figures: the median leave for each
+group from 125 yards, and a 90s golfer's share of greens from 150 (about 35%).
+A suggestion takes tens of milliseconds on a desktop; the per-shot code
+indexes its pairs rather than destructuring them, which Babel compiles to a
+helper call.
+
+On screen (`src/components/ClubSuggestion.tsx`), the start point holds until
+the player moves five yards, and the seed comes from the five-yard square, so
+the same spot gives the same answer on every screen. A lie the player picks is
+kept for that square, shared between the hole map and the Score screen. The
+Score screen shows a line under the hole's summary; the hole map, a card, the
+oval where about two in three shots finish, and "Plan from here" on a tapped
+point; the course guide, the club off each hole's tee, worked out after the
+first paint. Where a suggestion shows, its aim replaces the hole strategy's for
+the shot it is for.
 
 ### Max score and pick-ups
 
@@ -430,13 +482,14 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
-1. On first contact, it pulls the signed-in account's 23 snapshot tables (its
+1. On first contact, it pulls the signed-in account's 24 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
-   dataset is pushed. The bag is settled on its own: a phone with no clubs
-   takes the account's, rather than pruning it, and a fresh install keeps clubs
-   typed before signing in when the account has none. A phone holding only a
-   bag still counts as fresh, so it can never prune a season.
+   dataset is pushed. The bag is settled on its own: a phone with no clubs takes
+   the account's, rather than pruning it, and a fresh install keeps clubs typed
+   before signing in when the account has none. The usual score (`bag_settings`)
+   is settled the same way, apart from the clubs. A phone holding only a bag
+   still counts as fresh, so it can never prune a season.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one
@@ -461,7 +514,7 @@ outing. Those stay on the phone. A round or outing of the guest's own may
 still be on her group and course. Before this (#127), a guest's every push
 after joining failed on the organiser's group.
 
-The schema has 25 application tables: 23 snapshot tables plus
+The schema has 26 application tables: 24 snapshot tables plus
 `outing_members` and `mutations`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need. Every owner write also checks the row it hangs from (`owns_group`,

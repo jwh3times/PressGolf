@@ -118,10 +118,13 @@ export function HoleDiagram({
   label,
   height = 440,
   across = false,
+  pattern = null,
 }: {
   plan: HolePlan;
   from: LatLng | null;
   target: LatLng | null;
+  /** Where about two in three of a suggested club's shots finish (#146), drawn as a ring. */
+  pattern?: LatLng[] | null;
   onTarget?: (at: LatLng) => void;
   /** What the drawing shows, for a screen reader. Needed when it can be tapped. */
   label?: string;
@@ -193,6 +196,9 @@ export function HoleDiagram({
               }),
           )}
           {plan.line ? <Path d={path(plan.line, false)} fill="none" stroke={c.line} strokeWidth={1.5} strokeDasharray="4 6" /> : null}
+          {pattern ? (
+            <Path d={path(pattern, true)} fill={theme.colors.accent} fillOpacity={0.18} stroke={theme.colors.accent} strokeWidth={2} />
+          ) : null}
           {legs.map(([a, b], i) => {
             const [ax, ay] = px(a);
             const [bx, by] = px(b);
