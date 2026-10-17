@@ -127,8 +127,9 @@ pass.
   date does not render there, so a card entered on web is dated today.
 - Yardage needs a course's greens: found on OpenStreetMap from the course
   editor, which covers about half of courses, placed on a map, or marked by
-  standing on each. The map has no web version, and an Android store build
-  needs a Google Maps key that isn't set up yet (Expo Go doesn't).
+  standing on each. The map has no web version. An Android store build takes
+  its Google Maps key from EAS (Expo Go needs none), and hasn't yet been
+  checked on an Android phone.
   Importing them, with the course's bunkers, water and fairways for the hole
   map ([#125](https://github.com/jwh3times/PressGolf/issues/125)), sends
   the course name to OpenStreetMap's public services. It has
@@ -136,8 +137,7 @@ pass.
   cannot mark a green, because marking confirms through a native alert.
 - The hole map has been checked in Jest and in the web build on Torrey Pines
   South's real map, not yet on a phone. It is drawn from the saved map, so it
-  works without signal; its satellite switch, on phones only, needs signal,
-  and on Android a store build needs the Google Maps key that isn't set up yet.
+  works without signal; its satellite switch, on phones only, needs signal.
 - The bag (Settings → My bag) is typed in by hand. Checked on an iPhone,
   except at the largest text size and on a second device.
 - Club suggestions ([#146](https://github.com/jwh3times/PressGolf/issues/146))

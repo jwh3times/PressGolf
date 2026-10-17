@@ -188,7 +188,8 @@ neither documents how much ground a value shows, so the map first frames the
 hole's corners north-up (`fitToCoordinates`), then `turnedCamera` turns it to
 the hole's heading and comes in by the ratio of the two boxes, which scales
 either value on any screen. It needs signal for the imagery, and an Android
-store build needs the Google Maps key (below). The web has no switch.
+store build needs the Google Maps key (see `docs/development.md`). The web has
+no switch.
 
 `hazardsBetween` lists each bunker and penalty area within 40 m of the line to
 the target and short of 30 m past it, nearest first: its side, the yards to
