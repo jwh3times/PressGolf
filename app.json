@@ -9,11 +9,14 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0C120E",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.press.golf"
+      "supportsTablet": false,
+      "bundleIdentifier": "cc.pressgolf.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.press.golf",
+      "package": "cc.pressgolf.app",
       "adaptiveIcon": {
         "backgroundColor": "#0C120E",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -47,7 +50,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Press uses your location to give the distance to the green, only when you ask for it.",
+          "locationWhenInUsePermission": "Press uses your location only when you ask: to give the distance to the green, and to save where a green is when you mark it standing on it.",
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
           "motionUsagePermission": false

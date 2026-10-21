@@ -1,4 +1,4 @@
-appId: com.press.golf
+appId: cc.pressgolf.app
 name: Enter a finished card
 ---
 - runFlow: ../subflows/launch.yml
