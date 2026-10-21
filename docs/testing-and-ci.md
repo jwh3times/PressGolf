@@ -95,9 +95,8 @@ run when there are no pending migrations.
 
 ## Support and privacy site
 
-`.github/workflows/pages.yml` publishes `site/` to GitHub Pages at
-[pressgolf.cc](https://pressgolf.cc) on a push to `main` that changes it, or
-when run by hand. The site is four static pages, with no build step:
+`site/` is a Cloudflare Worker that serves [pressgolf.cc](https://pressgolf.cc):
+four static pages in `site/public/`, with no build step.
 
 | URL | Page |
 |---|---|
@@ -106,11 +105,17 @@ when run by hand. The site is four static pages, with no build step:
 | `https://pressgolf.cc/terms/` | Terms of use, which carry the notice Google's Maps terms require |
 | `https://pressgolf.cc/delete-account/` | How to delete an account, the URL Google Play's Data safety form asks for |
 
+Cloudflare's Workers Builds deploys it on a push to `main`, not this repo's CI.
+The Worker is `pressgolf-site` (the `name` in `site/wrangler.jsonc` must match
+it), its root directory is `site`, its deploy command is `npx wrangler deploy`,
+and its build watch path is `site/*`. `pressgolf.cc` and `www.pressgolf.cc` are
+the Worker's custom domains. `site/worker.js` sends `www` to the bare domain and
+serves everything else from `site/public/`. To try it locally, run
+`npx wrangler dev` in `site/`.
+
 The pages describe what the app does today. A change that alters what the app
 collects, where data goes, or how an account is deleted updates them, and the
-date at the top of the policy or terms, in the same pull request. The domain's
-DNS is at Cloudflare and must stay **DNS only** (not proxied) for GitHub to
-issue the certificate.
+date at the top of the policy or terms, in the same pull request.
 
 ## UI regression and accessibility (web)
 

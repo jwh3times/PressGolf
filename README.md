@@ -73,7 +73,7 @@ edited by hand.
   the manual regression pass, and the open Android follow-up.
 - [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
 - [pressgolf.cc](https://pressgolf.cc) — support, privacy policy, terms and
-  account deletion, published from `site/`.
+  account deletion, served by a Cloudflare Worker from `site/`.
 
 ## Demo and live data
 

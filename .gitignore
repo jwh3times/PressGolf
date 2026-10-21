@@ -50,3 +50,6 @@ yarn-error.*
 
 # python (scripts/generate-icons.py)
 __pycache__/
+
+# Wrangler local state (site/)
+.wrangler/
