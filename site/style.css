@@ -1,0 +1,20 @@
+/* PROTOTYPE draft for "Privacy policy and support page" (#158). Throwaway. */
+:root { --bg:#fbfbf8; --fg:#1b1f1c; --muted:#5a635d; --line:#dde2dc; --accent:#1f7a4a; --jc:#fff1b8; --jc-fg:#4a3b00; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1411; --fg:#e8ede9; --muted:#9aa59e; --line:#26302a; --accent:#8BE0AE; --jc:#3a3210; --jc-fg:#f3e3a0; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main, header, footer { max-width: 42rem; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 24px; display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+header a.home { font-weight:700; font-size:1.25rem; color:var(--fg); text-decoration:none; }
+nav a { margin-right: 12px; }
+a { color: var(--accent); }
+h1 { font-size: 1.9rem; line-height:1.2; margin: 24px 0 4px; }
+h2 { font-size: 1.25rem; margin-top: 2rem; border-top:1px solid var(--line); padding-top:1.25rem; }
+h3 { font-size: 1.05rem; margin-bottom: .25rem; }
+.meta { color: var(--muted); margin-top:0; }
+.draft { background: var(--jc); color: var(--jc-fg); padding: 10px 14px; border-radius: 8px; margin: 16px 0; font-size: .95rem; }
+mark.jc { background: var(--jc); color: var(--jc-fg); padding: 0 3px; border-radius: 3px; }
+mark.jc::before { content: "JC: "; font-weight: 700; }
+ul { padding-left: 1.25rem; }
+li { margin: .25rem 0; }
+footer { color: var(--muted); font-size: .9rem; padding-top: 2rem; padding-bottom: 32px; border-top:1px solid var(--line); margin-top: 2.5rem; }
