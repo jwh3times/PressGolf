@@ -93,6 +93,25 @@ database and the sync integration tests have all passed. It uses
 the protected GitHub `production` environment. `supabase db push` is safe to
 run when there are no pending migrations.
 
+## Support and privacy site
+
+`.github/workflows/pages.yml` publishes `site/` to GitHub Pages at
+[pressgolf.cc](https://pressgolf.cc) on a push to `main` that changes it, or
+when run by hand. The site is four static pages, with no build step:
+
+| URL | Page |
+|---|---|
+| `https://pressgolf.cc/` | Support, the support URL both stores are given |
+| `https://pressgolf.cc/privacy/` | Privacy policy |
+| `https://pressgolf.cc/terms/` | Terms of use, which carry the notice Google's Maps terms require |
+| `https://pressgolf.cc/delete-account/` | How to delete an account, the URL Google Play's Data safety form asks for |
+
+The pages describe what the app does today. A change that alters what the app
+collects, where data goes, or how an account is deleted updates them, and the
+date at the top of the policy or terms, in the same pull request. The domain's
+DNS is at Cloudflare and must stay **DNS only** (not proxied) for GitHub to
+issue the certificate.
+
 ## UI regression and accessibility (web)
 
 `tests/web/screens.spec.ts` opens the web export (`npx expo export --platform
