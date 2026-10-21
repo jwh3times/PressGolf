@@ -1,4 +1,4 @@
-appId: com.press.golf
+appId: cc.pressgolf.app
 name: Set an index and recalculate the pops
 ---
 - runFlow: ../subflows/launch.yml

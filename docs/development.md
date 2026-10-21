@@ -234,8 +234,31 @@ npx eas-cli@latest submit --profile production --platform ios
 ```
 
 The project ID and owner are already set in `app.json`; do not rerun the initial
-EAS configuration flow. Configure the two Supabase public values in the EAS
-`preview` and `production` environments when cloud builds need server access.
+EAS configuration flow.
+
+The app identifier is `cc.pressgolf.app` on both platforms (the iOS bundle ID
+and the Android package). `com.press.golf` was already held by another
+developer on Google Play, and Play's package name can't change once an app is
+created. Store builds are iPhone-only (`supportsTablet` is off) and declare no
+non-exempt encryption (`ios.config.usesNonExemptEncryption`), since Press uses
+only the system's HTTPS.
+
+The EAS `production` environment holds the two Supabase public values,
+`EXPO_PUBLIC_SUPABASE_URL` (plain text) and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+(sensitive), so production builds talk to the live project. Set or rotate them
+from 1Password without printing them:
+
+```bash
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL \
+  --value "$(op read 'op://PressGolf/Supabase Project/url')" \
+  --environment production --visibility plaintext --non-interactive
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY \
+  --value "$(op read 'op://PressGolf/Supabase Project/anon_key')" \
+  --environment production --visibility sensitive --non-interactive
+```
+
+Preview builds stay without them, so they open on demo data. Add them to
+`preview` too if a preview build ever needs the server.
 
 ### Google Maps key (Android)
 
@@ -246,7 +269,7 @@ because EAS doesn't give secret variables to `app.config.js`. The key is
 readable by anyone holding an APK anyway, so its protection is its restriction
 in Google Cloud, not its secrecy:
 
-- **Application restriction:** Android apps, package `com.press.golf`, with
+- **Application restriction:** Android apps, package `cc.pressgolf.app`, with
   the SHA-1 fingerprint of every certificate that signs a build. For EAS builds
   that's the keystore under the project's **Credentials** on expo.dev. For a
   Play Store install it's also the app signing key in the Play Console (**App

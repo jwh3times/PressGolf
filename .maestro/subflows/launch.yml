@@ -1,4 +1,4 @@
-appId: com.press.golf
+appId: cc.pressgolf.app
 name: Launch the demo app fresh
 ---
 # Stop, clear and launch as separate steps with a pause between. On Android,
