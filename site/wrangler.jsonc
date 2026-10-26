@@ -12,5 +12,8 @@
     // The Worker runs first only to send www to the bare domain.
     "run_worker_first": true,
     "not_found_handling": "none"
-  }
+  },
+  // Workers Builds runs `npx wrangler preview` on every other branch, which
+  // needs this block. Empty: the site has no variables or bindings to swap.
+  "previews": {}
 }
