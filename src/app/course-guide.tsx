@@ -95,7 +95,7 @@ function GuideHole({
     : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet', ...(fromTee ? [fromTee] : [])];
   const note = noteFor(course.notes, hole.number);
   if (note) lines.push(`Note: ${note}`);
-  const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards}Y` : ''}`;
+  const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards} YARDS` : ''}`;
   return (
     <Pressable
       accessibilityRole="button"

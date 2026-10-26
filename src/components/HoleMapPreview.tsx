@@ -24,7 +24,7 @@ export function HoleMapPreview({ course, hole, onOpen }: { course: Course; hole:
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Map of hole ${hole}`}
+      accessibilityLabel={`Map of hole ${hole}, distances`}
       accessibilityHint="Opens the hole map, with distances to the green and to the hazards"
       onPress={onOpen}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}

@@ -85,7 +85,13 @@ export function GreenYardage({
   const markChip = (
     <Chip
       label={marking ? 'MARKING…' : green ? 'RE-MARK' : 'MARK THIS GREEN'}
-      accessibilityLabel={green ? `Mark hole ${holeNumber}’s green again` : `Mark hole ${holeNumber}’s green`}
+      accessibilityLabel={
+        marking
+          ? `Marking hole ${holeNumber}’s green`
+          : green
+            ? `Re-mark hole ${holeNumber}’s green`
+            : `Mark this green, hole ${holeNumber}`
+      }
       disabled={marking}
       onPress={confirmMark}
     />

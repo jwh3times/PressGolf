@@ -72,12 +72,12 @@ test('score, a mapped hole', async ({ page }) => {
   await page.getByRole('button', { name: 'Go to hole 3' }).click();
   await expect(page.getByText(/^Green: /)).toBeVisible();
   // The drawing sizes itself to the card once laid out.
-  await expect(page.getByRole('button', { name: 'Map of hole 3' }).locator('svg')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Map of hole 3, distances' }).locator('svg')).toBeVisible();
   await page.waitForTimeout(400);
   // Just what this adds to the Score screen, the hole and its line, which 'score, hole by hole' doesn't
   // cover: elsewhere on this page, the Next button's and Course guide chip's edges came out a shade
   // apart on some runs and not others. The whole page's accessibility tree is still checked.
-  await expect(page.getByRole('button', { name: 'Map of hole 3' })).toHaveScreenshot('score-mapped-hole-preview.png');
+  await expect(page.getByRole('button', { name: 'Map of hole 3, distances' })).toHaveScreenshot('score-mapped-hole-preview.png');
   await expect(page.getByText(/^Green: /)).toHaveScreenshot('score-mapped-hole-line.png');
   await expect(page.locator('body')).toMatchAriaSnapshot({ name: 'score-mapped-hole.aria.yml' });
   await expectAccessible(page);

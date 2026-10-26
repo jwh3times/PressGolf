@@ -172,7 +172,7 @@ export default function SettingsScreen() {
                 key={g.id}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={g.name}
+                accessibilityLabel={`${g.name}, ${g.players.length} player${g.players.length === 1 ? '' : 's'}${liveOuting ? `, ${liveOuting.name} on now` : ''}`}
                 onPress={() => store.setActiveGroup(g.id)}
                 style={[styles.groupRow, on ? styles.groupRowOn : null]}
               >
