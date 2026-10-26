@@ -72,6 +72,8 @@ edited by hand.
 - [Accessibility](docs/accessibility.md) — automated guarantees, iOS validation,
   the manual regression pass, and the open Android follow-up.
 - [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
+- [pressgolf.cc](https://pressgolf.cc) — support, privacy policy, terms and
+  account deletion, served by a Cloudflare Worker from `site/`.
 
 ## Demo and live data
 

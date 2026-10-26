@@ -1,4 +1,4 @@
-appId: com.press.golf
+appId: cc.pressgolf.app
 name: Complete a demo round
 ---
 - runFlow: ../subflows/launch.yml

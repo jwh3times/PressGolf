@@ -1,0 +1,16 @@
+// pressgolf.cc: the support, privacy, terms and account-deletion pages, served
+// as static files by a Cloudflare Worker. Workers Builds deploys it from main,
+// with this folder as the root directory. See docs/testing-and-ci.md.
+{
+  "name": "pressgolf-site",
+  "main": "./worker.js",
+  "compatibility_date": "2026-10-13",
+  "workers_dev": false,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // The Worker runs first only to send www to the bare domain.
+    "run_worker_first": true,
+    "not_found_handling": "none"
+  }
+}

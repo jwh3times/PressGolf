@@ -1,4 +1,4 @@
-appId: com.press.golf
+appId: cc.pressgolf.app
 name: Scroll to a control and tap it
 ---
 # Every tap scrolls first. At the largest text size most controls start

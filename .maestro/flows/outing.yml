@@ -1,4 +1,4 @@
-appId: com.press.golf
+appId: cc.pressgolf.app
 name: Check the demo outing's field pots
 ---
 - runFlow: ../subflows/launch.yml
