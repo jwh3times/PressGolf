@@ -108,10 +108,11 @@ four static pages in `site/public/`, with no build step.
 Cloudflare's Workers Builds deploys it on a push to `main`, not this repo's CI.
 The Worker is `pressgolf-site` (the `name` in `site/wrangler.jsonc` must match
 it), its root directory is `site`, its deploy command is `npx wrangler deploy`,
-and its build watch path is `site/*`. `pressgolf.cc` and `www.pressgolf.cc` are
-the Worker's custom domains. `site/worker.js` sends `www` to the bare domain and
-serves everything else from `site/public/`. To try it locally, run
-`npx wrangler dev` in `site/`.
+and its build watch path is `site/*`. Pushes to other branches build a Preview
+with `npx wrangler preview`, which needs the (empty) `previews` block in the
+config. `pressgolf.cc` and `www.pressgolf.cc` are the Worker's custom domains.
+`site/worker.js` sends `www` to the bare domain and serves everything else from
+`site/public/`. To try it locally, run `npx wrangler dev` in `site/`.
 
 The pages describe what the app does today. A change that alters what the app
 collects, where data goes, or how an account is deleted updates them, and the
