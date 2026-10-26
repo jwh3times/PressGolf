@@ -46,13 +46,19 @@ updates:
       # expo-doctor (#142).
       - dependency-name: react-native-svg
       - dependency-name: react-native-maps
+      # Direct only so they stop floating: as bare peers of expo-router, npm
+      # resolved them to reanimated 4.7.1 and worklets 0.13.0 on an unrelated
+      # Expo patch, past the worklets range expo-modules-core supports. Expo
+      # pins both exactly.
+      - dependency-name: react-native-reanimated
+      - dependency-name: react-native-worklets
 
       # Pinned with `~` to a minor instead, so a patch inside that minor is
       # exactly what the SDK expects and is left to come through. Covers
       # react-native-web at ~0.21.0, gesture-handler, screens, safe-area-context.
       #
-      # The glob also catches packages Expo pins exactly — react-native-reanimated
-      # and a dozen others — for which a patch would slip past this rule. When
+      # The glob also catches packages Expo pins exactly — a dozen or so that
+      # are not direct dependencies — for which a patch would slip past this rule. When
       # one becomes a direct dependency, name it in the exact list above, as
       # react-native-svg and react-native-maps are; expo-doctor is the net in the
       # meantime.
