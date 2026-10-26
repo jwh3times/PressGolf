@@ -95,11 +95,12 @@ function GuideHole({
     : [plan.line || plan.green ? 'Too little mapped to say how it plays' : 'Not mapped yet', ...(fromTee ? [fromTee] : [])];
   const note = noteFor(course.notes, hole.number);
   if (note) lines.push(`Note: ${note}`);
-  const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards}Y` : ''}`;
+  const meta = `PAR ${hole.par}${hole.yards ? ` · ${hole.yards} YARDS` : ''}`;
   return (
+    // Named by what it shows, so the name always holds the visible words (WCAG 2.5.3). A label of
+    // its own can't: the web puts no space between the par, flush right, and the line below it.
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Hole ${hole.number}, par ${hole.par}${hole.yards ? `, ${hole.yards} yards` : ''}. ${lines.map((l) => (l.endsWith('.') ? l : `${l}.`)).join(' ')}`}
       accessibilityHint="Opens the hole map"
       onPress={onOpen}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}

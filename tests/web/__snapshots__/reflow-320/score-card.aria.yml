@@ -86,19 +86,19 @@
 - button "Enter 7"
 - button "Enter 8"
 - button "Enter 9"
-- button "Ten or more": /\d+\+/
+- button /\d+ or more/: /\d+\+/
 - button "Pick up"
 - button "Clear box"
 - text: Presses Who pressed
-- button "Pressed by Marcus": MB
-- button "Pressed by Dev": DP
-- button "Pressed by T.J.": TJ
-- button "Pressed by Big Ray": BR
+- button "Pressed by Marcus, MB"
+- button "Pressed by Dev, DP"
+- button "Pressed by T.J., TJ"
+- button "Pressed by Big Ray, BR"
 - text: Against
-- button "Against Marcus": MB
-- button "Against Dev": DP
-- button "Against T.J.": TJ
-- button "Against Big Ray": BR
+- button "Against Marcus, MB"
+- button "Against Dev, DP"
+- button "Against T.J., TJ"
+- button "Against Big Ray, BR"
 - button "Add a press from hole 1" [disabled]
 - tablist:
   - tab "Home": ◆ Home

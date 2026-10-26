@@ -576,7 +576,7 @@ function CardPresses({ hole }: { hole: number }) {
           <Chip
             key={p.id}
             label={p.initials}
-            accessibilityLabel={`Pressed by ${p.name}`}
+            accessibilityLabel={`Pressed by ${p.name}, ${p.initials}`}
             color={p.color}
             active={by === p.id}
             onPress={() => {
@@ -594,7 +594,7 @@ function CardPresses({ hole }: { hole: number }) {
             <Chip
               key={p.id}
               label={p.initials}
-              accessibilityLabel={`Against ${p.name}`}
+              accessibilityLabel={`Against ${p.name}, ${p.initials}`}
               color={p.color}
               active={against === p.id}
               onPress={() => setAgainst(p.id)}

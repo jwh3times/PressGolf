@@ -212,7 +212,7 @@ export function CardGrid({
         ))}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Ten or more"
+          accessibilityLabel="10 or more"
           onPress={() => {
             setBig(10);
             onScore(at.id, cursor.hole, 10);

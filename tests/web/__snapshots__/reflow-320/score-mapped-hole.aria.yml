@@ -22,8 +22,8 @@
 - button /Go to hole \d+/
 - button /Go to hole \d+/
 - button "⌖ YARDS TO GREEN"
-- button "Mark hole 3’s green again": RE-MARK
-- button "Map of hole 3":
+- button "Re-mark hole 3’s green": RE-MARK
+- button "Map of hole 3, distances":
   - img
   - text: MAP OF HOLE 3 DISTANCES ›
 - text: "Green: likely OB long · bunker short · clear left, right"

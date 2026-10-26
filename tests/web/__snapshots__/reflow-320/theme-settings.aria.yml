@@ -16,11 +16,12 @@
   - radio "Violet accent"
   - radio "Gold accent"
 - text: Money won stays green and money lost stays clay, whichever you pick. Group
-- button "Saturday Dogs": Saturday Dogs 4 players ✓
-- button "Pine Hollow Society": /Pine Hollow Society \d+ players · Society Saturday on now/
+- button "Saturday Dogs, 4 players": Saturday Dogs 4 players ✓
+- button /Pine Hollow Society, \d+ players, Society Saturday on now/: /Pine Hollow Society \d+ players · Society Saturday on now/
 - text: Manage
 - button "Roster and group ›"
 - button "Courses ›"
+- button "My bag ›"
 - button "Sides and rivals ›"
 - button "Round history ›"
 - button "Set up an outing ›"

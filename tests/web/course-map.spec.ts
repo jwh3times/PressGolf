@@ -46,13 +46,13 @@ test.beforeEach(async ({ page }) => {
 /** Opens hole 3's map through the course guide. */
 async function openHoleThree(page: Page) {
   await page.getByRole('button', { name: 'Course guide' }).click();
-  await page.getByRole('button', { name: /^Hole 3,/ }).click();
+  await page.getByRole('button', { name: /^Hole 3 PAR/ }).click();
   await page.getByText('How the hole plays').scrollIntoViewIfNeeded();
 }
 
 test('course guide', async ({ page }) => {
   await page.getByRole('button', { name: 'Course guide' }).click();
-  await expect(page.getByRole('button', { name: /^Hole 3,/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR/ })).toBeVisible();
   await expectScreen(page, 'course-guide');
   await expectAccessible(page);
 });
@@ -72,12 +72,12 @@ test('score, a mapped hole', async ({ page }) => {
   await page.getByRole('button', { name: 'Go to hole 3' }).click();
   await expect(page.getByText(/^Green: /)).toBeVisible();
   // The drawing sizes itself to the card once laid out.
-  await expect(page.getByRole('button', { name: 'Map of hole 3' }).locator('svg')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Map of hole 3, distances' }).locator('svg')).toBeVisible();
   await page.waitForTimeout(400);
   // Just what this adds to the Score screen, the hole and its line, which 'score, hole by hole' doesn't
   // cover: elsewhere on this page, the Next button's and Course guide chip's edges came out a shade
   // apart on some runs and not others. The whole page's accessibility tree is still checked.
-  await expect(page.getByRole('button', { name: 'Map of hole 3' })).toHaveScreenshot('score-mapped-hole-preview.png');
+  await expect(page.getByRole('button', { name: 'Map of hole 3, distances' })).toHaveScreenshot('score-mapped-hole-preview.png');
   await expect(page.getByText(/^Green: /)).toHaveScreenshot('score-mapped-hole-line.png');
   await expect(page.locator('body')).toMatchAriaSnapshot({ name: 'score-mapped-hole.aria.yml' });
   await expectAccessible(page);
@@ -90,7 +90,7 @@ test('a note on a hole, written on its map and read in the guide', async ({ page
   await page.getByRole('button', { name: 'Save the note' }).click();
   await expect(page.getByText('Blind tee shot, aim at the steeple.', { exact: true }).last()).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).last().click();
-  await expect(page.getByRole('button', { name: /^Hole 3,.* Note: Blind tee shot, aim at the steeple\.$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR .* Note: Blind tee shot, aim at the steeple\.$/ })).toBeVisible();
 });
 
 test('practice round, from the Score screen', async ({ page }) => {
@@ -108,7 +108,7 @@ test('practice round, from the Score screen', async ({ page }) => {
   await expectAccessible(page);
   await page.getByRole('button', { name: 'Make it a practice round' }).click();
   // With a bag, the club off the tee is the advice for the shot from the tee.
-  await expect(page.getByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim / })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / })).toBeVisible();
 });
 
 test('club suggestion, on the hole map', async ({ page }) => {
@@ -148,7 +148,7 @@ test('club suggestion, on Score in a practice round', async ({ page }) => {
   await page.getByRole('button', { name: 'Open the course guide' }).click();
   await page.getByRole('switch', { name: 'Practice round' }).click();
   await page.getByRole('button', { name: 'Make it a practice round' }).click();
-  await expect(page.getByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim / })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / })).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).last().click();
   const line = page.getByRole('button', { name: /^Club suggestion: .+ · aim / }).last();
   await expect(line).toBeVisible();

@@ -24,7 +24,7 @@ export function HoleMapPreview({ course, hole, onOpen }: { course: Course; hole:
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Map of hole ${hole}`}
+      accessibilityLabel={`Map of hole ${hole}, distances`}
       accessibilityHint="Opens the hole map, with distances to the green and to the hazards"
       onPress={onOpen}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
@@ -32,8 +32,10 @@ export function HoleMapPreview({ course, hole, onOpen }: { course: Course; hole:
       {/* Across the card, tee on the left: a hole is long and the card is wide. */}
       <HoleDiagram plan={plan} from={null} target={null} height={PREVIEW_HEIGHT} across />
       <View style={styles.caption}>
+        {/* The trailing space keeps the two captions apart in the page's text (the web puts
+            none between elements), so the name above still contains what is shown. */}
         <Mono size={10.5} style={styles.label}>
-          MAP OF HOLE {hole}
+          {`MAP OF HOLE ${hole} `}
         </Mono>
         <Mono size={10.5} style={{ color: colors.accent, letterSpacing: 1.2 }}>
           DISTANCES ›

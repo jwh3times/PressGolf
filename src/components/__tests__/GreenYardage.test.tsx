@@ -135,7 +135,7 @@ describe('GreenYardage', () => {
     await render(<GreenYardage holeNumber={3} green={null} onMark={onMark} />);
 
     expect(screen.getByText(/No green saved for this hole/)).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Mark hole 3’s green' }));
+    await user.press(screen.getByRole('button', { name: 'Mark this green, hole 3' }));
     expect(Alert.alert).toHaveBeenLastCalledWith('Mark hole 3’s green?', 'Stand in the middle of the green, then tap Mark.', expect.any(Array));
     await choose('Mark');
 
@@ -151,12 +151,12 @@ describe('GreenYardage', () => {
     await render(<GreenYardage holeNumber={3} green={null} onMark={onMark} />);
 
     location.getCurrentPositionAsync.mockResolvedValueOnce(at(MIDDLE, 32.4));
-    await user.press(screen.getByRole('button', { name: 'Mark hole 3’s green' }));
+    await user.press(screen.getByRole('button', { name: 'Mark this green, hole 3' }));
     await choose('Mark');
     expect(Alert.alert).toHaveBeenLastCalledWith('GPS isn’t sure enough yet', expect.stringContaining('only good to 32 m'));
 
     location.getCurrentPositionAsync.mockResolvedValueOnce(at(MIDDLE, null));
-    await user.press(screen.getByRole('button', { name: 'Mark hole 3’s green' }));
+    await user.press(screen.getByRole('button', { name: 'Mark this green, hole 3' }));
     await choose('Mark');
     expect(Alert.alert).toHaveBeenLastCalledWith('GPS isn’t sure enough yet', expect.stringContaining('didn’t say how accurate'));
     expect(onMark).not.toHaveBeenCalled();
@@ -169,7 +169,7 @@ describe('GreenYardage', () => {
     const onMark = jest.fn();
     await render(<GreenYardage holeNumber={3} green={null} onMark={onMark} />);
 
-    await user.press(screen.getByRole('button', { name: 'Mark hole 3’s green' }));
+    await user.press(screen.getByRole('button', { name: 'Mark this green, hole 3' }));
     await choose('Mark');
     expect(Alert.alert).toHaveBeenLastCalledWith('Couldn’t get your location', 'Timed out.');
     expect(onMark).not.toHaveBeenCalled();
@@ -180,7 +180,7 @@ describe('GreenYardage', () => {
     jest.spyOn(Alert, 'alert');
     await render(<GreenYardage holeNumber={3} green={green({ front: MIDDLE, back: MIDDLE, source: 'osm' })} onMark={jest.fn()} />);
 
-    await user.press(screen.getByRole('button', { name: 'Mark hole 3’s green again' }));
+    await user.press(screen.getByRole('button', { name: 'Re-mark hole 3’s green' }));
     expect(Alert.alert).toHaveBeenLastCalledWith(
       'Mark hole 3’s green again?',
       expect.stringContaining('the front and back are cleared'),
@@ -195,7 +195,7 @@ describe('GreenYardage', () => {
     const onMark = jest.fn();
     await render(<GreenYardage holeNumber={3} green={null} onMark={onMark} />);
 
-    await user.press(screen.getByRole('button', { name: 'Mark hole 3’s green' }));
+    await user.press(screen.getByRole('button', { name: 'Mark this green, hole 3' }));
     await choose('Mark');
     expect(location.getCurrentPositionAsync).not.toHaveBeenCalled();
     expect(onMark).not.toHaveBeenCalled();
