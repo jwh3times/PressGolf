@@ -177,7 +177,8 @@ export default function SettingsScreen() {
                 style={[styles.groupRow, on ? styles.groupRowOn : null]}
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.name}>{g.name}</Text>
+                  {/* Trailing space: kept apart from the line below in the page's text, as in the name. */}
+                  <Text style={styles.name}>{`${g.name} `}</Text>
                   <Text style={styles.hint}>
                     {g.players.length} player{g.players.length === 1 ? '' : 's'}
                     {liveOuting ? ` · ${liveOuting.name} on now` : ''}

@@ -46,13 +46,13 @@ test.beforeEach(async ({ page }) => {
 /** Opens hole 3's map through the course guide. */
 async function openHoleThree(page: Page) {
   await page.getByRole('button', { name: 'Course guide' }).click();
-  await page.getByRole('button', { name: /^Hole 3,/ }).click();
+  await page.getByRole('button', { name: /^Hole 3 PAR/ }).click();
   await page.getByText('How the hole plays').scrollIntoViewIfNeeded();
 }
 
 test('course guide', async ({ page }) => {
   await page.getByRole('button', { name: 'Course guide' }).click();
-  await expect(page.getByRole('button', { name: /^Hole 3,/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR/ })).toBeVisible();
   await expectScreen(page, 'course-guide');
   await expectAccessible(page);
 });
@@ -90,7 +90,7 @@ test('a note on a hole, written on its map and read in the guide', async ({ page
   await page.getByRole('button', { name: 'Save the note' }).click();
   await expect(page.getByText('Blind tee shot, aim at the steeple.', { exact: true }).last()).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).last().click();
-  await expect(page.getByRole('button', { name: /^Hole 3,.* Note: Blind tee shot, aim at the steeple\.$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR .* Note: Blind tee shot, aim at the steeple\.$/ })).toBeVisible();
 });
 
 test('practice round, from the Score screen', async ({ page }) => {
@@ -108,7 +108,7 @@ test('practice round, from the Score screen', async ({ page }) => {
   await expectAccessible(page);
   await page.getByRole('button', { name: 'Make it a practice round' }).click();
   // With a bag, the club off the tee is the advice for the shot from the tee.
-  await expect(page.getByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim / })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / })).toBeVisible();
 });
 
 test('club suggestion, on the hole map', async ({ page }) => {
@@ -148,7 +148,7 @@ test('club suggestion, on Score in a practice round', async ({ page }) => {
   await page.getByRole('button', { name: 'Open the course guide' }).click();
   await page.getByRole('switch', { name: 'Practice round' }).click();
   await page.getByRole('button', { name: 'Make it a practice round' }).click();
-  await expect(page.getByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim / })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / })).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).last().click();
   const line = page.getByRole('button', { name: /^Club suggestion: .+ · aim / }).last();
   await expect(line).toBeVisible();

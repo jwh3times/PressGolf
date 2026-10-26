@@ -15,6 +15,13 @@ substitute for assistive-technology use on both platforms.
   pops steppers on Format ("Increase the Skins stake"), and the buy-in steppers
   on Field pots. A birdie or eagle is a fact about the hole and not a control,
   so it is exposed as text ("Birdie for Dev") and not as a disabled button.
+- A control's name contains the words it shows, in order (WCAG 2.5.3, Label
+  in Name), so a voice-control user can say what they see. axe enforces this
+  from 4.14 (October 2026). Chips that show initials say them after the name
+  ("Pressed by Dev, DP"), and the 10+ key is "10 or more". react-native-web
+  puts no space between neighbouring text elements, so where a written name
+  covers several of them, each left-aligned one ends in a space; a card whose
+  text sits flush right instead takes its name from what it shows.
 - All static source font sizes are at least `MIN_FONT_SIZE` (10). The test scans
   direct `fontSize` declarations, conditional literal sizes, and the shared
   display/mono primitives.
@@ -55,7 +62,7 @@ substitute for assistive-technology use on both platforms.
   the line of play, 100, 150 and 200 out) are buttons. The Satellite switch
   is a switch, with its state, and the satellite map is named for its hole.
   The preview under the Score screen's yardage is one button, "Map of hole
-  N", with a hint that it opens the map with distances; the drawing inside
+  N, distances", as its caption reads, with a hint that it opens the map with distances; the drawing inside
   it is hidden from screen readers. Red and yellow penalty
   areas differ in outline and in their names, not in colour alone. The map's
   hazards, edges and lines reach 3:1 (4.5:1 on the high-contrast bases)
@@ -65,8 +72,8 @@ substitute for assistive-technology use on both platforms.
   sentence ("Right: bad. Water, 260–290 off the tee."), and the grade's colour
   only backs up its name, which is always written. axe checks the grades'
   colours in every base theme on the web build. Each hole in the course guide
-  is one button whose name carries its par, yards, summary, aiming advice and
-  note. The practice-round switch shows its saved state, and stays off while
+  is one button named by what it shows: its par, yards, summary, aiming advice
+  and note. The practice-round switch shows its saved state, and stays off while
   the Rule is explained, until "Make it a practice round" is pressed.
 - Club suggestions (#146) are text: the Score screen's line is one button whose
   name reads the club, the aim and the odds, and the hole map's card says the

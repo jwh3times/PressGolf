@@ -2454,10 +2454,10 @@ describe('the hole map', () => {
     const view = await render(<CourseGuideScreen />);
     expectEveryControlToHaveAName();
     const three = screen.getByRole('button', {
-      name: /^Hole 3, par \d, \d+ yards\. Green: likely OB long · bunker short · clear left, right\. Aim: Aim at the middle of the green\. Short is safer than long\.$/,
+      name: /^Hole 3 PAR \d · \d+ YARDS Green: likely OB long · bunker short · clear left, right Aim: Aim at the middle of the green\. Short is safer than long\.$/,
     });
-    expect(screen.getByRole('button', { name: /^Hole 1, par \d, \d+ yards\. Not mapped yet\.$/ })).toBeOnTheScreen();
-    expect(screen.getAllByRole('button', { name: /^Hole \d+,/ })).toHaveLength(mapped.tees[0].holes.length);
+    expect(screen.getByRole('button', { name: /^Hole 1 PAR \d · \d+ YARDS Not mapped yet$/ })).toBeOnTheScreen();
+    expect(screen.getAllByRole('button', { name: /^Hole \d+ PAR \d/ })).toHaveLength(mapped.tees[0].holes.length);
     await userEvent.setup().press(three);
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', tee: mapped.tees[0].id } });
     await view.unmount();
@@ -2542,11 +2542,11 @@ describe('the hole map', () => {
     useStoreValue({ courses: [mapped] });
     mockParams = { course: mapped.id };
     await render(<CourseGuideScreen />);
-    const three = await screen.findByRole('button', { name: /^Hole 3,.*Off the tee: .+, aim .+\.$/ });
+    const three = await screen.findByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim \S/ });
     expect(three).not.toHaveAccessibleName(/Aim: Aim at/);
     // Each mapped hole's comes in its own turn.
-    expect(await screen.findByRole('button', { name: /^Hole 8,.*Off the tee: / })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /^Hole 1, par \d, \d+ yards\. Not mapped yet\.$/ })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: /^Hole 8 PAR .*Off the tee: / })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Hole 1 PAR \d · \d+ YARDS Not mapped yet$/ })).toBeOnTheScreen();
   });
 
   it('gives the course guide aiming advice outside a round, and in one only when it is practice', async () => {
@@ -2554,19 +2554,19 @@ describe('the hole map', () => {
     useStoreValue({ courses: [mapped], clubs: [] });
     mockParams = { course: mapped.id };
     let view = await render(<CourseGuideScreen />);
-    expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: Aim at the middle of the green\./ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Hole 3 PAR .*Aim: Aim at the middle of the green\./ })).toBeOnTheScreen();
     await view.unmount();
 
     mockParams = { course: mapped.id, round: round.id };
     view = await render(<CourseGuideScreen />);
     expect(screen.queryByRole('button', { name: /Aim:/ })).toBeNull();
-    await userEvent.setup().press(screen.getByRole('button', { name: /^Hole 3,/ }));
+    await userEvent.setup().press(screen.getByRole('button', { name: /^Hole 3 PAR/ }));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', tee: mapped.tees[0].id, round: round.id } });
     await view.unmount();
 
     useStoreValue({ courses: [mapped], clubs: [], practice: { [round.id]: { on: true, ever: true } } });
     await render(<CourseGuideScreen />);
-    expect(screen.getByRole('button', { name: /^Hole 3,.*Aim: / })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Hole 3 PAR .*Aim: / })).toBeOnTheScreen();
     expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
   });
 
@@ -2597,8 +2597,8 @@ describe('the hole map', () => {
 
     mockParams = { course: noted.id };
     await render(<CourseGuideScreen />);
-    expect(await screen.findByRole('button', { name: /^Hole 3,.*Off the tee: .* Note: Aim at the steeple\.$/ })).toBeOnTheScreen();
-    expect(await screen.findByRole('button', { name: /^Hole 8,.*Off the tee: / })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: /^Hole 3 PAR .*Off the tee: .* Note: Aim at the steeple\.$/ })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: /^Hole 8 PAR .*Off the tee: / })).toBeOnTheScreen();
   });
 
   it('opens the course guide from the course editor', async () => {
