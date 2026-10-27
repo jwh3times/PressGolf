@@ -50,6 +50,25 @@ Docs: https://docs.expo.dev/eas/index.md
 - Update documentation in the same change whenever commands, environment variables, build profiles, CI, validation status, or known limitations change.
 - Treat executable configuration (`package.json`, workflows, `app.json`, `eas.json`, migrations) as authoritative. Date any point-in-time counts and avoid copying volatile service pricing or quotas when an official link is clearer.
 
+## Development flow
+
+Every code change starts from a **ready issue**: a `ready-for-agent` issue whose body is a
+`/to-spec` spec, a `/to-tickets` ticket or a `/triage` brief, or a bug issue worked through
+`/diagnosing-bugs`. With no ready issue, stop before the first edit and route the user with
+[`docs/agents/dev-flow.md`](docs/agents/dev-flow.md). Reading code, running tests and answering
+questions need no issue.
+
+The human starts every phase. `/wayfinder`, `/grill-with-docs`, `/to-spec`, `/to-tickets`,
+`/implement` and `/triage` stay user-invoked; keep `disable-model-invocation: true` on them. At a
+phase boundary, name the next command, say in one line why, and wait. Inside a phase, reach for
+`/tdd`, `/code-review`, `/diagnosing-bugs`, `/domain-modeling`, `/codebase-design`, `/prototype`
+and `/research` whenever they fit.
+
+Exempt from the gate: dependency bumps, changes to docs and agent config only, release prep, and a
+user waiver recorded in the PR body as `Flow waived by the user: <reason>`. `dev-flow.md` defines
+each exemption and which paths count as code, and sets the branch and PR conventions that link work
+to its issue.
+
 ## Agent skills
 
 Skills are shared by Claude Code and Codex. **`.agents/skills/` is authored** — Codex reads it

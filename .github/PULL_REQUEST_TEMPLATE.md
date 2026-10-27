@@ -1,3 +1,7 @@
+Closes #
+
+<!-- Keep this line first. `Closes #N` when this PR finishes the issue, `Part of #N` when it is one slice of a spec that stays open. An exempt change with no issue deletes the line. A change the user waived the flow for adds `Flow waived by the user: <reason>`. See docs/agents/dev-flow.md. -->
+
 ## Summary
 
 <!-- What user or contributor outcome does this change produce? -->
