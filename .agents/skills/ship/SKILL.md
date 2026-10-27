@@ -25,8 +25,9 @@ PressGolf has no changelog or `VERSION` file; the PR body is the change record. 
 
 ### 1. Preconditions — stop if any fail
 
-- **Not on `main`.** If on `main`, stop and offer to branch (`git checkout -b <type>/<topic>`, e.g.
-  `feat/course-gps`).
+- **Not on `main`.** If on `main`, stop and offer to branch (`git checkout -b <type>/<issue#>-<slug>`,
+  e.g. `feat/136-hole-strategy`; an exempt change with no issue uses `<type>/<slug>`). The
+  conventions are in [`docs/agents/dev-flow.md`](../../../docs/agents/dev-flow.md).
 - **Clean working tree.** Run `git status --porcelain`. If anything is uncommitted, stop and ask
   whether to commit it — do not commit silently. (This also makes the `git add -A` in step 5 safe.)
 - **`gh` authenticated.** `gh auth status` must succeed.
@@ -71,9 +72,13 @@ counts. If nothing is stale, say so — do not invent edits.
 gh issue list --state open --limit 100 --json number,title --jq '.[] | "\(.number) \(.title)"'
 ```
 
-**Warn** — never block — when the branch closes no issue (no `Fixes #NN` / `Closes #NN` planned for
-the PR body) and the change is not a dependency bump, docs-only edit, or similar housekeeping. Work
-that closes no issue is work nobody filed. Surface it and let the maintainer decide.
+Take the issue number from the branch name (`<type>/<issue#>-<slug>`) and confirm it is in the list
+or, for a spec this PR slices, `gh issue view <n>` shows it open.
+
+**Warn** — never block — when the branch links no issue and the change is not exempt under
+`docs/agents/dev-flow.md` § Exemptions (dependency bump, docs and agent config only, release prep,
+or a user waiver). Work that links no issue is work nobody filed. Surface it and let the maintainer
+decide.
 
 ### 4. Local gate — refuse to push if any fail
 
@@ -121,12 +126,18 @@ gh pr list --head "$(git branch --show-current)" --state open --json number,url
 - **No PR** → `gh pr create --base main`.
 - **PR exists** → `gh pr edit <number>` to refresh the body. Do not open a second PR.
 
-The body follows `CONTRIBUTING.md` § Pull requests:
+The body opens with the issue link, the first line of `.github/PULL_REQUEST_TEMPLATE.md`:
+
+- `Closes #N` when the PR finishes the issue, or `Part of #N` when it is one slice of a spec that
+  stays open;
+- for a change the user waived the flow for, `Flow waived by the user: <reason>`;
+- for an exempt change with no issue, no link line.
+
+A number in the title alone links nothing. The rest follows `CONTRIBUTING.md` § Pull requests:
 
 - the user-visible outcome;
 - the tests and checks run, and any platform or hardware validation (or that none was done);
-- an explicit line for each impact step 2 flagged — schema, security, accessibility, native build;
-- `Fixes #NN` for the issue it closes.
+- an explicit line for each impact step 2 flagged — schema, security, accessibility, native build.
 
 **Never merge the PR. Never push to `main`.**
 
