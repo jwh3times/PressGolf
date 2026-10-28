@@ -47,7 +47,7 @@
     "oxlint": "^1.89.0",
     "pixelmatch": "^8.0.0",
     "pngjs": "^7.0.0",
-    "supabase": "^2.121.0",
+    "supabase": "^2.122.0",
     "test-renderer": "~1.2.0",
     "typescript": "^7.0.2"
   },
