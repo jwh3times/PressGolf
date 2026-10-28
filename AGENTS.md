@@ -22,6 +22,7 @@ npm run lint                # oxlint (ESLint is not installed)
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 npm run sync:agents         # regenerate .claude/skills from .agents/skills after editing a skill
+npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```
 
 Run lint and typecheck before declaring any task done. Run the relevant tests
@@ -49,6 +50,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - `README.md` is the durable product overview and quick start. Put detailed setup in `docs/development.md`, design and data-flow details in `docs/architecture.md`, CI behavior in `docs/testing-and-ci.md`, and accessibility evidence in `docs/accessibility.md`.
 - Update documentation in the same change whenever commands, environment variables, build profiles, CI, validation status, or known limitations change.
 - Treat executable configuration (`package.json`, workflows, `app.json`, `eas.json`, migrations) as authoritative. Date any point-in-time counts and avoid copying volatile service pricing or quotas when an official link is clearer.
+- [`docs/agents/docs.md`](docs/agents/docs.md) § Doc map names the document that owns each fact and the change that makes it stale; the `docs-updater` skill keeps the documents in line with the code against it.
 
 ## Development flow
 
@@ -79,16 +81,38 @@ banner as a YAML comment on line 2. The same script generates `.codex/agents/*.t
 specialist agents authored under `.claude/agents/` (none exist yet).
 
 **Edit `.agents/skills/` and `.claude/agents/` only**, never `.claude/skills/` or `.codex/agents/`.
-After changing a skill, run `npm run sync:agents` and commit the result; CI runs
-`npm run sync:agents:check` and fails on a stale, missing, or orphaned mirror. Never replace a
-generated skill directory with a symlink: `core.symlinks` is `false` on the Windows checkouts, so git
-would record a copy of every file instead of a link.
+After changing a skill, run `npm run sync:agents` and commit the result. CI runs
+`npm run sync:agents:check`, which fails on a stale, missing, or orphaned mirror, and
+`npm run lint:agents` (`scripts/lint-agent-neutrality.mjs`), which fails on a source that reads
+wrongly from its mirrored copy: a bare `$0`–`$9` in a `SKILL.md` (Claude Code replaces it with the
+invocation's arguments), a relative link that breaks under `.claude/skills/`, or a blind
+`claude`→`Codex` substitution artifact. Never replace a generated skill directory with a symlink:
+`core.symlinks` is `false` on the Windows checkouts, so git would record a copy of every file instead
+of a link. `npm run sync:agents` removes any symlink it finds under the generated trees (the skills
+installer can leave one) before writing the mirror.
 
 Most skills come from `mattpocock/skills` and are recorded in `skills-lock.json`. `wayfinder` and
 `setup-matt-pocock-skills` carry local edits (a Wayfinder map records answers, never delivery
-status), so re-installing either from upstream drops them — re-apply after an update. `ship`,
-`end-session`, `handoff`, and `lets-go` are maintainer-owned; `ship` and `end-session` are
-PressGolf-specific.
+status), so re-installing either from upstream drops them — re-apply after an update.
+
+`ship`, `end-session`, `handoff`, `lets-go` and `docs-updater` install from the public
+`jwh3times/skills` repository (recorded in `skills-lock.json` too) and are never edited here: the
+next install overwrites a local edit. Their bodies are the same in every repository that installs
+them; they read PressGolf's facts at run time from the settings files
+[`docs/agents/workspace.md`](docs/agents/workspace.md),
+[`docs/agents/docs.md`](docs/agents/docs.md),
+[`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md) (its settings section, from
+`## Public repository` on),
+[`docs/agents/human-follow-up.md`](docs/agents/human-follow-up.md),
+[`docs/agents/releases.md`](docs/agents/releases.md),
+[`docs/agents/ship.md`](docs/agents/ship.md) and
+[`docs/agents/handoffs.md`](docs/agents/handoffs.md). Repository-specific behavior goes into a
+setting; a fix to a skill goes upstream. Re-running the install is the update:
+
+```bash
+npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s ship -s docs-updater -a codex --copy -y
+npm run sync:agents
+```
 
 ### Issue tracker
 
@@ -109,6 +133,11 @@ Single-context layout — `CONTEXT.md` and `docs/adr/` at the repository root, c
 
 ### Machine handoff
 
-`/handoff` writes a handoff document to the Proton Drive `Handoffs` folder and runs `/end-session`;
-`/lets-go` on the other machine resumes from it. Set `HANDOFFS_DIR` where the folder is mounted
-somewhere other than `~/Proton Drive/<account>/My files/Documents/Handoffs`.
+`/handoff` writes a handoff document to the shared `Handoffs` folder, marks it active in that
+folder's `handoff_map.json` (through `node .agents/skills/handoff/handoff-map.mjs`, never by hand)
+and runs `/end-session`; `/lets-go` on the other machine resumes from it. How the folder reaches a
+machine belongs to the machine, not the repository: `~/.config/handoffs/config` sets
+`HANDOFFS_TRANSPORT` (`folder` for a synced folder, `proton-cli` for a local mirror moved by the
+`proton-drive` CLI), `HANDOFFS_DIR` and `HANDOFFS_REMOTE`, and an exported `HANDOFFS_DIR` still
+overrides the file. `/handoff` and `/lets-go` propose it on their first run on a machine; see
+`.agents/skills/handoff/machine-config.md`.

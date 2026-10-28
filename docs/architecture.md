@@ -584,6 +584,7 @@ scripts/
   a11y-lint.mjs           lints the native accessibility tree the nightly captures
   maestro-output.mjs      reads Maestro's output tree for the two scripts above
   sync-agents.mjs         .agents/skills -> .claude/skills generator
+  lint-agent-neutrality.mjs checks agent and skill sources read correctly from their mirrors
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/

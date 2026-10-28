@@ -43,3 +43,31 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me` — the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far — the **answer**, not the delivery status, and only for **closed** tickets. A map that narrates its children's status becomes a second source of truth for them and goes stale on the next merge.
+
+## Public repository
+
+jwh3times/PressGolf
+
+## Private issue repository
+
+none
+
+## Board
+
+none
+
+## Board fields
+
+none
+
+## New work
+
+issue — labelled from `triage-labels.md` (`needs-triage` until triaged). The repository is public:
+draft a bug issue for the user to approve before filing it, and keep vulnerability detail out of
+it (`docs/agents/dev-flow.md` § Routing).
+
+## Security findings
+
+A draft repository security advisory on jwh3times/PressGolf, as `SECURITY.md` directs — never a
+public issue, PR body, commit message or memory body. A `ready-for-human` follow-up may reference
+the advisory without restating it.

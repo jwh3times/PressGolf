@@ -26,6 +26,10 @@ npm run lint
 npx expo-doctor
 ```
 
+A change to `scripts/`, `.agents/skills/` or `.claude/agents/` also runs the
+script and agent checks in
+[Testing and CI § Local checks](docs/testing-and-ci.md#local-checks).
+
 Add tests with behavior changes. New executable lines must meet the 90% patch
 coverage gate, and total coverage must remain above the thresholds in
 `package.json`.
