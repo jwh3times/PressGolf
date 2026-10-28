@@ -27,14 +27,6 @@ none
 
 none
 
-## Unreleased placeholder
-
-none
-
 ## Changelog check
 
 none
-
-## Release commit message
-
-`docs: update docs for <summary>`
