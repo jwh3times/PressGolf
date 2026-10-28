@@ -18,10 +18,11 @@ Together they cover what the required **Tests, types, lint** check runs. All nee
   `eas.json` changed: `npx expo-doctor` (**Tests, types, lint**; needs network), fixed by
   `npx expo install --fix`
 
-Left to CI: **Expo production bundle** (`npx expo export --platform all`), **UI regression and
-accessibility** (Playwright in its container; `npm run test:web` runs it locally with Docker when a
-screen changes), **Migrations and row-level security** (Postgres 16 and `psql`), **Sync against a
-local Supabase stack** (`npx supabase start …` then `npm run test:integration`, Docker),
+CI-only, since each needs a longer run, a container, a service or GitHub: **Expo production
+bundle** (`npx expo export --platform all`), **UI regression and accessibility** (Playwright in its
+container; `npm run test:web` runs it locally with Docker when a screen changes), **Migrations and
+row-level security** (Postgres 16 and `psql`), **Sync against a local Supabase stack**
+(`npx supabase start …` then `npm run test:integration`, Docker),
 **Dependency review** and CodeQL (GitHub only).
 
 ## Issue link
