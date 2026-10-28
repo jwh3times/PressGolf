@@ -11,11 +11,12 @@ npm run lint
 npx expo-doctor
 ```
 
-When a change touches `scripts/` or `.agents/skills/`, also run:
+When a change touches `scripts/`, `.agents/skills/` or `.claude/agents/`, also run:
 
 ```bash
 npm run test:scripts        # node:test suites for the repository scripts
 npm run sync:agents:check   # .claude/skills matches .agents/skills
+npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```
 
 When a change touches `src/sync/` or `supabase/migrations/`, run the sync
@@ -79,7 +80,7 @@ figures, are authoritative.
 
 | Check | What it proves |
 |---|---|
-| **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, and Expo dependency/config compatibility |
+| **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, agent and skill sources are tool-neutral, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
 | **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't |
