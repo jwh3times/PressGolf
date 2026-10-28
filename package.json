@@ -67,6 +67,7 @@
     "test:web:update": "node scripts/test-web.mjs --update-snapshots",
     "sync:agents": "node scripts/sync-agents.mjs",
     "sync:agents:check": "node scripts/sync-agents.mjs --check",
+    "lint:agents": "node scripts/lint-agent-neutrality.mjs",
     "db:new": "supabase migration new",
     "db:push": "supabase db push",
     "db:status": "supabase migration list --linked",
