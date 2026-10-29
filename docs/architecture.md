@@ -580,6 +580,7 @@ supabase/
 scripts/
   check-patch-coverage.mjs
   generate-icons.py
+  store-listing.mjs       renders the Play listing's icon, feature graphic and screenshots
   native-screens.mjs      compares the native nightly's screenshots with baselines
   a11y-lint.mjs           lints the native accessibility tree the nightly captures
   maestro-output.mjs      reads Maestro's output tree for the two scripts above
@@ -608,4 +609,18 @@ or palette change, install Pillow and rerun the script:
 ```bash
 python -m pip install Pillow
 python scripts/generate-icons.py
+```
+
+`scripts/store-listing.mjs` renders the Play store listing graphics: the 512 px
+icon, the 1024×500 feature graphic, and six captioned 1080×1920 phone
+screenshots. It drives the web export's demo data as `tests/web/` does, with a
+frozen clock and a mocked OpenStreetMap course for the hole map, and sets each
+screen under a headline in the theme's colours. They are provisional listing art
+for the closed test; store assets from phone builds replace them before public
+submission. Run it by hand from the repository root; the files land in
+`dist/store-listing/`:
+
+```bash
+npx expo export --platform web
+node scripts/store-listing.mjs
 ```
