@@ -288,6 +288,44 @@ npx eas-cli@latest env:set --name GOOGLE_MAPS_ANDROID_API_KEY \
 For a local `npx expo run:android`, set the variable for that one command:
 `GOOGLE_MAPS_ANDROID_API_KEY="$(op read 'op://PressGolf/Google Maps/android_api_key')" npx expo run:android`.
 
+### App Store submission (iOS)
+
+The `production` submit profile sends iOS builds to TestFlight. Its only
+setting is `ascAppId`, the App Store Connect Apple ID of **Press Golf: Score &
+Settle** (also in 1Password at `op://PressGolf/App Store Connect API/asc_app_id`).
+It identifies the app record and is not a secret.
+
+EAS Submit authenticates with an App Store Connect API key: the Admin team key
+`EAS`. Its Key ID and Issuer ID are in the 1Password item **App Store Connect
+API**, with the `.p8` attached. The key is held on EAS and assigned to the app,
+so `eas.json` names no key file. Assign it once, or again after the key is
+rotated, from Git Bash:
+
+```bash
+KEY="$(mktemp -d)/AuthKey.p8"
+op read "op://PressGolf/App Store Connect API/AuthKey_<key_id>.p8" --out-file "$KEY"
+npx eas-cli@latest credentials --platform ios
+rm -r "$(dirname "$KEY")"
+```
+
+In the prompts, choose the `production` profile, sign in with the Apple
+Developer account, then **App Store Connect: Manage your API Key** → **Set up
+your project to use an API Key for EAS Submit**, and give the path in `$KEY`
+with the Key ID and Issuer ID from 1Password. Without an assigned key,
+`eas submit --non-interactive` fails.
+
+Build and submit in one step:
+
+```bash
+npx eas-cli@latest build --platform ios --profile production --auto-submit
+```
+
+The first iOS production build asks for the Apple Developer sign-in so EAS can
+create the distribution certificate and provisioning profile, which it keeps
+under the project's **Credentials** on expo.dev. A submitted build goes to
+TestFlight, not to App Store review; external testers get it only after Beta
+App Review. Android's submit profile isn't set up yet.
+
 ## Troubleshooting
 
 - Run `npx expo-doctor` first for dependency or app-config problems.
