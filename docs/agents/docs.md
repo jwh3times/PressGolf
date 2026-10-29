@@ -19,9 +19,9 @@
   changes; a guide is added; validation figures are refreshed (date them).
 - `docs/development.md` — prerequisites, running the app, dependencies, environment variables,
   Supabase setup, migrations, sync integration tests, EAS build profiles, the Android Maps key,
-  troubleshooting. **When:** `package.json` scripts or the Expo SDK change; an env var changes
-  (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`); `eas.json` profiles change;
-  `supabase/config.toml` or the migration workflow changes.
+  App Store submission, troubleshooting. **When:** `package.json` scripts or the Expo SDK change;
+  an env var changes (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`); `eas.json`
+  build or submit profiles change; `supabase/config.toml` or the migration workflow changes.
 - `docs/architecture.md` — domain engine, formats and game rules, local data and demo isolation,
   sync, themes, repository layout, app artwork. **When:** `src/domain/`, `src/store/`,
   `src/sync/`, `src/theme/` or the data model (`supabase/migrations/`) changes; a top-level `src/`
@@ -81,7 +81,7 @@ volatile service prices or quotas outside a dated research note.
 - RLS assertion count ("82" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
   `grep -cE "select (expect|refused)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
 - Migrations: `supabase/migrations/*.sql`
-- EAS profiles: the `build` keys in `eas.json`
+- EAS profiles: the `build` and `submit` keys in `eas.json`
 - Env vars: `.env.op`; `process.env` in `app.config.js` and `src/`
 - Routes: `src/app/**/*.tsx`
 - Native flows: `.maestro/flows/*.yml`
