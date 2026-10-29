@@ -75,8 +75,13 @@ ignored and must not be committed or edited as source.
 
 Location (for yardage to the green) is foreground-only. The `expo-location`
 plugin in `app.json` sets the one iOS prompt, "when in use", and turns off the
-plugin's default "always" and motion prompts, which the app never asks for.
-Android gets coarse and fine location and no background location.
+plugin's default "always" prompt, which the app never asks for. Its motion
+purpose string stays, worded to say Press doesn't use motion: `expo-location`
+compiles motion code into every iOS build, and App Store Connect rejects an
+upload that references it without the string (ITMS-90683, #188). Press never
+asks for motion access, so iOS never shows it. `scripts/app-config.test.mjs`
+checks the generated `Info.plist` for both. Android gets coarse and fine
+location and no background location.
 
 The greens map uses `react-native-maps`, which is in Expo Go and needs no key
 there. A store or development build for Android needs a Google Maps API key.
