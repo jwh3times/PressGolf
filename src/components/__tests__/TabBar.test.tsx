@@ -1,10 +1,16 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
-import { TabBar, tabBarClearance, tabBarHeight } from '../TabBar';
+import { TabBar, tabBarClearance, tabBarHeight, tabIconSize } from '../TabBar';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 4, left: 0 }),
+}));
+
+// Records each symbol a tab asks for; the native view itself does not render under Jest.
+const mockSymbolView = jest.fn((_symbol: { name: unknown; size: number }) => null);
+jest.mock('expo-symbols', () => ({
+  SymbolView: (symbol: { name: unknown; size: number }) => mockSymbolView(symbol),
 }));
 
 const routes = [
@@ -29,6 +35,8 @@ describe('TabBar', () => {
     expect(tabBarHeight(1)).toBe(62);
     expect(tabBarHeight(3)).toBe(99.5);
     expect(tabBarClearance(3)).toBe(147.5);
+    expect(tabIconSize(1)).toBe(24);
+    expect(tabIconSize(3)).toBe(36);
   });
 
   it('names known and unknown tabs and navigates only away from the focused tab', async () => {
@@ -45,6 +53,18 @@ describe('TabBar', () => {
     await user.press(screen.getByRole('tab', { name: 'other' }));
     expect(value.navigation.navigate).toHaveBeenCalledTimes(4);
     expect(impact).toHaveBeenCalledTimes(4);
+  });
+
+  it('draws every tab a vector icon at tab-icon size instead of a text glyph', async () => {
+    mockSymbolView.mockClear();
+    await render(<TabBar {...(props() as unknown as React.ComponentProps<typeof TabBar>)} />);
+    const symbols = mockSymbolView.mock.calls.map(([symbol]) => symbol);
+    expect(symbols).toHaveLength(routes.length);
+    const sizes = new Set(symbols.map((symbol) => symbol.size));
+    expect(sizes.size).toBe(1);
+    expect([...sizes][0]).toBeGreaterThanOrEqual(24);
+    expect(new Set(symbols.map((symbol) => JSON.stringify(symbol.name))).size).toBe(routes.length);
+    for (const glyph of ['◆', '≡', '●', '$']) expect(screen.queryByText(glyph)).toBeNull();
   });
 
   it('swallows a haptic failure while still navigating', async () => {

@@ -76,7 +76,7 @@
 - button /Lock it in · \$\d+ max exposure/
 - text: Worst case for one player if every remaining hole goes against them, Vegas quoted at ten points a hole.
 - tablist:
-  - tab "Home": ◆ Home
-  - tab "Format" [selected]: ≡ Format
-  - tab "Score": ● Score
-  - tab "Settle": $ Settle
+  - tab "Home"
+  - tab "Format" [selected]
+  - tab "Score"
+  - tab "Settle"
