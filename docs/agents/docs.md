@@ -19,9 +19,10 @@
   changes; a guide is added; validation figures are refreshed (date them).
 - `docs/development.md` — prerequisites, running the app, dependencies, environment variables,
   Supabase setup, migrations, sync integration tests, EAS build profiles, the Android Maps key,
-  App Store submission, troubleshooting. **When:** `package.json` scripts or the Expo SDK change;
-  an env var changes (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`); `eas.json`
-  build or submit profiles change; `supabase/config.toml` or the migration workflow changes.
+  App Store and Play submission, troubleshooting. **When:** `package.json` scripts or the Expo
+  SDK change; an env var changes (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`);
+  `eas.json` build or submit profiles change; `supabase/config.toml` or the migration workflow
+  changes.
 - `docs/architecture.md` — domain engine, formats and game rules, local data and demo isolation,
   sync, themes, repository layout, app artwork. **When:** `src/domain/`, `src/store/`,
   `src/sync/`, `src/theme/` or the data model (`supabase/migrations/`) changes; a top-level `src/`

@@ -236,6 +236,7 @@ npx eas-cli@latest build --profile preview --platform android
 npx eas-cli@latest build --profile preview --platform ios
 npx eas-cli@latest build --profile production --platform all
 npx eas-cli@latest submit --profile production --platform ios
+npx eas-cli@latest submit --profile production --platform android
 ```
 
 The project ID and owner are already set in `app.json`; do not rerun the initial
@@ -267,9 +268,10 @@ Preview builds stay without them, so they open on demo data. Add them to
 
 ### Google Maps key (Android)
 
-The key is in 1Password at `op://PressGolf/Google Maps/android_api_key`, and in
-EAS as `GOOGLE_MAPS_ANDROID_API_KEY` in the `development`, `preview` and
-`production` environments. It is a *sensitive* variable, not a *secret* one,
+The key is `Press Android` in the PressGolf Google Cloud project. It is in
+1Password at `op://PressGolf/Google Maps/android_api_key`, and in EAS as
+`GOOGLE_MAPS_ANDROID_API_KEY` in the `development`, `preview` and `production`
+environments. It is a *sensitive* variable, not a *secret* one,
 because EAS doesn't give secret variables to `app.config.js`. The key is
 readable by anyone holding an APK anyway, so its protection is its restriction
 in Google Cloud, not its secrecy:
@@ -277,8 +279,11 @@ in Google Cloud, not its secrecy:
 - **Application restriction:** Android apps, package `cc.pressgolf.app`, with
   the SHA-1 fingerprint of every certificate that signs a build. For EAS builds
   that's the keystore under the project's **Credentials** on expo.dev. For a
-  Play Store install it's also the app signing key in the Play Console (**App
-  integrity → Play app signing**), once the first upload has created it.
+  Play Store install it's also the app signing key in the Play Console
+  (**Protected with Play → Play Store protection → Manage Play app signing**).
+  Both fingerprints are recorded on
+  [#162](https://github.com/jwh3times/PressGolf/issues/162). A local debug
+  build signs with its own key, so it shows a blank map.
 - **API restriction:** Maps SDK for Android only.
 
 To set or rotate it in EAS without printing the value:
@@ -329,7 +334,42 @@ The first iOS production build asks for the Apple Developer sign-in so EAS can
 create the distribution certificate and provisioning profile, which it keeps
 under the project's **Credentials** on expo.dev. A submitted build goes to
 TestFlight, not to App Store review; external testers get it only after Beta
-App Review. Android's submit profile isn't set up yet.
+App Review.
+
+### Play submission (Android)
+
+The `production` submit profile sends Android builds to Play's closed testing
+track: `track` `alpha` is the track Play Console shows as **Closed testing -
+Alpha**, and `releaseStatus` `completed` releases the build to opted-in testers
+once Play has reviewed it. Google required the first `.aab` to be uploaded by
+hand; later builds go through EAS Submit.
+
+EAS Submit signs in as the Google Cloud service account `eas-submit` in the
+PressGolf project, which has the Google Play Android Developer API enabled. In
+Play Console (**Users and permissions**) it has app permissions for Press only:
+view app information, edit draft apps, release to production and testing
+tracks, manage testing tracks, and manage store presence. Its JSON key is
+attached to the 1Password item **Google Play Service Account** and assigned on
+EAS, so `eas.json` names no key file. Assign it again after the key is rotated,
+from Git Bash:
+
+```bash
+KEY="$(mktemp -d)/play-service-account.json"
+op read "op://PressGolf/Google Play Service Account/service_account_key" --out-file "$KEY"
+npx eas-cli@latest credentials --platform android
+rm -r "$(dirname "$KEY")"
+```
+
+In the prompts, choose the `production` profile, then **Google Service
+Account** → **Manage your Google Service Account Key for Play Store
+Submissions** → **Set up a Google Service Account Key for Play Store
+Submissions**, and give the path in `$KEY`.
+
+Build and submit in one step:
+
+```bash
+npx eas-cli@latest build --platform android --profile production --auto-submit
+```
 
 ## Troubleshooting
 
