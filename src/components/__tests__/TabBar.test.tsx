@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
-import { TabBar, tabBarClearance, tabBarHeight, tabIconSize } from '../TabBar';
+import { TabBar, tabBarClearance, tabBarHeight, tabIconFonts, tabIconSize } from '../TabBar';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 4, left: 0 }),
@@ -53,6 +53,12 @@ describe('TabBar', () => {
     await user.press(screen.getByRole('tab', { name: 'other' }));
     expect(value.navigation.navigate).toHaveBeenCalledTimes(4);
     expect(impact).toHaveBeenCalledTimes(4);
+  });
+
+  it('preloads the icon font only where the icons are drawn from it', () => {
+    expect(tabIconFonts('ios')).toEqual({});
+    expect(Object.keys(tabIconFonts('android'))).toEqual(['MaterialSymbols_400Regular']);
+    expect(tabIconFonts('web')).toEqual(tabIconFonts('android'));
   });
 
   it('draws every tab a vector icon at tab-icon size instead of a text glyph', async () => {

@@ -1,6 +1,7 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import symbolFont from 'expo-symbols/androidWeights/regular';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,15 @@ export function tabBarClearance(fontScale: number): number {
  */
 export function tabIconSize(fontScale: number): number {
   return 24 * accessibilityControlScale(fontScale, 1.5);
+}
+
+/**
+ * Fonts the root layout loads up front. Android and web draw the icons from the
+ * Material Symbols font, which SymbolView otherwise loads itself after first
+ * render, so the icons pop in late. iOS draws SF Symbols and needs none.
+ */
+export function tabIconFonts(os: typeof Platform.OS): Record<string, number> {
+  return os === 'ios' ? {} : { [symbolFont.name]: symbolFont.font };
 }
 
 /**

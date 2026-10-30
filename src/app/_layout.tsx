@@ -14,13 +14,13 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import symbolFont from 'expo-symbols/androidWeights/regular';
 import React from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthGate } from '../auth/AuthGate';
 import { AuthProvider } from '../auth/AuthProvider';
+import { tabIconFonts } from '../components/TabBar';
 import { AppStoreProvider } from '../store/AppStore';
 import { ChosenThemeProvider } from '../theme/ChosenTheme';
 import { useTheme } from '../theme/theme';
@@ -33,11 +33,6 @@ import { useTheme } from '../theme/theme';
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 300, fade: true });
 
-// Android and web draw the tab bar's icons from the Material Symbols font, which
-// SymbolView otherwise loads itself after first render, so the icons pop in late.
-// iOS draws SF Symbols and never needs it.
-const symbolFonts = Platform.OS === 'ios' ? {} : { [symbolFont.name]: symbolFont.font };
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
@@ -48,7 +43,7 @@ export default function RootLayout() {
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
-    ...symbolFonts,
+    ...tabIconFonts(Platform.OS),
   });
 
   // A font that fails to download should not brick the app — the layout still
