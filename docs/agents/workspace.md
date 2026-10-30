@@ -4,14 +4,6 @@
 
 none
 
-## Workspace status command
-
-`git status --short --branch` and `git worktree list`
-
-## Sync with main
-
-`git pull --ff-only origin main`
-
 ## Safe-to-remove paths
 
 - `coverage/` — `npm run test:coverage` output (`coverage/lcov.info` feeds the patch-coverage script)
@@ -49,12 +41,3 @@ none
   `supabase_*_PressGolf` volumes — they delete the local database; `npx supabase db reset`; and
   `npm run db:push` or `npx supabase db push` — they act on the linked production project, which
   only CI's `migrate` job changes.
-
-## Generated-config check
-
-`npm run sync:agents:check` (a step of the required **Tests, types, lint**), regenerated with
-`npm run sync:agents` — when agent sources changed (`.agents/skills/`, `.claude/agents/`).
-
-## Final portability check
-
-none
