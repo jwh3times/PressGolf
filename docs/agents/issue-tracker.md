@@ -48,10 +48,6 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 
 jwh3times/PressGolf
 
-## Private issue repository
-
-none
-
 ## Board
 
 none
@@ -65,9 +61,3 @@ none
 issue — labelled from `triage-labels.md` (`needs-triage` until triaged). The repository is public:
 draft a bug issue for the user to approve before filing it, and keep vulnerability detail out of
 it (`docs/agents/dev-flow.md` § Routing).
-
-## Security findings
-
-A draft repository security advisory on jwh3times/PressGolf, as `SECURITY.md` directs — never a
-public issue, PR body, commit message or memory body. A `ready-for-human` follow-up may reference
-the advisory without restating it.
