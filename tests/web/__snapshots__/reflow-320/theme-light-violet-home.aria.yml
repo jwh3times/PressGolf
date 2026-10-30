@@ -9,7 +9,7 @@
 - button /\d+ rounds · since May ›/
 - text: /1 MB Marcus \+\$\d+ 2 DP Dev \+\$\d+ 3 TJ T\.J\. −\$\d+ 4 BR Big Ray −\$\d+/
 - tablist:
-  - tab "Home" [selected]: ◆ Home
-  - tab "Format": ≡ Format
-  - tab "Score": ● Score
-  - tab "Settle": $ Settle
+  - tab "Home" [selected]
+  - tab "Format"
+  - tab "Score"
+  - tab "Settle"

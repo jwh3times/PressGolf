@@ -52,6 +52,11 @@ substitute for assistive-technology use on both platforms.
   boxes widen by the same factor. The mounted screen test checks the cap and
   the widths; that "HOLE" then stays on one line is shown by the native
   large-text screenshots, not asserted.
+- The tab bar's icons (#192) are decorative: each tab is named by its label,
+  and its icon is hidden from screen readers, so the web suite's accessibility
+  tree shows each tab as its name alone. The icons grow with the text size
+  only to 1.5x, not the control scale, so the bar keeps the height
+  `tabBarHeight` gives it (`src/components/__tests__/TabBar.test.tsx`).
 - Shared text primitives control both font size and line height to prevent
   custom-font clipping at accessibility sizes.
 - The drawn hole map (#125) is one image to a screen reader, named with the

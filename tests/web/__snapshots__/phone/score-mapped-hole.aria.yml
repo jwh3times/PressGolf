@@ -76,7 +76,7 @@
 - button "Press Big Ray" [disabled]: —
 - button "See the damage so far →"
 - tablist:
-  - tab "Home": ◆ Home
-  - tab "Format": ≡ Format
-  - tab "Score" [selected]: ● Score
-  - tab "Settle": $ Settle
+  - tab "Home"
+  - tab "Format"
+  - tab "Score" [selected]
+  - tab "Settle"

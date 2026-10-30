@@ -101,7 +101,7 @@
 - button "Against Big Ray, BR"
 - button "Add a press from hole 1" [disabled]
 - tablist:
-  - tab "Home": ◆ Home
-  - tab "Format": ≡ Format
-  - tab "Score" [selected]: ● Score
-  - tab "Settle": $ Settle
+  - tab "Home"
+  - tab "Format"
+  - tab "Score" [selected]
+  - tab "Settle"

@@ -1,5 +1,7 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import symbolFont from 'expo-symbols/androidWeights/regular';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,18 +19,40 @@ export function tabBarClearance(fontScale: number): number {
 }
 
 /**
+ * The icon grows with accessibility type, but only to 1.5x: beyond that the
+ * icon and its scaled label no longer fit the bar at `tabBarHeight`.
+ */
+export function tabIconSize(fontScale: number): number {
+  return 24 * accessibilityControlScale(fontScale, 1.5);
+}
+
+/**
+ * Fonts the root layout loads up front. Android and web draw the icons from the
+ * Material Symbols font, which SymbolView otherwise loads itself after first
+ * render, so the icons pop in late. iOS draws SF Symbols and needs none.
+ */
+export function tabIconFonts(os: typeof Platform.OS): Record<string, number> {
+  return os === 'ios' ? {} : { [symbolFont.name]: symbolFont.font };
+}
+
+/**
  * The floating glass pill from the design.
  *
  * It sits 26px above the safe area rather than filling the bottom edge, which
  * is why it is a custom bar and not the stock one — screens pad their own
  * content to clear it.
  */
-const GLYPHS: Record<string, string> = {
-  index: '◆',
-  format: '≡',
-  score: '●',
-  settle: '$',
+type SymbolName = SymbolViewProps['name'];
+
+// SF Symbols on iOS; Material Symbols on Android and web.
+const ICONS: Record<string, SymbolName> = {
+  index: { ios: 'house.fill', android: 'home', web: 'home' },
+  format: { ios: 'list.bullet', android: 'format_list_bulleted', web: 'format_list_bulleted' },
+  score: { ios: 'square.and.pencil', android: 'edit_note', web: 'edit_note' },
+  settle: { ios: 'dollarsign.circle', android: 'paid', web: 'paid' },
 };
+
+const FALLBACK_ICON: SymbolName = { ios: 'circle.fill', android: 'circle', web: 'circle' };
 
 const LABELS: Record<string, string> = {
   index: 'Home',
@@ -75,12 +99,17 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
               }}
               style={styles.tab}
             >
-              <Text
-                maxFontSizeMultiplier={MAX_CONTROL_SCALE}
-                style={[styles.glyph, { color, opacity: focused ? 1 : 0.75 }]}
-              >
-                {GLYPHS[route.name] ?? '●'}
-              </Text>
+              {/* The tab's label already names it; the icon is decoration. The
+                  wrapper hides it because SymbolView does not forward aria-hidden,
+                  and on web it draws a private-use font glyph a reader would announce. */}
+              <View aria-hidden>
+                <SymbolView
+                  name={ICONS[route.name] ?? FALLBACK_ICON}
+                  size={tabIconSize(fontScale)}
+                  tintColor={color}
+                  style={{ opacity: focused ? 1 : 0.75 }}
+                />
+              </View>
               <Text
                 maxFontSizeMultiplier={MAX_CONTROL_SCALE}
                 numberOfLines={1}
@@ -112,7 +141,6 @@ const useStyles = makeStyles(({ colors, line }) =>
       overflow: 'hidden',
     },
     tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
-    glyph: { fontSize: 13, lineHeight: 18, fontFamily: fonts.sans },
     label: { fontSize: 10, lineHeight: 14, letterSpacing: 0.2, fontFamily: fonts.sans },
   }),
 );

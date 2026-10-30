@@ -15,11 +15,12 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthGate } from '../auth/AuthGate';
 import { AuthProvider } from '../auth/AuthProvider';
+import { tabIconFonts } from '../components/TabBar';
 import { AppStoreProvider } from '../store/AppStore';
 import { ChosenThemeProvider } from '../theme/ChosenTheme';
 import { useTheme } from '../theme/theme';
@@ -42,6 +43,7 @@ export default function RootLayout() {
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
+    ...tabIconFonts(Platform.OS),
   });
 
   // A font that fails to download should not brick the app — the layout still
