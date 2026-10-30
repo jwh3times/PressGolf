@@ -246,7 +246,10 @@ game's switch on Format, whose label repeats the title beside it, so the
 shared `Switch` carries a `switch-<label>` test ID. iOS reads a button with no
 label of its own as its children's text joined together, while Android keeps
 each text separate, so a flow that matches such a row uses a pattern open at
-both ends.
+both ends. Maestro matches a step's text as a regular expression against the
+whole label, so a step names a control's full accessible name, or matches it up
+to a comma and ends in `.*` where the name goes on past the words the step needs
+(`'Pressed by Dev,.*'` for the chip named "Pressed by Dev, DP").
 
 Two Android behaviours shape the shared steps:
 
@@ -373,6 +376,9 @@ The completed iOS accessibility pass and remaining Android work are recorded in
 root README and GitHub issues rather than implied by a green automated run.
 
 When changing a user flow, update the matching flow in `.maestro/flows/` if the
-stable visible labels or navigation path change. When changing a control or dense layout, add
+accessible names or navigation path it relies on change. That includes a name
+changed only for the web suite's axe checks: the native flows run nightly, not
+on pull requests, so a renamed control a flow taps fails only the next night
+(#200). When changing a control or dense layout, add
 or update a React Native Testing Library assertion and repeat the relevant
 manual accessibility pass.

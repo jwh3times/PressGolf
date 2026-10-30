@@ -44,8 +44,9 @@ name: Enter a finished card
       text: Wolf, hole 1, Marcus alone
     direction: UP
     timeout: 60000
-- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Pressed by Dev, DIRECTION: DOWN } }
-- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Against Marcus, DIRECTION: DOWN } }
+# A press chip's name ends with the initials it shows ("Pressed by Dev, DP").
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: 'Pressed by Dev,.*', DIRECTION: DOWN } }
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: 'Against Marcus,.*', DIRECTION: DOWN } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Add a press from hole 1, DIRECTION: DOWN } }
 - scrollUntilVisible:
     element:
