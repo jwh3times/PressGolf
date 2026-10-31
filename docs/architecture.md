@@ -523,8 +523,8 @@ outing. Those stay on the phone. A round or outing of the guest's own may
 still be on her group and course. Before this (#127), a guest's every push
 after joining failed on the organiser's group.
 
-The schema has 26 application tables: 24 snapshot tables plus
-`outing_members` and `mutations`. Row-level security limits private data to its
+The schema has 27 application tables: 24 snapshot tables plus
+`outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need. Every owner write also checks the row it hangs from (`owns_group`,
 `owns_course`, `owns_outing`, `owns_round`): a player goes on the writer's own
@@ -571,10 +571,11 @@ which it could no longer check, so the phone can finish. That can only erase a
 phone whose account no longer exists, which "Erase my data" does with no password.
 
 **Every new row must belong to an account that exists.** Each `owner_id`, and
-`user_id` on `outing_members` and `mutations`, has a foreign key to `auth.users`
-with `on delete no action`. They're `not valid`, so a row orphaned before they
-were added stays where it is, but they apply to every new row and every deletion
-of a user. They do two jobs:
+`user_id` on `outing_members`, `mutations` and `move_notices`, has a foreign key
+to `auth.users` with `on delete no action`. Those added to tables that already
+held rows are `not valid`, so a row orphaned before they were added stays where it
+is, but all of them apply to every new row and every deletion of a user. They do
+two jobs:
 
 - **A deleted account's token can't write.** An access token stays valid for up
   to an hour, and the policies only compare a row with the token. A forgotten
