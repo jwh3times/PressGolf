@@ -55,9 +55,3 @@ none
 ## Board fields
 
 none
-
-## New work
-
-issue — labelled from `triage-labels.md` (`needs-triage` until triaged). The repository is public:
-draft a bug issue for the user to approve before filing it, and keep vulnerability detail out of
-it (`docs/agents/dev-flow.md` § Routing).
