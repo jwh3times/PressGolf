@@ -259,7 +259,8 @@ auth user. Check first that the request came from the account's own address.
 
 2. Under **Authentication → Users**, delete that user.
 
-Don't skip step 1: deleting the user alone leaves every row on the server.
+Step 2 fails if step 1 was skipped, or if the account's phone has written since:
+Supabase refuses to delete a user who still has rows. Run step 1 again.
 
 Step 1 raises `This account shares data with another account` for the accounts
 listed in [Deleting an account](architecture.md#deleting-an-account). Nothing has

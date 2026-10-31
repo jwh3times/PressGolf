@@ -557,10 +557,26 @@ next call finds nothing to clean and retries it. If the account has already gone
 which it could no longer check, so the phone can finish. That can only erase a
 phone whose account no longer exists, which "Erase my data" does with no password.
 
-A lost reply reads on the phone as no signal, so sync comes back on with a token
-that stays valid for up to an hour, and its first contact could upload the season
-again. [#208](https://github.com/jwh3times/PressGolf/issues/208)'s foreign keys
-refuse that write. Until they land, a retry would leave those rows behind.
+**Every row must belong to an account that exists.** `owner_id` on every table,
+and `user_id` on `outing_members` and `mutations`, has a foreign key to
+`auth.users` with `on delete no action`. They're `not valid`, so a row orphaned
+before they were added stays where it is, but they apply to every new row and
+every deletion of a user. They do two jobs:
+
+- **A deleted account's token can't write.** An access token stays valid for up
+  to an hour, and the policies only compare a row with the token. A forgotten
+  second phone, or a phone that lost the reply and read it as no signal, would
+  otherwise upload the whole season again on first contact. The write is refused,
+  so that phone reports a sync error and keeps its data. It's signed out when its
+  token runs out and the refresh is refused: `auth-js` keeps a session while its
+  access token still works. A phone that lost the reply can also finish by trying
+  again.
+- **The clean-up can't be skipped.** Supabase refuses to delete an auth user who
+  still has rows, from the dashboard too. If a second phone writes between the
+  clean-up and `deleteUser`, `deleteUser` fails and the next call clears that row.
+
+A new table with one of these columns needs its own key; `rls-test.sql` reads the
+catalog and fails until it has one.
 
 **Accounts that share data are refused for now.** The clean-up raises `PR001`,
 with nothing deleted, for an account with guests in an outing it organised,

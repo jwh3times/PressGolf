@@ -26,7 +26,7 @@ maintain parallel release branches yet.
 - The phone is the source of truth for active scoring. Live data is stored in
   AsyncStorage and optionally copied to Supabase.
 - Supabase row-level security separates owners and grants outing members only
-  the shared access required to join and score. CI exercises 82 isolation and
+  the shared access required to join and score. CI exercises 89 isolation and
   write-boundary assertions against Postgres 16.
 - Demo and live data use different storage namespaces, and demo data is never
   uploaded.
@@ -40,6 +40,10 @@ maintain parallel release branches yet.
   verified token and re-checks the password itself. The SQL function it calls can
   be executed only by the service role, and the integration suite checks that a
   signed-in or anonymous call is refused.
+- Every row must name an account that exists, through foreign keys to
+  `auth.users`, so a deleted account's token, which stays valid for up to an hour,
+  can't write. The same keys stop an auth user being deleted while they still have
+  rows.
 
 ## Repository controls
 

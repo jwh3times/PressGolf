@@ -80,8 +80,8 @@ volatile service prices or quotas outside a dated research note.
   one's `name:`
 - Required checks and ruleset: `gh api repos/jwh3times/PressGolf/rules/branches/main`
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`
-- RLS assertion count ("82" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
-  `grep -cE "select (expect|refused)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
+- RLS assertion count ("89" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
+  `grep -cE "select (expect|refused|refused_by_key)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
 - Migrations: `supabase/migrations/*.sql`
 - EAS profiles: the `build` and `submit` keys in `eas.json`
 - Env vars: `.env.op`; `process.env` in `app.config.js` and `src/`
