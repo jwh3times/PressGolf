@@ -210,9 +210,10 @@ npx supabase stop            # when you're done
 
 The runner reads the stack's URL, anon key and service-role key from
 `supabase status`. The account-deletion tests use the service role to read what
-a deleted account has left behind. Every run signs up fresh accounts and
-prefixes every id, so it can be repeated against a stack that stays up. It
-refuses any host but `localhost` or `127.0.0.1`.
+a deleted account has left behind, and to try deleting an auth user who still
+has rows. Every run signs up fresh accounts and prefixes every id, so it can be
+repeated against a stack that stays up. It refuses any host but `localhost` or
+`127.0.0.1`.
 
 `supabase stop` keeps the database, so a later `start` restores it as it was and
 doesn't apply migrations added since. A missing table in the tests usually means
@@ -259,7 +260,8 @@ auth user. Check first that the request came from the account's own address.
 
 2. Under **Authentication → Users**, delete that user.
 
-Don't skip step 1: deleting the user alone leaves every row on the server.
+Step 2 fails if step 1 was skipped, or if the account's phone has written since:
+Supabase refuses to delete a user who still has rows. Run step 1 again.
 
 Step 1 raises `This account shares data with another account` for the accounts
 listed in [Deleting an account](architecture.md#deleting-an-account). Nothing has
