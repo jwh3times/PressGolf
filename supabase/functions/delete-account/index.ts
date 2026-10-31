@@ -55,10 +55,10 @@ Deno.serve(async (request) => {
   // A client of its own: signing in on the service-role client would replace the
   // key it sends with this user's token.
   const verifier = serverClient(Deno.env.get('SUPABASE_ANON_KEY')!);
-  const { error: passwordError } = await verifier.auth.signInWithPassword({ email, password });
-  if (passwordError) {
-    if (passwordError.code === 'invalid_credentials') return reply('wrong-password', 403);
-    console.error('delete-account: checking the password failed', passwordError.code, passwordError.status);
+  const { error: signInError } = await verifier.auth.signInWithPassword({ email, password });
+  if (signInError) {
+    if (signInError.code === 'invalid_credentials') return reply('wrong-password', 403);
+    console.error('delete-account: checking the password failed', signInError.code, signInError.status);
     return reply('failed', 500);
   }
 
