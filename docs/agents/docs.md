@@ -53,8 +53,9 @@
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
   pressgolf.cc. **When:** what the app collects, where data goes, or how an account is deleted
   changes — update the page and the date at its top in the same change.
-- `CONTEXT.md`, `docs/adr/*.md` — created lazily by `/domain-modeling`; none exist yet. An
-  accepted ADR is `frozen`: report a contradiction instead of editing it.
+- `CONTEXT.md` — the domain glossary, kept by `/domain-modeling`. `docs/adr/*.md` — created lazily
+  by `/domain-modeling`; none exist yet. An accepted ADR is `frozen`: report a contradiction instead
+  of editing it.
 - `.agents/skills/*/**` — skills, mirrored to `.claude/skills/`. The `mattpocock/skills` set in
   `skills-lock.json` (`wayfinder` and `setup-matt-pocock-skills` carry local edits re-applied by
   hand after an update) and `end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` from

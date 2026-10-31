@@ -17,6 +17,11 @@ function run(command, args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+// A server that isn't there, as in ci.yml's ui job, so the export shows what a
+// build with one shows. tests/web/app.ts explains why nothing tries to reach it.
+process.env.EXPO_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:9';
+process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'web-suite';
+
 run('npx', ['expo', 'export', '--platform', 'web']);
 run('docker', [
   'run', '--rm', '--ipc=host',

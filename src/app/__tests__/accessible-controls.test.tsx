@@ -21,6 +21,7 @@ import BagScreen from '../bag';
 import CourseScreen from '../course/[id]';
 import CourseGuideScreen from '../course-guide';
 import CoursesScreen from '../courses';
+import DeleteAccountScreen from '../delete-account';
 import GreensScreen from '../greens';
 import GreenMapScreen from '../green-map';
 import HoleMapScreen from '../hole-map';
@@ -180,6 +181,7 @@ const actions = {
   setDemoMode: jest.fn(),
   resetDemoData: jest.fn(),
   eraseLiveData: jest.fn(),
+  deleteAccount: jest.fn(),
   createGroup: jest.fn(),
   updateGroup: jest.fn(),
   deleteGroup: jest.fn(),
@@ -327,6 +329,7 @@ describe('screen accessibility', () => {
     ['History', HistoryScreen],
     ['Join', JoinScreen],
     ['My bag', BagScreen],
+    ['Delete account', DeleteAccountScreen],
   ])('%s gives every button an accessible name', async (_name, ScreenComponent) => {
     expect.hasAssertions();
     await render(<ScreenComponent />);
@@ -1157,6 +1160,27 @@ describe('management screen state matrices', () => {
     await render(<BagScreen />);
     expect(screen.getByRole('radio', { name: '70s' })).toBeChecked();
     expect(screen.getByText(/^Over 18 holes \(from your handicap\)\./)).toBeTruthy();
+  });
+
+  it('offers Delete account only when signed in, including in demo mode', async () => {
+    const user = userEvent.setup();
+    let view = await render(<SettingsScreen />);
+    expect(roundStore.demoMode).toBe(true);
+    await user.press(screen.getByRole('button', { name: 'Delete account' }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/delete-account');
+    await view.unmount();
+
+    useStoreValue({ demoMode: false });
+    view = await render(<SettingsScreen />);
+    expect(screen.getByRole('button', { name: 'Delete account' })).toBeOnTheScreen();
+    await view.unmount();
+
+    for (const status of ['signed-out', 'disabled'] as const) {
+      mockUseAuth.mockReturnValue({ ...mockUseAuth(), status });
+      view = await render(<SettingsScreen />);
+      expect(screen.queryByRole('button', { name: 'Delete account' })).not.toBeOnTheScreen();
+      await view.unmount();
+    }
   });
 
   it('opens the bag from Settings', async () => {

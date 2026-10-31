@@ -2,6 +2,7 @@
 - button "Back"
 - text: /In the pots FIELD THRU 6\/\d+ \$\d+ Field skins · \d+ in · Scats · \d+ in/
 - button "Set up the pots"
+- button "Share this outing"
 - text: /Field skins \$\d+ \d+ in at \$\d+ · 6\/\d+ holes settled · \$\d+ still riding Nothing won yet\. \d+ holes waiting on groups still out on the course Scats \$\d+ \d+ in at \$\d+ · 6\/\d+ holes settled · \$\d+ still riding IB Ibrahim \$\d+ SA Sam \$\d+ \d+ holes waiting on groups still out on the course Groups/
 - button "REARRANGE ›"
 - button /Group 1 8:\d+ MA DE T\. BR THRU \d+ 3 games/

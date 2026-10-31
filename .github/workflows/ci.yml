@@ -112,7 +112,13 @@ jobs:
       - name: Playwright matches its container
         run: test "$(node -p "require('@playwright/test/package.json').version")" = "1.64.1"
 
+      # A server that isn't there, as in scripts/test-web.mjs, so the export
+      # shows what a build with one shows. tests/web/app.ts explains why nothing
+      # tries to reach it.
       - name: Export the web build
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:9
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: web-suite
         run: npx expo export --platform web
 
       # Every main screen, from demo data, at phone width and at 320 px:
@@ -197,13 +203,15 @@ jobs:
 
       - run: npm ci
 
-      # Real auth, PostgREST, row-level security and realtime, with every
-      # migration applied. Only the services sync talks to are started.
+      # Real auth, PostgREST, row-level security, realtime and Edge Functions,
+      # with every migration applied. Only the services the app talks to are
+      # started.
       - name: Start a local Supabase stack
-        run: npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
+        run: npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
 
       # Two accounts sync a season, share an outing by code and score it
-      # together; neither can read or write what the other has not shared.
+      # together; neither can read or write what the other has not shared. An
+      # account deletes itself through the real function, and nobody else can.
       - name: Sync integration tests
         run: npm run test:integration
 
@@ -235,6 +243,16 @@ jobs:
           npx supabase db push \
             --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
             --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+
+      # After the migrations, because the function calls what they create. Every
+      # merge deploys it, so production never has one without the other.
+      - name: Deploy the Edge Function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          npx supabase functions deploy delete-account \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --use-api
 
   dependency-review:
     name: Dependency review

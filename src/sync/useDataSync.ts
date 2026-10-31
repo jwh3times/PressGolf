@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pullSharedOutings, pushChanges, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
 import { emptySnapshot, fromRows, toRows, type Documents, type Snapshot } from './rows';
@@ -14,6 +14,15 @@ export interface SyncState {
   status: 'off' | 'syncing' | 'synced' | 'pending' | 'error';
   at: number | null;
   message: string | null;
+}
+
+export interface DataSync extends SyncState {
+  /**
+   * Drops a push still waiting on the debounce and resolves once anything in
+   * flight has finished. Deleting an account calls this so no push can land
+   * during it; the caller turns sync off first.
+   */
+  settle(): Promise<void>;
 }
 
 const OFF: SyncState = { status: 'off', at: null, message: null };
@@ -36,7 +45,7 @@ export function useDataSync(options: {
   /** Takes the server's copy of what it names: everything, or only the bag. */
   onAdoptRemote: (documents: Partial<Documents>) => void;
   onSharedData: (documents: Documents) => void;
-}): SyncState {
+}): DataSync {
   const { enabled, documents, onAdoptRemote, onSharedData } = options;
   const [state, setState] = useState<SyncState>(OFF);
 
@@ -47,6 +56,10 @@ export function useDataSync(options: {
   const sharedHas = useRef<Snapshot>(emptySnapshot());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef(false);
+  // The work behind inFlight, for settle to wait on.
+  const running = useRef<Promise<void>>(Promise.resolve());
+  // Goes up each time sync goes off, so a push that outlives it knows to leave things alone.
+  const session = useRef(0);
   const adopt = useRef(onAdoptRemote);
   const shared = useRef(onSharedData);
   const latest = useRef(documents);
@@ -71,12 +84,13 @@ export function useDataSync(options: {
   useEffect(() => {
     if (!enabled) {
       serverHas.current = null;
+      session.current += 1;
       return;
     }
     if (serverHas.current) return;
 
     let cancelled = false;
-    void (async () => {
+    running.current = (async () => {
       inFlight.current = true;
       setState({ status: 'syncing', at: null, message: null });
       try {
@@ -120,14 +134,21 @@ export function useDataSync(options: {
     const push = () => {
       if (inFlight.current || !serverHas.current) return;
       const server = serverHas.current;
+      const started = session.current;
       inFlight.current = true;
-      void (async () => {
+      running.current = (async () => {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
-          serverHas.current = await pushChanges(toRows(documents), server, sharedHas.current);
+          const pushed = await pushChanges(toRows(documents), server, sharedHas.current);
+          // Sync went off meanwhile. Writing this down would undo the reset, and
+          // coming back on would then skip first contact, trusting a server that
+          // a failed account deletion may have emptied.
+          if (session.current !== started) return;
+          serverHas.current = pushed;
           // Only now, with this phone's edits safely up, is it safe to let the
           // server's copy of a shared day win.
           sharedHas.current = await pullSharedOutings();
+          if (session.current !== started) return;
           const incoming = fromRows(sharedHas.current);
           const merged = mergeShared(latest.current, incoming);
           if (changesAnything(latest.current, merged)) shared.current(merged);
@@ -147,7 +168,12 @@ export function useDataSync(options: {
     };
   }, [enabled, documents, fail]);
 
+  const settle = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    return running.current;
+  }, []);
+
   // `off` is derived rather than stored, so it can never be left behind by a
   // sign-out that raced with a push.
-  return enabled ? state : OFF;
+  return useMemo(() => ({ ...(enabled ? state : OFF), settle }), [enabled, state, settle]);
 }

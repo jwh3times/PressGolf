@@ -64,10 +64,110 @@ afterEach(() => {
 it('stays off and resets server state while disabled', async () => {
   const input = options(false);
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
-  expect(view.result.current).toEqual({ status: 'off', at: null, message: null });
+  expect(view.result.current).toMatchObject({ status: 'off', at: null, message: null });
   expect(mockReconcile).not.toHaveBeenCalled();
   await view.rerender({ ...input, documents: { ...documents, groups: [] } });
   expect(mockPush).not.toHaveBeenCalled();
+});
+
+describe('settling, before an account is deleted', () => {
+  it('waits for a push already in flight', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    let finishPush!: (rows: ReturnType<typeof toRows>) => void;
+    mockPush.mockImplementationOnce(() => new Promise((resolve) => (finishPush = resolve)));
+    await view.rerender({ ...input, documents: { ...documents, groups: [] } });
+    await advancePush();
+    expect(mockPush).toHaveBeenCalledTimes(1);
+
+    let settled = false;
+    void view.result.current.settle().then(() => (settled = true));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(settled).toBe(false);
+
+    await act(async () => finishPush(emptySnapshot()));
+    await waitFor(() => expect(settled).toBe(true));
+  });
+
+  it('waits for first contact still in flight', async () => {
+    let finish!: (outcome: Awaited<ReturnType<typeof reconcile>>) => void;
+    mockReconcile.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    const view = await renderHook(() => useDataSync(options()));
+
+    let settled = false;
+    void view.result.current.settle().then(() => (settled = true));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(settled).toBe(false);
+
+    await act(async () => finish({ status: 'nothing-to-do', shared: emptySnapshot() }));
+    await waitFor(() => expect(settled).toBe(true));
+  });
+
+  it('drops a push still waiting on the debounce', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+    await view.rerender({ ...input, documents: { ...documents, groups: [] } });
+
+    await act(async () => view.result.current.settle());
+    await advancePush();
+
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('settles straight away with nothing going on, and keeps the same state object between renders', async () => {
+    const input = options(false);
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await expect(view.result.current.settle()).resolves.toBeUndefined();
+    const first = view.result.current;
+    await view.rerender(input);
+    expect(view.result.current).toBe(first);
+  });
+
+  it('starts from first contact after coming back on, even if a push was in flight as it went off', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+    let finishPush!: (rows: ReturnType<typeof toRows>) => void;
+    mockPush.mockImplementationOnce(() => new Promise((resolve) => (finishPush = resolve)));
+    const edited = { ...input, documents: { ...documents, groups: [] } };
+    await view.rerender(edited);
+    await advancePush();
+    expect(mockPush).toHaveBeenCalledTimes(1);
+
+    await view.rerender({ ...edited, enabled: false });
+    await act(async () => finishPush(emptySnapshot()));
+    await act(async () => view.result.current.settle());
+    // A push that finished after sync went off has nothing more to bring down.
+    expect(mockPullShared).not.toHaveBeenCalled();
+
+    // What the push thought the server holds may no longer be so: a failed deletion can have cleared it.
+    await view.rerender({ ...edited, enabled: true });
+    await waitFor(() => expect(mockReconcile).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  });
+
+  it('starts again from first contact when sync comes back on, so edits made meanwhile go up', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+    await view.rerender({ ...input, enabled: false });
+    expect(view.result.current.status).toBe('off');
+    await view.rerender({ ...input, enabled: true });
+
+    await waitFor(() => expect(mockReconcile).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  });
 });
 
 it('adopts a remote season on first contact', async () => {

@@ -38,5 +38,5 @@ none
   terminal that started it.
 - **Never run:** `npx supabase stop --no-backup` or `docker volume rm`/`prune` on the
   `supabase_*_PressGolf` volumes — they delete the local database; `npx supabase db reset`; and
-  `npm run db:push` or `npx supabase db push` — they act on the linked production project, which
-  only CI's `migrate` job changes.
+  `npm run db:push`, `npx supabase db push` or `npx supabase functions deploy` — they act on the
+  linked production project, which only CI's `migrate` job changes.
