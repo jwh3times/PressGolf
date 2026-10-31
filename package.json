@@ -45,7 +45,7 @@
     "fast-check": "^4.10.2",
     "jest": "^29.7.0",
     "jest-expo": "~57.0.6",
-    "oxlint": "^1.89.0",
+    "oxlint": "^1.90.0",
     "pixelmatch": "^8.0.0",
     "pngjs": "^7.0.0",
     "supabase": "^2.122.0",
