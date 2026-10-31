@@ -483,6 +483,9 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
+0. Before every push, on first contact and on the debounced path, it reads the
+   account's move notices and applies them ([below](#deleting-an-account)). If
+   that read fails, sync reports an error like any other, and the phone carries on.
 1. On first contact, it pulls the signed-in account's 24 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
@@ -520,8 +523,8 @@ outing. Those stay on the phone. A round or outing of the guest's own may
 still be on her group and course. Before this (#127), a guest's every push
 after joining failed on the organiser's group.
 
-The schema has 26 application tables: 24 snapshot tables plus
-`outing_members` and `mutations`. Row-level security limits private data to its
+The schema has 27 application tables: 24 snapshot tables plus
+`outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need. Every owner write also checks the row it hangs from (`owns_group`,
 `owns_course`, `owns_outing`, `owns_round`): a player goes on the writer's own
@@ -553,9 +556,12 @@ The server side has two parts, and the app reaches them only through the first:
   phone.
 - **`delete_account_data(target)`**, a `security definer` SQL function that only
   the service role may execute. Scores and junk the account typed on someone
-  else's round become that round's owner's, so the day's money still adds up. Then
-  it deletes every row the account owns and its memberships and edit-log entries,
-  in one transaction. It finds the tables from the catalog, so a new table with an
+  else's round become that round's owner's, so the day's money still adds up. It
+  leaves [move notices](#move-notices) for the guests of any outing the account
+  organised. Then it deletes every row the account owns, every round in those
+  outings whoever owns it, and its memberships, edit-log entries and notices, in
+  one transaction. Cascades take guests' cells, memberships and edit-log entries
+  on those outings. It finds the tables from the catalog, so a new table with an
   `owner_id` is covered without changing it.
 
 Calling again is safe. If `deleteUser` fails after the clean-up committed, the
@@ -565,10 +571,11 @@ which it could no longer check, so the phone can finish. That can only erase a
 phone whose account no longer exists, which "Erase my data" does with no password.
 
 **Every new row must belong to an account that exists.** Each `owner_id`, and
-`user_id` on `outing_members` and `mutations`, has a foreign key to `auth.users`
-with `on delete no action`. They're `not valid`, so a row orphaned before they
-were added stays where it is, but they apply to every new row and every deletion
-of a user. They do two jobs:
+`user_id` on `outing_members`, `mutations` and `move_notices`, has a foreign key
+to `auth.users` with `on delete no action`. Those added to tables that already
+held rows are `not valid`, so a row orphaned before they were added stays where it
+is, but all of them apply to every new row and every deletion of a user. They do
+two jobs:
 
 - **A deleted account's token can't write.** An access token stays valid for up
   to an hour, and the policies only compare a row with the token. A forgotten
@@ -589,13 +596,39 @@ catalog and fails until it has one.
 **A guest can delete their account.** A membership in someone else's outing
 doesn't stop it, and the outing no longer lists them. A round or outing of their
 own on someone else's group or course goes with them, since that takes nothing of
-anyone else's. If their own outing has guests of its own, the next paragraph
-applies.
+anyone else's.
+
+**An organiser can delete their account.** The whole day leaves the server, under
+every account, and each guest keeps the copy on their phone.
+
+<a id="move-notices"></a>**Move notices** are how a guest's phone finds out. Without
+them it would read those rows as its own, once the shared pull stopped showing
+them, and upload them. That re-creates deleted data, and the next guest's upload
+is refused for good. The `move_notices` table holds, per guest (and anyone else
+with a round in the outing), one row for the outing, with no `to_id`, and one each
+for the group, its players, the course and its tees, with a new id minted for that
+guest, so two guests' copies can never collide. A guest reads only their own,
+nothing can write one from the client, and they stay until that guest's account
+goes.
+
+`applyMoveNotices` in `src/sync/move-notices.ts` applies them to the phone's
+documents. It rewrites every moved id, including those in score and junk keys and
+the active group, marks the outing `detached` and the group and course `phoneOnly`,
+and changes nothing the second time. Both marks are optional fields that persist
+with the documents. `toRows` then leaves out a detached outing and its rounds, and
+a phone-only group or course unless a round or outing still syncing uses it, in
+which case it goes up as the guest's own under its new id. A phone holding only a
+detached day looks like a fresh install, so adopting the account's season keeps
+what only the phone has (`keepingPhoneOnly`). The Outing screen shows a notice on a
+detached outing and hides sharing. A guest's phone on an older build ignores notices
+and can hit the upload problem above.
 
 **Accounts that others depend on are refused for now.** The clean-up raises
-`PR001`, with nothing deleted, for an account with guests in an outing it
-organised, or another account's rows hanging from its group, course, round or
-outing. It also refuses an account with any other row of its own under someone
+`PR001`, with nothing deleted, for an organiser with a guest in an outing on someone
+else's group or course: a notice stays, so it would keep moving a group or course
+the guest may hold again through another outing. It also refuses another account's
+rows hanging from the account's group or course, apart from a round in its own
+outing. And it refuses an account with any other row of its own under someone
 else's day, beyond the cells above. The policies refuse those now, so any that
 exist are older, and removing them would change that person's day. Removing any of
 these would take someone else's data with them. The app explains and points to

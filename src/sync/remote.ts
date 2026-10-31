@@ -11,6 +11,7 @@
  * a season — and a second device.
  */
 import { changedRows, conflictTarget, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, splitByOwner, type Deletions } from './diff';
+import type { MoveNotice } from './move-notices';
 import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
@@ -38,13 +39,14 @@ const PAGE = 1000;
 
 async function selectAll(
   supabase: SupabaseClient,
-  table: keyof Snapshot,
+  table: string,
+  key: string,
   filter: (query: ReturnType<ReturnType<SupabaseClient['from']>['select']>) => typeof query,
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   for (;;) {
     let query = filter(supabase.from(table).select('*'));
-    for (const column of conflictTarget(table).split(',')) query = query.order(column);
+    for (const column of key.split(',')) query = query.order(column);
     const { data, error } = await query.range(rows.length, rows.length + PAGE - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     const page = (data ?? []) as Record<string, unknown>[];
@@ -65,7 +67,7 @@ export async function pullSnapshot(): Promise<Snapshot> {
     // a shared outing's rows through. This snapshot is what pruning diffs
     // against, and a guest's scores are owned by the guest — pulling them here
     // would let one phone delete another's card the moment it fell behind.
-    const rows = await selectAll(supabase, table, (query) => query.eq('owner_id', ownerId));
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.eq('owner_id', ownerId));
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   }
   return snapshot;
@@ -97,7 +99,7 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   // The table name is the snapshot key in every case, so one argument does.
   const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
     if (values.length === 0) return;
-    const rows = await selectAll(supabase, table, (query) => query.in(column, values));
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.in(column, values));
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   };
 
@@ -136,6 +138,14 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   await add('course_hole_notes', 'course_id', courseIds);
 
   return snapshot;
+}
+
+/** What an organiser's deletion left for this account, for `applyMoveNotices`. Only its own, by policy. */
+export async function pullMoveNotices(): Promise<MoveNotice[]> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  await requireUserId();
+  return (await selectAll(supabase, 'move_notices', 'kind,from_id', (query) => query)) as unknown as MoveNotice[];
 }
 
 export interface PushResult {

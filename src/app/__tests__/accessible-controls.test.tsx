@@ -355,6 +355,34 @@ describe('screen accessibility', () => {
   });
 });
 
+describe('a detached outing', () => {
+  it('says why it no longer syncs, and offers no sharing', async () => {
+    mockIsSupabaseConfigured.mockReturnValue(true);
+    mockUseStore.mockReturnValue({ ...outingStore, outing: { ...outing, detached: true } } as AppStore);
+    await render(<OutingScreen />);
+
+    expect(screen.getByText('The organiser deleted this outing')).toBeOnTheScreen();
+    expect(screen.getByText(/stays on your phone/)).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Share this outing' })).toBeNull();
+    expect(screen.queryByText('Scoring on more than one phone')).toBeNull();
+    expectEveryControlToHaveAName();
+  });
+
+  it('shows the notice with no server configured too', async () => {
+    mockUseStore.mockReturnValue({ ...outingStore, outing: { ...outing, detached: true } } as AppStore);
+    await render(<OutingScreen />);
+    expect(screen.getByText('The organiser deleted this outing')).toBeOnTheScreen();
+  });
+
+  it('offers sharing on an outing that is still there', async () => {
+    mockIsSupabaseConfigured.mockReturnValue(true);
+    mockUseStore.mockReturnValue(outingStore);
+    await render(<OutingScreen />);
+    expect(screen.queryByText('The organiser deleted this outing')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Share this outing' })).toBeOnTheScreen();
+  });
+});
+
 describe('home screen states', () => {
   it('shows loading and the no-group setup path', async () => {
     const view = await render(<HomeScreen />);

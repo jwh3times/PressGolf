@@ -263,6 +263,10 @@ auth user. Check first that the request came from the account's own address.
 Step 2 fails if step 1 was skipped, or if the account's phone has written since:
 Supabase refuses to delete a user who still has rows. Run step 1 again.
 
+For an organiser, step 1 also takes every outing they organised off the server,
+with everyone's rounds and scores in it, and leaves the guests their
+[move notices](architecture.md#move-notices). It can't be undone.
+
 Step 1 raises `This account shares data with another account` for the accounts
 listed in [Deleting an account](architecture.md#deleting-an-account). Nothing has
 been deleted then, so don't go on to step 2. Those accounts can't be handled until

@@ -899,6 +899,28 @@ describe('AppStoreProvider', () => {
     expect(store.usualScore).toBe('70s');
   });
 
+  it('applies move notices to what it holds, saves them, and follows the active group', async () => {
+    const data = buildDemoDataset(1_750_000_000_000);
+    const outing = data.outings[0];
+    await mount({ ...data, activeGroupId: outing.groupId, activeOutingId: outing.id });
+
+    await change(() =>
+      mockUseDataSync.mock.calls.at(-1)?.[0].onMoveNotices([
+        { kind: 'outing', from_id: outing.id, to_id: null },
+        { kind: 'group', from_id: outing.groupId, to_id: 'my-copy' },
+      ]),
+    );
+
+    expect(store.outing?.detached).toBe(true);
+    expect(store.outing?.groupId).toBe('my-copy');
+    expect(store.activeGroupId).toBe('my-copy');
+    expect(store.group?.phoneOnly).toBe(true);
+    expect(mockUseDataSync.mock.calls.at(-1)?.[0].documents.outings.find((o) => o.id === outing.id)?.detached).toBe(true);
+    await waitFor(() =>
+      expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ activeGroupId: 'my-copy' })),
+    );
+  });
+
   it('starts the demo with a bag, and takes only a bag from the server when that is all it sends', async () => {
     await mount();
     expect(store.clubs.length).toBeGreaterThan(0);

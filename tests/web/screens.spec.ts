@@ -106,6 +106,22 @@ test('history', async ({ page }) => {
   await expectAccessible(page);
 });
 
+test('outing, once its organiser has deleted their account', async ({ page }) => {
+  // Demo data never syncs, so nothing would bring a notice: mark what's saved, as applying one does.
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('press:demo:data')!);
+    saved.outings[0].detached = true;
+    saved.activeGroupId = saved.outings[0].groupId;
+    localStorage.setItem('press:demo:data', JSON.stringify(saved));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Society Saturday/ }).click();
+  await expect(page.getByText('The organiser deleted this outing')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Share this outing' })).toHaveCount(0);
+  await expectScreen(page, 'outing-detached');
+  await expectAccessible(page);
+});
+
 test('outing', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: /Pine Hollow Society/ }).click();

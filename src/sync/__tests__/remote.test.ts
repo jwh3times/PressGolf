@@ -1,6 +1,6 @@
 import { emptySnapshot, TABLES, type Snapshot } from '../rows';
 import { getSupabase, requireUserId } from '../supabase';
-import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
+import { pullMoveNotices, pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 
 jest.mock('../supabase', () => ({ getSupabase: jest.fn(), requireUserId: jest.fn() }));
 
@@ -59,6 +59,27 @@ function snapshotWithGroup(): Snapshot {
 beforeEach(() => {
   jest.clearAllMocks();
   mockRequireUserId.mockResolvedValue('owner-1');
+});
+
+describe('pullMoveNotices', () => {
+  it('requires a configured server', async () => {
+    mockGetSupabase.mockReturnValue(null);
+    await expect(pullMoveNotices()).rejects.toThrow('no server');
+  });
+
+  it('reads every notice, however many pages they take', async () => {
+    const notices = Array.from({ length: 1001 }, (_, i) => ({ kind: 'player', from_id: `p${i}`, to_id: `q${i}` }));
+    const from = jest.fn(() => query({ data: notices, error: null }));
+    mockGetSupabase.mockReturnValue({ from } as never);
+
+    await expect(pullMoveNotices()).resolves.toEqual(notices);
+    expect(from).toHaveBeenCalledWith('move_notices');
+  });
+
+  it('adds the table name to a failed read', async () => {
+    mockGetSupabase.mockReturnValue({ from: jest.fn(() => query({ data: null, error: { message: 'down' } })) } as never);
+    await expect(pullMoveNotices()).rejects.toThrow('move_notices: down');
+  });
 });
 
 describe('pullSnapshot', () => {
