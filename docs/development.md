@@ -210,9 +210,10 @@ npx supabase stop            # when you're done
 
 The runner reads the stack's URL, anon key and service-role key from
 `supabase status`. The account-deletion tests use the service role to read what
-a deleted account has left behind. Every run signs up fresh accounts and
-prefixes every id, so it can be repeated against a stack that stays up. It
-refuses any host but `localhost` or `127.0.0.1`.
+a deleted account has left behind, and to try deleting an auth user who still
+has rows. Every run signs up fresh accounts and prefixes every id, so it can be
+repeated against a stack that stays up. It refuses any host but `localhost` or
+`127.0.0.1`.
 
 `supabase stop` keeps the database, so a later `start` restores it as it was and
 doesn't apply migrations added since. A missing table in the tests usually means
