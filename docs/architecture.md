@@ -557,11 +557,11 @@ next call finds nothing to clean and retries it. If the account has already gone
 which it could no longer check, so the phone can finish. That can only erase a
 phone whose account no longer exists, which "Erase my data" does with no password.
 
-**Every row must belong to an account that exists.** `owner_id` on every table,
-and `user_id` on `outing_members` and `mutations`, has a foreign key to
-`auth.users` with `on delete no action`. They're `not valid`, so a row orphaned
-before they were added stays where it is, but they apply to every new row and
-every deletion of a user. They do two jobs:
+**Every new row must belong to an account that exists.** Each `owner_id`, and
+`user_id` on `outing_members` and `mutations`, has a foreign key to `auth.users`
+with `on delete no action`. They're `not valid`, so a row orphaned before they
+were added stays where it is, but they apply to every new row and every deletion
+of a user. They do two jobs:
 
 - **A deleted account's token can't write.** An access token stays valid for up
   to an hour, and the policies only compare a row with the token. A forgotten
@@ -569,8 +569,9 @@ every deletion of a user. They do two jobs:
   otherwise upload the whole season again on first contact. The write is refused,
   so that phone reports a sync error and keeps its data. It's signed out when its
   token runs out and the refresh is refused: `auth-js` keeps a session while its
-  access token still works. A phone that lost the reply can also finish by trying
-  again.
+  access token still works. The data then stays on the phone behind the sign-in
+  screen, where Settings can't be reached. A phone that lost the reply can also
+  finish by trying again.
 - **The clean-up can't be skipped.** Supabase refuses to delete an auth user who
   still has rows, from the dashboard too. If a second phone writes between the
   clean-up and `deleteUser`, `deleteUser` fails and the next call clears that row.
@@ -594,9 +595,10 @@ practice-round state, and then signs out, which forgets the remembered email and
 unmounts the store, so the phone is back at first run. The demo dataset, the
 demo/live preference and the theme stay.
 
-If the app is killed after the server finishes and before the phone erases, the
-phone keeps its data, signed out. "Erase my data" still clears it, so there's no
-persisted resume flag.
+If the app is killed after the server finishes and before the phone erases, it
+reopens signed in until its token runs out. **Delete account** or "Erase my data"
+finishes the job in that time, so there's no persisted resume flag. After that
+it's like any other phone on a deleted account.
 
 A maintainer handles an emailed request with the same clean-up function; see
 [Deleting an account by hand](development.md#deleting-an-account-by-hand).

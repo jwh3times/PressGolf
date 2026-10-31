@@ -581,7 +581,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           throw error;
         }
         // Sync stays off from here. The account has gone, so a failure to erase
-        // doesn't stop the sign-out, and "Erase my data" is still there afterwards.
+        // doesn't stop the sign-out. What's left stays on the phone, behind sign-in.
         await eraseLive().catch(() => {});
         // Last, because signing out unmounts this store.
         await signOut();

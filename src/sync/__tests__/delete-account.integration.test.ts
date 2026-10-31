@@ -29,6 +29,13 @@ const admin = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+/** A client of its own, with nobody signed in and nothing saved. */
+function anonClient() {
+  return createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_ANON_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 interface Account {
   email: string;
   id: string;
@@ -82,9 +89,7 @@ async function sharedDay(prefix: string) {
  * stays signed in, holding a token that's still valid, as a forgotten phone does.
  */
 async function deleteFromAnotherPhone(account: Account): Promise<void> {
-  const other = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_ANON_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const other = anonClient();
   const { error: signInError } = await other.auth.signInWithPassword({ email: account.email, password: PASSWORD });
   expect(signInError).toBeNull();
   const { error } = await other.functions.invoke('delete-account', { body: { password: PASSWORD } });
@@ -225,10 +230,7 @@ describe('who can delete what', () => {
       expect(error?.code).toBe('42501');
     }
 
-    const anon = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_ANON_KEY!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { error } = await anon.rpc('delete_account_data', { target: ann.id });
+    const { error } = await anonClient().rpc('delete_account_data', { target: ann.id });
     expect(error?.code).toBe('42501');
 
     expect(await rowsHeldBy(ann)).toBe(before);
@@ -310,7 +312,7 @@ describe('a phone still signed in to a deleted account', () => {
   });
 
   it.each<[string, Record<string, unknown>]>([
-    ['groups',{ id: `${RUN}gone-g`, name: 'Gone', created_at: 1 }],
+    ['groups', { id: `${RUN}gone-g`, name: 'Gone', created_at: 1 }],
     ['courses', { id: `${RUN}gone-c`, name: 'Gone', created_at: 1 }],
     ['clubs', { id: `${RUN}gone-k`, name: '7i', position: 0 }],
     ['bag_settings', { usual_score: '90s' }],
@@ -341,7 +343,9 @@ describe('a phone still signed in to a deleted account', () => {
     const ann = await signUp('ann');
     await deleteFromAnotherPhone(ann);
     const events: string[] = [];
-    const { data: subscription } = getSupabase()!.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = getSupabase()!.auth.onAuthStateChange((event) => {
       events.push(event);
     });
 
@@ -350,7 +354,7 @@ describe('a phone still signed in to a deleted account', () => {
     await expireStoredSession();
 
     expect(await currentUserId()).toBeNull();
-    subscription.subscription.unsubscribe();
+    subscription.unsubscribe();
     expect(events).toContain('SIGNED_OUT');
   });
 });

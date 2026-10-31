@@ -63,7 +63,7 @@ Do not edit the remote schema without a migration. Review every RLS change as
 an authorization change, add a failing/passing assertion in
 `supabase/ci/rls-test.sql`, and ensure CI can apply all migrations to a blank
 Postgres 16 database. A new table with an `owner_id` or `user_id` needs a foreign
-key to `auth.users`; that file fails until it has one.
+key to `auth.users` with `on delete no action`; that file fails until it has one.
 
 Never place a service-role key, database password, access token, or resolved
 1Password value in the repository. `EXPO_PUBLIC_` values are bundled into the

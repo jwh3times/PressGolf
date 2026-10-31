@@ -12,6 +12,8 @@
 
 \set alice '11111111-1111-1111-1111-111111111111'
 \set bob   '22222222-2222-2222-2222-222222222222'
+\set gone  '33333333-3333-3333-3333-333333333333'
+\set carol '44444444-4444-4444-4444-444444444444'
 
 grant usage on schema public, auth to authenticated;
 grant all on all tables in schema public to authenticated;
@@ -272,7 +274,7 @@ select expect('organiser sees the guest score',
 -- Its token stays valid for up to an hour after it's deleted, so policies that
 -- only compare the row with auth.uid() would let it write.
 
-set request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set request.jwt.claim.sub = :'gone';
 select refused_by_key('an unknown account can''t save a group', $q$
   insert into groups (id, name, created_at) values ('g-gone', 'Gone', 1) $q$);
 select refused_by_key('an unknown account can''t save a course', $q$
@@ -286,8 +288,8 @@ reset role;
 
 select refused_by_key('an account that still owns rows can''t be deleted', $q$
   delete from auth.users where id = '11111111-1111-1111-1111-111111111111' $q$);
-insert into auth.users (id) values ('44444444-4444-4444-4444-444444444444');
-insert into outing_members (outing_id, user_id) values ('o1', '44444444-4444-4444-4444-444444444444');
+insert into auth.users (id) values (:'carol');
+insert into outing_members (outing_id, user_id) values ('o1', :'carol');
 select refused_by_key('an account that only holds a membership can''t be deleted', $q$
   delete from auth.users where id = '44444444-4444-4444-4444-444444444444' $q$);
 
