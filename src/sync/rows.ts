@@ -381,7 +381,17 @@ export function emptySnapshot(): Snapshot {
 export function toRows(documents: Documents): Snapshot {
   const out = emptySnapshot();
 
-  for (const group of documents.groups) {
+  // What `move-notices` marked stays on the phone: a detached day, and a moved
+  // group or course unless a round or outing still syncing uses it.
+  const outings = documents.outings.filter((outing) => !outing.detached);
+  const detached = new Set(documents.outings.filter((outing) => outing.detached).map((outing) => outing.id));
+  const rounds = documents.rounds.filter((round) => round.outingId === null || !detached.has(round.outingId));
+  const usedGroups = new Set([...rounds, ...outings].map((day) => day.groupId));
+  const usedCourses = new Set([...rounds, ...outings].map((day) => day.courseId));
+  const groups = documents.groups.filter((group) => !group.phoneOnly || usedGroups.has(group.id));
+  const courses = documents.courses.filter((course) => !course.phoneOnly || usedCourses.has(course.id));
+
+  for (const group of groups) {
     out.groups.push({
       id: group.id,
       name: group.name,
@@ -407,7 +417,7 @@ export function toRows(documents: Documents): Snapshot {
     });
   }
 
-  for (const course of documents.courses) {
+  for (const course of courses) {
     out.courses.push({ id: course.id, name: course.name, created_at: course.createdAt });
     course.tees.forEach((tee, index) => {
       out.tees.push({
@@ -458,7 +468,7 @@ export function toRows(documents: Documents): Snapshot {
     }
   }
 
-  for (const round of documents.rounds) {
+  for (const round of rounds) {
     out.rounds.push({
       id: round.id,
       group_id: round.groupId,
@@ -562,7 +572,7 @@ export function toRows(documents: Documents): Snapshot {
     });
   }
 
-  for (const outing of documents.outings) {
+  for (const outing of outings) {
     out.outings.push({
       id: outing.id,
       group_id: outing.groupId,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { pullSharedOutings, pushChanges, reconcile } from './remote';
+import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
+import { applyMoveNotices, keepingPhoneOnly, type MoveNotice } from './move-notices';
 import { emptySnapshot, fromRows, toRows, type Documents, type Snapshot } from './rows';
 
 export interface SyncState {
@@ -45,8 +46,10 @@ export function useDataSync(options: {
   /** Takes the server's copy of what it names: everything, or only the bag. */
   onAdoptRemote: (documents: Partial<Documents>) => void;
   onSharedData: (documents: Documents) => void;
+  /** An organiser's account went: applies these to what the store holds. */
+  onMoveNotices: (notices: MoveNotice[]) => void;
 }): DataSync {
-  const { enabled, documents, onAdoptRemote, onSharedData } = options;
+  const { enabled, documents, onAdoptRemote, onSharedData, onMoveNotices } = options;
   const [state, setState] = useState<SyncState>(OFF);
 
   // What we believe the server is holding. Later pushes diff against this to
@@ -62,13 +65,15 @@ export function useDataSync(options: {
   const session = useRef(0);
   const adopt = useRef(onAdoptRemote);
   const shared = useRef(onSharedData);
+  const moved = useRef(onMoveNotices);
   const latest = useRef(documents);
 
   useEffect(() => {
     adopt.current = onAdoptRemote;
     shared.current = onSharedData;
+    moved.current = onMoveNotices;
     latest.current = documents;
-  }, [onAdoptRemote, onSharedData, documents]);
+  }, [onAdoptRemote, onSharedData, onMoveNotices, documents]);
 
   const fail = useCallback((error: unknown) => {
     setState({
@@ -94,13 +99,19 @@ export function useDataSync(options: {
       inFlight.current = true;
       setState({ status: 'syncing', at: null, message: null });
       try {
-        const local = toRows(documents);
+        // Before every push, on this path and the debounced one. An organiser's day
+        // that's gone makes a push throw, and it would never reach a pull that told it.
+        const notices = await pullMoveNotices();
+        if (cancelled) return;
+        const held = applyMoveNotices(documents, notices);
+        if (held !== documents) moved.current(notices);
+        const local = toRows(held);
         const outcome = await reconcile(local);
         if (cancelled) return;
         sharedHas.current = outcome.shared;
         if (outcome.status === 'adopted-remote') {
           serverHas.current = outcome.snapshot;
-          adopt.current(fromRows(outcome.snapshot));
+          adopt.current(keepingPhoneOnly(held, fromRows(outcome.snapshot)));
         } else {
           serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
           if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings)) {
@@ -139,7 +150,11 @@ export function useDataSync(options: {
       running.current = (async () => {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
-          const pushed = await pushChanges(toRows(documents), server, sharedHas.current);
+          const notices = await pullMoveNotices();
+          if (session.current !== started) return;
+          const held = applyMoveNotices(documents, notices);
+          if (held !== documents) moved.current(notices);
+          const pushed = await pushChanges(toRows(held), server, sharedHas.current);
           // Sync went off meanwhile. Writing this down would undo the reset, and
           // coming back on would then skip first contact, trusting a server that
           // a failed account deletion may have emptied.
@@ -150,8 +165,10 @@ export function useDataSync(options: {
           sharedHas.current = await pullSharedOutings();
           if (session.current !== started) return;
           const incoming = fromRows(sharedHas.current);
-          const merged = mergeShared(latest.current, incoming);
-          if (changesAnything(latest.current, merged)) shared.current(merged);
+          // The store may not have rendered the notices yet.
+          const current = applyMoveNotices(latest.current, notices);
+          const merged = mergeShared(current, incoming);
+          if (changesAnything(current, merged)) shared.current(merged);
           setState({ status: 'synced', at: Date.now(), message: null });
         } catch (error) {
           fail(error);

@@ -117,7 +117,14 @@ export default function OutingScreen() {
         <GhostButton label="Set up the pots" onPress={() => router.push('/field-games')} />
       </LinearGradient>
 
-      {isSupabaseConfigured() ? (
+      {outing.detached ? (
+        <View style={styles.detached}>
+          <Text style={styles.detachedTitle}>The organiser deleted this outing</Text>
+          <Text style={styles.detachedBody}>
+            This copy stays on your phone, but it no longer syncs with anyone, and nobody else can join it.
+          </Text>
+        </View>
+      ) : isSupabaseConfigured() ? (
         <View style={{ gap: 8 }}>
           <Eyebrow>Scoring on more than one phone</Eyebrow>
           {joinCode ? (
@@ -339,6 +346,16 @@ const useStyles = makeStyles(({ colors, ink, line, fill }) =>
       gap: 8,
       alignItems: 'center',
     },
+    detached: {
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.panel,
+      padding: 16,
+      gap: 6,
+    },
+    detachedTitle: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    detachedBody: { fontFamily: fonts.sans, fontSize: 12, color: ink.soft, lineHeight: 17 },
     code: { color: colors.accent, letterSpacing: 8 },
     codeHint: {
       fontFamily: fonts.sans,
