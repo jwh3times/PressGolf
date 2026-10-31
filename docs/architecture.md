@@ -676,6 +676,7 @@ scripts/
   maestro-output.mjs      reads Maestro's output tree for the two scripts above
   sync-agents.mjs         .agents/skills -> .claude/skills generator
   lint-agent-neutrality.mjs checks agent and skill sources read correctly from their mirrors
+  check-docs.mjs          checks local doc links and anchors, and that the doc map lists every document
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/
