@@ -73,6 +73,32 @@ test('bag', async ({ page }) => {
   await expect(page.getByRole('radio', { name: '90s' })).toBeChecked();
 });
 
+test('settings, signed in', async ({ page }) => {
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Delete account' }).scrollIntoViewIfNeeded();
+  await expectScreen(page, 'settings-account');
+  await expectAccessible(page);
+});
+
+test('delete account', async ({ page }) => {
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Delete account' }).click();
+  await expect(page.getByRole('button', { name: 'Delete my account' })).toBeDisabled();
+  await expectScreen(page, 'delete-account');
+  await expectAccessible(page);
+
+  // Backing out changes nothing: the signed-in row is still there to come back to.
+  await page.getByRole('button', { name: 'Keep my account' }).click();
+  await page.getByRole('button', { name: 'Delete account' }).click();
+
+  // The server named by this build isn't there, which is what no signal looks like.
+  await page.getByLabel('Password').fill('hunter2222');
+  await page.getByRole('button', { name: 'Delete my account' }).click();
+  await expect(page.getByRole('alert')).toContainText('needs signal');
+  await expect(page.getByRole('button', { name: 'Delete my account' })).toBeEnabled();
+  await expectAccessible(page);
+});
+
 test('history', async ({ page }) => {
   await page.getByRole('button', { name: /18 rounds/ }).click();
   await expect(page.getByRole('button', { name: /Pine Hollow LIVE/ })).toBeVisible();

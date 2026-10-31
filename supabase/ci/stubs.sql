@@ -33,3 +33,16 @@ begin
   end if;
 end
 $$;
+
+-- The other two API roles, named by a migration that grants a function to the
+-- service role alone.
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then
+    create role service_role nologin;
+  end if;
+end
+$$;

@@ -247,6 +247,13 @@ export default function SettingsScreen() {
           >
             <Text style={[styles.actionText, { color: colors.clay }]}>Sign out</Text>
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/delete-account')}
+            style={[styles.action, { borderColor: alpha(colors.clay, 0.4) }]}
+          >
+            <Text style={[styles.actionText, { color: colors.clay }]}>Delete account</Text>
+          </Pressable>
         </View>
       ) : null}
 

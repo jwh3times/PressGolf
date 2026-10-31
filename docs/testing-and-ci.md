@@ -19,8 +19,9 @@ npm run sync:agents:check   # .claude/skills matches .agents/skills
 npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```
 
-When a change touches `src/sync/` or `supabase/migrations/`, run the sync
-integration tests against a local Supabase stack (Docker required; see
+When a change touches `src/sync/`, `supabase/migrations/` or
+`supabase/functions/`, run the sync integration tests against a local Supabase
+stack (Docker required; see
 [development.md](development.md#sync-integration-tests)):
 
 ```bash
@@ -83,16 +84,18 @@ figures, are authoritative.
 | **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, agent and skill sources are tool-neutral, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
-| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't |
+| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't. An account deletes itself through the real Edge Function, leaving nothing behind; a wrong password, a missing token or another account deletes nothing, the clean-up function refuses everyone but the service role, and an account that shares data is refused |
 | **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 82 account-isolation and write-boundary assertions pass (October 2026) |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
 On a push to `main`, another job applies pending migrations to the linked
-Supabase project. It runs only after the tests, the bundle, the throwaway
-database and the sync integration tests have all passed. It uses
-`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and `SUPABASE_DB_PASSWORD` from
-the protected GitHub `production` environment. `supabase db push` is safe to
-run when there are no pending migrations.
+Supabase project, then deploys the `delete-account` Edge Function, in that order
+because the function calls what the migrations create. It runs only after the
+tests, the bundle, the throwaway database and the sync integration tests have
+all passed. It uses `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and
+`SUPABASE_DB_PASSWORD` from the protected GitHub `production` environment.
+`supabase db push` is safe to run when there are no pending migrations, and the
+function is deployed on every merge.
 
 ## Support and privacy site
 
@@ -123,9 +126,9 @@ date at the top of the policy or terms, in the same pull request.
 
 `tests/web/screens.spec.ts` opens the web export (`npx expo export --platform
 web`, demo data, clock frozen at 2026-09-26) in Playwright. It visits Home,
-Format, Score (hole by hole and whole card), Settle, Roster, History and Outing
-by tapping through the app, as a user would. On each screen it checks three
-things:
+Format, Score (hole by hole and whole card), Settle, Roster, Settings' Account
+section, Delete account, History and Outing by tapping through the app, as a
+user would. On each screen it checks three things:
 
 1. **Screenshot.** It must match `tests/web/__snapshots__/<project>/<screen>.png`
    exactly: there is no per-pixel tolerance, so even a one-step change to a
@@ -137,6 +140,14 @@ things:
 
 It runs twice: as `phone` (390×844) and as `reflow-320` (320×640, the WCAG
 1.4.10 reflow width).
+
+The export names a Supabase server that isn't there (`http://127.0.0.1:9`, set
+in `scripts/test-web.mjs` and in the job in `ci.yml`), and `openApp` seeds a
+remembered sign-in, so the suite sees what a signed-in build shows. Demo data
+never syncs, so nothing tries to reach the server until the Delete account test
+presses its button, which is how that test sees the no-signal message. A bare
+`npx expo export --platform web` names no server, so it has no Account section
+and doesn't match the baselines.
 
 `tests/web/themes.spec.ts` does the same for the themes other than the
 default: Home, Score (hole by hole) and Settle in dark high contrast, light,

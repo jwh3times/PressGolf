@@ -41,6 +41,7 @@ import type {
   TeeId,
 } from '../domain/types';
 import { useAuth } from '../auth/AuthProvider';
+import { deleteAccount as deleteAccountRemote } from '../sync/supabase';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
 import type { Documents } from '../sync/rows';
 import { clearDataset, loadDataset, loadSettings, saveDataset, saveSettings } from './persistence';
@@ -105,6 +106,12 @@ export interface AppStore extends AppState {
   setDemoMode(on: boolean): void;
   resetDemoData(): void;
   eraseLiveData(): void;
+  /**
+   * Deletes the account from the server, then erases the live dataset and signs
+   * out. Throws a message worth showing, with the phone unchanged, if the server
+   * says no or can't be reached. Sync is off throughout.
+   */
+  deleteAccount(password: string): Promise<void>;
 
   // Groups and players
   createGroup(name: string): Group;
@@ -332,10 +339,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const auth = useAuth();
+  const { signOut } = auth;
 
   // Demo data is never synced: it is invented, and it would land in a real
   // account's season looking exactly like a real Saturday.
-  const syncEnabled = state.ready && !state.demoMode && auth.status === 'signed-in';
+  const [deleting, setDeleting] = useState(false);
+  const syncEnabled = state.ready && !state.demoMode && auth.status === 'signed-in' && !deleting;
 
   const documents = useMemo<Documents>(
     () => ({
@@ -423,6 +432,28 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         rounds[idx] = fn(rounds[idx], prev);
         return { ...prev, rounds };
       });
+
+    const eraseLive = async () => {
+      // A save still on its debounce would otherwise write the dataset back.
+      if (!state.demoMode && saveTimer.current) clearTimeout(saveTimer.current);
+      await clearDataset(false);
+      if (!state.demoMode) {
+        setState((prev) => ({
+          ...prev,
+          groups: [],
+          courses: [],
+          rounds: [],
+          outings: [],
+          clubs: [],
+          usualScore: null,
+          practice: {},
+          activeGroupId: null,
+          activeRoundId: null,
+          activeOutingId: null,
+          cardRoundId: null,
+        }));
+      }
+    };
 
     return {
       ...state,
@@ -538,25 +569,22 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         })();
       },
       eraseLiveData: () => {
-        void (async () => {
-          await clearDataset(false);
-          if (!state.demoMode) {
-            setState((prev) => ({
-              ...prev,
-              groups: [],
-              courses: [],
-              rounds: [],
-              outings: [],
-              clubs: [],
-              usualScore: null,
-              practice: {},
-              activeGroupId: null,
-              activeRoundId: null,
-              activeOutingId: null,
-              cardRoundId: null,
-            }));
-          }
-        })();
+        void eraseLive();
+      },
+      deleteAccount: async (password) => {
+        setDeleting(true);
+        try {
+          await sync.settle();
+          await deleteAccountRemote(password);
+        } catch (error) {
+          setDeleting(false);
+          throw error;
+        }
+        // Sync stays off from here. The account has gone, so a failure to erase
+        // doesn't stop the sign-out, and "Erase my data" is still there afterwards.
+        await eraseLive().catch(() => {});
+        // Last, because signing out unmounts this store.
+        await signOut();
       },
 
       createGroup: (name) => {
@@ -843,7 +871,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setRoundPlayers: (playerIds) =>
         patchRound((r) => reconcileRound({ ...r, playerIds }, course?.tees[0]?.holes.length ?? 18)),
     };
-  }, [state, sync, commit, setDemoMode]);
+  }, [state, sync, commit, setDemoMode, signOut]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
   useEffect(() => {

@@ -76,6 +76,7 @@ function Root({ ready }: { ready: boolean }) {
                 >
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="settings" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+                  <Stack.Screen name="delete-account" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="roster" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="courses" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="bag" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
