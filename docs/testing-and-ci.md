@@ -127,8 +127,8 @@ date at the top of the policy or terms, in the same pull request.
 `tests/web/screens.spec.ts` opens the web export (`npx expo export --platform
 web`, demo data, clock frozen at 2026-09-26) in Playwright. It visits Home,
 Format, Score (hole by hole and whole card), Settle, Roster, Settings' Account
-section, Delete account, History and Outing by tapping through the app, as a
-user would. On each screen it checks three things:
+section, Delete account, History and Outing, with an outing detached too, by
+tapping through the app, as a user would. On each screen it checks three things:
 
 1. **Screenshot.** It must match `tests/web/__snapshots__/<project>/<screen>.png`
    exactly: there is no per-pixel tolerance, so even a one-step change to a

@@ -603,11 +603,12 @@ every account, and each guest keeps the copy on their phone.
 <a id="move-notices"></a>**Move notices** are how a guest's phone finds out. Without
 them it would read those rows as its own, once the shared pull stopped showing
 them, and upload them. That re-creates deleted data, and the next guest's upload
-is refused for good. The `move_notices` table holds, per guest, one row for the
-outing, with no `to_id`, and one each for the group, its players, the course and
-its tees, with a new id minted for that guest, so two guests' copies can never
-collide. A guest reads only their own, nothing can write one from the client, and
-they stay until that guest's account goes.
+is refused for good. The `move_notices` table holds, per guest (and anyone else
+with a round in the outing), one row for the outing, with no `to_id`, and one each
+for the group, its players, the course and its tees, with a new id minted for that
+guest, so two guests' copies can never collide. A guest reads only their own,
+nothing can write one from the client, and they stay until that guest's account
+goes.
 
 `applyMoveNotices` in `src/sync/move-notices.ts` applies them to the phone's
 documents. It rewrites every moved id, including those in score and junk keys and

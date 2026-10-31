@@ -39,11 +39,11 @@ const PAGE = 1000;
 
 async function selectAll(
   supabase: SupabaseClient,
-  table: keyof Snapshot | 'move_notices',
+  table: string,
+  key: string,
   filter: (query: ReturnType<ReturnType<SupabaseClient['from']>['select']>) => typeof query,
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
-  const key = table === 'move_notices' ? 'kind,from_id' : conflictTarget(table);
   for (;;) {
     let query = filter(supabase.from(table).select('*'));
     for (const column of key.split(',')) query = query.order(column);
@@ -67,7 +67,7 @@ export async function pullSnapshot(): Promise<Snapshot> {
     // a shared outing's rows through. This snapshot is what pruning diffs
     // against, and a guest's scores are owned by the guest — pulling them here
     // would let one phone delete another's card the moment it fell behind.
-    const rows = await selectAll(supabase, table, (query) => query.eq('owner_id', ownerId));
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.eq('owner_id', ownerId));
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   }
   return snapshot;
@@ -99,7 +99,7 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   // The table name is the snapshot key in every case, so one argument does.
   const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
     if (values.length === 0) return;
-    const rows = await selectAll(supabase, table, (query) => query.in(column, values));
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.in(column, values));
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   };
 
@@ -145,7 +145,7 @@ export async function pullMoveNotices(): Promise<MoveNotice[]> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('This build has no server configured.');
   await requireUserId();
-  return (await selectAll(supabase, 'move_notices', (query) => query)) as unknown as MoveNotice[];
+  return (await selectAll(supabase, 'move_notices', 'kind,from_id', (query) => query)) as unknown as MoveNotice[];
 }
 
 export interface PushResult {

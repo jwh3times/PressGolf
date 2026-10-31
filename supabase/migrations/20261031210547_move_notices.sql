@@ -60,12 +60,14 @@ begin
 
   shared := exists (
     select 1
-    from outing_members m
-    join outings o on o.id = m.outing_id
+    from outings o
     join groups g on g.id = o.group_id
     join courses c on c.id = o.course_id
-    where o.owner_id = target and m.user_id <> target
-      and (g.owner_id <> target or c.owner_id <> target)
+    where o.owner_id = target and (g.owner_id <> target or c.owner_id <> target)
+      and (
+        exists (select 1 from outing_members m where m.outing_id = o.id and m.user_id <> target)
+        or exists (select 1 from rounds r where r.outing_id = o.id and r.owner_id <> target)
+      )
   );
 
   -- Rows either way round. Anyone's row under this account's round or outing goes
@@ -111,20 +113,24 @@ begin
       using errcode = 'PR001';
   end if;
 
-  insert into move_notices (user_id, kind, from_id)
-  select m.user_id, 'outing', o.id
-  from outing_members m
-  join outings o on o.id = m.outing_id
-  where o.owner_id = target and m.user_id <> target;
-
-  -- Every player and tee, not only those on the guest's phone: it ignores the rest.
+  -- Everyone whose phone may hold the day: its members, and anyone with a round in
+  -- it, as older builds could write. Every player and tee, not only those on the
+  -- phone: it ignores the rest. A notice can already be there if the same ids came
+  -- back under a new account, and that mustn't stop this one deleting.
   with holders as (
-    select distinct m.user_id, o.group_id, o.course_id
+    select m.user_id, o.id as outing_id, o.group_id, o.course_id
     from outing_members m
     join outings o on o.id = m.outing_id
     where o.owner_id = target and m.user_id <> target
+    union
+    select r.owner_id, o.id, o.group_id, o.course_id
+    from rounds r
+    join outings o on o.id = r.outing_id
+    where o.owner_id = target and r.owner_id <> target
   ), moved as (
-    select user_id, 'group' as kind, group_id as from_id from holders
+    select user_id, 'outing' as kind, outing_id as from_id from holders
+    union
+    select user_id, 'group', group_id from holders
     union
     select h.user_id, 'player', p.id from holders h join players p on p.group_id = h.group_id
     union
@@ -133,7 +139,9 @@ begin
     select h.user_id, 'tee', t.id from holders h join tees t on t.course_id = h.course_id
   )
   insert into move_notices (user_id, kind, from_id, to_id)
-  select user_id, kind, from_id, gen_random_uuid()::text from moved;
+  select user_id, kind, from_id, case when kind = 'outing' then null else gen_random_uuid()::text end
+  from moved
+  on conflict do nothing;
 
   -- A round or outing holds its course without a cascade, so these go first. A round
   -- in its outing goes with the day whoever owns it: outing_id isn't a foreign key.

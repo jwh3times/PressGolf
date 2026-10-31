@@ -378,6 +378,34 @@ describe('an account that shares data', () => {
     expect(await rowsHeldBy(ben)).toBe(benHolds);
   });
 
+  it("refuses an organiser with someone's round in an outing on someone else's group, member or not", async () => {
+    const { ben, outing } = await sharedDay('third-round');
+    const own = {
+      id: `${RUN}third-round-own`,
+      group_id: outing.groupId,
+      course_id: outing.courseId,
+      name: 'On her group',
+      date: 1,
+      started_at: 1,
+    };
+    const { error: outingError } = await getSupabase()!.from('outings').insert(own);
+    expect(outingError).toBeNull();
+    const dee = await signUp('dee');
+    const { error: roundError } = await admin.from('rounds').insert({
+      id: `${RUN}third-round-dee`,
+      group_id: outing.groupId,
+      course_id: outing.courseId,
+      outing_id: own.id,
+      name: 'Older',
+      started_at: 1,
+      owner_id: dee.id,
+    });
+    expect(roundError).toBeNull();
+    await signInAs(ben);
+
+    await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
+  });
+
   it("refuses an owner whose group and course hold another account's round, once the guest has gone", async () => {
     const { ann, ben, season, outing } = await sharedDay('rematch');
     // Ben plays Ann's group and course again on his own, then leaves the outing by hand,
@@ -603,6 +631,47 @@ describe('an organiser deleting their account', () => {
     for (const account of [ann, ben, cal]) expect(await rowsHeldBy(account)).toBe(0);
     await signOut();
     await expect(signInWithPassword(ann.email, PASSWORD)).rejects.toThrow('do not match an account');
+  });
+
+  it('tells someone with a round in the outing who is no longer a member, and takes the round', async () => {
+    const { ann, outing } = await sharedDay('left');
+    const dee = await signUp('dee');
+    const round = {
+      id: `${RUN}left-round`,
+      group_id: outing.groupId,
+      course_id: outing.courseId,
+      outing_id: outing.id,
+      name: 'Older',
+      started_at: 1,
+      owner_id: dee.id,
+    };
+    const { error } = await admin.from('rounds').insert(round);
+    expect(error).toBeNull();
+
+    await deleteFromAnotherPhone(ann);
+
+    expect(await pullMoveNotices()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'outing', from_id: outing.id, to_id: null }),
+        expect.objectContaining({ kind: 'group', from_id: outing.groupId }),
+      ]),
+    );
+    expect(await rowsHeldBy(dee)).toBe(0);
+  });
+
+  it('still deletes if the guest already has a notice about those ids', async () => {
+    const { ann, ben, outing } = await sharedDay('again');
+    const { error } = await admin
+      .from('move_notices')
+      .insert({ user_id: ben.id, kind: 'group', from_id: outing.groupId, to_id: 'from-before' });
+    expect(error).toBeNull();
+
+    await deleteFromAnotherPhone(ann);
+
+    expect(await rowsHeldBy(ann)).toBe(0);
+    expect(await pullMoveNotices()).toContainEqual(
+      expect.objectContaining({ kind: 'group', from_id: outing.groupId, to_id: 'from-before' }),
+    );
   });
 
   it("leaves two guests' phones holding the day and syncing, in a running session and after a restart", async () => {
