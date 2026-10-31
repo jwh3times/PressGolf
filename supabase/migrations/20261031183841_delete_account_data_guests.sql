@@ -29,8 +29,9 @@ begin
   -- the check below and the deletes.
   perform 1 from outings where owner_id = target for update;
 
-  -- Before the check, which would otherwise read these as rows of this account's
-  -- hanging from someone else's. A refusal rolls this back with everything else.
+  -- The two tables a guest may write (GUEST_WRITES in src/sync/diff.ts). Before the
+  -- check, which would otherwise read these as rows of this account's hanging from
+  -- someone else's. A refusal rolls this back with everything else.
   update scores cell set owner_id = round.owner_id
   from rounds round
   where round.id = cell.round_id and cell.owner_id = target and round.owner_id <> target;

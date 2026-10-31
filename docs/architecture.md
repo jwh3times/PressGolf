@@ -490,12 +490,12 @@ When the two Supabase public variables are present and a user is signed in,
    the account's, rather than pruning it, and a fresh install keeps clubs typed
    before signing in when the account has none. The usual score (`bag_settings`)
    is settled the same way, apart from the clubs. A phone holding only a bag
-   still counts as fresh, so it can never prune a season. First contact doesn't
-   prune a score or junk row the shared pull shows on the account's own round:
-   the phone may not have seen it yet, as when a guest who deleted their account
-   left it to the organiser. It arrives with the next shared merge. A cell
-   cleared there and not pushed before the app closed looks the same, so it comes
-   back.
+   still counts as fresh, so it can never prune a season. On a shared round the
+   account owns, first contact doesn't prune a score or junk row the shared pull
+   shows, or send a blank box over a score it shows: the phone may not have seen
+   them yet, as when a guest who deleted their account left them to the organiser.
+   They arrive with the next shared merge. A cell cleared there and not pushed
+   before the app closed looks the same, so it comes back.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one

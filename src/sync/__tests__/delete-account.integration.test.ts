@@ -25,6 +25,7 @@ import { demoDocuments } from './fixtures';
 
 const RUN = `d${Date.now().toString(36)}`;
 const PASSWORD = 'correct-horse-battery-staple';
+const REFUSED = 'shares data with another account';
 
 const admin = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -86,10 +87,11 @@ async function sharedDay(prefix: string) {
 }
 
 /**
- * Ann's day with one hole of one card still to play, and Ben, who has joined it,
- * typing that hole and a junk claim on her card. Those two cells are the only rows
- * he owns on it. `before` is Ann's phone as it stood before he typed. Ben is left
- * signed in.
+ * Ann's day with two holes of one card still to play, and Ben, who has joined it,
+ * typing them and a junk claim on her card. Ann's phone has a blank box for the
+ * first, whose row stays hers, and no box for the second. That cell and the claim
+ * are the only rows he owns on it. `before` is Ann's phone as it stood before he
+ * typed. Ben is left signed in.
  */
 async function guestOnTheCard(prefix: string) {
   const ann = await signUp('ann');
@@ -98,7 +100,7 @@ async function guestOnTheCard(prefix: string) {
   const day = season.rounds.find((r) => r.outingId === outing.id)!;
   const scorer = day.playerIds[0];
   const hole = 17;
-  const unplayed = { ...day, scores: { ...day.scores, [scorer]: day.scores[scorer].slice(0, hole) } };
+  const unplayed = { ...day, scores: { ...day.scores, [scorer]: [...day.scores[scorer].slice(0, hole - 1), null] } };
   const before: Documents = { ...season, rounds: season.rounds.map((r) => (r.id === day.id ? unplayed : r)) };
   await pushSnapshot(toRows(before));
   const { joinCode } = await hostOuting(outing.id);
@@ -109,6 +111,7 @@ async function guestOnTheCard(prefix: string) {
   const merged = mergeShared({ groups: [], courses: [], rounds: [], outings: [], clubs: [] }, fromRows(pulled));
   const theirs = merged.rounds.find((r) => r.id === day.id)!;
   const typed = [...theirs.scores[scorer]];
+  typed[hole - 1] = 5;
   typed[hole] = 6;
   const card = {
     ...theirs,
@@ -118,15 +121,18 @@ async function guestOnTheCard(prefix: string) {
   const benPhone: Documents = { ...merged, rounds: merged.rounds.map((r) => (r.id === card.id ? card : r)) };
   await pushChanges(toRows(benPhone), await pullSnapshot(), pulled);
 
-  /** The two cells he typed, read with the service role. */
+  /** The two rows he owns, read with the service role. */
   const cells = async () => {
     const where = { round_id: card.id, player_id: scorer, hole };
     const { data: score } = await admin.from('scores').select('strokes, owner_id').match(where).maybeSingle();
     const { data: junk } = await admin.from('junk').select('owner_id').match({ ...where, kind: 'sandie' }).maybeSingle();
     return { score, junk };
   };
-  return { ann, ben, season, outing, day, before, card, benPhone, cells };
+  return { ann, ben, outing, day, before, card, benPhone, cells };
 }
+
+/** What `cells` reads back while `owner` holds them. */
+const typedCells = (owner: Account) => ({ score: { strokes: 6, owner_id: owner.id }, junk: { owner_id: owner.id } });
 
 /**
  * Deletes the account from another phone, on a client of its own. The app's client
@@ -282,8 +288,6 @@ describe('who can delete what', () => {
 });
 
 describe('an account that shares data', () => {
-  const REFUSED = 'shares data with another account';
-
   it('refuses the organiser of an outing a guest joined, with nothing deleted', async () => {
     const { ann, ben } = await sharedDay('org');
     const [annHolds, benHolds] = [await rowsHeldBy(ann), await rowsHeldBy(ben)];
@@ -332,11 +336,9 @@ describe('an account that shares data', () => {
 });
 
 describe('a guest deleting their account', () => {
-  const REFUSED = 'shares data with another account';
-
   it("leaves what they typed on the organiser's card, hers now, and nothing else of theirs", async () => {
     const { ann, ben, outing, cells } = await guestOnTheCard('stay');
-    expect(await cells()).toEqual({ score: { strokes: 6, owner_id: ben.id }, junk: { owner_id: ben.id } });
+    expect(await cells()).toEqual(typedCells(ben));
     const { error: logError } = await admin.from('mutations').insert({
       id: `${RUN}stay-log`,
       outing_id: outing.id,
@@ -350,7 +352,7 @@ describe('a guest deleting their account', () => {
 
     await deleteAccount(PASSWORD);
 
-    expect(await cells()).toEqual({ score: { strokes: 6, owner_id: ann.id }, junk: { owner_id: ann.id } });
+    expect(await cells()).toEqual(typedCells(ann));
     expect(await rowsHeldBy(ben)).toBe(0);
     const { data: members } = await admin.from('outing_members').select('user_id').eq('outing_id', outing.id);
     expect(members).toEqual([{ user_id: ann.id }]);
@@ -376,14 +378,14 @@ describe('a guest deleting their account', () => {
     // And first contact, as after the app restarts.
     await expect(reconcile(toRows(merged))).resolves.toMatchObject({ status: 'pushed', deleted: 0 });
 
-    expect((await cells()).score).toEqual({ strokes: 6, owner_id: ann.id });
+    expect(await cells()).toEqual(typedCells(ann));
     const shown = fromRows(await pullSharedOutings()).rounds.find((r) => r.id === card.id)!;
     expect(shown.scores).toEqual(card.scores);
     expect(shown.junk).toEqual(card.junk);
   });
 
   it("reaches an organiser's phone that hadn't seen those cells, rather than being pruned by it", async () => {
-    const { ann, before, card, cells } = await guestOnTheCard('unseen');
+    const { ann, day, before, card, cells } = await guestOnTheCard('unseen');
     await deleteAccount(PASSWORD);
     await signInAs(ann);
 
@@ -391,7 +393,10 @@ describe('a guest deleting their account', () => {
     if (contact.status !== 'pushed') throw new Error(contact.status);
 
     expect(contact.deleted).toBe(0);
-    expect(await cells()).toEqual({ score: { strokes: 6, owner_id: ann.id }, junk: { owner_id: ann.id } });
+    expect(await cells()).toEqual(typedCells(ann));
+    // The blank box on this phone didn't go up over what he typed there.
+    const { data: box } = await admin.from('scores').select('strokes').match({ round_id: card.id, player_id: day.playerIds[0], hole: 16 }).single();
+    expect(box).toEqual({ strokes: 5 });
 
     // The next push and merge, as useDataSync runs them after first contact.
     const own = await pushChanges(toRows(before), contact.own, contact.shared);
@@ -402,7 +407,7 @@ describe('a guest deleting their account', () => {
     expect(shown.junk).toEqual(card.junk);
 
     await pushChanges(toRows(merged), own, pull);
-    expect(await cells()).toEqual({ score: { strokes: 6, owner_id: ann.id }, junk: { owner_id: ann.id } });
+    expect(await cells()).toEqual(typedCells(ann));
   });
 
   it('takes a round of their own on her group and course with them, and leaves her season alone', async () => {
@@ -440,7 +445,7 @@ describe('a guest deleting their account', () => {
     await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
 
     expect(await rowsHeldBy(ben)).toBe(benHolds);
-    expect(await cells()).toEqual({ score: { strokes: 6, owner_id: ben.id }, junk: { owner_id: ben.id } });
+    expect(await cells()).toEqual(typedCells(ben));
   });
 
   it("refuses a guest with any other row of theirs under her day, since it can't just go", async () => {

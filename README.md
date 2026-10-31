@@ -132,6 +132,9 @@ pass.
   [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
+- A score or junk claim an organiser clears on a shared round comes back if the
+  app closes before it's pushed. First contact can't tell it from one a guest
+  typed that the phone hasn't seen.
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full

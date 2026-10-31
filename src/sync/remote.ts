@@ -212,6 +212,12 @@ function snapshotRows(snapshot: Snapshot, table: keyof Snapshot): Record<string,
   return snapshot[table] as unknown as Record<string, unknown>[];
 }
 
+/** The rows of a table the shared pull shows on this account's own rounds. */
+function onOwnRounds(shared: Snapshot, table: keyof Snapshot, ownerId: string): Record<string, unknown>[] {
+  const ownRounds = new Set(snapshotRows(shared, 'rounds').filter((round) => round.owner_id === ownerId).map((round) => round.id));
+  return snapshotRows(shared, table).filter((cell) => ownRounds.has(cell.round_id));
+}
+
 /**
  * First contact's deletions, less the cells this phone may simply not have seen.
  *
@@ -225,15 +231,29 @@ function snapshotRows(snapshot: Snapshot, table: keyof Snapshot): Record<string,
  * closed: it looks just the same, so it comes back.
  */
 function keepUnseenCells(prune: Deletions, shared: Snapshot, ownerId: string): Deletions {
-  const ownRounds = new Set(snapshotRows(shared, 'rounds').filter((round) => round.owner_id === ownerId).map((round) => round.id));
-  const kept = { ...prune };
+  const remaining = { ...prune };
   for (const table of GUEST_WRITES) {
-    const onOwnCard = new Set(
-      snapshotRows(shared, table).filter((cell) => ownRounds.has(cell.round_id)).map((cell) => identify(table, cell)),
-    );
-    kept[table] = prune[table].filter((key) => !onOwnCard.has(identify(table, key)));
+    const onOwnCard = new Set(onOwnRounds(shared, table, ownerId).map((cell) => identify(table, cell)));
+    remaining[table] = prune[table].filter((key) => !onOwnCard.has(identify(table, key)));
   }
-  return kept;
+  return remaining;
+}
+
+/**
+ * This account's rows as first contact should send them: a blank box on the phone
+ * doesn't go up over a score the shared pull shows on its own round. A guest typed
+ * it, and the phone is behind. It reaches the phone with the next merge.
+ *
+ * Only what's sent changes. `own` still says the server has the blank, so the push
+ * after this doesn't send it either. The cost is the same as `keepUnseenCells`.
+ */
+function withoutBlanksOverScores(own: Snapshot, shared: Snapshot, ownerId: string): Snapshot {
+  const played = (cell: { strokes?: unknown; picked_up?: unknown }) => cell.strokes !== null || cell.picked_up === true;
+  const scored = new Set(onOwnRounds(shared, 'scores', ownerId).filter(played).map((cell) => identify('scores', cell)));
+  return {
+    ...own,
+    scores: own.scores.filter((row) => played(row) || !scored.has(identify('scores', { ...row }))),
+  };
 }
 
 /** Every outcome carries the shared outings as pulled, for the next push to split by. */
@@ -306,7 +326,7 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   const ownerId = await requireUserId();
   const { own, guest } = splitByOwner(mine, shared, ownerId);
   const prune = keepUnseenCells(deletions(remote, own), shared, ownerId);
-  const result = await pushSnapshot(own, { prune, guest });
+  const result = await pushSnapshot(withoutBlanksOverScores(own, shared, ownerId), { prune, guest });
   return {
     status: 'pushed',
     upserted: result.upserted,
