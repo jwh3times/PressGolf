@@ -9,7 +9,8 @@
   - the gate, its exemptions or the phase skills change: `## Development flow` (with
     `docs/agents/dev-flow.md`);
   - a skill is added, removed, replaced or locally edited (`.agents/skills/`, `skills-lock.json`),
-    or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`):
+    or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
+    `scripts/check-docs.mjs`):
     `## Agent skills`;
   - the handoff transport or machine config changes: `### Machine handoff`.
 - `CLAUDE.md` — `@AGENTS.md` only. **When:** never for operating context.
@@ -53,8 +54,9 @@
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
   pressgolf.cc. **When:** what the app collects, where data goes, or how an account is deleted
   changes — update the page and the date at its top in the same change.
-- `CONTEXT.md`, `docs/adr/*.md` — created lazily by `/domain-modeling`; none exist yet. An
-  accepted ADR is `frozen`: report a contradiction instead of editing it.
+- The domain glossary and decisions — `/domain-modeling` creates `CONTEXT.md` and `docs/adr/*.md`
+  lazily, and none exist yet; add them to this map by path when they do. An accepted ADR is
+  `frozen`: report a contradiction instead of editing it.
 - `.agents/skills/*/**` — skills, mirrored to `.claude/skills/`. The `mattpocock/skills` set in
   `skills-lock.json` (`wayfinder` and `setup-matt-pocock-skills` carry local edits re-applied by
   hand after an update) and `end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` from
@@ -90,7 +92,3 @@ volatile service prices or quotas outside a dated research note.
   § Repository layout
 - Jest suites (dated in `README.md`): `npx jest --listTests`
 - Site pages: `site/public/**/index.html`; the Worker `name` in `site/wrangler.jsonc`
-
-## Docs validation
-
-none

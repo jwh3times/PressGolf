@@ -60,6 +60,10 @@ jobs:
       - name: Agent sources are tool-neutral
         run: npm run lint:agents
 
+      # Local links and anchors resolve, and the doc map lists every document.
+      - name: Docs links and doc map
+        run: node scripts/check-docs.mjs
+
       # The net under Dependabot. Expo pins its packages to the SDK, and a
       # bump that leaves the set disagreeing shows up here rather than on a
       # phone on the first tee.
