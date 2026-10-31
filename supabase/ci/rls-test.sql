@@ -309,3 +309,29 @@ select expect('every owner and member column refuses an unknown account', (
         and k.confdeltype = 'a'
     )
 ), 0);
+
+-- ── Move notices ────────────────────────────────────────────────────────────
+-- What an organiser's deletion leaves each guest. Only the clean-up writes them.
+
+insert into move_notices (user_id, kind, from_id, to_id) values
+  (:'alice', 'group', 'g-gone', 'g-alices'),
+  (:'bob', 'group', 'g-gone', 'g-bobs'),
+  (:'bob', 'outing', 'o-gone', null);
+
+set role authenticated;
+set request.jwt.claim.sub = :'bob';
+select expect('a guest reads their own notices', (select count(*) from move_notices), 2);
+select expect('and only theirs', (select count(*) from move_notices where user_id = :'alice'), 0);
+select refused('a client can''t write a notice', $q$
+  insert into move_notices (kind, from_id, to_id) values ('group', 'g-other', 'g-mine') $q$);
+select refused('a client can''t write one for someone else', $q$
+  insert into move_notices (user_id, kind, from_id, to_id)
+  values ('11111111-1111-1111-1111-111111111111', 'group', 'g-other', 'g-theirs') $q$);
+update move_notices set to_id = 'g-changed' where kind = 'group';
+delete from move_notices;
+reset role;
+select expect('a client can''t change or remove one', (
+  select count(*) from move_notices where to_id is distinct from 'g-changed'), 3);
+
+select refused_by_key('an account that only holds a notice can''t be deleted', $q$
+  delete from auth.users where id = '22222222-2222-2222-2222-222222222222' $q$);

@@ -1,11 +1,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { buildDemoDataset } from '../../demo/seed';
 import { changesAnything, mergeShared } from '../merge-shared';
-import { pullSharedOutings, pushChanges, reconcile } from '../remote';
+import type { MoveNotice } from '../move-notices';
+import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from '../remote';
 import { emptySnapshot, toRows } from '../rows';
 import { useDataSync } from '../useDataSync';
 
 jest.mock('../remote', () => ({
+  pullMoveNotices: jest.fn(),
   pullSharedOutings: jest.fn(),
   pushChanges: jest.fn(),
   reconcile: jest.fn(),
@@ -15,6 +17,7 @@ jest.mock('../merge-shared', () => ({ changesAnything: jest.fn(), mergeShared: j
 const mockReconcile = reconcile as jest.MockedFunction<typeof reconcile>;
 const mockPush = pushChanges as jest.MockedFunction<typeof pushChanges>;
 const mockPullShared = pullSharedOutings as jest.MockedFunction<typeof pullSharedOutings>;
+const mockPullNotices = pullMoveNotices as jest.MockedFunction<typeof pullMoveNotices>;
 const mockMergeShared = mergeShared as jest.MockedFunction<typeof mergeShared>;
 const mockChangesAnything = changesAnything as jest.MockedFunction<typeof changesAnything>;
 
@@ -33,6 +36,7 @@ function options(enabled = true) {
     documents,
     onAdoptRemote: jest.fn(),
     onSharedData: jest.fn(),
+    onMoveNotices: jest.fn(),
   };
 }
 
@@ -41,6 +45,8 @@ type SyncOptions = ReturnType<typeof options>;
 async function advancePush() {
   await act(async () => {
     jest.advanceTimersByTime(2500);
+    await Promise.resolve();
+    await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -52,6 +58,7 @@ beforeEach(() => {
   mockReconcile.mockResolvedValue({ status: 'nothing-to-do', shared: emptySnapshot() });
   mockPush.mockImplementation(async (local) => local);
   mockPullShared.mockResolvedValue(emptySnapshot());
+  mockPullNotices.mockResolvedValue([]);
   mockMergeShared.mockImplementation((local) => local);
   mockChangesAnything.mockReturnValue(false);
 });
@@ -329,4 +336,118 @@ it('cancels a pending debounce when disabled', async () => {
   await advancePush();
   expect(mockPush).not.toHaveBeenCalled();
   expect(view.result.current.status).toBe('off');
+});
+
+describe('move notices, after an organiser deletes their account', () => {
+  const day = documents.outings[0];
+  const gone: MoveNotice[] = [{ kind: 'outing', from_id: day.id, to_id: null }];
+  const dayRounds = new Set(documents.rounds.filter((r) => r.outingId === day.id).map((r) => r.id));
+  const sent = (rows: ReturnType<typeof toRows>) => ({
+    outings: rows.outings.map((o) => o.id),
+    dayRounds: rows.rounds.filter((r) => dayRounds.has(r.id)).length,
+  });
+
+  it('stores them and leaves the day out, before first contact', async () => {
+    mockPullNotices.mockResolvedValue(gone);
+    const input = options();
+    const view = await renderHook(() => useDataSync(input));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    expect(input.onMoveNotices).toHaveBeenCalledWith(gone);
+    expect(sent(mockReconcile.mock.calls[0][0])).toEqual({ outings: [], dayRounds: 0 });
+    expect(mockPullNotices.mock.invocationCallOrder[0]).toBeLessThan(mockReconcile.mock.invocationCallOrder[0]);
+  });
+
+  it('stores them and leaves the day out, before a push in a running session', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+    expect(input.onMoveNotices).not.toHaveBeenCalled();
+
+    mockPullNotices.mockResolvedValue(gone);
+    await view.rerender({ ...input, documents: { ...documents, clubs: [] } });
+    await advancePush();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+
+    expect(input.onMoveNotices).toHaveBeenCalledWith(gone);
+    expect(sent(mockPush.mock.calls[0][0])).toEqual({ outings: [], dayRounds: 0 });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+    // The merge after it starts from the moved documents, whether or not the store has rendered them.
+    expect(mockMergeShared.mock.calls[0][0].outings[0].detached).toBe(true);
+  });
+
+  it("doesn't store anything when they change nothing here", async () => {
+    mockPullNotices.mockResolvedValue([{ kind: 'outing', from_id: 'not-on-this-phone', to_id: null }]);
+    const input = options();
+    const view = await renderHook(() => useDataSync(input));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    expect(input.onMoveNotices).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed read like any other failure, and pushes nothing', async () => {
+    mockPullNotices.mockRejectedValue(new Error('move_notices: no signal'));
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('error'));
+    expect(view.result.current.message).toBe('move_notices: no signal');
+    expect(mockReconcile).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed read in a running session, and tries again on the next edit', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    mockPullNotices.mockRejectedValueOnce(new Error('move_notices: no signal'));
+    await view.rerender({ ...input, documents: { ...documents, clubs: [] } });
+    await advancePush();
+    await waitFor(() => expect(view.result.current.status).toBe('error'));
+    expect(mockPush).not.toHaveBeenCalled();
+
+    await view.rerender({ ...input, documents: { ...documents, clubs: [], groups: [...documents.groups] } });
+    await advancePush();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  });
+
+  it("keeps the day when a phone with nothing else adopts the account's season", async () => {
+    const onlyTheDay = { ...documents, rounds: documents.rounds.filter((r) => dayRounds.has(r.id)) };
+    mockPullNotices.mockResolvedValue(gone);
+    mockReconcile.mockResolvedValueOnce({
+      status: 'adopted-remote',
+      rows: 0,
+      snapshot: emptySnapshot(),
+      shared: emptySnapshot(),
+    });
+    const input = { ...options(), documents: onlyTheDay };
+    const view = await renderHook(() => useDataSync(input));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    const adopted = input.onAdoptRemote.mock.calls[0][0];
+    expect(adopted.outings.map((o: { id: string }) => o.id)).toEqual([day.id]);
+    expect(adopted.rounds).toHaveLength(dayRounds.size);
+  });
+
+  it("doesn't carry on with first contact or a push once sync has gone off during the read", async () => {
+    let finish!: (notices: MoveNotice[]) => void;
+    mockPullNotices.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await view.rerender({ ...input, enabled: false });
+    await act(async () => finish(gone));
+    expect(mockReconcile).not.toHaveBeenCalled();
+
+    await view.rerender(input);
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    mockPullNotices.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    const edited = { ...input, documents: { ...documents, clubs: [] } };
+    await view.rerender(edited);
+    await advancePush();
+    await view.rerender({ ...edited, enabled: false });
+    await act(async () => finish(gone));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(input.onMoveNotices).not.toHaveBeenCalled();
+  });
 });

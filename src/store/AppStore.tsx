@@ -41,6 +41,7 @@ import type {
   TeeId,
 } from '../domain/types';
 import { useAuth } from '../auth/AuthProvider';
+import { applyMoveNotices, type MoveNotice } from '../sync/move-notices';
 import { deleteAccount as deleteAccountRemote } from '../sync/supabase';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
 import type { Documents } from '../sync/rows';
@@ -383,11 +384,20 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [commit],
   );
 
+  const takeMoveNotices = useCallback(
+    (notices: MoveNotice[]) => {
+      // An organiser's account went. The day stays here, and the active group follows its new id.
+      commit((prev) => applyMoveNotices(prev, notices));
+    },
+    [commit],
+  );
+
   const sync = useDataSync({
     enabled: syncEnabled,
     documents,
     onAdoptRemote: adoptRemote,
     onSharedData: takeShared,
+    onMoveNotices: takeMoveNotices,
   });
 
   const store = useMemo<AppStore>(() => {

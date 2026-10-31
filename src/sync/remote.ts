@@ -11,6 +11,7 @@
  * a season — and a second device.
  */
 import { changedRows, conflictTarget, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, splitByOwner, type Deletions } from './diff';
+import type { MoveNotice } from './move-notices';
 import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
@@ -38,13 +39,14 @@ const PAGE = 1000;
 
 async function selectAll(
   supabase: SupabaseClient,
-  table: keyof Snapshot,
+  table: keyof Snapshot | 'move_notices',
   filter: (query: ReturnType<ReturnType<SupabaseClient['from']>['select']>) => typeof query,
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
+  const key = table === 'move_notices' ? 'kind,from_id' : conflictTarget(table);
   for (;;) {
     let query = filter(supabase.from(table).select('*'));
-    for (const column of conflictTarget(table).split(',')) query = query.order(column);
+    for (const column of key.split(',')) query = query.order(column);
     const { data, error } = await query.range(rows.length, rows.length + PAGE - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     const page = (data ?? []) as Record<string, unknown>[];
@@ -136,6 +138,14 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   await add('course_hole_notes', 'course_id', courseIds);
 
   return snapshot;
+}
+
+/** What an organiser's deletion left for this account, for `applyMoveNotices`. Only its own, by policy. */
+export async function pullMoveNotices(): Promise<MoveNotice[]> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  await requireUserId();
+  return (await selectAll(supabase, 'move_notices', (query) => query)) as unknown as MoveNotice[];
 }
 
 export interface PushResult {
