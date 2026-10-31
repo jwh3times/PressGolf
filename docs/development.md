@@ -164,6 +164,9 @@ To configure a project:
    npm run db:push
    ```
 
+6. Deploy the Edge Function, or **Delete account** can't reach a server; see
+   [Edge Functions](#edge-functions).
+
 The custom scheme comes from `app.json`; do not edit generated native manifests
 for deep linking. Supabase's
 [native mobile deep-linking guide](https://supabase.com/docs/guides/auth/native-mobile-deep-linking)

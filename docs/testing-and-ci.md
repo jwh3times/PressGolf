@@ -19,8 +19,9 @@ npm run sync:agents:check   # .claude/skills matches .agents/skills
 npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```
 
-When a change touches `src/sync/` or `supabase/migrations/`, run the sync
-integration tests against a local Supabase stack (Docker required; see
+When a change touches `src/sync/`, `supabase/migrations/` or
+`supabase/functions/`, run the sync integration tests against a local Supabase
+stack (Docker required; see
 [development.md](development.md#sync-integration-tests)):
 
 ```bash
