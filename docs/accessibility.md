@@ -16,9 +16,10 @@ substitute for assistive-technology use on both platforms.
   on Field pots. A birdie or eagle is a fact about the hole and not a control,
   so it is exposed as text ("Birdie for Dev") and not as a disabled button.
 - Delete account's password field and buttons are named, and its errors are
-  announced: an `alert` that's also a live region on Android and the web, and
-  `announceForAccessibility` on iOS, which has no live regions. Its screen
-  scrolls and its text wraps. It hasn't been tried yet with VoiceOver or TalkBack
+  announced: an `alert` that's also a live region, and
+  `announceForAccessibility` on the phones, since iOS has no live regions and
+  TalkBack can miss one that has only just appeared. Its screen scrolls and its
+  text wraps. It hasn't been tried yet with VoiceOver or TalkBack
   or at the largest text size on a phone
   ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
 - A control's name contains the words it shows, in order (WCAG 2.5.3, Label

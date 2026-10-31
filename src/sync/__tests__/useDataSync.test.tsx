@@ -130,6 +130,31 @@ describe('settling, before an account is deleted', () => {
     expect(view.result.current).toBe(first);
   });
 
+  it('starts from first contact after coming back on, even if a push was in flight as it went off', async () => {
+    const input = options();
+    const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+    let finishPush!: (rows: ReturnType<typeof toRows>) => void;
+    mockPush.mockImplementationOnce(() => new Promise((resolve) => (finishPush = resolve)));
+    const edited = { ...input, documents: { ...documents, groups: [] } };
+    await view.rerender(edited);
+    await advancePush();
+    expect(mockPush).toHaveBeenCalledTimes(1);
+
+    await view.rerender({ ...edited, enabled: false });
+    await act(async () => finishPush(emptySnapshot()));
+    await act(async () => view.result.current.settle());
+    // A push that finished after sync went off has nothing more to bring down.
+    expect(mockPullShared).not.toHaveBeenCalled();
+
+    // What the push thought the server holds may no longer be so: a failed deletion can have cleared it.
+    await view.rerender({ ...edited, enabled: true });
+    await waitFor(() => expect(mockReconcile).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  });
+
   it('starts again from first contact when sync comes back on, so edits made meanwhile go up', async () => {
     const input = options();
     const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });

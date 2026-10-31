@@ -48,7 +48,8 @@ export function deleteAccountMessage(failure: DeleteAccountFailure): string {
     case 'wrong-password':
       return 'That password is not right. Nothing has been deleted.';
     case 'no-signal':
-      return 'Deleting your account needs signal. Nothing has changed, on this phone or on the server.';
+      // Not "nothing has been deleted": the request may have arrived and only the reply been lost.
+      return 'Deleting your account needs signal, and this phone could not reach the server. Nothing has changed on this phone. Try again when you have signal.';
     case 'not-signed-in':
       return 'The server could not confirm your sign-in. Nothing has been deleted. Sign out, sign back in and try again.';
     case 'shares-data':

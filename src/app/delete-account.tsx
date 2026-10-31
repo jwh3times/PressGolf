@@ -45,8 +45,9 @@ export default function DeleteAccountScreen() {
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not delete your account. Try again.';
       setError(message);
-      // Android and the web read the alert below as it appears. iOS has no live regions.
-      if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+      // The alert below reaches the web. iOS has no live regions, and TalkBack can
+      // miss one that's only just appeared, so the phones are told outright too.
+      AccessibilityInfo.announceForAccessibility(message);
       setBusy(false);
     }
   };
@@ -57,7 +58,7 @@ export default function DeleteAccountScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Screen floatingTabBar={false}>
-        {/* The request can't be called back once sent, so closing waits for its answer. */}
+        {/* The request can't be called back once sent, so this button waits for its answer. */}
         <ModalHeader
           eyebrow="Account"
           title="Delete account"

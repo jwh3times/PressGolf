@@ -39,7 +39,7 @@ begin
 
   -- Rows either way round: anyone's row hanging from something of this account's,
   -- or this account's row hanging from something of someone else's. Read from the
-  -- catalog, so a table added later can't be missed.
+  -- catalog, so a table added later with one of these columns can't be missed.
   for hanging in
     select c.table_name, c.column_name, parent.table_name as parent_table
     from information_schema.columns c
@@ -49,8 +49,10 @@ begin
       ('round_id', 'rounds'),
       ('outing_id', 'outings')
     ) as parent (column_name, table_name) on parent.column_name = c.column_name
-    join information_schema.columns o
-      on o.table_schema = c.table_schema and o.table_name = c.table_name and o.column_name = 'owner_id'
+    join information_schema.columns owner_column
+      on owner_column.table_schema = c.table_schema
+     and owner_column.table_name = c.table_name
+     and owner_column.column_name = 'owner_id'
     where c.table_schema = 'public'
   loop
     exit when shared;

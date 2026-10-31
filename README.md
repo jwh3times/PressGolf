@@ -125,9 +125,9 @@ pass.
 - Joining and row-level-security boundaries are automated, but a full round
   scored concurrently by multiple physical phones has not been field-tested.
 - An account can delete itself from Settings only if it shares nothing with
-  another account. One that does (guests in its outing, another account's rows
-  on its group or course, or membership of someone else's outing) is refused
-  with nothing deleted, and uses the email request until
+  another account. One that does, such as an organiser with guests or a guest in
+  someone else's outing, is refused with nothing deleted, and uses the email
+  request until
   [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)).

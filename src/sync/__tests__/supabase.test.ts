@@ -175,6 +175,13 @@ describe('deleting the account', () => {
     await expect(call).rejects.toThrow(message);
   });
 
+  it('makes no claim about the server when the reply never came, since the request may have got there', async () => {
+    const { call } = await deleting({ data: null, error: { name: 'FunctionsFetchError', context: new TypeError('Network request failed') } });
+    const message = await call.then(() => '', (error: Error) => error.message);
+    expect(message).toContain('Nothing has changed on this phone');
+    expect(message).not.toMatch(/on the server/);
+  });
+
   it('never words a failure as if the account had gone', async () => {
     for (const result of [answer('wrong-password'), answer('failed'), answer('shares-data')]) {
       const { call } = await deleting(result);

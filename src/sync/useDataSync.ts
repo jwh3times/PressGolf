@@ -58,6 +58,8 @@ export function useDataSync(options: {
   const inFlight = useRef(false);
   // The work behind inFlight, for settle to wait on.
   const running = useRef<Promise<void>>(Promise.resolve());
+  // Goes up each time sync goes off, so a push that outlives it knows to leave things alone.
+  const session = useRef(0);
   const adopt = useRef(onAdoptRemote);
   const shared = useRef(onSharedData);
   const latest = useRef(documents);
@@ -82,6 +84,7 @@ export function useDataSync(options: {
   useEffect(() => {
     if (!enabled) {
       serverHas.current = null;
+      session.current += 1;
       return;
     }
     if (serverHas.current) return;
@@ -131,14 +134,21 @@ export function useDataSync(options: {
     const push = () => {
       if (inFlight.current || !serverHas.current) return;
       const server = serverHas.current;
+      const started = session.current;
       inFlight.current = true;
       running.current = (async () => {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
-          serverHas.current = await pushChanges(toRows(documents), server, sharedHas.current);
+          const pushed = await pushChanges(toRows(documents), server, sharedHas.current);
+          // Sync went off meanwhile. Writing this down would undo the reset, and
+          // coming back on would then skip first contact, trusting a server that
+          // a failed account deletion may have emptied.
+          if (session.current !== started) return;
+          serverHas.current = pushed;
           // Only now, with this phone's edits safely up, is it safe to let the
           // server's copy of a shared day win.
           sharedHas.current = await pullSharedOutings();
+          if (session.current !== started) return;
           const incoming = fromRows(sharedHas.current);
           const merged = mergeShared(latest.current, incoming);
           if (changesAnything(latest.current, merged)) shared.current(merged);

@@ -258,12 +258,11 @@ auth user. Check first that the request came from the account's own address.
 
 Don't skip step 1: deleting the user alone leaves every row on the server.
 
-Step 1 raises `This account shares data with another account` for an account
-with guests in an outing it organised, another account's rows on its group or
-course, or a membership in someone else's outing. Nothing has been deleted then,
-so don't go on to step 2. Those accounts can't be handled until the shared cases
-of [#206](https://github.com/jwh3times/PressGolf/issues/206) ship, so tell the
-person, and keep the request open within its 30 days.
+Step 1 raises `This account shares data with another account` for the accounts
+listed in [Deleting an account](architecture.md#deleting-an-account). Nothing has
+been deleted then, so don't go on to step 2. Those accounts can't be handled until
+the shared cases of [#206](https://github.com/jwh3times/PressGolf/issues/206)
+ship, so tell the person, and keep the request open within its 30 days.
 
 ## EAS build profiles
 

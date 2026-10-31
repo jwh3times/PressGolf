@@ -553,7 +553,14 @@ The server side has two parts, and the app reaches them only through the first:
 
 Calling again is safe. If `deleteUser` fails after the clean-up committed, the
 next call finds nothing to clean and retries it. If the account has already gone
-(the reply was lost), the function says `deleted`, so the phone can finish.
+(the reply was lost), the function says `deleted` without asking for the password,
+which it could no longer check, so the phone can finish. That can only erase a
+phone whose account no longer exists, which "Erase my data" does with no password.
+
+A lost reply reads on the phone as no signal, so sync comes back on with a token
+that stays valid for up to an hour, and its first contact could upload the season
+again. [#208](https://github.com/jwh3times/PressGolf/issues/208)'s foreign keys
+refuse that write. Until they land, a retry would leave those rows behind.
 
 **Accounts that share data are refused for now.** The clean-up raises `PR001`,
 with nothing deleted, for an account with guests in an outing it organised,

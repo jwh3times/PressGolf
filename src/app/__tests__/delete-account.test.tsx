@@ -130,11 +130,13 @@ describe('when it fails', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeOnTheScreen());
   });
 
-  it('announces it on iOS, which has no live regions', async () => {
-    expect(Platform.OS).toBe('ios');
+  it.each(['ios', 'android'] as const)('announces it on %s', async (os) => {
+    const original = Platform.OS;
+    Platform.OS = os;
     await failWith(new Error(MESSAGE));
     await screen.findByRole('alert');
     expect(announce).toHaveBeenCalledWith(MESSAGE);
+    Platform.OS = original;
   });
 
   it('still says something if what came back was not an error', async () => {
