@@ -9,7 +9,8 @@
   - the gate, its exemptions or the phase skills change: `## Development flow` (with
     `docs/agents/dev-flow.md`);
   - a skill is added, removed, replaced or locally edited (`.agents/skills/`, `skills-lock.json`),
-    or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`):
+    or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
+    `scripts/check-docs.mjs`):
     `## Agent skills`;
   - the handoff transport or machine config changes: `### Machine handoff`.
 - `CLAUDE.md` — `@AGENTS.md` only. **When:** never for operating context.
@@ -91,7 +92,3 @@ volatile service prices or quotas outside a dated research note.
   § Repository layout
 - Jest suites (dated in `README.md`): `npx jest --listTests`
 - Site pages: `site/public/**/index.html`; the Worker `name` in `site/wrangler.jsonc`
-
-## Docs validation
-
-none

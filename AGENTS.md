@@ -95,6 +95,10 @@ Most skills come from `mattpocock/skills` and are recorded in `skills-lock.json`
 `setup-matt-pocock-skills` carry local edits (a Wayfinder map records answers, never delivery
 status), so re-installing either from upstream drops them — re-apply after an update.
 
+`scripts/check-docs.mjs` (with its test) is copied unchanged from `jwh3times/skills`, like the two
+scripts above: fix it there. CI runs it: local doc links and anchors must resolve, and the `Doc map`
+in `docs/agents/docs.md` must list every document.
+
 `ship`, `end-session`, `handoff`, `lets-go` and `docs-updater` install from the public
 `jwh3times/skills` repository (recorded in `skills-lock.json` too) and are never edited here: the
 next install overwrites a local edit. Their bodies are the same in every repository that installs
