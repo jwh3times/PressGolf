@@ -334,6 +334,64 @@ describe('reconcile', () => {
     );
     expect(outcome.status === 'pushed' && outcome.own.groups.map((g) => g.id)).toEqual(['g1']);
   });
+
+  it('prunes only what it can be sure of on a shared card: not a cell on its own round that this phone may not have seen', async () => {
+    const me = 'owner-1';
+    const tables: Partial<Record<keyof Snapshot | 'outing_members', Record<string, unknown>[]>> = {
+      outing_members: [{ outing_id: 'o1' }, { outing_id: 'o2' }],
+      outings: [
+        { id: 'o1', group_id: 'g1', course_id: 'c1', owner_id: me },
+        { id: 'o2', group_id: 'g2', course_id: 'c2', owner_id: 'owner-ann' },
+      ],
+      rounds: [
+        { id: 'mine', outing_id: 'o1', owner_id: me },
+        { id: 'hers', outing_id: 'o2', owner_id: 'owner-ann' },
+        { id: 'solo', outing_id: null, owner_id: me },
+      ],
+      scores: [
+        { round_id: 'mine', player_id: 'p1', hole: 0, strokes: 4, owner_id: me },
+        { round_id: 'hers', player_id: 'p1', hole: 0, strokes: 4, owner_id: me },
+        { round_id: 'solo', player_id: 'p1', hole: 0, strokes: 4, owner_id: me },
+      ],
+      junk: [{ round_id: 'mine', hole: 0, player_id: 'p1', kind: 'sandie', owner_id: me }],
+      presses: [{ id: 'press', round_id: 'mine', owner_id: me }],
+    };
+    const builders: { table: string; builder: ReturnType<typeof query> }[] = [];
+    mockGetSupabase.mockReturnValue({
+      from: jest.fn((table: keyof Snapshot | 'outing_members') => {
+        const builder = query({ data: tables[table] ?? [], error: null });
+        builder.eq.mockImplementation((column: string, value: unknown) => {
+          if (column === 'owner_id') builder.setResult({ data: (tables[table] ?? []).filter((row) => row.owner_id === value), error: null });
+          return builder;
+        });
+        builder.in.mockImplementation((column: string, values: unknown[]) => {
+          builder.setResult({ data: (tables[table] ?? []).filter((row) => values.includes(row[column])), error: null });
+          return builder;
+        });
+        builders.push({ table, builder });
+        return builder;
+      }),
+    } as never);
+    const local = emptySnapshot();
+    local.outings.push({ id: 'o1', group_id: 'g1', course_id: 'c1' } as never);
+    local.rounds.push({ id: 'mine', outing_id: 'o1' } as never, { id: 'solo', outing_id: null } as never);
+
+    const outcome = await reconcile(local);
+
+    const deleted = (name: string) =>
+      builders
+        .filter(({ table, builder }) => table === name && builder.delete.mock.calls.length > 0)
+        .map(({ builder }) => Object.fromEntries(builder.eq.mock.calls));
+    // Their own cell on her card, and a cell cleared on a round nobody shares: both still go.
+    expect(deleted('scores')).toEqual([
+      { round_id: 'hers', player_id: 'p1', hole: 0 },
+      { round_id: 'solo', player_id: 'p1', hole: 0 },
+    ]);
+    expect(deleted('junk')).toEqual([]);
+    // Only a cell is kept: a press withdrawn from a shared round still goes.
+    expect(deleted('presses')).toEqual([{ id: 'press' }]);
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 3 });
+  });
 });
 
 describe('reconcile, the bag', () => {

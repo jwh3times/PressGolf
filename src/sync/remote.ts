@@ -10,7 +10,7 @@
  * What this gives you is durability — a phone in a lake stops being the end of
  * a season — and a second device.
  */
-import { changedRows, conflictTarget, countDeletions, deletions, isEmpty, splitByOwner, type Deletions } from './diff';
+import { changedRows, conflictTarget, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, splitByOwner, type Deletions } from './diff';
 import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
@@ -212,6 +212,30 @@ function snapshotRows(snapshot: Snapshot, table: keyof Snapshot): Record<string,
   return snapshot[table] as unknown as Record<string, unknown>[];
 }
 
+/**
+ * First contact's deletions, less the cells this phone may simply not have seen.
+ *
+ * A guest who deletes their account leaves what they typed on this account's card
+ * to this account, so those cells arrive in its own pull. A phone that was behind
+ * would read them as cleared and delete them. The shared pull shows them, and they
+ * reach the phone with the next merge. Later pushes diff against what this phone
+ * last pushed, so a cell cleared in a running session still goes.
+ *
+ * The cost is a cell cleared on a shared round and not pushed before the app
+ * closed: it looks just the same, so it comes back.
+ */
+function keepUnseenCells(prune: Deletions, shared: Snapshot, ownerId: string): Deletions {
+  const ownRounds = new Set(snapshotRows(shared, 'rounds').filter((round) => round.owner_id === ownerId).map((round) => round.id));
+  const kept = { ...prune };
+  for (const table of GUEST_WRITES) {
+    const onOwnCard = new Set(
+      snapshotRows(shared, table).filter((cell) => ownRounds.has(cell.round_id)).map((cell) => identify(table, cell)),
+    );
+    kept[table] = prune[table].filter((key) => !onOwnCard.has(identify(table, key)));
+  }
+  return kept;
+}
+
 /** Every outcome carries the shared outings as pulled, for the next push to split by. */
 export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
@@ -279,8 +303,9 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
     ...(takesBag ? { clubs: remote.clubs } : {}),
     ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
   };
-  const { own, guest } = splitByOwner(mine, shared, await requireUserId());
-  const prune = deletions(remote, own);
+  const ownerId = await requireUserId();
+  const { own, guest } = splitByOwner(mine, shared, ownerId);
+  const prune = keepUnseenCells(deletions(remote, own), shared, ownerId);
   const result = await pushSnapshot(own, { prune, guest });
   return {
     status: 'pushed',

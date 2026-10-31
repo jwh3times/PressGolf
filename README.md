@@ -124,9 +124,10 @@ pass.
   `AppStore` yet.
 - Joining and row-level-security boundaries are automated, but a full round
   scored concurrently by multiple physical phones has not been field-tested.
-- An account can delete itself from Settings only if it shares nothing with
-  another account. One that does, such as an organiser with guests or a guest in
-  someone else's outing, is refused with nothing deleted, and uses the email
+- An account can delete itself from Settings unless another account depends on
+  it. A guest can leave, and the organiser keeps the scores they typed. One that
+  others depend on, such as an organiser with guests or the owner of a group
+  another account plays on, is refused with nothing deleted, and uses the email
   request until
   [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a

@@ -490,7 +490,12 @@ When the two Supabase public variables are present and a user is signed in,
    the account's, rather than pruning it, and a fresh install keeps clubs typed
    before signing in when the account has none. The usual score (`bag_settings`)
    is settled the same way, apart from the clubs. A phone holding only a bag
-   still counts as fresh, so it can never prune a season.
+   still counts as fresh, so it can never prune a season. First contact doesn't
+   prune a score or junk row the shared pull shows on the account's own round:
+   the phone may not have seen it yet, as when a guest who deleted their account
+   left it to the organiser. It arrives with the next shared merge. A cell
+   cleared there and not pushed before the app closed looks the same, so it comes
+   back.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one
@@ -547,9 +552,11 @@ The server side has two parts, and the app reaches them only through the first:
   that `deleteAccount` in `src/sync/supabase.ts` words for the person holding the
   phone.
 - **`delete_account_data(target)`**, a `security definer` SQL function that only
-  the service role may execute. It deletes every row the account owns and its
-  memberships and edit-log entries, in one transaction. It finds the tables from
-  the catalog, so a new table with an `owner_id` is covered without changing it.
+  the service role may execute. Scores and junk the account typed on someone
+  else's round become that round's owner's, so the day's money still adds up. Then
+  it deletes every row the account owns and its memberships and edit-log entries,
+  in one transaction. It finds the tables from the catalog, so a new table with an
+  `owner_id` is covered without changing it.
 
 Calling again is safe. If `deleteUser` fails after the clean-up committed, the
 next call finds nothing to clean and retries it. If the account has already gone
@@ -579,12 +586,20 @@ of a user. They do two jobs:
 A new table with one of these columns needs its own key; `rls-test.sql` reads the
 catalog and fails until it has one.
 
-**Accounts that share data are refused for now.** The clean-up raises `PR001`,
-with nothing deleted, for an account with guests in an outing it organised,
-another account's rows hanging from its group, course, round or outing, its own
-rows hanging from someone else's, or a membership in someone else's outing.
-Removing those rows would take someone else's data with them. The app explains
-and points to the email request. Later tickets of
+**A guest can delete their account.** A membership in someone else's outing
+doesn't stop it, and the outing no longer lists them. A round or outing of their
+own on someone else's group or course goes with them, since that takes nothing of
+anyone else's. If their own outing has guests of its own, the next paragraph
+applies.
+
+**Accounts that others depend on are refused for now.** The clean-up raises
+`PR001`, with nothing deleted, for an account with guests in an outing it
+organised, or another account's rows hanging from its group, course, round or
+outing. It also refuses an account with any other row of its own under someone
+else's day, beyond the cells above. The policies refuse those now, so any that
+exist are older, and removing them would change that person's day. Removing any of
+these would take someone else's data with them. The app explains and points to
+the email request. Later tickets of
 [#206](https://github.com/jwh3times/PressGolf/issues/206) lift this case by case.
 
 On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
