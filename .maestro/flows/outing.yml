@@ -4,7 +4,8 @@ name: Check the demo outing's field pots
 - runFlow: ../subflows/launch.yml
 # The outing belongs to the demo society, not the Saturday group.
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Settings, DIRECTION: DOWN } }
-- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Pine Hollow Society, DIRECTION: DOWN } }
+# A group row's name goes on to the player count and any live outing it shows.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: 'Pine Hollow Society,.*', DIRECTION: DOWN } }
 # Done heads the screen and scrolls away with it.
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: Done, DIRECTION: UP } }
 - runFlow: { file: ../subflows/tap.yml, env: { TEXT: .*Society Saturday.*, DIRECTION: DOWN } }

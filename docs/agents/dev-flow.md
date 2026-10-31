@@ -35,8 +35,8 @@ With no ready issue, stop before the first edit, name the next command, and wait
 | Something broken                 | File the bug issue, then `/diagnosing-bugs`                                |
 
 "Nobody has started" means open, unassigned, and with no open PR naming it. The repository is
-public, so draft a bug issue for the user to approve before filing it, and keep
-vulnerability detail out of it ([`SECURITY.md`](../../SECURITY.md)).
+public, so keep vulnerability detail out of a bug issue: a vulnerability is a draft repository
+advisory ([`SECURITY.md`](../../SECURITY.md)).
 
 The same one-line handover applies at every phase boundary:
 
