@@ -529,6 +529,55 @@ This path provides local-first scoring, account backup, and shared snapshots.
 It is not currently an instant, conflict-free multi-device feed. A device that
 makes no local change does not continuously pull another phone's edits.
 
+## Deleting an account
+
+**Settings → Account → Delete account** opens `src/app/delete-account.tsx`,
+shown only when signed in, in demo mode too. It says what goes and what stays,
+and takes the password. Deletion needs signal and takes effect at once, with no
+grace period.
+
+The server side has two parts, and the app reaches them only through the first:
+
+- **The `delete-account` Edge Function** (`supabase/functions/delete-account/`).
+  It takes the account from the verified token, never from the request, whose
+  body carries only the password. It checks the password itself by signing in on
+  a separate client that keeps no session, so a stolen token isn't enough. Then
+  it runs the clean-up function and `auth.admin.deleteUser`. It answers with an
+  outcome (`deleted`, `not-signed-in`, `wrong-password`, `shares-data`, `failed`)
+  that `deleteAccount` in `src/sync/supabase.ts` words for the person holding the
+  phone.
+- **`delete_account_data(target)`**, a `security definer` SQL function that only
+  the service role may execute. It deletes every row the account owns and its
+  memberships and edit-log entries, in one transaction. It finds the tables from
+  the catalog, so a new table with an `owner_id` is covered without changing it.
+
+Calling again is safe. If `deleteUser` fails after the clean-up committed, the
+next call finds nothing to clean and retries it. If the account has already gone
+(the reply was lost), the function says `deleted`, so the phone can finish.
+
+**Accounts that share data are refused for now.** The clean-up raises `PR001`,
+with nothing deleted, for an account with guests in an outing it organised,
+another account's rows hanging from its group, course, round or outing, its own
+rows hanging from someone else's, or a membership in someone else's outing.
+Removing those rows would take someone else's data with them. The app explains
+and points to the email request. Later tickets of
+[#206](https://github.com/jwh3times/PressGolf/issues/206) lift this case by case.
+
+On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
+push in flight (`settle` from `useDataSync`), then calls the server. On failure
+it turns sync back on, which starts again from first contact, and the phone is
+unchanged. On success it erases the live dataset, which includes the bag and
+practice-round state, and then signs out, which forgets the remembered email and
+unmounts the store, so the phone is back at first run. The demo dataset, the
+demo/live preference and the theme stay.
+
+If the app is killed after the server finishes and before the phone erases, the
+phone keeps its data, signed out. "Erase my data" still clears it, so there's no
+persisted resume flag.
+
+A maintainer handles an emailed request with the same clean-up function; see
+[Deleting an account by hand](development.md#deleting-an-account-by-hand).
+
 ## Staged mutation transport
 
 `src/sync/engine.ts` and `SupabaseTransport` implement and test a more granular
@@ -576,6 +625,7 @@ src/
                     type and size tokens, and contrast calculations
 supabase/
   migrations/       versioned production schema
+  functions/        Edge Functions (Deno), deployed by CI
   ci/               Postgres stand-ins and RLS assertions
 scripts/
   check-patch-coverage.mjs

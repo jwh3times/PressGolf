@@ -99,8 +99,8 @@ As of October 2026:
   screenshots and accessibility trees, at phone width and 320 px, and runs axe
   (WCAG 2.1 A and AA).
 - Every pull request syncs a full season and a shared outing through a local
-  Supabase stack (real auth, API, row-level security and realtime) with two
-  accounts that must stay apart.
+  Supabase stack (real auth, API, row-level security, realtime and the
+  account-deletion function) with two accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
   database migration plus 82 row-level-security assertions against Postgres 16.
 - A scheduled and manually runnable Maestro workflow builds release apps for
@@ -124,6 +124,13 @@ pass.
   `AppStore` yet.
 - Joining and row-level-security boundaries are automated, but a full round
   scored concurrently by multiple physical phones has not been field-tested.
+- An account can delete itself from Settings only if it shares nothing with
+  another account. One that does (guests in its outing, another account's rows
+  on its group or course, or membership of someone else's outing) is refused
+  with nothing deleted, and uses the email request until
+  [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
+  has been checked in Jest, against a local stack and on the web build, not on a
+  phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full

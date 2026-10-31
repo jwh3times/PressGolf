@@ -35,6 +35,11 @@ maintain parallel release branches yet.
   those values.
 - A Supabase service-role/secret key, database password, GitHub token, or
   1Password token must never be included in a client build or committed file.
+- Deleting an account goes through the `delete-account` Edge Function, the one
+  place the service role is used at run time. It acts only on the account in the
+  verified token and re-checks the password itself. The SQL function it calls can
+  be executed only by the service role, and the integration suite checks that a
+  signed-in or anonymous call is refused.
 
 ## Repository controls
 

@@ -142,6 +142,52 @@ describe('Supabase client and authentication helpers', () => {
   });
 });
 
+describe('deleting the account', () => {
+  const answer = (outcome: unknown) => ({
+    data: null,
+    error: { name: 'FunctionsHttpError', context: { json: async () => ({ outcome }) } },
+  });
+
+  async function deleting(result: unknown) {
+    const invoke = jest.fn().mockResolvedValue(result);
+    mockCreateClient.mockReturnValue(client({ functions: { invoke } }) as never);
+    const api = await load();
+    return { invoke, call: api.deleteAccount('hunter22') };
+  }
+
+  it('sends only the password, and resolves when the function says deleted', async () => {
+    const { invoke, call } = await deleting({ data: { outcome: 'deleted' }, error: null });
+    await expect(call).resolves.toBeUndefined();
+    expect(invoke).toHaveBeenCalledWith('delete-account', { body: { password: 'hunter22' } });
+  });
+
+  it.each([
+    ['a wrong password', answer('wrong-password'), 'That password is not right'],
+    ['an account that shares data', answer('shares-data'), /email support@pressgolf\.cc/],
+    ['a token the server refuses', answer('not-signed-in'), 'could not confirm your sign-in'],
+    ['a server failure', answer('failed'), 'could not finish'],
+    ['an outcome this build has never heard of', answer('new-outcome'), 'could not finish'],
+    ['a server failure with no usable body', { data: null, error: { name: 'FunctionsHttpError', context: { json: async () => { throw new Error('html'); } } } }, 'could not finish'],
+    ['a relay failure', { data: null, error: { name: 'FunctionsRelayError', context: {} } }, 'could not finish'],
+    ['no signal', { data: null, error: { name: 'FunctionsFetchError', context: new TypeError('Network request failed') } }, 'needs signal'],
+  ])('words %s for the person holding the phone', async (_label, result, message) => {
+    const { call } = await deleting(result);
+    await expect(call).rejects.toThrow(message);
+  });
+
+  it('never words a failure as if the account had gone', async () => {
+    for (const result of [answer('wrong-password'), answer('failed'), answer('shares-data')]) {
+      const { call } = await deleting(result);
+      await expect(call).rejects.toThrow(/Nothing has/);
+    }
+  });
+
+  it('refuses without a server configured', async () => {
+    const api = await load(false);
+    await expect(api.deleteAccount('hunter22')).rejects.toThrow('no server');
+  });
+});
+
 describe('outing sharing', () => {
   it('generates unambiguous six-character join codes', async () => {
     const api = await load(false);

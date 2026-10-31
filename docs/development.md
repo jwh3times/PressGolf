@@ -196,26 +196,74 @@ GitHub `production` environment.
 
 `npm run test:integration` runs `src/sync/**/*.integration.test.ts` against a
 local Supabase stack (Docker required): real auth, PostgREST, row-level
-security and realtime, with every migration applied. Start the stack first,
-with only the services sync uses:
+security, realtime and the Edge Function, with every migration applied. Start
+the stack first, with only the services the app uses:
 
 ```bash
-npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
+npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
 npm run test:integration
 npx supabase stop            # when you're done
 ```
 
-The runner reads the stack's URL and anon key from `supabase status`. Every run
-signs up fresh accounts and prefixes every id, so it can be repeated against a
-stack that stays up. It refuses any host but `localhost` or `127.0.0.1`.
+The runner reads the stack's URL, anon key and service-role key from
+`supabase status`. The account-deletion tests use the service role to read what
+a deleted account has left behind. Every run signs up fresh accounts and
+prefixes every id, so it can be repeated against a stack that stays up. It
+refuses any host but `localhost` or `127.0.0.1`.
+
+`supabase stop` keeps the database, so a later `start` restores it as it was and
+doesn't apply migrations added since. A missing table in the tests usually means
+this: run `npx supabase migration up --local --include-all`. The edge runtime
+lists functions as it starts, so restart the stack after adding one.
 
 If another project's local Supabase already holds the default ports (54321 and
 up), start this one on others and point the runner at it:
 
 ```bash
-SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_STUDIO_PORT=55323 SUPABASE_INBUCKET_PORT=55324 SUPABASE_ANALYTICS_PORT=55327 SUPABASE_DB_POOLER_PORT=55329 npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,mailpit,postgres-meta,supavisor
-SUPABASE_TEST_URL=http://127.0.0.1:55321 SUPABASE_TEST_ANON_KEY=<ANON_KEY from that start> npm run test:integration
+SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_STUDIO_PORT=55323 SUPABASE_INBUCKET_PORT=55324 SUPABASE_ANALYTICS_PORT=55327 SUPABASE_DB_POOLER_PORT=55329 npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
+SUPABASE_TEST_URL=http://127.0.0.1:55321 SUPABASE_TEST_ANON_KEY=<ANON_KEY from that start> SUPABASE_TEST_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY from that start> npm run test:integration
 ```
+
+### Edge Functions
+
+`supabase/functions/delete-account/` is the one Edge Function. It runs on Deno,
+so `tsconfig.json` leaves `supabase/functions` out and `oxlint` ignores
+`supabase`. Its `supabase-js` version is pinned in the source, because every
+merge to `main` deploys it; move the pin by hand. It uses Supabase's default
+secrets (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), so
+there's nothing to set on a project. CI's `migrate` job deploys it. To deploy it
+to a personal project:
+
+```bash
+npx supabase functions deploy delete-account --project-ref <project-ref> --use-api
+```
+
+`supabase/config.toml` turns off the platform's token check for it
+(`verify_jwt = false`), because the function checks the token itself.
+
+### Deleting an account by hand
+
+The deletion page offers an email request to anyone without the app, answered
+within 30 days. Handle one the way the app does: clean up first, then delete the
+auth user. Check first that the request came from the account's own address.
+
+1. In the Supabase SQL editor, find the account and clear its rows:
+
+   ```sql
+   select id from auth.users where email = '<address>';
+   select delete_account_data('<id>');
+   ```
+
+2. Under **Authentication → Users**, delete that user.
+
+Don't skip step 1: deleting the user alone leaves every row on the server.
+
+Step 1 raises `This account shares data with another account` for an account
+with guests in an outing it organised, another account's rows on its group or
+course, or a membership in someone else's outing. Nothing has been deleted then,
+so don't go on to step 2. Those accounts can't be handled until the shared cases
+of [#206](https://github.com/jwh3times/PressGolf/issues/206) ship, so tell the
+person, and keep the request open within its 30 days.
 
 ## EAS build profiles
 

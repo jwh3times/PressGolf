@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { buildDemoDataset } from '../../demo/seed';
 import { makeCourse, makeOuting, makePlayer, makeRound } from '../../domain/factory';
 import type { Round } from '../../domain/types';
+import { deleteAccount } from '../../sync/supabase';
 import { useDataSync } from '../../sync/useDataSync';
 import {
   clearDataset,
@@ -24,7 +25,9 @@ jest.mock('../persistence', () => ({
   saveDataset: jest.fn(),
   saveSettings: jest.fn(),
 }));
+jest.mock('../../sync/supabase', () => ({ deleteAccount: jest.fn() }));
 
+const mockDeleteAccount = deleteAccount as jest.MockedFunction<typeof deleteAccount>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseDataSync = useDataSync as jest.MockedFunction<typeof useDataSync>;
 const mockLoadDataset = loadDataset as jest.MockedFunction<typeof loadDataset>;
@@ -32,6 +35,7 @@ const mockLoadSettings = loadSettings as jest.MockedFunction<typeof loadSettings
 const mockSaveDataset = saveDataset as jest.MockedFunction<typeof saveDataset>;
 const mockSaveSettings = saveSettings as jest.MockedFunction<typeof saveSettings>;
 const mockClearDataset = clearDataset as jest.MockedFunction<typeof clearDataset>;
+const mockSettle = jest.fn<Promise<void>, []>();
 
 let store: AppStore;
 
@@ -126,10 +130,148 @@ beforeEach(() => {
     signUp: jest.fn(),
     signOut: jest.fn(),
   });
-  mockUseDataSync.mockReturnValue({ status: 'off', at: null, message: null });
+  mockSettle.mockResolvedValue();
+  mockUseDataSync.mockReturnValue({ status: 'off', at: null, message: null, settle: mockSettle });
+  mockDeleteAccount.mockResolvedValue();
   mockSaveDataset.mockResolvedValue();
   mockSaveSettings.mockResolvedValue();
   mockClearDataset.mockResolvedValue();
+});
+
+describe('deleting the account', () => {
+  const syncEnabled = () => mockUseDataSync.mock.calls.at(-1)?.[0].enabled;
+  const signOut = () => mockUseAuth.mock.results.at(-1)?.value.signOut as jest.Mock;
+
+  it('stops sync and lets a push finish before it calls the server', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    expect(syncEnabled()).toBe(true);
+
+    let finishPush!: () => void;
+    mockSettle.mockImplementationOnce(() => new Promise<void>((resolve) => (finishPush = resolve)));
+    let deleting!: Promise<void>;
+    await act(async () => {
+      deleting = store.deleteAccount('hunter22');
+    });
+
+    expect(syncEnabled()).toBe(false);
+    expect(mockDeleteAccount).not.toHaveBeenCalled();
+
+    await act(async () => {
+      finishPush();
+      await deleting;
+    });
+    expect(mockDeleteAccount).toHaveBeenCalledWith('hunter22');
+  });
+
+  it('erases the live dataset and signs out, leaving the demo dataset and the preference alone', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    expect(store.groups.length).toBeGreaterThan(0);
+
+    await act(async () => store.deleteAccount('hunter22'));
+
+    expect(mockClearDataset).toHaveBeenCalledTimes(1);
+    expect(mockClearDataset).toHaveBeenCalledWith(false);
+    expect(signOut()).toHaveBeenCalledTimes(1);
+    expect(store).toMatchObject({
+      demoMode: false,
+      groups: [],
+      courses: [],
+      rounds: [],
+      outings: [],
+      clubs: [],
+      usualScore: null,
+      practice: {},
+      activeGroupId: null,
+      activeRoundId: null,
+      activeOutingId: null,
+      cardRoundId: null,
+    });
+    // Sync stays off: the store is about to go with the sign-out, and nothing may push an empty season.
+    expect(syncEnabled()).toBe(false);
+  });
+
+  it('erases before it signs out, since signing out takes the store away', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    const order: string[] = [];
+    mockClearDataset.mockImplementationOnce(async () => {
+      order.push('erase');
+    });
+    mockUseAuth.mockReturnValue({
+      ...mockUseAuth(),
+      signOut: jest.fn(async () => {
+        order.push('sign out');
+      }),
+    });
+    await change(() => store.setActiveGroup(store.groups[0].id));
+
+    await act(async () => store.deleteAccount('hunter22'));
+
+    expect(order).toEqual(['erase', 'sign out']);
+  });
+
+  it('does not let a save still waiting on its debounce put the erased dataset back', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    await change(() => store.createCourse(makeCourse('Saved a moment ago', 9)));
+    mockSaveDataset.mockClear();
+
+    await act(async () => store.deleteAccount('hunter22'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 275));
+    });
+
+    expect(mockSaveDataset).not.toHaveBeenCalledWith(false, expect.anything());
+  });
+
+  it('in demo mode erases the live dataset behind it and keeps the demo data on screen', async () => {
+    await mount();
+    const groups = store.groups;
+
+    await act(async () => store.deleteAccount('hunter22'));
+
+    expect(mockClearDataset).toHaveBeenCalledWith(false);
+    expect(mockClearDataset).not.toHaveBeenCalledWith(true);
+    expect(signOut()).toHaveBeenCalledTimes(1);
+    expect(store).toMatchObject({ demoMode: true });
+    expect(store.groups).toBe(groups);
+  });
+
+  it('still signs out when the phone could not erase, because the account has gone either way', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    mockClearDataset.mockRejectedValueOnce(new Error('disk full'));
+
+    await act(async () => store.deleteAccount('hunter22'));
+
+    expect(signOut()).toHaveBeenCalledTimes(1);
+  });
+
+  it('on failure leaves the phone as it was, passes the message on, and turns sync back on', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    const groups = store.groups;
+    mockDeleteAccount.mockRejectedValueOnce(new Error('That password is not right.'));
+
+    await act(async () => {
+      await expect(store.deleteAccount('nope')).rejects.toThrow('That password is not right.');
+    });
+
+    expect(mockClearDataset).not.toHaveBeenCalled();
+    expect(signOut()).not.toHaveBeenCalled();
+    expect(store.groups).toBe(groups);
+    expect(syncEnabled()).toBe(true);
+  });
+
+  it('allows another try after a failure', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    mockDeleteAccount.mockRejectedValueOnce(new Error('The server could not finish.'));
+    await act(async () => {
+      await expect(store.deleteAccount('hunter22')).rejects.toThrow('could not finish');
+    });
+
+    await act(async () => store.deleteAccount('hunter22'));
+
+    expect(mockDeleteAccount).toHaveBeenCalledTimes(2);
+    expect(mockClearDataset).toHaveBeenCalledWith(false);
+    expect(store.groups).toEqual([]);
+  });
 });
 
 describe('AppStoreProvider', () => {

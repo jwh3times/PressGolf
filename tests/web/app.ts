@@ -7,8 +7,16 @@ import { expect, type Page } from '@playwright/test';
  */
 export const FROZEN_NOW = new Date('2026-09-26T16:00:00Z');
 
-/** Opens the app on the demo group's home screen, fonts loaded. */
+/**
+ * Opens the app on the demo group's home screen, fonts loaded.
+ *
+ * The export names a server that isn't there (`scripts/test-web.mjs`), so the
+ * screens for a build with one, such as Settings' Account section, can be seen.
+ * A remembered sign-in lets the phone in with no session, the way one with no
+ * signal is let in, and demo data never syncs, so nothing tries to reach it.
+ */
 export async function openApp(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem('press:auth:remembered-email', 'golfer@example.com'));
   await page.clock.setFixedTime(FROZEN_NOW);
   await page.goto('/');
   await expect(page.getByText('Saturday Dogs').first()).toBeVisible();

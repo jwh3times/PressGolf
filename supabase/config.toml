@@ -384,6 +384,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# The function verifies the token itself, with the auth server. Left to the
+# platform, a missing or bad token is refused before the function runs, with no
+# CORS headers for the web build and no outcome for the app to word.
+[functions.delete-account]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
