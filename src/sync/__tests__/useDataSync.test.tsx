@@ -280,6 +280,18 @@ it('does not publish an unchanged shared merge', async () => {
   expect(input.onSharedData).not.toHaveBeenCalled();
 });
 
+it('reports a refused first contact and leaves the phone as it was', async () => {
+  mockReconcile.mockRejectedValueOnce(new Error('groups: violates foreign key constraint'));
+  const input = options();
+  const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+
+  await waitFor(() => expect(view.result.current.status).toBe('error'));
+
+  expect(view.result.current.message).toBe('groups: violates foreign key constraint');
+  expect(input.onAdoptRemote).not.toHaveBeenCalled();
+  expect(input.onSharedData).not.toHaveBeenCalled();
+});
+
 it('reports a later push failure and retries on the next edit', async () => {
   const input = options();
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });

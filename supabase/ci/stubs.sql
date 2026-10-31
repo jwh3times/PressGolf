@@ -13,6 +13,14 @@ language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
 
+-- Foreign keys point here, and all they need is the id. Seeded with the accounts
+-- rls-test.sql signs in as.
+create table if not exists auth.users (id uuid primary key);
+insert into auth.users (id) values
+  ('11111111-1111-1111-1111-111111111111'),
+  ('22222222-2222-2222-2222-222222222222')
+on conflict do nothing;
+
 -- Supabase creates this publication for realtime. The migration adds a table
 -- to it, so it has to exist.
 do $$

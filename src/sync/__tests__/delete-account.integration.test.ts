@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-import { pullSnapshot, pushSnapshot } from '../remote';
+import { pullSnapshot, pushSnapshot, reconcile } from '../remote';
 import { TABLES, fromRows, toRows } from '../rows';
 import {
+  currentUserId,
   deleteAccount,
   getSupabase,
   hostOuting,
@@ -26,6 +28,13 @@ const PASSWORD = 'correct-horse-battery-staple';
 const admin = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+
+/** A client of its own, with nobody signed in and nothing saved. */
+function anonClient() {
+  return createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_ANON_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 interface Account {
   email: string;
@@ -61,6 +70,38 @@ async function rowsHeldBy(account: Account): Promise<number> {
     total += count ?? 0;
   }
   return total;
+}
+
+/** Ann organises a day and Ben joins it. Each is signed in again by whoever needs them. */
+async function sharedDay(prefix: string) {
+  const ann = await signUp('ann');
+  const season = demoDocuments(`${RUN}${prefix}`);
+  await pushSnapshot(toRows(season));
+  const outing = season.outings[0];
+  const { joinCode } = await hostOuting(outing.id);
+  const ben = await signUp('ben');
+  await joinOuting(joinCode, null, 'Ben');
+  return { ann, ben, season, outing };
+}
+
+/**
+ * Deletes the account from another phone, on a client of its own. The app's client
+ * stays signed in, holding a token that's still valid, as a forgotten phone does.
+ */
+async function deleteFromAnotherPhone(account: Account): Promise<void> {
+  const other = anonClient();
+  const { error: signInError } = await other.auth.signInWithPassword({ email: account.email, password: PASSWORD });
+  expect(signInError).toBeNull();
+  const { error } = await other.functions.invoke('delete-account', { body: { password: PASSWORD } });
+  expect(error).toBeNull();
+}
+
+/** Ages the session this phone has saved past its access token's expiry. */
+async function expireStoredSession(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys();
+  const key = keys.find((k) => k.endsWith('-auth-token'))!;
+  const session = JSON.parse((await AsyncStorage.getItem(key))!);
+  await AsyncStorage.setItem(key, JSON.stringify({ ...session, expires_at: Math.floor(Date.now() / 1000) - 60 }));
 }
 
 afterAll(async () => {
@@ -189,10 +230,7 @@ describe('who can delete what', () => {
       expect(error?.code).toBe('42501');
     }
 
-    const anon = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_ANON_KEY!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { error } = await anon.rpc('delete_account_data', { target: ann.id });
+    const { error } = await anonClient().rpc('delete_account_data', { target: ann.id });
     expect(error?.code).toBe('42501');
 
     expect(await rowsHeldBy(ann)).toBe(before);
@@ -201,18 +239,6 @@ describe('who can delete what', () => {
 
 describe('an account that shares data', () => {
   const REFUSED = 'shares data with another account';
-
-  /** Ann organises a day and Ben joins it. Each is signed in again by whoever needs them. */
-  async function sharedDay(prefix: string) {
-    const ann = await signUp('ann');
-    const season = demoDocuments(`${RUN}${prefix}`);
-    await pushSnapshot(toRows(season));
-    const outing = season.outings[0];
-    const { joinCode } = await hostOuting(outing.id);
-    const ben = await signUp('ben');
-    await joinOuting(joinCode, null, 'Ben');
-    return { ann, ben, season, outing };
-  }
 
   it('refuses the organiser of an outing a guest joined, with nothing deleted', async () => {
     const { ann, ben } = await sharedDay('org');
@@ -269,5 +295,91 @@ describe('an account that shares data', () => {
     const { error } = await admin.rpc('delete_account_data', { target: ann.id });
     expect(error?.code).toBe('PR001');
     expect(await rowsHeldBy(ann)).toBe(annHolds);
+  });
+});
+
+describe('a phone still signed in to a deleted account', () => {
+  it("can't put the season back, and can still finish deleting if it lost the reply", async () => {
+    const ann = await signUp('ann');
+    const season = demoDocuments(`${RUN}back`);
+    await pushSnapshot(toRows(season));
+    await deleteFromAnotherPhone(ann);
+
+    await expect(reconcile(toRows(season))).rejects.toThrow('foreign key');
+
+    expect(await rowsHeldBy(ann)).toBe(0);
+    await expect(deleteAccount(PASSWORD)).resolves.toBeUndefined();
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    ['groups', { id: `${RUN}gone-g`, name: 'Gone', created_at: 1 }],
+    ['courses', { id: `${RUN}gone-c`, name: 'Gone', created_at: 1 }],
+    ['clubs', { id: `${RUN}gone-k`, name: '7i', position: 0 }],
+    ['bag_settings', { usual_score: '90s' }],
+  ])("can't write to %s", async (table, row) => {
+    const ann = await signUp('ann');
+    await deleteFromAnotherPhone(ann);
+
+    const { error } = await getSupabase()!.from(table).insert(row);
+
+    expect(error?.code).toBe('23503');
+    expect(await rowsHeldBy(ann)).toBe(0);
+  });
+
+  it("can't join an outing", async () => {
+    await signUp('ben');
+    const season = demoDocuments(`${RUN}join`);
+    await pushSnapshot(toRows(season));
+    const { joinCode } = await hostOuting(season.outings[0].id);
+    const ann = await signUp('ann');
+    await deleteFromAnotherPhone(ann);
+
+    await expect(joinOuting(joinCode, null, 'Ann')).rejects.toThrow('foreign key');
+
+    expect(await rowsHeldBy(ann)).toBe(0);
+  });
+
+  it('ends up signed out once the token refresh is refused', async () => {
+    const ann = await signUp('ann');
+    await deleteFromAnotherPhone(ann);
+    const events: string[] = [];
+    const {
+      data: { subscription },
+    } = getSupabase()!.auth.onAuthStateChange((event) => {
+      events.push(event);
+    });
+
+    // The client keeps a session whose access token still works, so this only
+    // happens once the token runs out, up to an hour after the deletion.
+    await expireStoredSession();
+
+    expect(await currentUserId()).toBeNull();
+    subscription.unsubscribe();
+    expect(events).toContain('SIGNED_OUT');
+  });
+});
+
+describe('deleting an auth user who still holds rows', () => {
+  it('is refused for an owner, and the account carries on', async () => {
+    const ann = await signUp('ann');
+    await pushSnapshot(toRows(demoDocuments(`${RUN}owner`)));
+    const annHolds = await rowsHeldBy(ann);
+
+    const { error } = await admin.auth.admin.deleteUser(ann.id);
+
+    expect(error).not.toBeNull();
+    expect(await rowsHeldBy(ann)).toBe(annHolds);
+    await signInAs(ann);
+    expect(await requireUserId()).toBe(ann.id);
+  });
+
+  it('is refused for a guest who holds only a membership', async () => {
+    const { ben } = await sharedDay('member');
+    expect(await rowsHeldBy(ben)).toBe(1);
+
+    const { error } = await admin.auth.admin.deleteUser(ben.id);
+
+    expect(error).not.toBeNull();
+    expect(await rowsHeldBy(ben)).toBe(1);
   });
 });

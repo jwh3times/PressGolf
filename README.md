@@ -102,7 +102,7 @@ As of October 2026:
   Supabase stack (real auth, API, row-level security, realtime and the
   account-deletion function) with two accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 82 row-level-security assertions against Postgres 16.
+  database migration plus 89 row-level-security assertions against Postgres 16.
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
   posting to the ledger on an Android emulator and iOS simulator.
