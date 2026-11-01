@@ -247,9 +247,10 @@ npx supabase functions deploy delete-account --project-ref <project-ref> --use-a
 
 ### Deleting an account by hand
 
-The deletion page offers an email request to anyone without the app, answered
-within 30 days. Handle one the way the app does: clean up first, then delete the
-auth user. Check first that the request came from the account's own address.
+The deletion page offers an email request to anyone without the app or who can't
+sign in, answered within 30 days. Handle one the way the app does: clean up first,
+then delete the auth user. Check first that the request came from the account's
+own address.
 
 1. In the Supabase SQL editor, find the account and clear its rows:
 
