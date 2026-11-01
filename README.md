@@ -124,18 +124,18 @@ pass.
   `AppStore` yet.
 - Joining and row-level-security boundaries are automated, but a full round
   scored concurrently by multiple physical phones has not been field-tested.
-- An account can delete itself from Settings unless another account depends on
-  it. A guest can leave, and the organiser keeps the scores they typed. An
-  organiser can leave too: the day goes from the server, and each guest keeps a
-  copy on their phone that no longer syncs. A guest's own rounds and outings on the
-  organiser's group or course move to a copy of their own and keep syncing. One
-  that others depend on, such as the owner of a group a guest's outing with a third
-  account is on, is refused with nothing deleted, and uses the email request until
-  [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
+- Any account can delete itself from Settings. A guest can leave, and the
+  organiser keeps the scores they typed. An organiser can leave too: the day goes
+  from the server, and each guest keeps a copy on their phone that no longer syncs.
+  A guest's own rounds and outings on the organiser's group or course move to a copy
+  of their own and keep syncing, for anyone else in those outings too, though a third
+  phone's unsent edits on that card are lost. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)). A guest's
   phone on an older build doesn't know to keep that copy to itself, and can be left
-  with a sync error.
+  with a sync error. So can a fresh install of a guest with a round of their own on
+  a group someone else owns, after an organiser leaves an outing on that group,
+  until the phone holding that round pushes it.
 - A score or junk claim an organiser clears on a shared round comes back if the
   app closes before it's pushed. First contact can't tell it from one a guest
   typed that the phone hasn't seen.

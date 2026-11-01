@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import type { Outing, Round } from '../../domain/types';
 import { mergeShared } from '../merge-shared';
-import { applyMoveNotices } from '../move-notices';
+import { applyMoveNotices, followMoveNotices, keepingPhoneOnly } from '../move-notices';
 import { pullMoveNotices, pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 import { TABLES, fromRows, toRows, type Documents, type Snapshot } from '../rows';
 import {
@@ -27,7 +27,6 @@ import { demoDocuments } from './fixtures';
 
 const RUN = `d${Date.now().toString(36)}`;
 const PASSWORD = 'correct-horse-battery-staple';
-const REFUSED = 'shares data with another account';
 
 const admin = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -150,8 +149,24 @@ type Side = { phone: Documents; own: Snapshot; lastPull: Snapshot };
 /** One debounced push and the pull after it, as `useDataSync` runs them. */
 async function syncOnce(side: Side): Promise<Side> {
   const notices = await pullMoveNotices();
-  const held = applyMoveNotices(side.phone, notices);
-  const own = await pushChanges(toRows(held), side.own, side.lastPull);
+  let held = side.phone;
+  if (applyMoveNotices(held, notices) !== held) {
+    ({ held } = followMoveNotices(held, notices, fromRows(await pullSharedOutings())));
+  }
+  let own: Snapshot;
+  if (held === side.phone) {
+    own = await pushChanges(toRows(held), side.own, side.lastPull);
+  } else {
+    // Every id moved, so what it last pushed says nothing: as first contact.
+    const local = toRows(held);
+    const contact = await reconcile(local);
+    if (contact.status === 'adopted-remote') {
+      held = keepingPhoneOnly(held, fromRows(contact.snapshot));
+      own = contact.snapshot;
+    } else {
+      own = contact.status === 'pushed' ? contact.own : local;
+    }
+  }
   const lastPull = await pullSharedOutings();
   return { phone: mergeShared(held, fromRows(lastPull)), own, lastPull };
 }
@@ -186,6 +201,29 @@ async function withRematch(holding: Documents, day: Round, id: string) {
   const course = merged.courses.find((c) => c.id === day.courseId)!;
   const rematch = rematchOf(day, course.tees.map((t) => t.id), id);
   return { ...(await joinedPhone({ ...merged, rounds: [...merged.rounds, rematch] })), rematch };
+}
+
+/** A guest's phone with a shared outing of their own on the day's group and course. Its card is a rematch. */
+async function withOwnOuting(holding: Documents, outing: Outing, day: Round, prefix: string) {
+  const merged = mergeShared(holding, fromRows(await pullSharedOutings()));
+  const shared = merged.outings.find((o) => o.id === outing.id)!;
+  const course = merged.courses.find((c) => c.id === day.courseId)!;
+  const id = `${RUN}${prefix}-own`;
+  const round = { ...rematchOf(day, course.tees.map((t) => t.id), `${RUN}${prefix}-round`), outingId: id };
+  const own: Outing = {
+    ...shared,
+    id,
+    name: 'On her group',
+    field: round.playerIds,
+    fieldGames: {
+      fieldSkins: { ...shared.fieldGames.fieldSkins, entrants: round.playerIds },
+      scats: { ...shared.fieldGames.scats, entrants: round.playerIds.slice(0, 2) },
+    },
+    roundIds: [round.id],
+  };
+  const side = await joinedPhone({ ...merged, outings: [...merged.outings, own], rounds: [...merged.rounds, round] });
+  const { joinCode } = await hostOuting(id);
+  return { side, round, own, id, joinCode };
 }
 
 /**
@@ -429,132 +467,304 @@ describe('who can delete what', () => {
   });
 });
 
-describe('an account that shares data', () => {
-  it("refuses an organiser with a guest in an outing on someone else's group", async () => {
-    const { ben, outing } = await sharedDay('third');
-    const own = {
-      id: `${RUN}third-own`,
-      group_id: outing.groupId,
-      course_id: outing.courseId,
-      name: 'On her group',
-      date: 1,
-      started_at: 1,
+describe('a third account in a guest\'s outing on a deleted organiser\'s group', () => {
+  /** Ben's outing on Ann's group and course, with Cal in it, who has a season and a rematch of their own and typed on Ben's card. Cal is left signed in. */
+  async function thirdAccount(prefix: string) {
+    const { ann, ben, outing, day, benPhone } = await guestOnTheCard(prefix);
+    const bens = await withOwnOuting(benPhone, outing, day, prefix);
+    const cal = await signUp('cal');
+    const season = demoDocuments(`${RUN}${prefix}cal`);
+    await pushSnapshot(toRows(season));
+    await joinOuting(bens.joinCode, null, 'Cal');
+    const joined = await withRematch(season, bens.round, `${RUN}${prefix}-cal`);
+    const scorer = bens.round.playerIds[3];
+    const typed = { ...bens.round, scores: { ...bens.round.scores, [scorer]: [7, 8, 6, 3] } };
+    const calSide = await syncOnce({ ...joined, phone: { ...joined.phone, rounds: joined.phone.rounds.map((r) => (r.id === typed.id ? typed : r)) } });
+    return { ann, ben, cal, outing, day, bens, calSide, rematch: joined.rematch, season, scorer };
+  }
+
+  it('keeps syncing, on the guest\'s copy, and takes the server\'s card before it next pushes', async () => {
+    const { ann, ben, cal, outing, day, bens, calSide, rematch, season } = await thirdAccount('third');
+    // On the back nine: an edit that hasn't gone up. It's the one thing this case accepts losing.
+    const unsent = {
+      ...calSide,
+      phone: {
+        ...calSide.phone,
+        rounds: calSide.phone.rounds.map((r) => (r.id === bens.round.id ? { ...r, scores: { ...r.scores, [r.playerIds[0]]: [99, 5, null] } } : r)),
+      },
     };
-    const { error: outingError } = await getSupabase()!.from('outings').insert(own);
-    expect(outingError).toBeNull();
-    const { joinCode } = await hostOuting(own.id);
-    await signUp('cal');
-    await joinOuting(joinCode, null, 'Cal');
-    await signInAs(ben);
-    const benHolds = await rowsHeldBy(ben);
+    await deleteFromAnotherPhone(ann);
 
-    await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
+    const { data: onServer } = await admin.from('outings').select('group_id, course_id, owner_id').eq('id', bens.id).single();
+    expect(onServer!.owner_id).toBe(ben.id);
+    expect(onServer!.group_id).not.toBe(outing.groupId);
 
-    expect(await rowsHeldBy(ben)).toBe(benHolds);
+    let now: Side = unsent;
+    for (let i = 0; i < 3; i += 1) now = await syncOnce(now);
+    await expect(reconcile(toRows(now.phone))).resolves.toMatchObject({ status: 'pushed' });
+
+    // The outing as Ben has it, on Ben's copy.
+    const kept = now.phone.outings.find((o) => o.id === bens.id)!;
+    expect(kept.detached).toBeUndefined();
+    expect(kept).toMatchObject({ groupId: onServer!.group_id, courseId: onServer!.course_id });
+    expect(now.phone.groups.map((g) => g.id)).toContain(onServer!.group_id);
+    expect(now.phone.courses.map((c) => c.id)).toContain(onServer!.course_id);
+
+    // What Cal typed before she left is there, and what hadn't gone up isn't.
+    const card = now.phone.rounds.find((r) => r.id === bens.round.id)!;
+    expect(card.scores[card.playerIds[3]]).toEqual([7, 8, 6, 3]);
+    expect(card.scores[card.playerIds[0]]).toEqual([4, 5, null]);
+    const { data: cell } = await admin.from('scores').select('strokes, owner_id').match({ round_id: card.id, player_id: card.playerIds[3], hole: 3 }).single();
+    expect(cell).toEqual({ strokes: 3, owner_id: cal.id });
+    const { data: stale } = await admin.from('scores').select('strokes').match({ round_id: card.id, hole: 0 }).eq('strokes', 99);
+    expect(stale).toEqual([]);
+
+    // Cal's own rematch is on Cal's own copy, not Ben's and not hers.
+    const own = now.phone.rounds.find((r) => r.id === rematch.id)!;
+    expect(own.groupId).not.toBe(outing.groupId);
+    expect(own.groupId).not.toBe(onServer!.group_id);
+    const { data: copy } = await admin.from('groups').select('owner_id').eq('id', own.groupId).single();
+    expect(copy).toEqual({ owner_id: cal.id });
+
+    // And the rest of Cal's season hasn't moved.
+    for (const group of season.groups) expect(now.phone.groups.map((g) => g.id)).toContain(group.id);
+    for (const round of season.rounds) expect(now.phone.rounds.find((r) => r.id === round.id)?.groupId).toBe(round.groupId);
+
+    expect(await dayLeft(dayOf(outing, [day]))).toBe(0);
   });
 
-  it("refuses an organiser with someone's round in an outing on someone else's group, member or not", async () => {
-    const { ben, outing } = await sharedDay('third-round');
-    const own = {
-      id: `${RUN}third-round-own`,
-      group_id: outing.groupId,
-      course_id: outing.courseId,
-      name: 'On her group',
-      date: 1,
-      started_at: 1,
-    };
-    const { error: outingError } = await getSupabase()!.from('outings').insert(own);
-    expect(outingError).toBeNull();
+  it("keeps the guest who hosts it syncing, with one copy of the group, their unsent score, and the score their phone hadn't seen", async () => {
+    const { ann, ben, bens, calSide, scorer } = await thirdAccount('hosting');
+    expect(calSide.phone.rounds.find((r) => r.id === bens.round.id)!.scores[scorer]).toEqual([7, 8, 6, 3]);
+    // Ben's phone still has the box Cal typed in as blank, and a score of Ben's that hasn't gone up.
+    const other = bens.round.playerIds[1];
+    const offline = { ...bens.round, scores: { ...bens.round.scores, [other]: [5, 6, 9] } };
+    await signInAs(ben);
+    await deleteFromAnotherPhone(ann);
+
+    let now: Side = { ...bens.side, phone: { ...bens.side.phone, rounds: bens.side.phone.rounds.map((r) => (r.id === offline.id ? offline : r)) } };
+    for (let i = 0; i < 3; i += 1) now = await syncOnce(now);
+    await expect(reconcile(toRows(now.phone))).resolves.toMatchObject({ status: 'pushed' });
+
+    const ids = (items: { id: string }[]) => items.map((item) => item.id);
+    expect(new Set(ids(now.phone.groups)).size).toBe(now.phone.groups.length);
+    expect(new Set(ids(now.phone.courses)).size).toBe(now.phone.courses.length);
+
+    const card = now.phone.rounds.find((r) => r.id === bens.round.id)!;
+    const cell = async (index: number, hole: number) =>
+      (await admin.from('scores').select('strokes').match({ round_id: card.id, player_id: card.playerIds[index], hole }).single()).data;
+    expect(await cell(1, 2)).toEqual({ strokes: 9 });
+    expect(await cell(3, 2)).toEqual({ strokes: 6 });
+    expect(await cell(3, 3)).toEqual({ strokes: 3 });
+    expect(card.scores[card.playerIds[1]]).toEqual([5, 6, 9]);
+    expect(card.scores[card.playerIds[3]]).toEqual([7, 8, 6, 3]);
+  });
+
+  it("leaves a third account's copy alone when it needs none, and its notices are its own", async () => {
+    const { ann, outing, day, benPhone } = await guestOnTheCard('third-none');
+    const bens = await withOwnOuting(benPhone, outing, day, 'third-none');
     const dee = await signUp('dee');
+    await joinOuting(bens.joinCode, null, 'Dee');
+    const side = await joinedPhone();
+    await deleteFromAnotherPhone(ann);
+
+    let now: Side = side;
+    for (let i = 0; i < 2; i += 1) now = await syncOnce(now);
+
+    expect(await rowsHeldBy(dee)).toBe(1);
+    expect(now.phone.outings.find((o) => o.id === bens.id)?.detached).toBeUndefined();
+    const { data: serverOuting } = await admin.from('outings').select('group_id').eq('id', bens.id).single();
+    const { data: notice } = await admin.from('move_notices').select('to_id').match({ user_id: dee.id, kind: 'group', from_id: outing.groupId }).single();
+    expect(notice!.to_id).not.toBe(serverOuting!.group_id);
+  });
+
+  it("moves a round of someone's in a guest's outing onto the guest's copy, member or not", async () => {
+    const { ann, ben, outing, day, benPhone } = await guestOnTheCard('third-card');
+    const bens = await withOwnOuting(benPhone, outing, day, 'third-card');
+    const dee = await signUp('dee');
+    const older = `${RUN}third-card-dee`;
     const { error: roundError } = await admin.from('rounds').insert({
-      id: `${RUN}third-round-dee`,
+      id: older,
       group_id: outing.groupId,
       course_id: outing.courseId,
-      outing_id: own.id,
+      outing_id: bens.id,
       name: 'Older',
       started_at: 1,
       owner_id: dee.id,
     });
     expect(roundError).toBeNull();
-    await signInAs(ben);
+    await deleteFromAnotherPhone(ann);
 
-    await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
+    const { data: theirs } = await admin.from('outings').select('group_id').eq('id', bens.id).single();
+    const { data: round } = await admin.from('rounds').select('owner_id, group_id, outing_id').eq('id', older).single();
+    expect(round).toEqual({ owner_id: dee.id, group_id: theirs!.group_id, outing_id: bens.id });
+    const { data: group } = await admin.from('groups').select('owner_id').eq('id', theirs!.group_id).single();
+    expect(group).toEqual({ owner_id: ben.id });
   });
+});
 
-  it("refuses an organiser while someone else's outing on her group has a third account in it", async () => {
-    const { ann, ben, outing } = await sharedDay('third-member');
-    const own = {
-      id: `${RUN}third-member-own`,
-      group_id: outing.groupId,
-      course_id: outing.courseId,
-      name: 'On her group',
-      date: 1,
-      started_at: 1,
-    };
-    const { error: outingError } = await getSupabase()!.from('outings').insert(own);
-    expect(outingError).toBeNull();
-    const { joinCode } = await hostOuting(own.id);
-    await signUp('cal');
-    await joinOuting(joinCode, null, 'Cal');
-    const [annHolds, benHolds] = [await rowsHeldBy(ann), await rowsHeldBy(ben)];
+describe("an organiser with an outing on someone else's group", () => {
+  /** Ben's outing on Ann's group and course, with Cal in it, who holds a rematch there too. Cal is left signed in. */
+  async function outingOnHers(prefix: string) {
+    const { ann, ben, outing, day, benPhone } = await guestOnTheCard(prefix);
+    const bens = await withOwnOuting(benPhone, outing, day, prefix);
+    const cal = await signUp('cal');
+    await joinOuting(bens.joinCode, null, 'Cal');
+    const calSide = await withRematch(NOTHING, bens.round, `${RUN}${prefix}-cal`);
+    return { ann, ben, cal, outing, day, bens, calSide };
+  }
 
+  it('takes the day off the server, leaves the owner alone, and the guest keeps a copy and keeps syncing', async () => {
+    const { ann, ben, cal, outing, bens, calSide } = await outingOnHers('theirs');
+    const annHolds = await rowsHeldBy(ann);
+    await deleteFromAnotherPhone(ben);
+
+    let now: Side = calSide;
+    for (let i = 0; i < 3; i += 1) now = await syncOnce(now);
+    await expect(reconcile(toRows(now.phone))).resolves.toMatchObject({ status: 'pushed' });
+
+    expect(now.phone.outings.find((o) => o.id === bens.id)?.detached).toBe(true);
+    const { data: gone } = await admin.from('outings').select('id').eq('id', bens.id);
+    expect(gone).toEqual([]);
+
+    // Her group is hers, untouched, and nothing of it went up under Cal.
+    const { data: group } = await admin.from('groups').select('owner_id').eq('id', outing.groupId).single();
+    expect(group).toEqual({ owner_id: ann.id });
+
+    // Cal's rematch moves to a copy of Cal's own, which is all Cal has up there.
+    const rematch = now.phone.rounds.find((r) => r.id === calSide.rematch.id)!;
+    expect(rematch.groupId).not.toBe(outing.groupId);
+    const { data: copy } = await admin.from('rounds').select('owner_id, group_id').eq('id', rematch.id).single();
+    expect(copy).toEqual({ owner_id: cal.id, group_id: rematch.groupId });
     await signInAs(ann);
-    await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
-
-    expect(await rowsHeldBy(ann)).toBe(annHolds);
-    expect(await rowsHeldBy(ben)).toBe(benHolds);
-    await signInAs(ben);
-    await expect(pullMoveNotices()).resolves.toEqual([]);
+    expect(await rowsHeldBy(ann)).toBeGreaterThanOrEqual(annHolds);
   });
 
-  it("refuses an organiser while someone else's outing on her group has a third account's round in it, member or not", async () => {
-    const { ann, ben, outing } = await sharedDay('third-card');
-    const own = {
-      id: `${RUN}third-card-own`,
+  it("tells the group's owner only that the outing went, if she'd joined it", async () => {
+    const { ann, ben, outing, bens } = await outingOnHers('joined');
+    await signInAs(ann);
+    await joinOuting(bens.joinCode, null, 'Ann');
+    await deleteFromAnotherPhone(ben);
+
+    const notices = await pullMoveNotices();
+    expect(notices).toEqual([expect.objectContaining({ kind: 'outing', from_id: bens.id, to_id: null })]);
+    expect(notices.map((n) => n.from_id)).not.toContain(outing.groupId);
+  });
+
+  it("doesn't let the notice move her group when the guest later joins another outing on it", async () => {
+    const { ann, ben, cal, outing, day, bens, calSide } = await outingOnHers('held-again');
+    await deleteFromAnotherPhone(ben);
+    let now: Side = await syncOnce(calSide);
+
+    // Ann shares another day on the same group, and Cal joins it.
+    await signInAs(ann);
+    const second = {
+      id: `${RUN}held-again-second`,
       group_id: outing.groupId,
       course_id: outing.courseId,
-      name: 'On her group',
-      date: 1,
-      started_at: 1,
+      name: 'Another day',
+      date: 2,
+      started_at: 2,
     };
-    const { error: outingError } = await getSupabase()!.from('outings').insert(own);
-    expect(outingError).toBeNull();
+    const { error: secondError } = await getSupabase()!.from('outings').insert(second);
+    expect(secondError).toBeNull();
+    const { error: fieldError } = await getSupabase()!.from('outing_field').insert({ outing_id: second.id, player_id: day.playerIds[0], sort_order: 0 });
+    expect(fieldError).toBeNull();
+    const { joinCode } = await hostOuting(second.id);
+    await signInAs(cal);
+    await joinOuting(joinCode, null, 'Cal');
+
+    for (let i = 0; i < 3; i += 1) now = await syncOnce(now);
+    await expect(reconcile(toRows(now.phone))).resolves.toMatchObject({ status: 'pushed' });
+
+    const held = now.phone.outings.find((o) => o.id === second.id)!;
+    expect(held.groupId).toBe(outing.groupId);
+    expect(held.field).toEqual([day.playerIds[0]]);
+    expect(now.phone.groups.filter((g) => g.id === outing.groupId)).toHaveLength(1);
+    // The day from before stays moved, and detached.
+    const before = now.phone.outings.find((o) => o.id === bens.id)!;
+    expect(before.detached).toBe(true);
+    expect(before.groupId).not.toBe(outing.groupId);
+  });
+
+  it("takes someone's round in it with the day, member or not", async () => {
+    const { ben, outing, bens } = await outingOnHers('theirs-round');
     const dee = await signUp('dee');
-    const { error: roundError } = await admin.from('rounds').insert({
-      id: `${RUN}third-card-dee`,
+    const older = `${RUN}theirs-round-dee`;
+    const { error } = await admin.from('rounds').insert({
+      id: older,
       group_id: outing.groupId,
       course_id: outing.courseId,
-      outing_id: own.id,
+      outing_id: bens.id,
       name: 'Older',
       started_at: 1,
       owner_id: dee.id,
     });
-    expect(roundError).toBeNull();
-    const benHolds = await rowsHeldBy(ben);
+    expect(error).toBeNull();
 
-    await signInAs(ann);
-    await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
+    await deleteFromAnotherPhone(ben);
 
-    expect(await rowsHeldBy(ben)).toBe(benHolds);
+    const { data } = await admin.from('rounds').select('id').eq('id', older);
+    expect(data).toEqual([]);
+    expect(await pullMoveNotices()).toContainEqual(expect.objectContaining({ kind: 'outing', from_id: bens.id }));
+  });
+});
+
+describe('rows older builds could write under someone else', () => {
+  it("hands what the departing account wrote under someone else's to them, and takes its own round from their outing", async () => {
+    const { ann, ben, day, outing, card, cells } = await guestOnTheCard('older');
+    const presser = day.playerIds[0];
+    const inserts: [string, Record<string, unknown>][] = [
+      ['course_hole_notes', { course_id: day.courseId, number: 17, text: 'From an older build.', owner_id: ben.id }],
+      ['presses', { id: `${RUN}older-press`, round_id: card.id, by_player: presser, against_player: presser, start_hole: 1, end_hole: 2, stake: 1, owner_id: ben.id }],
+      ['players', { id: `${RUN}older-player`, group_id: day.groupId, name: 'Added By Ben', initials: 'AB', color: '#000000', owner_id: ben.id }],
+      ['rounds', { id: `${RUN}older-round`, group_id: day.groupId, course_id: day.courseId, outing_id: outing.id, name: 'Older', started_at: 1, owner_id: ben.id }],
+    ];
+    for (const [table, row] of inserts) {
+      const { error } = await admin.from(table).insert(row);
+      expect(error).toBeNull();
+    }
+
+    await deleteAccount(PASSWORD);
+
+    expect(await rowsHeldBy(ben)).toBe(0);
+    expect(await cells()).toEqual(typedCells(ann));
+    for (const [table, match] of [
+      ['course_hole_notes', { course_id: day.courseId, number: 17 }],
+      ['presses', { id: `${RUN}older-press` }],
+      ['players', { id: `${RUN}older-player` }],
+    ] as const) {
+      const { data } = await admin.from(table).select('owner_id').match(match).single();
+      expect(data).toEqual({ owner_id: ann.id });
+    }
+    const { data: round } = await admin.from('rounds').select('id').eq('id', `${RUN}older-round`);
+    expect(round).toEqual([]);
   });
 
-  it('runs as one transaction: a refused clean-up from the service role leaves everything too', async () => {
-    const { ann, ben, day, cells } = await guestOnTheCard('txn');
-    // The policies refuse this now, but a build from before them could have written it.
-    const { error: olderError } = await admin
-      .from('course_hole_notes')
-      .upsert({ course_id: day.courseId, number: 17, text: 'From an older build.', owner_id: ben.id }, { onConflict: 'course_id,number' });
-    expect(olderError).toBeNull();
-    const [annHolds, benHolds] = [await rowsHeldBy(ann), await rowsHeldBy(ben)];
+  it("copies a guest's own row on her course and roster when their rows stay, and lets it go when none do", async () => {
+    const stays = await guestWithRematch('older-stays');
+    const leaves = await sharedDay('older-leaves');
+    const rows = (who: Account, day: { groupId: string; courseId: string }, id: string): [string, Record<string, unknown>][] => [
+      ['course_hole_notes', { course_id: day.courseId, number: 17, text: 'From an older build.', owner_id: who.id }],
+      ['players', { id, group_id: day.groupId, name: `Added ${id}`, initials: 'AB', color: '#000000', owner_id: who.id }],
+    ];
+    const staying = `${RUN}older-stays-player`;
+    const leaving = `${RUN}older-leaves-player`;
+    for (const [table, row] of [...rows(stays.ben, stays.outing, staying), ...rows(leaves.ben, leaves.outing, leaving)]) {
+      const { error } = await admin.from(table).upsert(row);
+      expect(error).toBeNull();
+    }
 
-    const { error } = await admin.rpc('delete_account_data', { target: ann.id });
+    await deleteFromAnotherPhone(stays.ann);
+    await deleteFromAnotherPhone(leaves.ann);
 
-    expect(error?.code).toBe('PR001');
-    expect(await rowsHeldBy(ann)).toBe(annHolds);
-    expect(await rowsHeldBy(ben)).toBe(benHolds);
-    expect((await cells()).score?.owner_id).toBe(ben.id);
-    const { data: notices } = await admin.from('move_notices').select('kind').eq('user_id', ben.id);
-    expect(notices).toEqual([]);
+    const { data: copied } = await admin.from('players').select('owner_id').eq('name', `Added ${staying}`).single();
+    expect(copied).toEqual({ owner_id: stays.ben.id });
+    const { data: note } = await admin.from('course_hole_notes').select('owner_id').eq('text', 'From an older build.').eq('owner_id', stays.ben.id);
+    expect(note!.length).toBeGreaterThanOrEqual(1);
+    const { data: gone } = await admin.from('players').select('id').eq('name', `Added ${leaving}`);
+    expect(gone).toEqual([]);
+    expect(await rowsHeldBy(leaves.ben)).toBe(0);
   });
 });
 
@@ -671,21 +881,6 @@ describe('a guest deleting their account', () => {
     await signInAs(cal);
     expect(await pullMoveNotices()).toContainEqual(expect.objectContaining({ kind: 'outing', from_id: own.outings[0].id, to_id: null }));
     await signOut();
-  });
-
-  it("refuses a guest with any other row of theirs under her day, since it can't just go", async () => {
-    const { ben, day, cells } = await guestOnTheCard('older');
-    // The policies refuse this now, but a build from before them could have written it.
-    const { error: olderError } = await admin
-      .from('course_hole_notes')
-      .upsert({ course_id: day.courseId, number: 17, text: 'From an older build.', owner_id: ben.id }, { onConflict: 'course_id,number' });
-    expect(olderError).toBeNull();
-    const benHolds = await rowsHeldBy(ben);
-
-    await expect(deleteAccount(PASSWORD)).rejects.toThrow(REFUSED);
-
-    expect(await rowsHeldBy(ben)).toBe(benHolds);
-    expect((await cells()).score?.owner_id).toBe(ben.id);
   });
 
   it("can't have her day put back by a second phone still signed in to them", async () => {
@@ -1131,24 +1326,7 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
 
   it('keeps an outing of their own on her group, with its field, its entrants and their membership', async () => {
     const { ann, ben, outing, day, benPhone } = await guestOnTheCard('outing');
-    const merged = mergeShared(benPhone, fromRows(await pullSharedOutings()));
-    const shared = merged.outings.find((o) => o.id === outing.id)!;
-    const course = merged.courses.find((c) => c.id === day.courseId)!;
-    const id = `${RUN}outing-own`;
-    const round = { ...rematchOf(day, course.tees.map((t) => t.id), `${RUN}outing-round`), outingId: id };
-    const own: Outing = {
-      ...shared,
-      id,
-      name: 'On her group',
-      field: round.playerIds,
-      fieldGames: {
-        fieldSkins: { ...shared.fieldGames.fieldSkins, entrants: round.playerIds },
-        scats: { ...shared.fieldGames.scats, entrants: round.playerIds.slice(0, 2) },
-      },
-      roundIds: [round.id],
-    };
-    const side = await joinedPhone({ ...merged, outings: [...merged.outings, own], rounds: [...merged.rounds, round] });
-    await hostOuting(id);
+    const { side, round, id } = await withOwnOuting(benPhone, outing, day, 'outing');
     const { error: asError } = await admin.from('outing_members').update({ player_id: round.playerIds[0] }).match({ outing_id: id, user_id: ben.id });
     expect(asError).toBeNull();
     await deleteFromAnotherPhone(ann);

@@ -12,9 +12,12 @@
  * same new ids, on a copy of the group and course.
  *
  * Kept pure, like `merge-shared`, and safe to apply again: notices stay on the
- * server, and once applied they match nothing this phone holds.
+ * server, and once applied they match nothing this phone holds. A notice never
+ * touches what the phone still shares: `followMoveNotices` takes the server's word
+ * for that, so a group someone holds again through a later outing stays put.
  */
 import type { Course, Group, Outing, PlayerId, Round } from '../domain/types';
+import { mergeShared } from './merge-shared';
 import type { Documents } from './rows';
 
 export interface MoveNotice {
@@ -165,6 +168,65 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
     changed = true;
   }
   return changed ? next : held;
+}
+
+/** The notices applied, then the server's copy of the days in `taken`. */
+export function applyFollowed<T extends Held & Pick<Documents, 'clubs'>>(held: T, notices: MoveNotice[], taken: Documents): T {
+  const moved = applyMoveNotices(held, notices);
+  const { groups, courses, rounds, outings, clubs } = moved;
+  return taken.outings.length === 0 ? moved : { ...moved, ...mergeShared({ groups, courses, rounds, outings, clubs }, taken) };
+}
+
+/**
+ * The phone's documents, once it knows what the server still shares with it.
+ *
+ * A notice leaves anything the shared pull still shows, with its players and tees,
+ * since that's still someone else's. A day it shares can also be on a group or course
+ * that moved under it, as when the owner of the group a guest's outing was on deletes
+ * their account. The guest has moved that outing to their own copy, and this phone's
+ * notices name ids of its own that have nothing to do with it. Where the two disagree,
+ * the server's copy of that day replaces this phone's, so an edit here that hadn't
+ * gone up is lost. Every other day, its own included, keeps what's on the phone.
+ *
+ * Returns what's left to apply and the days to take, for the store to do the same.
+ * Hands back `held` itself if that's nothing, so the caller doesn't save and go round
+ * again.
+ */
+export function followMoveNotices<T extends Held & Pick<Documents, 'clubs'>>(
+  held: T,
+  notices: MoveNotice[],
+  shared: Documents,
+): { held: T; notices: MoveNotice[]; taken: Documents } {
+  const shownGroups = new Set(shared.groups.map((group) => group.id));
+  const shownCourses = new Set(shared.courses.map((course) => course.id));
+  const shown: Record<MoveNotice['kind'], Set<string>> = {
+    outing: new Set(shared.outings.map((outing) => outing.id)),
+    group: shownGroups,
+    course: shownCourses,
+    player: new Set([
+      ...[...shared.groups, ...held.groups.filter((group) => shownGroups.has(group.id))].flatMap((group) => group.players.map((player) => player.id)),
+      ...shared.outings.flatMap((outing) => outing.field),
+      ...shared.rounds.flatMap((round) => round.playerIds),
+    ]),
+    tee: new Set(
+      [...shared.courses, ...held.courses.filter((course) => shownCourses.has(course.id))].flatMap((course) => course.tees.map((tee) => tee.id)),
+    ),
+  };
+  const toApply = notices.filter((notice) => !shown[notice.kind].has(notice.from_id));
+
+  const moved = applyMoveNotices(held, toApply);
+  const days = shared.outings.filter((outing) => {
+    const mine = moved.outings.find((day) => day.id === outing.id);
+    return mine !== undefined && (mine.groupId !== outing.groupId || mine.courseId !== outing.courseId);
+  });
+  const taken: Documents = {
+    groups: shared.groups.filter((group) => days.some((day) => day.groupId === group.id)),
+    courses: shared.courses.filter((course) => days.some((day) => day.courseId === course.id)),
+    rounds: shared.rounds.filter((round) => days.some((day) => day.id === round.outingId)),
+    outings: days,
+    clubs: [],
+  };
+  return { held: applyFollowed(held, toApply, taken), notices: toApply, taken };
 }
 
 /**

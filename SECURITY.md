@@ -40,7 +40,7 @@ maintain parallel release branches yet.
   verified token, with what that account organised, and re-checks the password
   itself. The SQL function it calls can be executed only by the service role, and
   the integration suite checks that a signed-in or anonymous call is refused.
-- The move notices that function leaves a guest hold opaque ids and no personal
+- The move notices that function leaves hold opaque ids and no personal
   data. An account reads only its own, and nothing can write one from the client.
   Where a guest's own rows stay on the departed account's group, their copy of it
   holds only the players they could already read or that those rows name.

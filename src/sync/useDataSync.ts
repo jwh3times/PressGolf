@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
-import { applyMoveNotices, keepingPhoneOnly, type MoveNotice } from './move-notices';
+import { applyFollowed, applyMoveNotices, followMoveNotices, keepingPhoneOnly, type MoveNotice } from './move-notices';
 import { emptySnapshot, fromRows, toRows, type Documents, type Snapshot } from './rows';
 
 export interface SyncState {
@@ -28,6 +28,8 @@ export interface DataSync extends SyncState {
 
 const OFF: SyncState = { status: 'off', at: null, message: null };
 
+const NOTHING_TAKEN = fromRows(emptySnapshot());
+
 /** Long enough that a hole's worth of taps goes up as one write. */
 const PUSH_DELAY_MS = 2500;
 
@@ -46,8 +48,8 @@ export function useDataSync(options: {
   /** Takes the server's copy of what it names: everything, or only the bag. */
   onAdoptRemote: (documents: Partial<Documents>) => void;
   onSharedData: (documents: Documents) => void;
-  /** An organiser's account went: applies these to what the store holds. */
-  onMoveNotices: (notices: MoveNotice[]) => void;
+  /** An organiser's account went: applies these to what the store holds, then takes these days from the server. */
+  onMoveNotices: (notices: MoveNotice[], taken: Documents) => void;
 }): DataSync {
   const { enabled, documents, onAdoptRemote, onSharedData, onMoveNotices } = options;
   const [state, setState] = useState<SyncState>(OFF);
@@ -83,6 +85,42 @@ export function useDataSync(options: {
     });
   }, []);
 
+  // Before every push, on both paths below. An organiser's day that's gone makes a
+  // push throw, and it would never reach a pull that told it. It only pulls the shared
+  // outings if the notices would change something. Null if sync went off meanwhile.
+  const followNotices = useCallback(async (held: Documents, stillOn: () => boolean) => {
+    const notices = await pullMoveNotices();
+    if (!stillOn()) return null;
+    const nothing = { held, notices: [] as MoveNotice[], taken: NOTHING_TAKEN };
+    if (applyMoveNotices(held, notices) === held) return nothing;
+    const incoming = fromRows(await pullSharedOutings());
+    if (!stillOn()) return null;
+    const followed = followMoveNotices(held, notices, incoming);
+    if (followed.held !== held) moved.current(followed.notices, followed.taken);
+    return followed;
+  }, []);
+
+  // Pull, and either adopt what is there or send ours up.
+  const contact = useCallback(async (held: Documents, stillOn: () => boolean) => {
+    const local = toRows(held);
+    const outcome = await reconcile(local);
+    if (!stillOn()) return;
+    sharedHas.current = outcome.shared;
+    if (outcome.status === 'adopted-remote') {
+      serverHas.current = outcome.snapshot;
+      adopt.current(keepingPhoneOnly(held, fromRows(outcome.snapshot)));
+    } else {
+      serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
+      if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings)) {
+        const bag = fromRows({ ...emptySnapshot(), clubs: outcome.clubs ?? [], bag_settings: outcome.bag_settings ?? [] });
+        adopt.current({
+          ...(outcome.clubs ? { clubs: bag.clubs } : {}),
+          ...(bag.usualScore ? { usualScore: bag.usualScore } : {}),
+        });
+      }
+    }
+  }, []);
+
   // First contact: pull, and either adopt what is there or send ours up.
   // Signing out or switching to demo data drops the belief about the server,
   // so the next sign-in starts with a pull rather than a blind push.
@@ -99,29 +137,10 @@ export function useDataSync(options: {
       inFlight.current = true;
       setState({ status: 'syncing', at: null, message: null });
       try {
-        // Before every push, on this path and the debounced one. An organiser's day
-        // that's gone makes a push throw, and it would never reach a pull that told it.
-        const notices = await pullMoveNotices();
+        const read = await followNotices(documents, () => !cancelled);
+        if (!read) return;
+        await contact(read.held, () => !cancelled);
         if (cancelled) return;
-        const held = applyMoveNotices(documents, notices);
-        if (held !== documents) moved.current(notices);
-        const local = toRows(held);
-        const outcome = await reconcile(local);
-        if (cancelled) return;
-        sharedHas.current = outcome.shared;
-        if (outcome.status === 'adopted-remote') {
-          serverHas.current = outcome.snapshot;
-          adopt.current(keepingPhoneOnly(held, fromRows(outcome.snapshot)));
-        } else {
-          serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
-          if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings)) {
-            const bag = fromRows({ ...emptySnapshot(), clubs: outcome.clubs ?? [], bag_settings: outcome.bag_settings ?? [] });
-            adopt.current({
-              ...(outcome.clubs ? { clubs: bag.clubs } : {}),
-              ...(bag.usualScore ? { usualScore: bag.usualScore } : {}),
-            });
-          }
-        }
         setState({ status: 'synced', at: Date.now(), message: null });
       } catch (error) {
         if (!cancelled) fail(error);
@@ -136,7 +155,7 @@ export function useDataSync(options: {
     // `documents` is deliberately not a dependency: this runs once per session,
     // and the effect below follows the data from then on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, fail]);
+  }, [enabled, fail, followNotices, contact]);
 
   // Everything after that: push what changed, debounced.
   useEffect(() => {
@@ -150,23 +169,30 @@ export function useDataSync(options: {
       running.current = (async () => {
         setState((prev) => ({ ...prev, status: 'syncing' }));
         try {
-          const notices = await pullMoveNotices();
-          if (session.current !== started) return;
-          const held = applyMoveNotices(documents, notices);
-          if (held !== documents) moved.current(notices);
-          const pushed = await pushChanges(toRows(held), server, sharedHas.current);
-          // Sync went off meanwhile. Writing this down would undo the reset, and
-          // coming back on would then skip first contact, trusting a server that
-          // a failed account deletion may have emptied.
-          if (session.current !== started) return;
-          serverHas.current = pushed;
+          const stillOn = () => session.current === started;
+          const read = await followNotices(documents, stillOn);
+          if (!read) return;
+          const { held, notices, taken } = read;
+          if (held === documents) {
+            const pushed = await pushChanges(toRows(held), server, sharedHas.current);
+            // Sync went off meanwhile. Writing this down would undo the reset, and
+            // coming back on would then skip first contact, trusting a server that
+            // a failed account deletion may have emptied.
+            if (!stillOn()) return;
+            serverHas.current = pushed;
+          } else {
+            // Every id it last pushed has moved, so a diff would read each cell as changed
+            // and send a blank over a score it hasn't seen. First contact knows better.
+            await contact(held, stillOn);
+            if (!stillOn()) return;
+          }
           // Only now, with this phone's edits safely up, is it safe to let the
           // server's copy of a shared day win.
           sharedHas.current = await pullSharedOutings();
           if (session.current !== started) return;
           const incoming = fromRows(sharedHas.current);
           // The store may not have rendered the notices yet.
-          const current = applyMoveNotices(latest.current, notices);
+          const current = applyFollowed(latest.current, notices, taken);
           const merged = mergeShared(current, incoming);
           if (changesAnything(current, merged)) shared.current(merged);
           setState({ status: 'synced', at: Date.now(), message: null });
@@ -183,7 +209,7 @@ export function useDataSync(options: {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [enabled, documents, fail]);
+  }, [enabled, documents, fail, followNotices, contact]);
 
   const settle = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);

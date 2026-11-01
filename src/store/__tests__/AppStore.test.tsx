@@ -905,10 +905,13 @@ describe('AppStoreProvider', () => {
     await mount({ ...data, activeGroupId: outing.groupId, activeOutingId: outing.id });
 
     await change(() =>
-      mockUseDataSync.mock.calls.at(-1)?.[0].onMoveNotices([
-        { kind: 'outing', from_id: outing.id, to_id: null },
-        { kind: 'group', from_id: outing.groupId, to_id: 'my-copy' },
-      ]),
+      mockUseDataSync.mock.calls.at(-1)?.[0].onMoveNotices(
+        [
+          { kind: 'outing', from_id: outing.id, to_id: null },
+          { kind: 'group', from_id: outing.groupId, to_id: 'my-copy' },
+        ],
+        { groups: [], courses: [], rounds: [], outings: [], clubs: [] },
+      ),
     );
 
     expect(store.outing?.detached).toBe(true);
