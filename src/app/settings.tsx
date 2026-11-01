@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { ModalHeader, Screen } from '../components/Screen';
+import { SiteLinks } from '../components/SiteLinks';
 import { Body, Card, Eyebrow, Mono, Switch } from '../components/primitives';
 import { useStore } from '../store/AppStore';
 import { alpha } from '../theme/color';
@@ -269,6 +270,7 @@ export default function SettingsScreen() {
             v{Constants.expoConfig?.version ?? '1.0.0'} · {store.demoMode ? 'demo' : 'live'} dataset
           </Mono>
         </Card>
+        <SiteLinks />
       </View>
     </Screen>
   );

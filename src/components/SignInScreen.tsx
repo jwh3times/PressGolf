@@ -12,6 +12,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { resendConfirmation } from '../sync/supabase';
 import { MIN_PASSWORD_LENGTH, authErrorMessage, emailProblem, passwordProblem } from '../auth/validate';
 import { Screen } from './Screen';
+import { SiteLinks } from './SiteLinks';
 import { Body, Display, Eyebrow, Mono, PrimaryButton } from './primitives';
 import { Field } from './Field';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -192,6 +193,8 @@ export function SignInScreen() {
             signal — scoring, settling and the season ledger all run on the phone.
           </Mono>
         </View>
+
+        <SiteLinks />
       </Screen>
     </KeyboardAvoidingView>
   );

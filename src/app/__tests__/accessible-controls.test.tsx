@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
-import { Alert, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Alert, Linking, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { SignInScreen } from '../../components/SignInScreen';
 import { buildDemoDataset } from '../../demo/seed';
@@ -1209,6 +1209,34 @@ describe('management screen state matrices', () => {
       expect(screen.queryByRole('button', { name: 'Delete account' })).not.toBeOnTheScreen();
       await view.unmount();
     }
+  });
+
+  it('links to the privacy policy and support page from Settings, whatever the sign-in state', async () => {
+    const user = userEvent.setup();
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    for (const status of ['signed-in', 'signed-out', 'disabled'] as const) {
+      mockUseAuth.mockReturnValue({ ...mockUseAuth(), status });
+      const view = await render(<SettingsScreen />);
+      openURL.mockClear();
+      await user.press(screen.getByRole('link', { name: 'Privacy policy' }));
+      expect(openURL).toHaveBeenLastCalledWith('https://pressgolf.cc/privacy/');
+      await user.press(screen.getByRole('link', { name: 'Support' }));
+      expect(openURL).toHaveBeenLastCalledWith('https://pressgolf.cc/');
+      await view.unmount();
+    }
+    openURL.mockRestore();
+  });
+
+  it('links to the privacy policy and support page before anyone has signed in', async () => {
+    const user = userEvent.setup();
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), status: 'signed-out' });
+    await render(<SignInScreen />);
+    await user.press(screen.getByRole('link', { name: 'Privacy policy' }));
+    expect(openURL).toHaveBeenLastCalledWith('https://pressgolf.cc/privacy/');
+    await user.press(screen.getByRole('link', { name: 'Support' }));
+    expect(openURL).toHaveBeenLastCalledWith('https://pressgolf.cc/');
+    openURL.mockRestore();
   });
 
   it('opens the bag from Settings', async () => {
