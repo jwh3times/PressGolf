@@ -47,8 +47,8 @@
   expectations. **When:** a gate, coverage floor, or the Expo or migration workflow changes.
 - `.github/PULL_REQUEST_TEMPLATE.md` — the issue-link slot, verification and impact checklists.
   **When:** the linking rule or the local gate changes.
-- `docs/agents/dev-flow.md` — ready issues, routing, exemptions, what counts as code, branch and
-  PR linking. **When:** the development flow, its exemptions or the code paths change.
+- `docs/agents/dev-flow.md` — what this repository adds to the shared development flow: paths,
+  the `deps` branch type, bump and release details. **When:** one of those changes.
 - `docs/agents/*.md` (others) — the issue tracker, triage labels, domain-doc layout, and the
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
