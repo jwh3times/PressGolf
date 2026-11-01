@@ -45,6 +45,17 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
   const players = movesOf(notices, 'player');
   const courses = movesOf(notices, 'course');
   const tees = movesOf(notices, 'tee');
+  // A phone only ever adds a group or course it doesn't have, so it can still hold
+  // a player or tee the organiser removed, which no notice names. Those ids are
+  // global on the server, so each takes one built from this guest's new parent.
+  for (const group of held.groups) {
+    const to = groups.get(group.id);
+    if (to) for (const { id } of group.players) if (!players.has(id)) players.set(id, `${to}:${id}`);
+  }
+  for (const course of held.courses) {
+    const to = courses.get(course.id);
+    if (to) for (const { id } of course.tees) if (!tees.has(id)) tees.set(id, `${to}:${id}`);
+  }
   const gone = new Set(notices.filter((n) => n.kind === 'outing').map((n) => n.from_id));
 
   // Set by anything below that finds an id to move, so what doesn't change stays the same object.

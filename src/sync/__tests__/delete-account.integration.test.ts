@@ -144,8 +144,11 @@ async function joinedPhone(holding: Documents = NOTHING) {
   return { phone, lastPull, own: contact.own };
 }
 
+/** What a phone holds between pushes. */
+type Side = { phone: Documents; own: Snapshot; lastPull: Snapshot };
+
 /** One debounced push and the pull after it, as `useDataSync` runs them. */
-async function syncOnce(side: { phone: Documents; own: Snapshot; lastPull: Snapshot }) {
+async function syncOnce(side: Side): Promise<Side> {
   const notices = await pullMoveNotices();
   const held = applyMoveNotices(side.phone, notices);
   const own = await pushChanges(toRows(held), side.own, side.lastPull);
@@ -918,7 +921,7 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     const synced: Round[] = [];
     for (const [account, side] of [[ben, benSide], [cal, calSide]] as const) {
       await signInAs(account);
-      let now: { phone: Documents; own: Snapshot; lastPull: Snapshot } = side;
+      let now: Side = side;
       for (let i = 0; i < 3; i += 1) now = await syncOnce(now);
       // And first contact, as after the app restarts.
       const contact = await reconcile(toRows(applyMoveNotices(now.phone, await pullMoveNotices())));
@@ -951,6 +954,51 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     expect(await dayLeft(dayOf(outing, benPhone.rounds))).toBe(0);
     await signOut();
     await expect(signInWithPassword(ann.email, PASSWORD)).rejects.toThrow('do not match an account');
+  });
+
+  it("keeps two guests apart on a player and tee she removed, which their phones still hold and no notice names", async () => {
+    const { ann, ben, outing, day, joinCode, benSide } = await guestWithRematch('removed');
+    const cal = await signUp('cal');
+    await joinOuting(joinCode, null, 'Cal');
+    const calSide = await withRematch(NOTHING, day, `${RUN}removed-cal`);
+    // A phone only ever adds a group or course it doesn't have, so neither hears of these.
+    const removedPlayer = outing.field.find((id) => !day.playerIds.includes(id))!;
+    const removedTee = benSide.rematch.playerTees[day.playerIds[2]];
+    expect(removedTee).not.toBe(benSide.rematch.teeId);
+    const { error: playerError } = await admin.from('players').delete().eq('id', removedPlayer);
+    expect(playerError).toBeNull();
+    const { error: teeError } = await admin.from('tees').delete().eq('id', removedTee);
+    expect(teeError).toBeNull();
+    await deleteFromAnotherPhone(ann);
+
+    const held: { player: string; tee: string }[] = [];
+    for (const [account, side] of [[ben, benSide], [cal, calSide]] as const) {
+      await signInAs(account);
+      let now: Side = side;
+      for (let i = 0; i < 2; i += 1) now = await syncOnce(now);
+      await expect(reconcile(toRows(now.phone))).resolves.toMatchObject({ status: 'pushed' });
+
+      const round = now.phone.rounds.find((r) => r.id === side.rematch.id)!;
+      const group = now.phone.groups.find((g) => g.id === round.groupId)!;
+      const course = now.phone.courses.find((c) => c.id === round.courseId)!;
+      const tee = round.playerTees[round.playerIds[2]];
+      expect(course.tees.map((t) => t.id)).toContain(tee);
+      const { data: rows } = await admin.from('round_players').select('tee_id').match({ round_id: round.id, player_id: round.playerIds[2] }).single();
+      expect(rows).toEqual({ tee_id: tee });
+      const player = group.players[outing.field.indexOf(removedPlayer)].id;
+      for (const [table, id] of [['players', player], ['tees', tee]] as const) {
+        const { data } = await admin.from(table).select('owner_id').eq('id', id).single();
+        expect(data).toEqual({ owner_id: account.id });
+      }
+      held.push({ player, tee });
+    }
+
+    expect(held[0].player).not.toBe(held[1].player);
+    expect(held[0].tee).not.toBe(held[1].tee);
+    const { data: oldPlayer } = await admin.from('players').select('id').eq('id', removedPlayer);
+    expect(oldPlayer).toEqual([]);
+    const { data: oldTee } = await admin.from('tees').select('id').eq('id', removedTee);
+    expect(oldTee).toEqual([]);
   });
 
   it('copies nothing for a guest who needs none', async () => {

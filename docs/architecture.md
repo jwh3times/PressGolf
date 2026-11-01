@@ -564,8 +564,8 @@ The server side has two parts, and the app reaches them only through the first:
   its memberships, edit-log entries and notices, in one transaction. Cascades take
   guests' cells, memberships and edit-log entries on those outings. It finds the
   tables from the catalog, so a new table with an `owner_id` is covered without
-  changing it. The columns naming a moved id are a list, in the function and in
-  `applyMoveNotices`: a new one has to go in both.
+  changing it. The columns naming a moved id are listed by hand, in the function
+  and in `applyMoveNotices`: a new one has to go in both.
 
 Calling again is safe. If `deleteUser` fails after the clean-up committed, the
 next call finds nothing to clean and retries it. If the account has already gone
@@ -637,9 +637,17 @@ naming a moved id, as `applyMoveNotices` does on the phone, so the two agree. Ea
 copied row is the original with its ids and owner swapped, so a column added later
 comes too.
 
+A phone can hold a player or tee the organiser removed before leaving, since a merge
+only adds a group or course it doesn't have, and no notice names those. Their ids are
+global on the server, so `applyMoveNotices` builds each a new one from that guest's
+new group or course. A course with no tees on the server has a stand-in on the phone;
+that does have a notice, because a round can name it.
+
 A phone that applied the notices may hold a copy the server doesn't have, or the
 other way round. `toRows` settles it either way: a phone-only group or course goes
-up once a real round uses it, and the push prunes it again when that round goes.
+up once a real round uses it, and the push prunes it again when that round goes. A
+copy a fresh install adopted carries no such mark, so it's an ordinary group or course
+of theirs from then on, and stays.
 
 **Accounts that others depend on are refused for now.** The clean-up raises
 `PR001`, with nothing deleted, for an organiser with a guest in an outing on someone

@@ -47,16 +47,25 @@ declare
   shared boolean;
   copying record;
   pointer record;
-  moving text[];
+  departing_ids text[];
   owned record;
+  course_child text;
 begin
   if target is null then
     raise exception 'delete_account_data needs an account';
   end if;
 
   -- A guest joining takes a lock on the outing row, so nobody can join between
-  -- the check below and the deletes.
-  perform 1 from outings where owner_id = target for update;
+  -- the check below and the deletes. A new round or outing takes one on its group
+  -- and course, so it waits here too, and is refused once they've gone. Its phone
+  -- then reads its notices before it next pushes.
+  perform 1 from groups where owner_id = target for update;
+  perform 1 from courses where owner_id = target for update;
+  perform 1 from outings o
+  where o.owner_id = target
+    or o.group_id in (select id from groups where owner_id = target)
+    or o.course_id in (select id from courses where owner_id = target)
+  for update;
 
   -- The two tables a guest may write (GUEST_WRITES in src/sync/diff.ts). Before the
   -- check, which would otherwise read these as rows of this account's hanging from
@@ -245,7 +254,9 @@ begin
       where original.course_id = copying.from_id
       on conflict do nothing;
 
-      for owned in select unnest(array['course_greens', 'course_features', 'course_hole_notes']) as table_name loop
+      -- Named rather than read from the catalog: a table added later on a course
+      -- shouldn't reach a guest without someone deciding it should.
+      foreach course_child in array array['course_greens', 'course_features', 'course_hole_notes'] loop
         execute format(
           'insert into %I
            select copied.*
@@ -253,7 +264,7 @@ begin
              lateral jsonb_populate_record(original, jsonb_build_object(''owner_id'', $1::uuid, ''course_id'', $2)) copied
            where original.course_id = $3
            on conflict do nothing',
-          owned.table_name, owned.table_name
+          course_child, course_child
         ) using copying.user_id, copying.to_id, copying.from_id;
       end loop;
     end if;
@@ -270,8 +281,9 @@ begin
   -- `applyMoveNotices` does on their phone. Only this account's ids, so an old notice
   -- can't point a row at a copy this didn't make. A cell belongs with its round, and
   -- a field with its outing, whoever owns the row itself. A new column naming one of
-  -- these has to be added here and in `applyMoveNotices`.
-  moving := array(
+  -- these has to be added here, in `applyMoveNotices`, and, for a player, to `known`
+  -- above.
+  departing_ids := array(
     select id from groups where owner_id = target
     union select id from players where owner_id = target
     union select id from courses where owner_id = target
@@ -317,7 +329,7 @@ begin
         when pointer.table_name like 'outing_%' then '(select o.owner_id from outings o where o.id = t.outing_id)'
         else '(select r.owner_id from rounds r where r.id = t.round_id)'
       end
-    ) using moving;
+    ) using departing_ids;
   end loop;
 
   for owned in

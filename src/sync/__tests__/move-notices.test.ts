@@ -179,6 +179,25 @@ describe('applying move notices', () => {
     expect(after.courses[0].id).toBe('g1');
   });
 
+  it("gives a player or tee the phone holds on a moved group or course an id of this guest's own, with no notice for it", () => {
+    const after = applyMoveNotices(
+      {
+        ...held,
+        groups: [{ ...group, players: [...group.players, { ...group.players[0], id: 'removed' }] }],
+        courses: [{ ...course, tees: [...course.tees, { ...course.tees[0], id: 'c1_default' }] }],
+        rounds: [{ ...round, playerIds: [...round.playerIds, 'removed'], teeId: 'c1_default', playerTees: {}, handicapTees: {} }],
+      },
+      notices,
+    );
+    const moved = after.groups[0].players[after.groups[0].players.length - 1].id;
+    const tee = after.courses[0].tees[after.courses[0].tees.length - 1].id;
+    expect(moved).toBe('G1:removed');
+    expect(tee).toBe('C1:c1_default');
+    expect(after.rounds[0].playerIds).toContain(moved);
+    expect(after.rounds[0].teeId).toBe(tee);
+    expect(applyMoveNotices(after, notices)).toBe(after);
+  });
+
   it('leaves a null tee, you and default course null', () => {
     const after = applyMoveNotices(
       {
