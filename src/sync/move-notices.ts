@@ -12,9 +12,12 @@
  * same new ids, on a copy of the group and course.
  *
  * Kept pure, like `merge-shared`, and safe to apply again: notices stay on the
- * server, and once applied they match nothing this phone holds.
+ * server, and once applied they match nothing this phone holds. A notice never
+ * touches what the phone still shares: `followMoveNotices` takes the server's word
+ * for that, so a group someone holds again through a later outing stays put.
  */
 import type { Course, Group, Outing, PlayerId, Round } from '../domain/types';
+import { mergeShared } from './merge-shared';
 import type { Documents } from './rows';
 
 export interface MoveNotice {
@@ -165,6 +168,44 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
     changed = true;
   }
   return changed ? next : held;
+}
+
+/**
+ * The phone's documents, once it knows what the server still shares with it.
+ *
+ * A day it still shares may be on a group or course that moved under it, as when
+ * the organiser of a group a friend's outing was on deletes their account. The
+ * friend has moved that outing to their own copy, and this phone's notices name
+ * ids of its own that have nothing to do with it. So the server's copy of that day
+ * comes first, and replaces this phone's: an edit here that hadn't gone up is lost.
+ * Then the notices apply to the rest, leaving anything the pull still shows.
+ *
+ * `notices` is what's left to apply, for the store to do the same. Hands back `held`
+ * itself if that's nothing, so the caller doesn't save, and go round again.
+ */
+export function followMoveNotices<T extends Documents & { activeGroupId?: string | null }>(
+  held: T,
+  notices: MoveNotice[],
+  shared: Documents,
+): { held: T; notices: MoveNotice[] } {
+  const shownGroups = new Set(shared.groups.map((group) => group.id));
+  const shownCourses = new Set(shared.courses.map((course) => course.id));
+  const shown: Record<MoveNotice['kind'], Set<string>> = {
+    outing: new Set(shared.outings.map((outing) => outing.id)),
+    group: shownGroups,
+    course: shownCourses,
+    player: new Set([
+      ...[...shared.groups, ...held.groups.filter((group) => shownGroups.has(group.id))].flatMap((group) => group.players.map((player) => player.id)),
+      ...shared.outings.flatMap((outing) => outing.field),
+      ...shared.rounds.flatMap((round) => round.playerIds),
+    ]),
+    tee: new Set(
+      [...shared.courses, ...held.courses.filter((course) => shownCourses.has(course.id))].flatMap((course) => course.tees.map((tee) => tee.id)),
+    ),
+  };
+  const following = notices.filter((notice) => !shown[notice.kind].has(notice.from_id));
+  if (applyMoveNotices(held, following) === held) return { held, notices: [] };
+  return { held: applyMoveNotices({ ...held, ...mergeShared(held, shared) }, following), notices: following };
 }
 
 /**

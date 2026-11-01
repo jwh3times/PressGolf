@@ -163,7 +163,6 @@ describe('deleting the account', () => {
 
   it.each([
     ['a wrong password', answer('wrong-password'), 'That password is not right'],
-    ['an account that shares data', answer('shares-data'), /email support@pressgolf\.cc/],
     ['a token the server refuses', answer('not-signed-in'), 'could not confirm your sign-in'],
     ['a server failure', answer('failed'), 'could not finish'],
     ['an outcome this build has never heard of', answer('new-outcome'), 'could not finish'],
@@ -183,7 +182,7 @@ describe('deleting the account', () => {
   });
 
   it('never words a failure as if the account had gone', async () => {
-    for (const result of [answer('wrong-password'), answer('failed'), answer('shares-data')]) {
+    for (const result of [answer('wrong-password'), answer('failed')]) {
       const { call } = await deleting(result);
       await expect(call).rejects.toThrow(/Nothing has/);
     }

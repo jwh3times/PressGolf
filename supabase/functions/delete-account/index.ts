@@ -14,10 +14,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2.118.0/cors';
 
-type Outcome = 'deleted' | 'not-signed-in' | 'wrong-password' | 'shares-data' | 'failed';
-
-/** Raised by delete_account_data for an account that shares rows with another. */
-const SHARES_DATA = 'PR001';
+type Outcome = 'deleted' | 'not-signed-in' | 'wrong-password' | 'failed';
 
 function reply(outcome: Outcome, status: number): Response {
   return Response.json({ outcome }, { status, headers: corsHeaders });
@@ -64,7 +61,6 @@ Deno.serve(async (request) => {
 
   const { error: cleanUpError } = await admin.rpc('delete_account_data', { target: id });
   if (cleanUpError) {
-    if (cleanUpError.code === SHARES_DATA) return reply('shares-data', 409);
     console.error('delete-account: the clean-up failed', cleanUpError.code);
     return reply('failed', 500);
   }

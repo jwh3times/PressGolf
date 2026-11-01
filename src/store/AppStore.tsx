@@ -41,6 +41,7 @@ import type {
   TeeId,
 } from '../domain/types';
 import { useAuth } from '../auth/AuthProvider';
+import { mergeShared } from '../sync/merge-shared';
 import { applyMoveNotices, type MoveNotice } from '../sync/move-notices';
 import { deleteAccount as deleteAccountRemote } from '../sync/supabase';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
@@ -385,9 +386,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const takeMoveNotices = useCallback(
-    (notices: MoveNotice[]) => {
-      // An organiser's account went. The day stays here, and the active group follows its new id.
-      commit((prev) => applyMoveNotices(prev, notices));
+    (notices: MoveNotice[], shared: Documents) => {
+      // An organiser's account went. A day still shared comes as the server has it. The
+      // rest stays here, and the active group follows its new id.
+      commit((prev) => {
+        const { groups, courses, rounds, outings, clubs } = prev;
+        return applyMoveNotices({ ...prev, ...mergeShared({ groups, courses, rounds, outings, clubs }, shared) }, notices);
+      });
     },
     [commit],
   );

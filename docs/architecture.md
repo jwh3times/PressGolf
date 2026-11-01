@@ -551,7 +551,7 @@ The server side has two parts, and the app reaches them only through the first:
   body carries only the password. It checks the password itself by signing in on
   a separate client that keeps no session, so a stolen token isn't enough. Then
   it runs the clean-up function and `auth.admin.deleteUser`. It answers with an
-  outcome (`deleted`, `not-signed-in`, `wrong-password`, `shares-data`, `failed`)
+  outcome (`deleted`, `not-signed-in`, `wrong-password`, `failed`)
   that `deleteAccount` in `src/sync/supabase.ts` words for the person holding the
   phone.
 - **`delete_account_data(target)`**, a `security definer` SQL function that only
@@ -650,18 +650,27 @@ up once a real round uses it, and the push prunes it again when that round goes.
 copy a fresh install adopted carries no such mark, so it's an ordinary group or course
 of theirs from then on, and stays.
 
-**Accounts that others depend on are refused for now.** The clean-up raises
-`PR001`, with nothing deleted, for an organiser with a guest in an outing on someone
-else's group or course: a notice stays, so it would keep moving a group or course
-the guest may hold again through another outing. It also refuses when someone else's
-outing on the account's group or course has a third account in it, or a round of
-one, and when another account has any other row hanging from that group or course.
-And it refuses an account with any other row of its own under someone else's day,
-beyond the cells above. The policies refuse those now, so any that exist are older,
-and removing them would change that person's day. Removing any of these would take
-someone else's data with them. The app explains and points to the email request.
-A later ticket of [#206](https://github.com/jwh3times/PressGolf/issues/206) lifts
-this.
+**A third account in a guest's outing keeps playing.** That outing moves to the
+guest's copy, and a round in it follows, whoever owns the round. The third account
+gets notices of its own, which have nothing to do with the guest's ids, and a copy
+only if rows of its own stay. Its phone can't work out the guest's ids from those, so
+when notices would change anything it pulls the shared outings first
+(`followMoveNotices`). The server's copy of that day replaces the phone's, and the
+notices apply to the rest. An edit to that card that hadn't gone up is lost, which
+needs an organiser deleting while a third phone holds unsent cells on that one card.
+
+**An organiser's outing on someone else's group or course goes with them.** Its guests
+keep a detached copy, and notices move that group and course on their phones as well,
+apart from for whoever owns them. Those notices stay, and the guest may hold the same
+group again through a later outing, so `followMoveNotices` leaves anything the shared
+pull still shows, with its players and tees. A guest's own round on that group stays
+on the server under the old id until their phone next pushes it under the new one.
+
+**Rows from older builds.** The policies refuse these now. A row of the departing
+account's under someone else's round, outing, group or course becomes theirs, like a
+score on their card, so a press or a hole note outlives it. Its own round in someone
+else's outing goes with it. A row of someone else's under the departing account's
+group or course goes in their copy if they get one, and with the parent if they don't.
 
 On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
 push in flight (`settle` from `useDataSync`), then calls the server. On failure

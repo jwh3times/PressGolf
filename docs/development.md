@@ -269,12 +269,6 @@ with everyone's rounds and scores in it, and leaves the guests their
 their own on the account's group or course keeps it, on
 [a copy of their own](architecture.md#a-guests-own-rows). It can't be undone.
 
-Step 1 raises `This account shares data with another account` for the accounts
-listed in [Deleting an account](architecture.md#deleting-an-account). Nothing has
-been deleted then, so don't go on to step 2. Those accounts can't be handled until
-the shared cases of [#206](https://github.com/jwh3times/PressGolf/issues/206)
-ship, so tell the person, and keep the request open within its 30 days.
-
 ## EAS build profiles
 
 Run the EAS CLI through `npx`; a global installation is not required.

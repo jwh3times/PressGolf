@@ -136,7 +136,7 @@ export async function signOut(): Promise<void> {
  */
 async function deleteAccountFailure(error: { name?: string; context?: unknown }): Promise<DeleteAccountFailure> {
   if (error.name === 'FunctionsFetchError') return 'no-signal';
-  const known: DeleteAccountFailure[] = ['wrong-password', 'not-signed-in', 'shares-data'];
+  const known: DeleteAccountFailure[] = ['wrong-password', 'not-signed-in'];
   try {
     const { outcome } = (await (error.context as Response).json()) as { outcome?: DeleteAccountFailure };
     return outcome && known.includes(outcome) ? outcome : 'failed';

@@ -86,6 +86,10 @@ export default function DeleteAccountScreen() {
         <View style={styles.section}>
           <Eyebrow>What stays</Eyebrow>
           <Body style={styles.item}>Scores you typed into someone else’s card stay with them.</Body>
+          <Body style={styles.item}>
+            Anyone with a round or outing of their own on your group or course keeps it, with their own
+            copy of that course and of the players they could already see.
+          </Body>
         </View>
 
         <View style={styles.section}>
