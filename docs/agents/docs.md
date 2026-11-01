@@ -9,7 +9,8 @@
   - the gate, its exemptions or the phase skills change: `## Development flow` (with
     `docs/agents/dev-flow.md`);
   - a skill is added, removed, replaced or locally edited (`.agents/skills/`, `skills-lock.json`),
-    or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`):
+    or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
+    `scripts/check-docs.mjs`):
     `## Agent skills`;
   - the handoff transport or machine config changes: `### Machine handoff`.
 - `CLAUDE.md` — `@AGENTS.md` only. **When:** never for operating context.
@@ -46,15 +47,16 @@
   expectations. **When:** a gate, coverage floor, or the Expo or migration workflow changes.
 - `.github/PULL_REQUEST_TEMPLATE.md` — the issue-link slot, verification and impact checklists.
   **When:** the linking rule or the local gate changes.
-- `docs/agents/dev-flow.md` — ready issues, routing, exemptions, what counts as code, branch and
-  PR linking. **When:** the development flow, its exemptions or the code paths change.
+- `docs/agents/dev-flow.md` — what this repository adds to the shared development flow: paths,
+  the `deps` branch type, bump and release details. **When:** one of those changes.
 - `docs/agents/*.md` (others) — the issue tracker, triage labels, domain-doc layout, and the
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
   pressgolf.cc. **When:** what the app collects, where data goes, or how an account is deleted
   changes — update the page and the date at its top in the same change.
-- `CONTEXT.md`, `docs/adr/*.md` — created lazily by `/domain-modeling`; none exist yet. An
-  accepted ADR is `frozen`: report a contradiction instead of editing it.
+- `CONTEXT.md` — the domain glossary, kept by `/domain-modeling`. `docs/adr/*.md` — created lazily
+  by `/domain-modeling`; none exist yet. An accepted ADR is `frozen`: report a contradiction instead
+  of editing it.
 - `.agents/skills/*/**` — skills, mirrored to `.claude/skills/`. The `mattpocock/skills` set in
   `skills-lock.json` (`wayfinder` and `setup-matt-pocock-skills` carry local edits re-applied by
   hand after an update) and `end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` from
@@ -79,8 +81,8 @@ volatile service prices or quotas outside a dated research note.
   one's `name:`
 - Required checks and ruleset: `gh api repos/jwh3times/PressGolf/rules/branches/main`
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`
-- RLS assertion count ("82" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
-  `grep -cE "select (expect|refused)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
+- RLS assertion count ("95" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
+  `grep -cE "select (expect|refused|refused_by_key)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
 - Migrations: `supabase/migrations/*.sql`
 - EAS profiles: the `build` and `submit` keys in `eas.json`
 - Env vars: `.env.op`; `process.env` in `app.config.js` and `src/`
@@ -90,7 +92,3 @@ volatile service prices or quotas outside a dated research note.
   § Repository layout
 - Jest suites (dated in `README.md`): `npx jest --listTests`
 - Site pages: `site/public/**/index.html`; the Worker `name` in `site/wrangler.jsonc`
-
-## Docs validation
-
-none

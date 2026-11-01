@@ -50,6 +50,8 @@ export interface Group extends HouseRules {
   /** Free text shown under the group name on Home, e.g. "Pine Hollow · 7:40 tee". */
   subtitle: string;
   createdAt: number;
+  /** A copy kept after its organiser's account went. Goes to the server only while something of this account's uses it. */
+  phoneOnly?: true;
 }
 
 export interface Hole {
@@ -156,6 +158,8 @@ export interface Course {
   /** The course owner's notes on its holes (#136), in hole order. Most courses have none. */
   notes: HoleNote[];
   createdAt: number;
+  /** A copy kept after its organiser's account went. Goes to the server only while something of this account's uses it. */
+  phoneOnly?: true;
 }
 
 /** What the course owner wants players to know about a hole: "Blind tee shot, aim at the steeple." */
@@ -429,6 +433,8 @@ export interface Outing extends HouseRules {
   status: RoundStatus;
   startedAt: number;
   completedAt: number | null;
+  /** Its organiser's account went: this copy stays on the phone, and it and its rounds no longer sync. */
+  detached?: true;
 }
 
 /** One hole's worth of a pot game, for display and for the settlement lines. */

@@ -1,0 +1,7 @@
+- text: Account Delete account
+- button "Done"
+- text: "This deletes golfer@example.com and everything it owns from the server, straight away. There is no grace period, and it can’t be undone. What goes Your groups, rosters and rounds. Your courses, with their greens, maps and hole notes. Your clubs and usual score. Outings you organised, for everyone, including scores guests typed. Guests keep what’s already on their phones. What stays Scores you typed into someone else’s card stay with them. Your phones This phone goes back to first run: your rounds, bag and practice rounds on it are erased, and you’re signed out. The demo data stays. Other phones signed in to this account lose access, but keep what’s on them until the app is removed or its data is erased. Password"
+- textbox "Password"
+- text: Enter your password to confirm.
+- button "Delete my account" [disabled]
+- button "Keep my account"

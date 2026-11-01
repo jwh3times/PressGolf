@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { authErrorMessage, normaliseEmail } from '../auth/validate';
+import { authErrorMessage, deleteAccountMessage, normaliseEmail, type DeleteAccountFailure } from '../auth/validate';
 import type { Mutation, RemoteChanges, SyncTransport } from './types';
 
 /**
@@ -127,6 +127,36 @@ export async function signOut(): Promise<void> {
   // `local` clears this device without needing the network to agree, which
   // matters because signing out should never hang on a dead connection.
   await supabase.auth.signOut({ scope: 'local' });
+}
+
+/**
+ * What the delete-account function's answer means for the person holding the
+ * phone. A request that never got there is a network error with no response; a
+ * response that isn't one of the function's outcomes is the server failing.
+ */
+async function deleteAccountFailure(error: { name?: string; context?: unknown }): Promise<DeleteAccountFailure> {
+  if (error.name === 'FunctionsFetchError') return 'no-signal';
+  const known: DeleteAccountFailure[] = ['wrong-password', 'not-signed-in', 'shares-data'];
+  try {
+    const { outcome } = (await (error.context as Response).json()) as { outcome?: DeleteAccountFailure };
+    return outcome && known.includes(outcome) ? outcome : 'failed';
+  } catch {
+    return 'failed';
+  }
+}
+
+/**
+ * Deletes the signed-in account and everything it owns from the server. Throws a
+ * message worth showing, and leaves the account in place, unless it worked.
+ *
+ * The function reads the account from this client's token and checks the password
+ * itself; signing out and erasing the phone are the store's to do afterwards.
+ */
+export async function deleteAccount(password: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  const { error } = await supabase.functions.invoke('delete-account', { body: { password } });
+  if (error) throw new Error(deleteAccountMessage(await deleteAccountFailure(error)));
 }
 
 /** Unambiguous alphabet: no O/0, no I/1. People read these out loud. */

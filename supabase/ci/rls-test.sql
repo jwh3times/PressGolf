@@ -12,6 +12,8 @@
 
 \set alice '11111111-1111-1111-1111-111111111111'
 \set bob   '22222222-2222-2222-2222-222222222222'
+\set gone  '33333333-3333-3333-3333-333333333333'
+\set carol '44444444-4444-4444-4444-444444444444'
 
 grant usage on schema public, auth to authenticated;
 grant all on all tables in schema public to authenticated;
@@ -36,6 +38,18 @@ begin
   execute statement;
   raise exception 'FAILED: % — the write went through', label;
 exception when insufficient_privilege then
+  raise notice 'ok: %', label;
+end
+$$;
+
+-- A statement a foreign key must refuse, because the account it names is gone
+-- or still has rows.
+create or replace function refused_by_key(label text, statement text)
+returns void language plpgsql as $$
+begin
+  execute statement;
+  raise exception 'FAILED: % — it went through', label;
+exception when foreign_key_violation then
   raise notice 'ok: %', label;
 end
 $$;
@@ -256,4 +270,68 @@ insert into outing_members (outing_id, user_id, role) values ('o1', :'alice', 'o
 select expect('organiser sees the guest score',
   (select count(*) from scores where round_id = 'r1' and player_id = 'p2'), 1);
 
+-- ── An account that no longer exists ────────────────────────────────────────
+-- Its token stays valid for up to an hour after it's deleted, so policies that
+-- only compare the row with auth.uid() would let it write.
+
+set request.jwt.claim.sub = :'gone';
+select refused_by_key('an unknown account can''t save a group', $q$
+  insert into groups (id, name, created_at) values ('g-gone', 'Gone', 1) $q$);
+select refused_by_key('an unknown account can''t save a course', $q$
+  insert into courses (id, name, created_at) values ('c-gone', 'Gone', 1) $q$);
+select refused_by_key('an unknown account can''t save a club', $q$
+  insert into clubs (id, name, carry_yards, position) values ('k-gone', '7i', 150, 1) $q$);
+select refused_by_key('an unknown account can''t join an outing', $q$
+  select join_outing('ABC234', null, 'Gone') $q$);
+
 reset role;
+
+select refused_by_key('an account that still owns rows can''t be deleted', $q$
+  delete from auth.users where id = '11111111-1111-1111-1111-111111111111' $q$);
+insert into auth.users (id) values (:'carol');
+insert into outing_members (outing_id, user_id) values ('o1', :'carol');
+select refused_by_key('an account that only holds a membership can''t be deleted', $q$
+  delete from auth.users where id = '44444444-4444-4444-4444-444444444444' $q$);
+
+-- Read from the catalog, so a new table without the key fails here.
+select expect('every owner and member column refuses an unknown account', (
+  select count(*)
+  from pg_attribute a
+  join pg_class t on t.oid = a.attrelid
+  join pg_namespace n on n.oid = t.relnamespace
+  where n.nspname = 'public' and t.relkind = 'r' and not a.attisdropped
+    and a.attname in ('owner_id', 'user_id')
+    and not exists (
+      select 1 from pg_constraint k
+      where k.conrelid = t.oid and k.contype = 'f'
+        and k.confrelid = 'auth.users'::regclass
+        and k.conkey = array[a.attnum]
+        and k.confdeltype = 'a'
+    )
+), 0);
+
+-- ── Move notices ────────────────────────────────────────────────────────────
+-- What an organiser's deletion leaves each guest. Only the clean-up writes them.
+
+insert into move_notices (user_id, kind, from_id, to_id) values
+  (:'alice', 'group', 'g-gone', 'g-alices'),
+  (:'bob', 'group', 'g-gone', 'g-bobs'),
+  (:'bob', 'outing', 'o-gone', null);
+
+set role authenticated;
+set request.jwt.claim.sub = :'bob';
+select expect('a guest reads their own notices', (select count(*) from move_notices), 2);
+select expect('and only theirs', (select count(*) from move_notices where user_id = :'alice'), 0);
+select refused('a client can''t write a notice', $q$
+  insert into move_notices (kind, from_id, to_id) values ('group', 'g-other', 'g-mine') $q$);
+select refused('a client can''t write one for someone else', $q$
+  insert into move_notices (user_id, kind, from_id, to_id)
+  values ('11111111-1111-1111-1111-111111111111', 'group', 'g-other', 'g-theirs') $q$);
+update move_notices set to_id = 'g-changed' where kind = 'group';
+delete from move_notices;
+reset role;
+select expect('a client can''t change or remove one', (
+  select count(*) from move_notices where to_id is distinct from 'g-changed'), 3);
+
+select refused_by_key('an account that only holds a notice can''t be deleted', $q$
+  delete from auth.users where id = '22222222-2222-2222-2222-222222222222' $q$);

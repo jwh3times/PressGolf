@@ -483,6 +483,9 @@ engine as live data.
 When the two Supabase public variables are present and a user is signed in,
 `useDataSync` is the active synchronization path:
 
+0. Before every push, on first contact and on the debounced path, it reads the
+   account's move notices and applies them ([below](#deleting-an-account)). If
+   that read fails, sync reports an error like any other, and the phone carries on.
 1. On first contact, it pulls the signed-in account's 24 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
@@ -490,7 +493,12 @@ When the two Supabase public variables are present and a user is signed in,
    the account's, rather than pruning it, and a fresh install keeps clubs typed
    before signing in when the account has none. The usual score (`bag_settings`)
    is settled the same way, apart from the clubs. A phone holding only a bag
-   still counts as fresh, so it can never prune a season.
+   still counts as fresh, so it can never prune a season. On a shared round the
+   account owns, first contact doesn't prune a score or junk row the shared pull
+   shows, or send a blank box over a score it shows: the phone may not have seen
+   them yet, as when a guest who deleted their account left them to the organiser.
+   They arrive with the next shared merge. A cell cleared there and not pushed
+   before the app closed looks the same, so it comes back.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one
@@ -515,8 +523,8 @@ outing. Those stay on the phone. A round or outing of the guest's own may
 still be on her group and course. Before this (#127), a guest's every push
 after joining failed on the organiser's group.
 
-The schema has 26 application tables: 24 snapshot tables plus
-`outing_members` and `mutations`. Row-level security limits private data to its
+The schema has 27 application tables: 24 snapshot tables plus
+`outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need. Every owner write also checks the row it hangs from (`owns_group`,
 `owns_course`, `owns_outing`, `owns_round`): a player goes on the writer's own
@@ -528,6 +536,148 @@ their own membership directly when sharing; a guest joins only through
 This path provides local-first scoring, account backup, and shared snapshots.
 It is not currently an instant, conflict-free multi-device feed. A device that
 makes no local change does not continuously pull another phone's edits.
+
+## Deleting an account
+
+**Settings → Account → Delete account** opens `src/app/delete-account.tsx`,
+shown only when signed in, in demo mode too. It says what goes and what stays,
+and takes the password. Deletion needs signal and takes effect at once, with no
+grace period.
+
+The server side has two parts, and the app reaches them only through the first:
+
+- **The `delete-account` Edge Function** (`supabase/functions/delete-account/`).
+  It takes the account from the verified token, never from the request, whose
+  body carries only the password. It checks the password itself by signing in on
+  a separate client that keeps no session, so a stolen token isn't enough. Then
+  it runs the clean-up function and `auth.admin.deleteUser`. It answers with an
+  outcome (`deleted`, `not-signed-in`, `wrong-password`, `shares-data`, `failed`)
+  that `deleteAccount` in `src/sync/supabase.ts` words for the person holding the
+  phone.
+- **`delete_account_data(target)`**, a `security definer` SQL function that only
+  the service role may execute. Scores and junk the account typed on someone
+  else's round become that round's owner's, so the day's money still adds up. It
+  leaves [move notices](#move-notices) for the guests of any outing the account
+  organised, and for anyone with rows that stay on its groups or courses. Those
+  rows move to [a copy of that person's own](#a-guests-own-rows). Then it deletes
+  every row the account owns, every round in those outings whoever owns it, and
+  its memberships, edit-log entries and notices, in one transaction. Cascades take
+  guests' cells, memberships and edit-log entries on those outings. It finds the
+  tables from the catalog, so a new table with an `owner_id` is covered without
+  changing it. The columns naming a moved id are listed by hand, in the function
+  and in `applyMoveNotices`: a new one has to go in both.
+
+Calling again is safe. If `deleteUser` fails after the clean-up committed, the
+next call finds nothing to clean and retries it. If the account has already gone
+(the reply was lost), the function says `deleted` without asking for the password,
+which it could no longer check, so the phone can finish. That can only erase a
+phone whose account no longer exists, which "Erase my data" does with no password.
+
+**Every new row must belong to an account that exists.** Each `owner_id`, and
+`user_id` on `outing_members`, `mutations` and `move_notices`, has a foreign key
+to `auth.users` with `on delete no action`. Those added to tables that already
+held rows are `not valid`, so a row orphaned before they were added stays where it
+is, but all of them apply to every new row and every deletion of a user. They do
+two jobs:
+
+- **A deleted account's token can't write.** An access token stays valid for up
+  to an hour, and the policies only compare a row with the token. A forgotten
+  second phone, or a phone that lost the reply and read it as no signal, would
+  otherwise upload the whole season again on first contact. The write is refused,
+  so that phone reports a sync error and keeps its data. It's signed out when its
+  token runs out and the refresh is refused: `auth-js` keeps a session while its
+  access token still works. The data then stays on the phone behind the sign-in
+  screen, where Settings can't be reached. A phone that lost the reply can also
+  finish by trying again.
+- **The clean-up can't be skipped.** Supabase refuses to delete an auth user who
+  still has rows, from the dashboard too. If a second phone writes between the
+  clean-up and `deleteUser`, `deleteUser` fails and the next call clears that row.
+
+A new table with one of these columns needs its own key; `rls-test.sql` reads the
+catalog and fails until it has one.
+
+**A guest can delete their account.** A membership in someone else's outing
+doesn't stop it, and the outing no longer lists them. A round or outing of their
+own on someone else's group or course goes with them, since that takes nothing of
+anyone else's.
+
+**An organiser can delete their account.** The whole day leaves the server, under
+every account, and each guest keeps the copy on their phone.
+
+<a id="move-notices"></a>**Move notices** are how a guest's phone finds out. Without
+them it would read those rows as its own, once the shared pull stopped showing
+them, and upload them. That re-creates deleted data, and the next guest's upload
+is refused for good. The `move_notices` table holds, per guest (and anyone else
+with a round in the outing), one row for the outing, with no `to_id`, and one each
+for the group, its players, the course and its tees, with a new id minted for that
+guest, so two guests' copies can never collide. Someone whose only tie is
+[rows of their own](#a-guests-own-rows) on the group or course gets the notices for
+what those are on, with none for an outing. A guest reads only their own, nothing can
+write one from the client, and they stay until that guest's account goes.
+
+`applyMoveNotices` in `src/sync/move-notices.ts` applies them to the phone's
+documents. It rewrites every moved id, including those in score and junk keys and
+the active group, marks the outing `detached` and the group and course `phoneOnly`,
+and changes nothing the second time. Both marks are optional fields that persist
+with the documents. `toRows` then leaves out a detached outing and its rounds, and
+a phone-only group or course unless a round or outing still syncing uses it, in
+which case it goes up as the guest's own under its new id. A phone holding only a
+detached day looks like a fresh install, so adopting the account's season keeps
+what only the phone has (`keepingPhoneOnly`). The Outing screen shows a notice on a
+detached outing and hides sharing. A guest's phone on an older build ignores notices
+and can hit the upload problem above.
+
+<a id="a-guests-own-rows"></a>**A guest's own rows stay.** A round or outing of
+theirs on the departed account's group or course moves to a copy of that group or
+course, under the ids in their notices, and carries on syncing to their other devices
+and to a reinstall. Only someone with such rows gets a copy, and each gets their
+own. A group's copy holds only the players they could already read or that their
+rows name, so the rest of the roster goes with the account. A course's has its tees,
+tee holes, greens, features and hole notes. The clean-up then rewrites every column
+naming a moved id, as `applyMoveNotices` does on the phone, so the two agree. Each
+copied row is the original with its ids and owner swapped, so a column added later
+comes too.
+
+A phone can hold a player or tee the organiser removed before leaving, since a merge
+only adds a group or course it doesn't have, and no notice names those. Their ids are
+global on the server, so `applyMoveNotices` builds each a new one from that guest's
+new group or course. A course with no tees on the server has a stand-in on the phone;
+that does have a notice, because a round can name it.
+
+A phone that applied the notices may hold a copy the server doesn't have, or the
+other way round. `toRows` settles it either way: a phone-only group or course goes
+up once a real round uses it, and the push prunes it again when that round goes. A
+copy a fresh install adopted carries no such mark, so it's an ordinary group or course
+of theirs from then on, and stays.
+
+**Accounts that others depend on are refused for now.** The clean-up raises
+`PR001`, with nothing deleted, for an organiser with a guest in an outing on someone
+else's group or course: a notice stays, so it would keep moving a group or course
+the guest may hold again through another outing. It also refuses when someone else's
+outing on the account's group or course has a third account in it, or a round of
+one, and when another account has any other row hanging from that group or course.
+And it refuses an account with any other row of its own under someone else's day,
+beyond the cells above. The policies refuse those now, so any that exist are older,
+and removing them would change that person's day. Removing any of these would take
+someone else's data with them. The app explains and points to the email request.
+A later ticket of [#206](https://github.com/jwh3times/PressGolf/issues/206) lifts
+this.
+
+On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
+push in flight (`settle` from `useDataSync`), then calls the server. On failure
+it turns sync back on, which starts again from first contact, and the phone is
+unchanged. On success it erases the live dataset, which includes the bag and
+practice-round state, and then signs out, which forgets the remembered email and
+unmounts the store, so the phone is back at first run. The demo dataset, the
+demo/live preference and the theme stay.
+
+If the app is killed after the server finishes and before the phone erases, it
+reopens signed in until its token runs out. **Delete account** or "Erase my data"
+finishes the job in that time, so there's no persisted resume flag. After that
+it's like any other phone on a deleted account.
+
+A maintainer handles an emailed request with the same clean-up function; see
+[Deleting an account by hand](development.md#deleting-an-account-by-hand).
 
 ## Staged mutation transport
 
@@ -576,6 +726,7 @@ src/
                     type and size tokens, and contrast calculations
 supabase/
   migrations/       versioned production schema
+  functions/        Edge Functions (Deno), deployed by CI
   ci/               Postgres stand-ins and RLS assertions
 scripts/
   check-patch-coverage.mjs
@@ -586,6 +737,7 @@ scripts/
   maestro-output.mjs      reads Maestro's output tree for the two scripts above
   sync-agents.mjs         .agents/skills -> .claude/skills generator
   lint-agent-neutrality.mjs checks agent and skill sources read correctly from their mirrors
+  check-docs.mjs          checks local doc links and anchors, and that the doc map lists every document
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/

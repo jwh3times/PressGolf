@@ -10,7 +10,8 @@
  * What this gives you is durability — a phone in a lake stops being the end of
  * a season — and a second device.
  */
-import { changedRows, conflictTarget, countDeletions, deletions, isEmpty, splitByOwner, type Deletions } from './diff';
+import { changedRows, conflictTarget, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, splitByOwner, type Deletions } from './diff';
+import type { MoveNotice } from './move-notices';
 import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
@@ -38,13 +39,14 @@ const PAGE = 1000;
 
 async function selectAll(
   supabase: SupabaseClient,
-  table: keyof Snapshot,
+  table: string,
+  key: string,
   filter: (query: ReturnType<ReturnType<SupabaseClient['from']>['select']>) => typeof query,
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   for (;;) {
     let query = filter(supabase.from(table).select('*'));
-    for (const column of conflictTarget(table).split(',')) query = query.order(column);
+    for (const column of key.split(',')) query = query.order(column);
     const { data, error } = await query.range(rows.length, rows.length + PAGE - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     const page = (data ?? []) as Record<string, unknown>[];
@@ -65,7 +67,7 @@ export async function pullSnapshot(): Promise<Snapshot> {
     // a shared outing's rows through. This snapshot is what pruning diffs
     // against, and a guest's scores are owned by the guest — pulling them here
     // would let one phone delete another's card the moment it fell behind.
-    const rows = await selectAll(supabase, table, (query) => query.eq('owner_id', ownerId));
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.eq('owner_id', ownerId));
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   }
   return snapshot;
@@ -97,7 +99,7 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   // The table name is the snapshot key in every case, so one argument does.
   const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
     if (values.length === 0) return;
-    const rows = await selectAll(supabase, table, (query) => query.in(column, values));
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.in(column, values));
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   };
 
@@ -136,6 +138,14 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   await add('course_hole_notes', 'course_id', courseIds);
 
   return snapshot;
+}
+
+/** What an organiser's deletion left for this account, for `applyMoveNotices`. Only its own, by policy. */
+export async function pullMoveNotices(): Promise<MoveNotice[]> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  await requireUserId();
+  return (await selectAll(supabase, 'move_notices', 'kind,from_id', (query) => query)) as unknown as MoveNotice[];
 }
 
 export interface PushResult {
@@ -212,6 +222,50 @@ function snapshotRows(snapshot: Snapshot, table: keyof Snapshot): Record<string,
   return snapshot[table] as unknown as Record<string, unknown>[];
 }
 
+/** The rows of a table the shared pull shows on this account's own rounds. */
+function onOwnRounds(shared: Snapshot, table: keyof Snapshot, ownerId: string): Record<string, unknown>[] {
+  const ownRounds = new Set(snapshotRows(shared, 'rounds').filter((round) => round.owner_id === ownerId).map((round) => round.id));
+  return snapshotRows(shared, table).filter((cell) => ownRounds.has(cell.round_id));
+}
+
+/**
+ * First contact's deletions, less the cells this phone may simply not have seen.
+ *
+ * A guest who deletes their account leaves what they typed on this account's card
+ * to this account, so those cells arrive in its own pull. A phone that was behind
+ * would read them as cleared and delete them. The shared pull shows them, and they
+ * reach the phone with the next merge. Later pushes diff against what this phone
+ * last pushed, so a cell cleared in a running session still goes.
+ *
+ * The cost is a cell cleared on a shared round and not pushed before the app
+ * closed: it looks just the same, so it comes back.
+ */
+function keepUnseenCells(prune: Deletions, shared: Snapshot, ownerId: string): Deletions {
+  const remaining = { ...prune };
+  for (const table of GUEST_WRITES) {
+    const onOwnCard = new Set(onOwnRounds(shared, table, ownerId).map((cell) => identify(table, cell)));
+    remaining[table] = prune[table].filter((key) => !onOwnCard.has(identify(table, key)));
+  }
+  return remaining;
+}
+
+/**
+ * This account's rows as first contact should send them: a blank box on the phone
+ * doesn't go up over a score the shared pull shows on its own round. A guest typed
+ * it, and the phone is behind. It reaches the phone with the next merge.
+ *
+ * Only what's sent changes. `own` still says the server has the blank, so the push
+ * after this doesn't send it either. The cost is the same as `keepUnseenCells`.
+ */
+function withoutBlanksOverScores(own: Snapshot, shared: Snapshot, ownerId: string): Snapshot {
+  const played = (cell: { strokes?: unknown; picked_up?: unknown }) => cell.strokes !== null || cell.picked_up === true;
+  const scored = new Set(onOwnRounds(shared, 'scores', ownerId).filter(played).map((cell) => identify('scores', cell)));
+  return {
+    ...own,
+    scores: own.scores.filter((row) => played(row) || !scored.has(identify('scores', { ...row }))),
+  };
+}
+
 /** Every outcome carries the shared outings as pulled, for the next push to split by. */
 export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
@@ -279,9 +333,10 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
     ...(takesBag ? { clubs: remote.clubs } : {}),
     ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
   };
-  const { own, guest } = splitByOwner(mine, shared, await requireUserId());
-  const prune = deletions(remote, own);
-  const result = await pushSnapshot(own, { prune, guest });
+  const ownerId = await requireUserId();
+  const { own, guest } = splitByOwner(mine, shared, ownerId);
+  const prune = keepUnseenCells(deletions(remote, own), shared, ownerId);
+  const result = await pushSnapshot(withoutBlanksOverScores(own, shared, ownerId), { prune, guest });
   return {
     status: 'pushed',
     upserted: result.upserted,

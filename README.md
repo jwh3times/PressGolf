@@ -99,10 +99,10 @@ As of October 2026:
   screenshots and accessibility trees, at phone width and 320 px, and runs axe
   (WCAG 2.1 A and AA).
 - Every pull request syncs a full season and a shared outing through a local
-  Supabase stack (real auth, API, row-level security and realtime) with two
-  accounts that must stay apart.
+  Supabase stack (real auth, API, row-level security, realtime and the
+  account-deletion function) with two accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 82 row-level-security assertions against Postgres 16.
+  database migration plus 95 row-level-security assertions against Postgres 16.
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
   posting to the ledger on an Android emulator and iOS simulator.
@@ -124,6 +124,21 @@ pass.
   `AppStore` yet.
 - Joining and row-level-security boundaries are automated, but a full round
   scored concurrently by multiple physical phones has not been field-tested.
+- An account can delete itself from Settings unless another account depends on
+  it. A guest can leave, and the organiser keeps the scores they typed. An
+  organiser can leave too: the day goes from the server, and each guest keeps a
+  copy on their phone that no longer syncs. A guest's own rounds and outings on the
+  organiser's group or course move to a copy of their own and keep syncing. One
+  that others depend on, such as the owner of a group a guest's outing with a third
+  account is on, is refused with nothing deleted, and uses the email request until
+  [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
+  has been checked in Jest, against a local stack and on the web build, not on a
+  phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)). A guest's
+  phone on an older build doesn't know to keep that copy to itself, and can be left
+  with a sync error.
+- A score or junk claim an organiser clears on a shared round comes back if the
+  app closes before it's pushed. First contact can't tell it from one a guest
+  typed that the phone hasn't seen.
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full

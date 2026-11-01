@@ -54,22 +54,29 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ## Development flow
 
-Every code change starts from a **ready issue**: a `ready-for-agent` issue whose body is a
-`/to-spec` spec, a `/to-tickets` ticket or a `/triage` brief, or a bug issue worked through
-`/diagnosing-bugs`. With no ready issue, stop before the first edit and route the user with
-[`docs/agents/dev-flow.md`](docs/agents/dev-flow.md). Reading code, running tests and answering
-questions need no issue.
+<!-- shared:development-flow -->
 
-The human starts every phase. `/wayfinder`, `/grill-with-docs`, `/to-spec`, `/to-tickets`,
-`/implement` and `/triage` stay user-invoked; keep `disable-model-invocation: true` on them. At a
-phase boundary, name the next command, say in one line why, and wait. Inside a phase, reach for
-`/tdd`, `/code-review`, `/diagnosing-bugs`, `/domain-modeling`, `/codebase-design`, `/prototype`
-and `/research` whenever they fit.
+The flow skills are this repository's binding process for changing code. Read
+`.agents/skills/ship/settings/dev-flow.md` (the routing, exemptions and issue linking) and
+`docs/agents/dev-flow.md` (what this repository adds) before the first edit of a change, and whenever
+no ready issue exists. `/ask-matt` maps the flow itself.
 
-Exempt from the gate: dependency bumps, changes to docs and agent config only, release prep, and a
-user waiver recorded in the PR body as `Flow waived by the user: <reason>`. `dev-flow.md` defines
-each exemption and which paths count as code, and sets the branch and PR conventions that link work
-to its issue.
+- **The gate.** Every code edit starts from a ready issue: an open `ready-for-agent` issue whose body
+  is a `/to-spec` spec or a `/to-tickets` ticket or that carries a `/triage` brief, or a `bug` issue
+  worked through `/diagnosing-bugs`, which needs the number and no spec. With none, stop before the
+  first edit and route the user. Reading code, running tests and answering questions need no issue.
+- **Private work.** A ready issue in the private tracker counts. Its number stays out of the branch,
+  the PR, commits and public issues, and it is closed by hand after the merge.
+- **The human starts every phase.** `/wayfinder`, `/grill-with-docs`, `/to-spec`, `/to-tickets`,
+  `/implement` and `/triage` stay user-invoked. At a phase boundary, name the next command, say in
+  one line why, and wait. Inside a phase, use `/tdd`, `/code-review`, `/diagnosing-bugs`,
+  `/domain-modeling`, `/codebase-design`, `/prototype` and `/research` whenever they fit.
+- **Exempt from the gate:** dependency bumps, changes touching only docs and agent config, release
+  prep, and an explicit user waiver recorded in the PR body as `Flow waived by the user: <reason>`.
+- **Linking.** Branches are `<type>/<issue#>-<slug>`; the PR body opens with `Closes #N` or
+  `Part of #N`.
+
+<!-- /shared:development-flow -->
 
 ## Agent skills
 
@@ -95,24 +102,30 @@ Most skills come from `mattpocock/skills` and are recorded in `skills-lock.json`
 `setup-matt-pocock-skills` carry local edits (a Wayfinder map records answers, never delivery
 status), so re-installing either from upstream drops them — re-apply after an update.
 
-`ship`, `end-session`, `handoff`, `lets-go` and `docs-updater` install from the public
-`jwh3times/skills` repository (recorded in `skills-lock.json` too) and are never edited here: the
-next install overwrites a local edit. Their bodies are the same in every repository that installs
-them; they read PressGolf's facts at run time from the settings files
-[`docs/agents/workspace.md`](docs/agents/workspace.md),
-[`docs/agents/docs.md`](docs/agents/docs.md),
-[`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md) (its settings section, from
-`## Public repository` on),
-[`docs/agents/human-follow-up.md`](docs/agents/human-follow-up.md),
-[`docs/agents/releases.md`](docs/agents/releases.md),
-[`docs/agents/ship.md`](docs/agents/ship.md) and
-[`docs/agents/handoffs.md`](docs/agents/handoffs.md). Repository-specific behavior goes into a
-setting; a fix to a skill goes upstream. Re-running the install is the update:
+CI runs `scripts/check-docs.mjs`: local doc links and anchors must resolve, and the `Doc map` in
+`docs/agents/docs.md` must list every document.
+
+### Shared skills
+
+<!-- shared:shared-skills -->
+
+`end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` install from `jwh3times/skills`, and
+are never edited here: reinstalling overwrites a local edit. A fix goes upstream, and what they need
+to know about this repository goes in the settings files under `docs/agents/`, which each skill
+proposes on first run. Re-running the install is the update; never run `npx skills update`, which
+leaves `.claude/skills/` linked to its source instead of copied:
 
 ```bash
 npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s ship -s docs-updater -a codex --copy -y
-npm run sync:agents
+node scripts/sync-agents.mjs
 ```
+
+`scripts/sync-agents.mjs`, `lint-agent-neutrality.mjs`, `check-docs.mjs`, and `sync-main.mjs`,
+`next-version.mjs` and `check-changelog.mjs` where this repository carries them, are canonical in
+`jwh3times/skills` with their tests: fix them there, then copy them here. `sync-agents.mjs` also
+writes the marked blocks in this file: change them in `jwh3times/skills`, not here.
+
+<!-- /shared:shared-skills -->
 
 ### Issue tracker
 

@@ -1,10 +1,11 @@
 // Runs the sync integration tests against the local Supabase stack.
 //
 // Start the stack first (`npx supabase start`, Docker required). The URL and
-// anon key come from `supabase status`; set SUPABASE_TEST_URL and
-// SUPABASE_TEST_ANON_KEY yourself to point somewhere else, such as a stack
-// started on non-default ports. Never point this at a real project: every run
-// signs up throwaway accounts.
+// keys come from `supabase status`; set SUPABASE_TEST_URL,
+// SUPABASE_TEST_ANON_KEY and SUPABASE_TEST_SERVICE_ROLE_KEY yourself to point
+// somewhere else, such as a stack started on non-default ports. Never point
+// this at a real project: every run signs up throwaway accounts, and the
+// account-deletion tests hold the service role.
 //
 // Usage: node scripts/test-integration.mjs [jest args]
 import { spawnSync } from 'node:child_process';
@@ -14,16 +15,17 @@ const shell = process.platform === 'win32';
 const quote = (arg) => (shell && /\s/.test(arg) ? `"${arg}"` : arg);
 const env = { ...process.env };
 
-if (!env.SUPABASE_TEST_URL || !env.SUPABASE_TEST_ANON_KEY) {
+if (!env.SUPABASE_TEST_URL || !env.SUPABASE_TEST_ANON_KEY || !env.SUPABASE_TEST_SERVICE_ROLE_KEY) {
   const status = spawnSync('npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', shell });
   const json = status.stdout?.slice(status.stdout.indexOf('{'));
   if (status.status !== 0 || !json) {
     console.error('The local Supabase stack is not running. Start it with `npx supabase start`.');
     process.exit(1);
   }
-  const { API_URL, ANON_KEY } = JSON.parse(json);
+  const { API_URL, ANON_KEY, SERVICE_ROLE_KEY } = JSON.parse(json);
   env.SUPABASE_TEST_URL ??= API_URL;
   env.SUPABASE_TEST_ANON_KEY ??= ANON_KEY;
+  env.SUPABASE_TEST_SERVICE_ROLE_KEY ??= SERVICE_ROLE_KEY;
 }
 
 const host = new URL(env.SUPABASE_TEST_URL).hostname;

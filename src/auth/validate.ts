@@ -40,6 +40,25 @@ export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** How deleting an account can fail, as far as someone holding the phone cares. */
+export type DeleteAccountFailure = 'wrong-password' | 'no-signal' | 'not-signed-in' | 'shares-data' | 'failed';
+
+export function deleteAccountMessage(failure: DeleteAccountFailure): string {
+  switch (failure) {
+    case 'wrong-password':
+      return 'That password is not right. Nothing has been deleted.';
+    case 'no-signal':
+      // Not "nothing has been deleted": the request may have arrived and only the reply been lost.
+      return 'Deleting your account needs signal, and this phone could not reach the server. Nothing has changed on this phone. Try again when you have signal.';
+    case 'not-signed-in':
+      return 'The server could not confirm your sign-in. Nothing has been deleted. Sign out, sign back in and try again.';
+    case 'shares-data':
+      return 'This account shares data with another account, through an outing, a group or a course, so it can’t be deleted from the app yet. Nothing has been deleted. To delete it, email support@pressgolf.cc from this address. The steps are at pressgolf.cc/delete-account.';
+    case 'failed':
+      return 'The server could not finish deleting your account. Nothing has changed on this phone. Try again in a moment.';
+  }
+}
+
 /**
  * Turns what the server says into something worth reading on a phone.
  *
