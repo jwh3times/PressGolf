@@ -493,12 +493,17 @@ When the two Supabase public variables are present and a user is signed in,
    the account's, rather than pruning it, and a fresh install keeps clubs typed
    before signing in when the account has none. The usual score (`bag_settings`)
    is settled the same way, apart from the clubs. A phone holding only a bag
-   still counts as fresh, so it can never prune a season. On a shared round the
-   account owns, first contact doesn't prune a score or junk row the shared pull
-   shows, or send a blank box over a score it shows: the phone may not have seen
-   them yet, as when a guest who deleted their account left them to the organiser.
-   They arrive with the next shared merge. A cell cleared there and not pushed
-   before the app closed looks the same, so it comes back.
+   still counts as fresh, so it can never prune a season. On a shared card, first
+   contact sends only what this phone changed. A phone that's behind looks just like
+   one that edited a cell, so it compares with `seenCells`, the shared scores and
+   junk as it last merged them, saved in one blob with its documents so that a phone
+   killed mid-save can't have one without the other, and kept compact since that blob
+   is read whole. A box still as it was seen isn't sent, a junk claim someone has since
+   removed doesn't come back, and they arrive with the next merge. On its own round it
+   doesn't prune a score or junk row it never saw, as when a guest who deleted their
+   account left them to the organiser. With no record
+   of a box, as the first time a phone gets here, a blank doesn't go up over a score
+   and a typed score does. If both sides changed a box, this phone's wins.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
    then upserted in parent-before-child order. Only rows that differ from the
    last known remote snapshot go up (`changedRows`), so an edit sends one
@@ -506,7 +511,9 @@ When the two Supabase public variables are present and a user is signed in,
 4. Rows deleted locally are pruned child-first after comparison with the last
    known remote snapshot.
 5. After a successful push, shared outings are pulled and merged into local
-   data.
+   data, and `seenCells` is saved. First contact's own pull doesn't count, since
+   nothing merges it. A timer that fires while another sync is in flight tries again
+   rather than being dropped.
 
 A guest's phone holds the organiser's group, course and rounds once it has
 merged a shared outing, and the server refuses to let it write them. Every

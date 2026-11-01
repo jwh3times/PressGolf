@@ -5,6 +5,7 @@ import type { MoveNotice } from '../move-notices';
 import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from '../remote';
 import { emptySnapshot, toRows } from '../rows';
 import { useDataSync } from '../useDataSync';
+import type { SeenCells } from '../rows';
 
 jest.mock('../remote', () => ({
   pullMoveNotices: jest.fn(),
@@ -37,6 +38,8 @@ function options(enabled = true) {
     onAdoptRemote: jest.fn(),
     onSharedData: jest.fn(),
     onMoveNotices: jest.fn(),
+    seen: null as SeenCells | null,
+    onSeen: jest.fn(),
   };
 }
 
@@ -66,6 +69,61 @@ beforeEach(() => {
 afterEach(() => {
   jest.runOnlyPendingTimers();
   jest.useRealTimers();
+});
+
+it('still merges when first contact outlasts the push timer, on a slow connection', async () => {
+  let finish!: (outcome: Awaited<ReturnType<typeof reconcile>>) => void;
+  mockReconcile.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+  const input = options();
+  await renderHook(() => useDataSync(input));
+  await advancePush();
+  expect(mockPullShared).not.toHaveBeenCalled();
+
+  await act(async () => finish({ status: 'nothing-to-do', shared: emptySnapshot() }));
+  await advancePush();
+  expect(mockPullShared).toHaveBeenCalled();
+});
+
+it('still pushes an edit whose timer fires during another push', async () => {
+  const input = options();
+  const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+  await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+  let finishPush!: (rows: ReturnType<typeof toRows>) => void;
+  mockPush.mockImplementationOnce(() => new Promise((resolve) => (finishPush = resolve)));
+  await view.rerender({ ...input, documents: { ...documents, groups: [] } });
+  await advancePush();
+  expect(mockPush).toHaveBeenCalledTimes(1);
+
+  await view.rerender({ ...input, documents: { ...documents, courses: [] } });
+  await advancePush();
+  expect(mockPush).toHaveBeenCalledTimes(1);
+
+  await act(async () => finishPush(emptySnapshot()));
+  await advancePush();
+  expect(mockPush).toHaveBeenCalledTimes(2);
+});
+
+it('tells first contact what the phone last saw, and only records a pull it has merged', async () => {
+  const pulled = { ...emptySnapshot(), scores: [{ round_id: 'r', player_id: 'p', hole: 0, strokes: 5, picked_up: false }] } as never as ReturnType<typeof emptySnapshot>;
+  const seen = { scores: {}, junk: {} };
+  // First contact's pull isn't on the phone yet, so it isn't seen.
+  mockReconcile.mockResolvedValueOnce({ status: 'nothing-to-do', shared: pulled });
+  const input = { ...options(), seen };
+  await renderHook(() => useDataSync(input));
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(mockReconcile).toHaveBeenCalledWith(expect.anything(), seen);
+  expect(input.onSeen).not.toHaveBeenCalled();
+
+  // Recorded even when the merge changes nothing: this phone and the server now agree.
+  mockPullShared.mockResolvedValueOnce(pulled);
+  await advancePush();
+  await waitFor(() => expect(input.onSeen).toHaveBeenCalledWith({ scores: { r: { p: { 0: 5 } } }, junk: {} }));
+  expect(input.onSharedData).not.toHaveBeenCalled();
 });
 
 it('stays off and resets server state while disabled', async () => {

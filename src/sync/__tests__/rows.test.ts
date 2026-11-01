@@ -1,7 +1,30 @@
 import { GAME_KEYS } from '../../domain/types';
 import { makeTestCourse, makeTestGroup, makeTestRound, flat, withTee } from '../../domain/__tests__/helpers';
-import { countRows, emptySnapshot, fromRows, toRows, TABLES } from '../rows';
+import { countRows, emptySnapshot, fromRows, toRows, TABLES, cellValue, sawJunk, seenIn, seenValue } from '../rows';
 import { demoDocuments } from './fixtures';
+
+describe('seenIn', () => {
+  const cell = (hole: number, strokes: number | null, picked_up = false) => ({ round_id: 'r', player_id: 'p', hole, strokes, picked_up });
+  const claim = { round_id: 'r', hole: 2, player_id: 'p', kind: 'sandie' };
+
+  it('keeps what each box held and each claim, and nothing for a blank box', () => {
+    const seen = seenIn({ ...emptySnapshot(), scores: [cell(0, 5), cell(1, null), cell(2, null, true)], junk: [claim] });
+    expect(seen).toEqual({ scores: { r: { p: { 0: 5, 2: 'p' } } }, junk: { r: ['2:p:sandie'] } });
+
+    expect(seenValue(seen, cell(0, 9))).toBe(5);
+    expect(seenValue(seen, cell(1, 9))).toBeNull();
+    expect(seenValue(seen, cell(2, 9))).toBe('p');
+    expect(seenValue(seen, { ...cell(0, 9), round_id: 'other' })).toBeNull();
+    expect(seenValue(null, cell(0, 9))).toBeNull();
+    expect(sawJunk(seen, claim)).toBe(true);
+    expect(sawJunk(seen, { ...claim, kind: 'greenie' })).toBe(false);
+    expect(sawJunk(null, claim)).toBe(false);
+  });
+
+  it('reads a box with no pick-up column as its strokes', () => {
+    expect(cellValue({ round_id: 'r', player_id: 'p', hole: 0, strokes: 4 })).toBe(4);
+  });
+});
 
 describe('toRows / fromRows round trip', () => {
   it('puts the whole demo dataset through unchanged', () => {

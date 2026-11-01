@@ -168,6 +168,14 @@ describe('dataset persistence', () => {
     await expect(loadDataset(false)).resolves.toEqual(expect.objectContaining(EMPTY_DATA));
   });
 
+  it('reads back the shared cells a phone has seen, and none from data saved before them', async () => {
+    const seenCells = { scores: { r: { p: { 0: 5 } } }, junk: {} };
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ seenCells }));
+    expect((await loadDataset(false)).seenCells).toEqual(seenCells);
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({}));
+    expect((await loadDataset(false)).seenCells).toBeNull();
+  });
+
   it('writes and clears the selected dataset namespace', async () => {
     const data = buildDemoDataset(123);
     await saveDataset(true, data);
