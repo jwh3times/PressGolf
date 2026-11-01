@@ -189,11 +189,11 @@ describe('applying move notices', () => {
       },
       notices,
     );
-    const moved = after.groups[0].players[after.groups[0].players.length - 1].id;
+    const player = after.groups[0].players[after.groups[0].players.length - 1].id;
     const tee = after.courses[0].tees[after.courses[0].tees.length - 1].id;
-    expect(moved).toBe('G1:removed');
+    expect(player).toBe('G1:removed');
     expect(tee).toBe('C1:c1_default');
-    expect(after.rounds[0].playerIds).toContain(moved);
+    expect(after.rounds[0].playerIds).toContain(player);
     expect(after.rounds[0].teeId).toBe(tee);
     expect(applyMoveNotices(after, notices)).toBe(after);
   });
