@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { mergeShared } from '../merge-shared';
 import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
-import { emptySnapshot, fromRows, toRows, type Documents } from '../rows';
+import { emptySnapshot, fromRows, seenIn, toRows, type Documents } from '../rows';
 import {
   getSupabase,
   hostOuting,
@@ -250,6 +250,63 @@ describe('sync against a local Supabase stack', () => {
     // The junk he claimed is a new row, his own, and reaches her with the shared day.
     expect(fromRows(await pullSharedOutings()).rounds.find((r) => r.id === card.id)?.junk[claim]).toBe(true);
     expect(byId(back).groups.map((g) => g.id)).toEqual(byId(season).groups.map((g) => g.id));
+  });
+
+  it("doesn't let a phone that's behind on a shared card overwrite what another phone typed", async () => {
+    const empty: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
+    await signUp('ann');
+    const season = await pushSeason('fc');
+    const outing = season.outings[0];
+    const { joinCode } = await hostOuting(outing.id);
+    const round = season.rounds.find((r) => r.outingId === outing.id)!;
+    const scorer = round.playerIds[0];
+    const blanks = round.scores[scorer].flatMap((value, hole) => (value === null ? [hole] : []));
+    const [hole, other] = blanks;
+    const scoreOn = async () => fromRows(await pullSharedOutings()).rounds.find((r) => r.id === round.id)!.scores[scorer];
+    const typed = (documents: Documents, at: number, strokes: number | null) => ({
+      ...documents,
+      rounds: documents.rounds.map((r) => {
+        if (r.id !== round.id) return r;
+        return { ...r, scores: { ...r.scores, [scorer]: r.scores[scorer].map((value, i) => (i === at ? strokes : value)) } };
+      }),
+    });
+
+    // Cy joins and takes the day, with both boxes blank, then closes the app.
+    const cy = await signUp('cy');
+    await joinOuting(joinCode, null, 'Cy');
+    const cyFirst = await pullSharedOutings();
+    let cyPhone = mergeShared(empty, fromRows(cyFirst));
+    let cySeen = seenIn(cyFirst);
+
+    // Ben types a 5 while Cy's away.
+    const ben = await signUp('ben');
+    await joinOuting(joinCode, null, 'Ben');
+    const benFirst = await pullSharedOutings();
+    const benPhone = mergeShared(empty, fromRows(benFirst));
+    await pushChanges(toRows(typed(benPhone, hole, 5)), await pullSnapshot(), benFirst);
+
+    // Cy's blank doesn't go over it at first contact, or on the push after. A score Cy
+    // typed while away, on another box, does.
+    await signInAs(cy);
+    cyPhone = typed(cyPhone, other, 3);
+    const outcome = await reconcile(toRows(cyPhone), cySeen);
+    if (outcome.status !== 'pushed') throw new Error(`expected a push, got ${outcome.status}`);
+    await pushChanges(toRows(cyPhone), outcome.own, outcome.shared);
+    expect((await scoreOn())[hole]).toBe(5);
+    expect((await scoreOn())[other]).toBe(3);
+
+    // Cy takes that, as the next merge does. Ben corrects it while Cy's away again.
+    const cyCaughtUp = await pullSharedOutings();
+    cyPhone = mergeShared(cyPhone, fromRows(cyCaughtUp));
+    cySeen = seenIn(cyCaughtUp);
+    await signInAs(ben);
+    const benNext = await pullSharedOutings();
+    await pushChanges(toRows(typed(mergeShared(benPhone, fromRows(benNext)), hole, 6)), await pullSnapshot(), benNext);
+
+    // Cy's old 5 doesn't go back over Ben's 6.
+    await signInAs(cy);
+    await reconcile(toRows(cyPhone), cySeen);
+    expect((await scoreOn())[hole]).toBe(6);
   });
 
   it("keeps a press a guest adds to the organiser's round on his phone, and lets him play her course again", async () => {

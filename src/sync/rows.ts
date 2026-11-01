@@ -347,6 +347,52 @@ export const TABLES: (keyof Snapshot)[] = [
   'bag_settings',
 ];
 
+/**
+ * The cells of shared cards as this phone last took them from the server, so first
+ * contact can tell what it changed from what it hasn't seen.
+ *
+ * Saved in one blob with the documents, so it's kept small: as rows, a season's worth
+ * would be over a megabyte. A blank box has no entry, since it reads the same as one
+ * this phone never saw.
+ */
+export interface SeenCells {
+  /** By round, player and hole. */
+  scores: Record<string, Record<string, Record<number, CellValue>>>;
+  /** By round, as `junkKey` writes them. */
+  junk: Record<string, string[]>;
+}
+
+/** What's in a box: the strokes, 'p' for a pick-up, or null for a blank. */
+type CellValue = number | 'p' | null;
+
+export function cellValue(cell: ScoreRow): CellValue {
+  return cell.picked_up ? 'p' : cell.strokes;
+}
+
+function junkKey(row: JunkRow): string {
+  return `${row.hole}:${row.player_id}:${row.kind}`;
+}
+
+export function seenIn(shared: Snapshot): SeenCells {
+  const seen: SeenCells = { scores: {}, junk: {} };
+  for (const cell of shared.scores) {
+    const value = cellValue(cell);
+    if (value === null) continue;
+    const players = (seen.scores[cell.round_id] ??= {});
+    (players[cell.player_id] ??= {})[cell.hole] = value;
+  }
+  for (const row of shared.junk) (seen.junk[row.round_id] ??= []).push(junkKey(row));
+  return seen;
+}
+
+export function seenValue(seen: SeenCells | null, cell: ScoreRow): CellValue {
+  return seen?.scores[cell.round_id]?.[cell.player_id]?.[cell.hole] ?? null;
+}
+
+export function sawJunk(seen: SeenCells | null, row: JunkRow): boolean {
+  return seen?.junk[row.round_id]?.includes(junkKey(row)) ?? false;
+}
+
 export function emptySnapshot(): Snapshot {
   return {
     groups: [],

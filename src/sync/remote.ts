@@ -12,7 +12,7 @@
  */
 import { changedRows, conflictTarget, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, splitByOwner, type Deletions } from './diff';
 import type { MoveNotice } from './move-notices';
-import { countRows, emptySnapshot, TABLES, type Snapshot } from './rows';
+import { cellValue, countRows, emptySnapshot, sawJunk, seenValue, TABLES, type JunkRow, type ScoreRow, type SeenCells, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
 
@@ -234,39 +234,54 @@ function onOwnRounds(shared: Snapshot, table: keyof Snapshot, ownerId: string): 
  * A guest who deletes their account leaves what they typed on this account's card
  * to this account, so those cells arrive in its own pull. A phone that was behind
  * would read them as cleared and delete them. The shared pull shows them, and they
- * reach the phone with the next merge. Later pushes diff against what this phone
- * last pushed, so a cell cleared in a running session still goes.
- *
- * The cost is a cell cleared on a shared round and not pushed before the app
- * closed: it looks just the same, so it comes back.
+ * reach the phone with the next merge. A cell this phone has seen was cleared here,
+ * so it goes.
  */
-function keepUnseenCells(prune: Deletions, shared: Snapshot, ownerId: string): Deletions {
+function keepUnseenCells(prune: Deletions, shared: Snapshot, ownerId: string, seen: SeenCells | null): Deletions {
   const remaining = { ...prune };
   for (const table of GUEST_WRITES) {
     const onOwnCard = new Set(onOwnRounds(shared, table, ownerId).map((cell) => identify(table, cell)));
-    remaining[table] = prune[table].filter((key) => !onOwnCard.has(identify(table, key)));
+    const saw = (key: Record<string, unknown>) =>
+      table === 'scores' ? seenValue(seen, key as unknown as ScoreRow) !== null : sawJunk(seen, key as unknown as JunkRow);
+    remaining[table] = prune[table].filter((key) => !onOwnCard.has(identify(table, key)) || saw(key));
   }
   return remaining;
 }
 
+/** The scores and junk first contact holds back. */
+type Held = Pick<Snapshot, 'scores' | 'junk'>;
+
 /**
- * This account's rows as first contact should send them: a blank box on the phone
- * doesn't go up over a score the shared pull shows on its own round. A guest typed
- * it, and the phone is behind. It reaches the phone with the next merge.
+ * The cells first contact holds back: where the phone and the shared pull disagree
+ * because the phone is behind, not because it changed anything. They reach the phone
+ * with the next merge.
  *
- * Only what's sent changes. `own` still says the server has the blank, so the push
- * after this doesn't send it either. The cost is the same as `keepUnseenCells`.
+ * A box still as this phone last saw it is out of date, and so is a junk claim it saw
+ * that has since been removed. With no record of a box, which is every box the first
+ * time a phone gets here, that makes a blank one out of date and a typed score an edit.
  */
-function withoutBlanksOverScores(own: Snapshot, shared: Snapshot, ownerId: string): Snapshot {
-  const played = (cell: { strokes?: unknown; picked_up?: unknown }) => cell.strokes !== null || cell.picked_up === true;
-  const scored = new Set(onOwnRounds(shared, 'scores', ownerId).filter(played).map((cell) => identify('scores', cell)));
+function behindShared(phone: Snapshot, seen: SeenCells | null, shared: Snapshot): Held {
+  const onServer = new Set(shared.scores.map((cell) => identify('scores', { ...cell })));
+  const sharedRounds = new Set(shared.rounds.map((round) => round.id));
+  const disagree = changedRows(shared, { ...emptySnapshot(), scores: phone.scores, junk: phone.junk });
   return {
-    ...own,
-    scores: own.scores.filter((row) => played(row) || !scored.has(identify('scores', { ...row }))),
+    scores: disagree.scores.filter((row) => onServer.has(identify('scores', { ...row })) && cellValue(row) === seenValue(seen, row)),
+    junk: disagree.junk.filter((row) => sharedRounds.has(row.round_id) && sawJunk(seen, row)),
   };
 }
 
-/** Every outcome carries the shared outings as pulled, for the next push to split by. */
+/** These rows, less the cells in `held`. */
+function sendable(rows: Snapshot, held: Held): Snapshot {
+  const heldScores = new Set(held.scores.map((row) => identify('scores', { ...row })));
+  const heldJunk = new Set(held.junk.map((row) => identify('junk', { ...row })));
+  return {
+    ...rows,
+    scores: rows.scores.filter((row) => !heldScores.has(identify('scores', { ...row }))),
+    junk: rows.junk.filter((row) => !heldJunk.has(identify('junk', { ...row }))),
+  };
+}
+
+/** Every outcome carries the shared outings for the next push to split by, reading a cell held back as unchanged. */
 export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
   /**
@@ -301,7 +316,7 @@ export type SyncOutcome = { shared: Snapshot } & (
  * it before signing in when the account has none. The bag's settings (#146)
  * are settled the same way, apart from the clubs.
  */
-export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
+export async function reconcile(local: Snapshot, seen: SeenCells | null = null): Promise<SyncOutcome> {
   const remote = await pullSnapshot();
   // Before pushing, so a phone that already holds someone else's day, saved
   // from an earlier session, knows which of its rows are theirs.
@@ -335,14 +350,21 @@ export async function reconcile(local: Snapshot): Promise<SyncOutcome> {
   };
   const ownerId = await requireUserId();
   const { own, guest } = splitByOwner(mine, shared, ownerId);
-  const prune = keepUnseenCells(deletions(remote, own), shared, ownerId);
-  const result = await pushSnapshot(withoutBlanksOverScores(own, shared, ownerId), { prune, guest });
+  const prune = keepUnseenCells(deletions(remote, own), shared, ownerId, seen);
+  const held = behindShared(mine, seen, shared);
+  const result = await pushSnapshot(sendable(own, held), { prune, guest: sendable(guest, held) });
+  // `own` still has what was held back, so the push after this doesn't send it, and nor
+  // should the shared pull read it as changed. A merge replaces both.
+  const heldCells = new Map(held.scores.map((row) => [identify('scores', { ...row }), row]));
   return {
     status: 'pushed',
     upserted: result.upserted,
     deleted: countDeletions(prune),
     own,
-    shared,
+    shared: {
+      ...shared,
+      scores: shared.scores.map((cell) => ({ ...cell, ...heldCells.get(identify('scores', { ...cell })) })),
+    },
     ...(takesBag ? { clubs: remote.clubs } : {}),
     ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
   };

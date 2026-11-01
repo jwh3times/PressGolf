@@ -1,4 +1,4 @@
-import { emptySnapshot, TABLES, type Snapshot } from '../rows';
+import { emptySnapshot, seenIn, TABLES, type SeenCells, type Snapshot } from '../rows';
 import { getSupabase, requireUserId } from '../supabase';
 import { pullMoveNotices, pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 
@@ -410,6 +410,123 @@ describe('reconcile', () => {
       { ...cell('solo', 0, null), owner_id: me },
     ]);
     expect(outcome.status === 'pushed' && outcome.own.scores).toEqual(local.scores);
+  });
+
+  describe('a phone behind on a shared card', () => {
+    const me = 'owner-1';
+    const ben = 'owner-ben';
+    const cell = (hole: number, strokes: number | null) => ({ round_id: 'hers', player_id: 'p1', hole, strokes, picked_up: false });
+    const sandie = { round_id: 'hers', hole: 0, player_id: 'p1', kind: 'sandie' } as never;
+    const seenOf = (scores: ReturnType<typeof cell>[], junk: never[] = []) => seenIn({ ...emptySnapshot(), scores, junk });
+
+    /** One account's phone at first contact, on a card Ann owns. Returns what went up, by table. */
+    const firstContact = async (
+      server: { scores?: ReturnType<typeof cell>[]; junk?: never[]; owner?: string },
+      phone: { scores?: ReturnType<typeof cell>[]; junk?: never[] },
+      seen: SeenCells | null = null,
+    ) => {
+      const owner = server.owner ?? ben;
+      const builders = serverHolding({
+        outing_members: [{ outing_id: 'o1' }],
+        outings: [{ id: 'o1', group_id: 'g1', course_id: 'c1', owner_id: 'owner-ann' }],
+        rounds: [{ id: 'hers', outing_id: 'o1', owner_id: 'owner-ann' }],
+        scores: (server.scores ?? []).map((row) => ({ ...row, owner_id: owner })),
+        junk: ((server.junk ?? []) as Record<string, unknown>[]).map((row) => ({ ...row, owner_id: owner })),
+      });
+      const local = emptySnapshot();
+      local.outings.push({ id: 'o1', group_id: 'g1', course_id: 'c1' } as never);
+      local.rounds.push({ id: 'hers', outing_id: 'o1' } as never);
+      local.scores.push(...(phone.scores ?? []));
+      local.junk.push(...(phone.junk ?? []));
+      const outcome = await reconcile(local, seen);
+      const sent = (table: keyof Snapshot, from = 0) =>
+        builders.slice(from).filter((b) => b.table === table).flatMap(({ builder }) => builder.upsert.mock.calls.flatMap((call) => call[0]));
+      return { outcome, local, builders, sent };
+    };
+
+    it("doesn't send a blank box over a score someone else typed, even with no record of what it saw", async () => {
+      const { sent } = await firstContact({ scores: [cell(0, 5)] }, { scores: [cell(0, null)] });
+      expect(sent('scores')).toEqual([]);
+    });
+
+    it("doesn't send an old score over a newer one", async () => {
+      const { sent } = await firstContact({ scores: [cell(0, 5)] }, { scores: [cell(0, 4)] }, seenOf([cell(0, 4)]));
+      expect(sent('scores')).toEqual([]);
+    });
+
+    it("doesn't send a score its own account corrected on another phone", async () => {
+      const { sent } = await firstContact({ scores: [cell(0, 5)], owner: me }, { scores: [cell(0, 4)] }, seenOf([cell(0, 4)]));
+      expect(sent('scores')).toEqual([]);
+    });
+
+    it("doesn't send an old score over a newer one on its own round either", async () => {
+      const builders = serverHolding({
+        outing_members: [{ outing_id: 'o1' }],
+        outings: [{ id: 'o1', group_id: 'g1', course_id: 'c1', owner_id: me }],
+        rounds: [{ id: 'hers', outing_id: 'o1', owner_id: me }],
+        scores: [{ ...cell(0, 5), owner_id: me }],
+      });
+      const local = emptySnapshot();
+      local.outings.push({ id: 'o1', group_id: 'g1', course_id: 'c1' } as never);
+      local.rounds.push({ id: 'hers', outing_id: 'o1' } as never);
+      local.scores.push(cell(0, 4));
+      const outcome = await reconcile(local, seenOf([cell(0, 4)]));
+      expect(builders.filter((b) => b.table === 'scores').flatMap(({ builder }) => builder.upsert.mock.calls)).toEqual([]);
+      expect(outcome.status === 'pushed' && outcome.own.scores).toEqual(local.scores);
+    });
+
+    it('still sends what this phone changed while it was away, a cleared box too', async () => {
+      const { sent } = await firstContact(
+        { scores: [cell(0, 5), cell(1, 5), cell(2, null)] },
+        { scores: [cell(0, 6), cell(1, null), cell(2, 3)] },
+        seenOf([cell(0, 5), cell(1, 5), cell(2, null)]),
+      );
+      expect(sent('scores')).toEqual([cell(0, 6), cell(1, null), cell(2, 3)]);
+    });
+
+    it('sends a typed score when it has no record of what it saw', async () => {
+      const { sent } = await firstContact({ scores: [cell(0, 5), cell(1, null)] }, { scores: [cell(0, 4), cell(1, 3)] });
+      expect(sent('scores')).toEqual([cell(0, 4), cell(1, 3)]);
+    });
+
+    it("doesn't bring back a junk claim someone removed, but sends one this phone added", async () => {
+      const removed = await firstContact({}, { junk: [sandie] }, seenOf([], [sandie]));
+      expect(removed.sent('junk')).toEqual([]);
+      const added = await firstContact({}, { junk: [sandie] }, seenOf([]));
+      expect(added.sent('junk')).toEqual([expect.objectContaining({ kind: 'sandie' })]);
+    });
+
+    it('removes a junk claim this phone saw and cleared on its own round, but not one it never saw', async () => {
+      const claim = { round_id: 'hers', hole: 0, player_id: 'p1', kind: 'sandie' };
+      const firstContactOnOwnRound = async (seen: SeenCells) => {
+        const builders = serverHolding({
+          outing_members: [{ outing_id: 'o1' }],
+          outings: [{ id: 'o1', group_id: 'g1', course_id: 'c1', owner_id: me }],
+          rounds: [{ id: 'hers', outing_id: 'o1', owner_id: me }],
+          junk: [{ ...claim, owner_id: me }],
+        });
+        const local = emptySnapshot();
+        local.outings.push({ id: 'o1', group_id: 'g1', course_id: 'c1' } as never);
+        local.rounds.push({ id: 'hers', outing_id: 'o1' } as never);
+        await reconcile(local, seen);
+        return builders.filter((b) => b.table === 'junk').flatMap(({ builder }) => builder.delete.mock.calls).length;
+      };
+      expect(await firstContactOnOwnRound(seenOf([], [claim as never]))).toBe(1);
+      expect(await firstContactOnOwnRound(seenOf([]))).toBe(0);
+    });
+
+    it('holds a cell back from the push after first contact too, and sends it once it changes', async () => {
+      const { outcome, local, builders, sent } = await firstContact({ scores: [cell(0, 5)] }, { scores: [cell(0, 4)] }, seenOf([cell(0, 4)]));
+      if (outcome.status !== 'pushed') throw new Error('expected a push');
+      let from = builders.length;
+      await pushChanges(local, outcome.own, outcome.shared);
+      expect(sent('scores', from)).toEqual([]);
+
+      from = builders.length;
+      const edited = { ...local, scores: [cell(0, 3)] };
+      await pushChanges(edited, outcome.own, outcome.shared);
+      expect(sent('scores', from)).toEqual([cell(0, 3)]);
+    });
   });
 
   it('prunes only what it can be sure of on a shared card: not a cell on its own round that this phone may not have seen', async () => {

@@ -279,6 +279,24 @@ describe('AppStoreProvider', () => {
     await expect(render(<Probe />)).rejects.toThrow('useStore must be used inside AppStoreProvider');
   });
 
+  it('saves the shared cells a phone has seen with its documents, hands them back, and erases them with the rest', async () => {
+    const cells = { scores: { r: { p: { 0: 5 } } }, junk: {} };
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    expect(mockUseDataSync.mock.lastCall?.[0].seen).toBeNull();
+
+    await change(() => mockUseDataSync.mock.lastCall?.[0].onSeen(cells));
+    expect(mockUseDataSync.mock.lastCall?.[0].seen).toEqual(cells);
+    await waitFor(() => expect(mockSaveDataset).toHaveBeenCalledWith(false, expect.objectContaining({ seenCells: cells })));
+
+    // The same again isn't worth a write.
+    const before = mockUseDataSync.mock.lastCall?.[0].seen;
+    await change(() => mockUseDataSync.mock.lastCall?.[0].onSeen(JSON.parse(JSON.stringify(cells))));
+    expect(mockUseDataSync.mock.lastCall?.[0].seen).toBe(before);
+
+    await act(async () => store.eraseLiveData());
+    await waitFor(() => expect(mockUseDataSync.mock.lastCall?.[0].seen).toBeNull());
+  });
+
   it('hydrates demo data, derives active documents, persists edits, and adopts sync updates', async () => {
     const data = buildDemoDataset(1_750_000_000_000);
     await mount(data);

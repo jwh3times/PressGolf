@@ -44,7 +44,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { applyFollowed, type MoveNotice } from '../sync/move-notices';
 import { deleteAccount as deleteAccountRemote } from '../sync/supabase';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
-import type { Documents } from '../sync/rows';
+import type { Documents, SeenCells } from '../sync/rows';
 import { clearDataset, loadDataset, loadSettings, saveDataset, saveSettings } from './persistence';
 
 interface Dataset {
@@ -63,6 +63,7 @@ interface Dataset {
   activeOutingId: string | null;
   /** A finished card being typed in. While set it stands in for the live round, which is left alone. */
   cardRoundId: string | null;
+  seenCells: SeenCells | null;
 }
 
 interface AppState extends Dataset {
@@ -208,6 +209,7 @@ const EMPTY_STATE: AppState = {
   activeRoundId: null,
   activeOutingId: null,
   cardRoundId: null,
+  seenCells: null,
 };
 
 /** Writes one box of the card. A score and a pick-up can never both stand in it. */
@@ -289,6 +291,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         activeRoundId: next.activeRoundId,
         activeOutingId: next.activeOutingId,
         cardRoundId: next.cardRoundId,
+        seenCells: next.seenCells,
       });
     }, 250);
   }, []);
@@ -393,12 +396,21 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [commit],
   );
 
+  const takeSeen = useCallback(
+    (cells: SeenCells) => {
+      commit((prev) => (JSON.stringify(prev.seenCells) === JSON.stringify(cells) ? prev : { ...prev, seenCells: cells }));
+    },
+    [commit],
+  );
+
   const sync = useDataSync({
     enabled: syncEnabled,
     documents,
     onAdoptRemote: adoptRemote,
     onSharedData: takeShared,
     onMoveNotices: takeMoveNotices,
+    seen: state.seenCells,
+    onSeen: takeSeen,
   });
 
   const store = useMemo<AppStore>(() => {
@@ -462,6 +474,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           activeRoundId: null,
           activeOutingId: null,
           cardRoundId: null,
+          seenCells: null,
         }));
       }
     };
@@ -909,7 +922,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
   if (demoMode && stored.groups.length === 0) {
     const seeded = buildDemoDataset();
     await saveDataset(true, seeded);
-    return seeded;
+    return { ...seeded, seenCells: null };
   }
   return {
     groups: stored.groups,
@@ -923,6 +936,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     activeRoundId: stored.activeRoundId,
     activeOutingId: stored.activeOutingId,
     cardRoundId: stored.cardRoundId,
+    seenCells: stored.seenCells ?? null,
   };
 }
 
