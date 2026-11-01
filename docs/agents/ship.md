@@ -36,8 +36,8 @@ row-level security** (Postgres 16 and `psql`), **Sync against a local Supabase s
      plugin — **dependency / native build**: say whether Expo Go still runs it or a development
      build is needed;
    - `src/app/` or `src/components/` — **accessibility**: maximum text size considered; the web
-     baselines (`npm run test:web:update`) and `.maestro/flows/` updated when labels or layout
-     changed;
+     baselines (`npm run test:web:update`, and `--update-snapshots=all` for a new control) and
+     `.maestro/flows/` updated when labels or layout changed;
    - `src/auth/`, the Supabase client, `EXPO_PUBLIC_` variables or `.env.op` — **security**;
    - what the app collects or sends, or account deletion — the `site/public/` pages and their
      dates updated in the same change;

@@ -4,7 +4,8 @@ import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { ModalHeader, Screen } from '../components/Screen';
-import { Body, Card, Eyebrow, Mono, Switch } from '../components/primitives';
+import { SiteLinks } from '../components/SiteLinks';
+import { Body, Card, ChevronRow, Eyebrow, Mono, Switch } from '../components/primitives';
 import { useStore } from '../store/AppStore';
 import { alpha } from '../theme/color';
 import { makeStyles, useTheme, useThemeSetting } from '../theme/theme';
@@ -204,17 +205,7 @@ export default function SettingsScreen() {
           { label: 'Set up an outing', href: '/new-outing' as const },
           { label: 'Join an outing by code', href: '/join' as const },
         ].map((item) => (
-          <Pressable
-            key={item.href}
-            accessibilityRole="button"
-            onPress={() => router.push(item.href)}
-            style={styles.link}
-          >
-            <Text style={styles.linkText}>{item.label}</Text>
-            <Mono size={11} style={{ color: ink.quiet }}>
-              ›
-            </Mono>
-          </Pressable>
+          <ChevronRow key={item.href} label={item.label} onPress={() => router.push(item.href)} />
         ))}
       </View>
 
@@ -269,6 +260,7 @@ export default function SettingsScreen() {
             v{Constants.expoConfig?.version ?? '1.0.0'} · {store.demoMode ? 'demo' : 'live'} dataset
           </Mono>
         </Card>
+        <SiteLinks />
       </View>
     </Screen>
   );
@@ -287,17 +279,6 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
       alignItems: 'center',
     },
     actionText: { fontFamily: fonts.sansSemi, fontSize: 13.5, color: ink.body },
-    link: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.cardDeep,
-      borderWidth: 1,
-      borderColor: line.card,
-      borderRadius: radius.card,
-      paddingVertical: 14,
-      paddingHorizontal: 15,
-    },
-    linkText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
     groupRow: {
       flexDirection: 'row',
       alignItems: 'center',

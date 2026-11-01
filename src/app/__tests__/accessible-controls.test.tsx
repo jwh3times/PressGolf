@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
-import { Alert, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Alert, Linking, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { AuthGate } from '../../auth/AuthGate';
 import { useAuth } from '../../auth/AuthProvider';
 import { SignInScreen } from '../../components/SignInScreen';
 import { buildDemoDataset } from '../../demo/seed';
@@ -1209,6 +1210,27 @@ describe('management screen state matrices', () => {
       expect(screen.queryByRole('button', { name: 'Delete account' })).not.toBeOnTheScreen();
       await view.unmount();
     }
+  });
+
+  it('links to the privacy policy and support page whatever the sign-in state', async () => {
+    const user = userEvent.setup();
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    const screens = [
+      ['signed-in', 'About'],
+      ['disabled', 'About'],
+      ['signed-out', 'Once you are in'],
+    ] as const;
+    for (const [status, showing] of screens) {
+      mockUseAuth.mockReturnValue({ ...mockUseAuth(), status });
+      const view = await render(<AuthGate><SettingsScreen /></AuthGate>);
+      expect(screen.getByText(showing)).toBeOnTheScreen();
+      await user.press(screen.getByRole('link', { name: 'Privacy policy' }));
+      expect(openURL).toHaveBeenLastCalledWith('https://pressgolf.cc/privacy/');
+      await user.press(screen.getByRole('link', { name: 'Support' }));
+      expect(openURL).toHaveBeenLastCalledWith('https://pressgolf.cc/');
+      await view.unmount();
+    }
+    openURL.mockRestore();
   });
 
   it('opens the bag from Settings', async () => {

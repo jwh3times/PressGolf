@@ -33,7 +33,7 @@ UI suite (Docker required):
 
 ```bash
 npm run test:web            # screenshots, accessibility tree and axe
-npm run test:web:update     # accept intended changes: rewrites the baselines
+npm run test:web:update     # accept intended changes: rewrites the baselines that fail
 ```
 
 `npm run sync:agents` rewrites the generated mirror; see
@@ -109,6 +109,10 @@ four static pages in `site/public/`, with no build step.
 | `https://pressgolf.cc/terms/` | Terms of use, which carry the notice Google's Maps terms require |
 | `https://pressgolf.cc/delete-account/` | How to delete an account, the URL Google Play's Data safety form asks for |
 
+The app links to the first two from Settings' About section and the sign-in screen
+(`src/components/SiteLinks.tsx`), so a phone keeps opening those URLs until its build
+is replaced.
+
 Cloudflare's Workers Builds deploys it on a push to `main`, not this repo's CI.
 The Worker is `pressgolf-site` (the `name` in `site/wrangler.jsonc` must match
 it), its root directory is `site`, its deploy command is `npx wrangler deploy`,
@@ -134,7 +138,10 @@ tapping through the app, as a user would. On each screen it checks three things:
    exactly: there is no per-pixel tolerance, so even a one-step change to a
    colour token fails.
 2. **Accessibility tree.** It must match `<screen>.aria.yml`: every role, name
-   and state, as a screen reader reads it.
+   and state, as a screen reader reads it. Playwright lets extra elements through,
+   so a new control passes without being recorded, and plain `--update-snapshots`
+   leaves that baseline alone. Record it with
+   `node scripts/test-web.mjs --update-snapshots=all -g "<test>"`.
 3. **axe.** It finds no WCAG 2.1 A or AA violation, such as a missing name, an
    invalid role or poor colour contrast.
 
@@ -176,8 +183,9 @@ together.
 
 When a change to a screen is intended, run `npm run test:web:update`, review
 the changed PNG and `.aria.yml` files in the diff, and commit them with the
-change. On failure, CI uploads a `playwright-report` artifact with the expected,
-actual and diff images and a trace.
+change. A new control needs `--update-snapshots=all`, as check 2 above says. On
+failure, CI uploads a `playwright-report` artifact with the expected, actual and
+diff images and a trace.
 
 Limits:
 
