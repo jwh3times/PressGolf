@@ -499,8 +499,9 @@ When the two Supabase public variables are present and a user is signed in,
    junk as it last merged them, saved in one blob with its documents so that a phone
    killed mid-save can't have one without the other, and kept compact since that blob
    is read whole. A box still as it was seen isn't sent, a junk claim someone has since
-   removed doesn't come back, and they arrive with the next merge. On its own round it doesn't prune a score or junk row it never saw,
-   as when a guest who deleted their account left them to the organiser. With no record
+   removed doesn't come back, and they arrive with the next merge. On its own round it
+   doesn't prune a score or junk row it never saw, as when a guest who deleted their
+   account left them to the organiser. With no record
    of a box, as the first time a phone gets here, a blank doesn't go up over a score
    and a typed score does. If both sides changed a box, this phone's wins.
 3. Later local changes are debounced for 2.5 seconds, persisted locally first,
