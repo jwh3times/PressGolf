@@ -558,8 +558,9 @@ The server side has two parts, and the app reaches them only through the first:
   the service role may execute. Scores and junk the account typed on someone
   else's round become that round's owner's, so the day's money still adds up. It
   leaves [move notices](#move-notices) for the guests of any outing the account
-  organised, and for anyone with rows that stay on its groups or courses. Those
-  rows move to [a copy of that person's own](#a-guests-own-rows). Then it deletes
+  organised, for anyone with rows that stay on its groups or courses, and for anyone
+  else in an outing on them. Those rows move to
+  [a copy of that person's own](#a-guests-own-rows). Then it deletes
   every row the account owns, every round in those outings whoever owns it, and
   its memberships, edit-log entries and notices, in one transaction. Cascades take
   guests' cells, memberships and edit-log entries on those outings. It finds the
@@ -598,8 +599,8 @@ catalog and fails until it has one.
 
 **A guest can delete their account.** A membership in someone else's outing
 doesn't stop it, and the outing no longer lists them. A round or outing of their
-own on someone else's group or course goes with them, since that takes nothing of
-anyone else's.
+own on someone else's group or course goes with them, and that group or course stays
+its owner's.
 
 **An organiser can delete their account.** The whole day leaves the server, under
 every account, and each guest keeps the copy on their phone.

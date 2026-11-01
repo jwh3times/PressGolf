@@ -133,7 +133,9 @@ pass.
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)). A guest's
   phone on an older build doesn't know to keep that copy to itself, and can be left
-  with a sync error.
+  with a sync error. So can a fresh install of a guest with a round of their own on
+  a group someone else owns, after an organiser leaves an outing on that group,
+  until the phone holding that round pushes it.
 - A score or junk claim an organiser clears on a shared round comes back if the
   app closes before it's pushed. First contact can't tell it from one a guest
   typed that the phone hasn't seen.
