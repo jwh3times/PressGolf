@@ -4,5 +4,5 @@
 
 none — no `v*` tags, no GitHub Releases and no `CHANGELOG.md`; the PR body is the change record.
 The store version is `expo.version` in `app.json`, changed by hand as release prep
-(`docs/agents/dev-flow.md` § Exemptions); EAS assigns build numbers remotely (`eas.json`:
+(`docs/agents/dev-flow.md` § Exemption details); EAS assigns build numbers remotely (`eas.json`:
 `appVersionSource: "remote"`, `autoIncrement: true`).
