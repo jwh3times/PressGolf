@@ -22,6 +22,11 @@ substitute for assistive-technology use on both platforms.
   text wraps. It hasn't been tried yet with VoiceOver or TalkBack
   or at the largest text size on a phone
   ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
+- Privacy policy and Support are links on Settings and the sign-in screen, named
+  without their chevron. The web suite only reaches them on Settings, since it
+  runs signed in; a Jest test covers both screens. They haven't been tried yet
+  with VoiceOver or TalkBack or at the largest text size on a phone
+  ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
 - A control's name contains the words it shows, in order (WCAG 2.5.3, Label
   in Name), so a voice-control user can say what they see. axe enforces this
   from 4.14 (October 2026). Chips that show initials say them after the name

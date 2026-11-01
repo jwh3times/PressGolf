@@ -575,6 +575,30 @@ export function Divider({ style }: { style?: ViewStyle }) {
   return <View style={[{ height: 1, backgroundColor: line.bright }, style]} />;
 }
 
+/** A row that goes somewhere: its name, and a chevron. */
+export function ChevronRow({
+  label,
+  onPress,
+  role = 'button',
+  accessibilityLabel,
+}: {
+  label: string;
+  onPress: () => void;
+  role?: 'button' | 'link';
+  accessibilityLabel?: string;
+}) {
+  const styles = useStyles();
+  const { ink } = useTheme();
+  return (
+    <Pressable accessibilityRole={role} accessibilityLabel={accessibilityLabel} onPress={onPress} style={styles.chevronRow}>
+      <Text style={styles.chevronRowText}>{label}</Text>
+      <Mono size={11} style={{ color: ink.quiet }}>
+        ›
+      </Mono>
+    </Pressable>
+  );
+}
+
 /** Centred placeholder for "nothing here yet" states. */
 export function EmptyState({
   title,
@@ -598,8 +622,19 @@ export function EmptyState({
   );
 }
 
-const useStyles = makeStyles(({ line }) =>
+const useStyles = makeStyles(({ colors, ink, line }) =>
   StyleSheet.create({
+    chevronRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.cardDeep,
+      borderWidth: 1,
+      borderColor: line.card,
+      borderRadius: radius.card,
+      paddingVertical: 14,
+      paddingHorizontal: 15,
+    },
+    chevronRowText: { flex: 1, fontFamily: fonts.sans, fontSize: 14, color: ink.full },
     empty: {
       borderWidth: 1,
       borderStyle: 'dashed',

@@ -33,7 +33,7 @@ UI suite (Docker required):
 
 ```bash
 npm run test:web            # screenshots, accessibility tree and axe
-npm run test:web:update     # accept intended changes: rewrites the baselines
+npm run test:web:update     # accept intended changes: rewrites the baselines that fail
 ```
 
 `npm run sync:agents` rewrites the generated mirror; see
@@ -183,7 +183,7 @@ together.
 
 When a change to a screen is intended, run `npm run test:web:update`, review
 the changed PNG and `.aria.yml` files in the diff, and commit them with the
-change. On failure, CI uploads a `playwright-report` artifact with the expected,
+change. A new control needs `--update-snapshots=all`, as check 2 above says. On failure, CI uploads a `playwright-report` artifact with the expected,
 actual and diff images and a trace.
 
 Limits:
