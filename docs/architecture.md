@@ -655,21 +655,28 @@ guest's copy, and a round in it follows, whoever owns the round. The third accou
 gets notices of its own, which have nothing to do with the guest's ids, and a copy
 only if rows of its own stay. Its phone can't work out the guest's ids from those, so
 when notices would change anything it pulls the shared outings first
-(`followMoveNotices`). The server's copy of that day replaces the phone's, and the
-notices apply to the rest. An edit to that card that hadn't gone up is lost, which
-needs an organiser deleting while a third phone holds unsent cells on that one card.
+(`followMoveNotices`). It applies the notices, and then, for a day where it and the
+server now disagree about the group or course, the server's copy replaces its own. An
+edit to that card that hadn't gone up is lost, which needs an organiser deleting while
+a third phone holds unsent cells on that one card. Every other day keeps what's on the
+phone, and the guest's own card keeps its unsent scores. Since every id it last pushed
+has moved, that push goes through first contact, which won't send a blank over a score
+the phone hasn't seen.
 
 **An organiser's outing on someone else's group or course goes with them.** Its guests
 keep a detached copy, and notices move that group and course on their phones as well,
 apart from for whoever owns them. Those notices stay, and the guest may hold the same
 group again through a later outing, so `followMoveNotices` leaves anything the shared
 pull still shows, with its players and tees. A guest's own round on that group stays
-on the server under the old id until their phone next pushes it under the new one.
+on the server under the old id until their phone next pushes it under the new one. A
+fresh install before that adopts a round it can't push: nothing can read that group,
+so its sync stays in error until the phone holding it pushes first.
 
 **Rows from older builds.** The policies refuse these now. A row of the departing
 account's under someone else's round, outing, group or course becomes theirs, like a
-score on their card, so a press or a hole note outlives it. Its own round in someone
-else's outing goes with it. A row of someone else's under the departing account's
+score on their card, so a press or a hole note outlives it, until their phone, which
+never held it, prunes it at first contact. Its own round in someone else's outing goes
+with it. A row of someone else's under the departing account's
 group or course goes in their copy if they get one, and with the parent if they don't.
 
 On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import type { Outing, Round } from '../../domain/types';
 import { mergeShared } from '../merge-shared';
-import { applyMoveNotices, followMoveNotices } from '../move-notices';
+import { applyMoveNotices, followMoveNotices, keepingPhoneOnly } from '../move-notices';
 import { pullMoveNotices, pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 import { TABLES, fromRows, toRows, type Documents, type Snapshot } from '../rows';
 import {
@@ -150,12 +150,23 @@ type Side = { phone: Documents; own: Snapshot; lastPull: Snapshot };
 async function syncOnce(side: Side): Promise<Side> {
   const notices = await pullMoveNotices();
   let held = side.phone;
-  let shared = side.lastPull;
   if (applyMoveNotices(held, notices) !== held) {
-    shared = await pullSharedOutings();
-    ({ held } = followMoveNotices(held, notices, fromRows(shared)));
+    ({ held } = followMoveNotices(held, notices, fromRows(await pullSharedOutings())));
   }
-  const own = await pushChanges(toRows(held), side.own, shared);
+  let own: Snapshot;
+  if (held === side.phone) {
+    own = await pushChanges(toRows(held), side.own, side.lastPull);
+  } else {
+    // Every id moved, so what it last pushed says nothing: as first contact.
+    const local = toRows(held);
+    const contact = await reconcile(local);
+    if (contact.status === 'adopted-remote') {
+      held = keepingPhoneOnly(held, fromRows(contact.snapshot));
+      own = contact.snapshot;
+    } else {
+      own = contact.status === 'pushed' ? contact.own : local;
+    }
+  }
   const lastPull = await pullSharedOutings();
   return { phone: mergeShared(held, fromRows(lastPull)), own, lastPull };
 }
@@ -519,9 +530,34 @@ describe('a third account in a guest\'s outing on a deleted organiser\'s group',
     for (const group of season.groups) expect(now.phone.groups.map((g) => g.id)).toContain(group.id);
     for (const round of season.rounds) expect(now.phone.rounds.find((r) => r.id === round.id)?.groupId).toBe(round.groupId);
 
-    await signInAs(ben);
-    await expect(reconcile(toRows(applyMoveNotices(bens.side.phone, await pullMoveNotices())))).resolves.toMatchObject({ status: 'pushed' });
     expect(await dayLeft(dayOf(outing, [day]))).toBe(0);
+  });
+
+  it("keeps the guest who hosts it syncing, with one copy of the group, their unsent score, and the score their phone hadn't seen", async () => {
+    const { ann, ben, bens, calSide, scorer } = await thirdAccount('hosting');
+    expect(calSide.phone.rounds.find((r) => r.id === bens.round.id)!.scores[scorer]).toEqual([7, 8, 6, 3]);
+    // Ben's phone still has the box Cal typed in as blank, and a score of Ben's that hasn't gone up.
+    const other = bens.round.playerIds[1];
+    const offline = { ...bens.round, scores: { ...bens.round.scores, [other]: [5, 6, 9] } };
+    await signInAs(ben);
+    await deleteFromAnotherPhone(ann);
+
+    let now: Side = { ...bens.side, phone: { ...bens.side.phone, rounds: bens.side.phone.rounds.map((r) => (r.id === offline.id ? offline : r)) } };
+    for (let i = 0; i < 3; i += 1) now = await syncOnce(now);
+    await expect(reconcile(toRows(now.phone))).resolves.toMatchObject({ status: 'pushed' });
+
+    const ids = (items: { id: string }[]) => items.map((item) => item.id);
+    expect(new Set(ids(now.phone.groups)).size).toBe(now.phone.groups.length);
+    expect(new Set(ids(now.phone.courses)).size).toBe(now.phone.courses.length);
+
+    const card = now.phone.rounds.find((r) => r.id === bens.round.id)!;
+    const cell = async (index: number, hole: number) =>
+      (await admin.from('scores').select('strokes').match({ round_id: card.id, player_id: card.playerIds[index], hole }).single()).data;
+    expect(await cell(1, 2)).toEqual({ strokes: 9 });
+    expect(await cell(3, 2)).toEqual({ strokes: 6 });
+    expect(await cell(3, 3)).toEqual({ strokes: 3 });
+    expect(card.scores[card.playerIds[1]]).toEqual([5, 6, 9]);
+    expect(card.scores[card.playerIds[3]]).toEqual([7, 8, 6, 3]);
   });
 
   it("leaves a third account's copy alone when it needs none, and its notices are its own", async () => {

@@ -299,6 +299,32 @@ describe('following notices, with the shared pull in hand', () => {
     rounds: [{ ...round, id: 'r-theirs', outingId: 'theirs', scores: { p1: [99] } }, mine],
   };
 
+  it("keeps its own day when the server has it on the same ids, with one copy of the group and any unsent score", () => {
+    const own: Outing = { ...sharedOuting, groupId: 'G1', courseId: 'C1' };
+    const onCopy: Documents = {
+      ...shared,
+      groups: [{ ...group, id: 'G1', players: [] }],
+      courses: [{ ...course, id: 'C1', tees: [] }],
+      outings: [own],
+      rounds: [{ ...sharedRound, groupId: 'G1', courseId: 'C1' }],
+    };
+    const { held: after } = followMoveNotices(phone, noticesLessOuting, onCopy);
+    expect(after.groups.filter((g) => g.id === 'G1')).toHaveLength(1);
+    expect(after.courses.filter((c) => c.id === 'C1')).toHaveLength(1);
+    expect(after.rounds.find((r) => r.id === 'r-theirs')?.scores).toEqual({ P1: [99] });
+  });
+
+  it("leaves a day it shares that has nothing to do with what moved, unsent scores and all", () => {
+    const elsewhere: Outing = { ...sharedOuting, id: 'elsewhere', groupId: 'other', courseId: 'other', field: [], roundIds: ['r-elsewhere'] };
+    const unsent: Round = { ...sharedRound, id: 'r-elsewhere', outingId: 'elsewhere', groupId: 'other', courseId: 'other', playerIds: [], scores: { someone: [99] } };
+    const { held: after } = followMoveNotices(
+      { ...phone, outings: [...phone.outings, elsewhere], rounds: [...phone.rounds, unsent] },
+      noticesLessOuting,
+      { ...shared, outings: [...shared.outings, elsewhere], rounds: [...shared.rounds, { ...unsent, scores: {} }] },
+    );
+    expect(after.rounds.find((r) => r.id === 'r-elsewhere')?.scores).toEqual({ someone: [99] });
+  });
+
   it("takes the server's copy of a day it still shares, rather than rewriting its own", () => {
     const { held: after } = followMoveNotices(phone, noticesLessOuting, shared);
     expect(after.outings).toEqual([sharedOuting]);

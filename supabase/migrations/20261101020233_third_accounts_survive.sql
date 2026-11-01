@@ -59,7 +59,7 @@ begin
   end if;
 
   -- A guest joining takes a lock on the outing row, so nobody can join between
-  -- the check below and the deletes. A new round or outing takes one on its group
+  -- working out who holds what and the deletes. A new round or outing takes one on its group
   -- and course, so it waits here too, and is refused once they've gone. Its phone
   -- then reads its notices before it next pushes.
   perform 1 from groups where owner_id = target for update;

@@ -367,32 +367,39 @@ describe('move notices, after an organiser deletes their account', () => {
     mockPullNotices.mockResolvedValue(gone);
     await view.rerender({ ...input, documents: { ...documents, clubs: [] } });
     await advancePush();
-    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockReconcile).toHaveBeenCalledTimes(2));
 
+    expect(mockPush).not.toHaveBeenCalled();
     expect(input.onMoveNotices).toHaveBeenCalledWith(gone, expect.anything());
-    expect(sent(mockPush.mock.calls[0][0])).toEqual({ outings: [], dayRounds: 0 });
+    expect(sent(mockReconcile.mock.calls[1][0])).toEqual({ outings: [], dayRounds: 0 });
     await waitFor(() => expect(view.result.current.status).toBe('synced'));
     // The merge after it starts from the moved documents, whether or not the store has rendered them.
     expect(mockMergeShared.mock.calls.at(-1)?.[0].outings[0].detached).toBe(true);
   });
 
-  it('takes the shared pull first when they change something, and pushes by it', async () => {
+  it('reads the shared pull first when they change something, and goes through first contact, since every id it pushed has moved', async () => {
     const input = options();
     const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
     await waitFor(() => expect(view.result.current.status).toBe('synced'));
-    const pulled = toRows({ ...documents, groups: [], courses: [], rounds: [], outings: [] });
     mockPullShared.mockClear();
-    mockPullShared.mockResolvedValue(pulled);
 
     mockPullNotices.mockResolvedValue(gone);
     await view.rerender({ ...input, documents: { ...documents, clubs: [] } });
     await advancePush();
-    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockReconcile).toHaveBeenCalledTimes(2));
 
     expect(mockPullNotices.mock.invocationCallOrder.at(-1)).toBeLessThan(mockPullShared.mock.invocationCallOrder[0]);
-    expect(mockPullShared.mock.invocationCallOrder[0]).toBeLessThan(mockPush.mock.invocationCallOrder[0]);
-    expect(mockPush.mock.calls[0][2]).toBe(pulled);
+    expect(mockPullShared.mock.invocationCallOrder[0]).toBeLessThan(mockReconcile.mock.invocationCallOrder[1]);
+    expect(mockPush).not.toHaveBeenCalled();
     expect(input.onMoveNotices).toHaveBeenCalledWith(gone, expect.objectContaining({ outings: [] }));
+    await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+    // Moved now, so the next change is an ordinary push.
+    mockPullNotices.mockResolvedValue([]);
+    await view.rerender({ ...input, documents: { ...documents, clubs: [], groups: [...documents.groups] } });
+    await advancePush();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+    expect(mockReconcile).toHaveBeenCalledTimes(2);
   });
 
   it("doesn't pull anything extra when they change nothing here", async () => {
