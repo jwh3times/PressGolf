@@ -183,8 +183,9 @@ together.
 
 When a change to a screen is intended, run `npm run test:web:update`, review
 the changed PNG and `.aria.yml` files in the diff, and commit them with the
-change. A new control needs `--update-snapshots=all`, as check 2 above says. On failure, CI uploads a `playwright-report` artifact with the expected,
-actual and diff images and a trace.
+change. A new control needs `--update-snapshots=all`, as check 2 above says. On
+failure, CI uploads a `playwright-report` artifact with the expected, actual and
+diff images and a trace.
 
 Limits:
 
