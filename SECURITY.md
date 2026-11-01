@@ -42,6 +42,8 @@ maintain parallel release branches yet.
   the integration suite checks that a signed-in or anonymous call is refused.
 - The move notices that function leaves a guest hold opaque ids and no personal
   data. An account reads only its own, and nothing can write one from the client.
+  Where a guest's own rows stay on the departed account's group, their copy of it
+  holds only the players they could already read or that those rows name.
 - Every new row must name an account that exists, through foreign keys to
   `auth.users`, so a deleted account's token, which stays valid for up to an hour,
   can't write. The same keys stop an auth user being deleted while they still have

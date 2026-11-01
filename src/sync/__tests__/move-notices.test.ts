@@ -179,14 +179,23 @@ describe('applying move notices', () => {
     expect(after.courses[0].id).toBe('g1');
   });
 
-  it("moves the stand-in tee of a course that came with none, so two guests' copies can't collide", () => {
-    const bare = { ...course, tees: [{ ...course.tees[0], id: 'c1_default' }] };
+  it("gives a player or tee the phone holds on a moved group or course an id of this guest's own, with no notice for it", () => {
     const after = applyMoveNotices(
-      { ...held, courses: [bare], rounds: [{ ...round, teeId: 'c1_default', playerTees: {}, handicapTees: {} }] },
-      [{ kind: 'course', from_id: 'c1', to_id: 'C1' }],
+      {
+        ...held,
+        groups: [{ ...group, players: [...group.players, { ...group.players[0], id: 'removed' }] }],
+        courses: [{ ...course, tees: [...course.tees, { ...course.tees[0], id: 'c1_default' }] }],
+        rounds: [{ ...round, playerIds: [...round.playerIds, 'removed'], teeId: 'c1_default', playerTees: {}, handicapTees: {} }],
+      },
+      notices,
     );
-    expect(after.courses[0].tees[0].id).toBe('C1_default');
-    expect(after.rounds[0].teeId).toBe('C1_default');
+    const player = after.groups[0].players[after.groups[0].players.length - 1].id;
+    const tee = after.courses[0].tees[after.courses[0].tees.length - 1].id;
+    expect(player).toBe('G1:removed');
+    expect(tee).toBe('C1:c1_default');
+    expect(after.rounds[0].playerIds).toContain(player);
+    expect(after.rounds[0].teeId).toBe(tee);
+    expect(applyMoveNotices(after, notices)).toBe(after);
   });
 
   it('leaves a null tee, you and default course null', () => {
@@ -232,6 +241,15 @@ describe('what goes to the server', () => {
     // The day itself still stays.
     expect(rows.rounds.map((r) => r.id)).not.toContain('r1');
     expect(rows.outings).toEqual([]);
+  });
+
+  it('keeps an outing of its own syncing, on the moved group and course', () => {
+    const own: Outing = { ...held.outings[0], id: 'own', roundIds: [] };
+    const after = applyMoveNotices({ ...held, outings: [...held.outings, own] }, notices);
+    const kept = after.outings.find((o) => o.id === 'own')!;
+    expect(kept.detached).toBeUndefined();
+    expect(kept).toMatchObject({ groupId: 'G1', courseId: 'C1' });
+    expect(toRows(after).outings.map((o) => o.id)).toEqual(['own']);
   });
 
   it('sends them up for an outing of its own too', () => {

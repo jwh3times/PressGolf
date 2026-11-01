@@ -265,7 +265,9 @@ Supabase refuses to delete a user who still has rows. Run step 1 again.
 
 For an organiser, step 1 also takes every outing they organised off the server,
 with everyone's rounds and scores in it, and leaves the guests their
-[move notices](architecture.md#move-notices). It can't be undone.
+[move notices](architecture.md#move-notices). Anyone with a round or outing of
+their own on the account's group or course keeps it, on
+[a copy of their own](architecture.md#a-guests-own-rows). It can't be undone.
 
 Step 1 raises `This account shares data with another account` for the accounts
 listed in [Deleting an account](architecture.md#deleting-an-account). Nothing has

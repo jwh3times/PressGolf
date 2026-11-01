@@ -18,4 +18,4 @@ Of an outing on a guest's phone: its organiser deleted their account, so it's go
 _Avoid_: orphaned, archived
 
 **Move notice**:
-What an organiser's deletion leaves a guest: an outing that has gone, or a new id for a group, player, course or tee they hold.
+What an organiser's deletion leaves a guest: an outing that has gone, or a new id for a group, player, course or tee they hold. Where the guest's own rows stay on that group or course, the server has a copy under the same new id.
