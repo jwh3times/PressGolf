@@ -127,9 +127,10 @@ pass.
 - An account can delete itself from Settings unless another account depends on
   it. A guest can leave, and the organiser keeps the scores they typed. An
   organiser can leave too: the day goes from the server, and each guest keeps a
-  copy on their phone that no longer syncs. One that others depend on, such as the
-  owner of a group or course a guest has a round of their own on, is refused with
-  nothing deleted, and uses the email request until
+  copy on their phone that no longer syncs. A guest's own rounds and outings on the
+  organiser's group or course move to a copy of their own and keep syncing. One
+  that others depend on, such as the owner of a group a guest's outing with a third
+  account is on, is refused with nothing deleted, and uses the email request until
   [#206](https://github.com/jwh3times/PressGolf/issues/206) finishes. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)). A guest's

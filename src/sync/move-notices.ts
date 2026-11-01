@@ -7,7 +7,9 @@
  * refused for good. So the clean-up leaves each guest move notices, and this
  * applies them: the day is kept here and marked detached, and the group and
  * course it was on move to ids of this guest's own, marked as only on this phone.
- * `toRows` leaves out whatever those marks say the server shouldn't have.
+ * `toRows` leaves out whatever those marks say the server shouldn't have. A round
+ * or outing of the guest's own stays, and the server has already moved it to the
+ * same new ids, on a copy of the group and course.
  *
  * Kept pure, like `merge-shared`, and safe to apply again: notices stay on the
  * server, and once applied they match nothing this phone holds.
@@ -43,9 +45,6 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
   const players = movesOf(notices, 'player');
   const courses = movesOf(notices, 'course');
   const tees = movesOf(notices, 'tee');
-  // A course the server had no tees for reads back with a stand-in. Its id is
-  // built from the course's, so it would be the same on every guest's copy.
-  for (const [from, to] of courses) tees.set(`${from}_default`, `${to}_default`);
   const gone = new Set(notices.filter((n) => n.kind === 'outing').map((n) => n.from_id));
 
   // Set by anything below that finds an id to move, so what doesn't change stays the same object.

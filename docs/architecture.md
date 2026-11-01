@@ -558,11 +558,14 @@ The server side has two parts, and the app reaches them only through the first:
   the service role may execute. Scores and junk the account typed on someone
   else's round become that round's owner's, so the day's money still adds up. It
   leaves [move notices](#move-notices) for the guests of any outing the account
-  organised. Then it deletes every row the account owns, every round in those
-  outings whoever owns it, and its memberships, edit-log entries and notices, in
-  one transaction. Cascades take guests' cells, memberships and edit-log entries
-  on those outings. It finds the tables from the catalog, so a new table with an
-  `owner_id` is covered without changing it.
+  organised, and for anyone with rows that stay on its groups or courses. Those
+  rows move to [a copy of that person's own](#a-guests-own-rows). Then it deletes
+  every row the account owns, every round in those outings whoever owns it, and
+  its memberships, edit-log entries and notices, in one transaction. Cascades take
+  guests' cells, memberships and edit-log entries on those outings. It finds the
+  tables from the catalog, so a new table with an `owner_id` is covered without
+  changing it. The columns naming a moved id are a list, in the function and in
+  `applyMoveNotices`: a new one has to go in both.
 
 Calling again is safe. If `deleteUser` fails after the clean-up committed, the
 next call finds nothing to clean and retries it. If the account has already gone
@@ -623,17 +626,33 @@ what only the phone has (`keepingPhoneOnly`). The Outing screen shows a notice o
 detached outing and hides sharing. A guest's phone on an older build ignores notices
 and can hit the upload problem above.
 
+<a id="a-guests-own-rows"></a>**A guest's own rows stay.** A round or outing of
+theirs on the departed account's group or course moves to a copy of that group or
+course, under the ids in their notices, and carries on syncing to their other devices
+and to a reinstall. Only someone with such rows gets a copy, and each gets their
+own. A group's copy holds only the players they could already read or that their
+rows name, so the rest of the roster goes with the account. A course's has its tees,
+tee holes, greens, features and hole notes. The clean-up then rewrites every column
+naming a moved id, as `applyMoveNotices` does on the phone, so the two agree. Each
+copied row is the original with its ids and owner swapped, so a column added later
+comes too.
+
+A phone that applied the notices may hold a copy the server doesn't have, or the
+other way round. `toRows` settles it either way: a phone-only group or course goes
+up once a real round uses it, and the push prunes it again when that round goes.
+
 **Accounts that others depend on are refused for now.** The clean-up raises
 `PR001`, with nothing deleted, for an organiser with a guest in an outing on someone
 else's group or course: a notice stays, so it would keep moving a group or course
-the guest may hold again through another outing. It also refuses another account's
-rows hanging from the account's group or course, apart from a round in its own
-outing. And it refuses an account with any other row of its own under someone
-else's day, beyond the cells above. The policies refuse those now, so any that
-exist are older, and removing them would change that person's day. Removing any of
-these would take someone else's data with them. The app explains and points to
-the email request. Later tickets of
-[#206](https://github.com/jwh3times/PressGolf/issues/206) lift this case by case.
+the guest may hold again through another outing. It also refuses when someone else's
+outing on the account's group or course has a third account in it, or a round of
+one, and when another account has any other row hanging from that group or course.
+And it refuses an account with any other row of its own under someone else's day,
+beyond the cells above. The policies refuse those now, so any that exist are older,
+and removing them would change that person's day. Removing any of these would take
+someone else's data with them. The app explains and points to the email request.
+A later ticket of [#206](https://github.com/jwh3times/PressGolf/issues/206) lifts
+this.
 
 On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
 push in flight (`settle` from `useDataSync`), then calls the server. On failure

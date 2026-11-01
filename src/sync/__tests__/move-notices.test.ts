@@ -179,16 +179,6 @@ describe('applying move notices', () => {
     expect(after.courses[0].id).toBe('g1');
   });
 
-  it("moves the stand-in tee of a course that came with none, so two guests' copies can't collide", () => {
-    const bare = { ...course, tees: [{ ...course.tees[0], id: 'c1_default' }] };
-    const after = applyMoveNotices(
-      { ...held, courses: [bare], rounds: [{ ...round, teeId: 'c1_default', playerTees: {}, handicapTees: {} }] },
-      [{ kind: 'course', from_id: 'c1', to_id: 'C1' }],
-    );
-    expect(after.courses[0].tees[0].id).toBe('C1_default');
-    expect(after.rounds[0].teeId).toBe('C1_default');
-  });
-
   it('leaves a null tee, you and default course null', () => {
     const after = applyMoveNotices(
       {
@@ -232,6 +222,15 @@ describe('what goes to the server', () => {
     // The day itself still stays.
     expect(rows.rounds.map((r) => r.id)).not.toContain('r1');
     expect(rows.outings).toEqual([]);
+  });
+
+  it('keeps an outing of its own syncing, on the moved group and course', () => {
+    const own: Outing = { ...held.outings[0], id: 'own', roundIds: [] };
+    const after = applyMoveNotices({ ...held, outings: [...held.outings, own] }, notices);
+    const kept = after.outings.find((o) => o.id === 'own')!;
+    expect(kept.detached).toBeUndefined();
+    expect(kept).toMatchObject({ groupId: 'G1', courseId: 'C1' });
+    expect(toRows(after).outings.map((o) => o.id)).toEqual(['own']);
   });
 
   it('sends them up for an outing of its own too', () => {
