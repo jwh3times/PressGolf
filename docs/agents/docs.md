@@ -62,6 +62,8 @@
   `jwh3times/skills`: `frozen` here. **When:** a skill is added, removed or replaced:
   `AGENTS.md` § Agent skills.
 - `LICENSE` — `owner-only`.
+- `THIRD_PARTY_NOTICES.md` — the license notices of third-party files kept here. `owner-only`: report
+  the change when a skill's source changes.
 
 **Never in public docs:** secrets, service-role keys, database passwords, tokens or resolved
 1Password values; the Supabase project ref; unpatched vulnerability or data-isolation detail;
