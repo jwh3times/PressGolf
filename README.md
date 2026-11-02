@@ -89,12 +89,13 @@ Supabase configuration, Press remains a fully usable single-device app.
 
 ## Current validation
 
+On 2026-11-02, `npm run test:coverage` passed 45 Jest suites and 947 tests,
+including property-based settlement checks. Repository coverage was 95.95%
+statements, 91.57% branches, 93.2% functions, and 96.73% lines; enforced
+thresholds live in `package.json`.
+
 As of October 2026:
 
-- 25 Jest suites and 386 tests pass, including property-based settlement
-  checks. Repository coverage is 94.14% statements, 91.36% branches,
-  89.48% functions, and 95.14% lines; enforced thresholds live in
-  `package.json`.
 - Every pull request checks each main screen of the web build against committed
   screenshots and accessibility trees, at phone width and 320 px, and runs axe
   (WCAG 2.1 A and AA).

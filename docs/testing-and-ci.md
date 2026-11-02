@@ -52,6 +52,13 @@ CI-equivalent suite and enforces the global thresholds in `package.json`:
 On pull requests, `scripts/check-patch-coverage.mjs` also requires at least 90%
 line coverage on executable lines added or changed relative to the merge base.
 That prevents a well-tested legacy codebase from hiding untested new behavior.
+The script diffs `origin/main...HEAD`, so it can't see uncommitted changes: run
+before a commit, it reports the previous commit's lines against current coverage.
+To run it locally, commit first:
+
+```bash
+npm run test:coverage && node scripts/check-patch-coverage.mjs origin/main 90
+```
 
 `src/domain/__tests__/properties.test.ts` checks settlement invariants over
 generated rounds and outings rather than worked examples. The generators in
@@ -376,8 +383,15 @@ The active `Protect main` ruleset applies to the default branch. It:
 
 - requires pull requests and resolved review threads;
 - requires the six PR checks above against the latest `main`;
+- allows merge commits only (`allowed_merge_methods: ["merge"]`);
+- requires extra approval for unattributed changes
+  (`require_extra_approval_for_unattributed_changes: true`);
 - blocks force pushes and branch deletion; and
 - blocks merge on CodeQL errors or high-or-higher security alerts.
+
+Because of the extra approval, `gh pr merge` can refuse a clean PR whose required
+checks have all passed, with "the base branch policy prohibits the merge". A PR
+refused this way is merged in the GitHub web interface.
 
 GitHub secret scanning and push protection are enabled. Dependabot checks npm
 and GitHub Actions daily at 05:00 America/New_York. Workflow actions are pinned
