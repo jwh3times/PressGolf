@@ -84,8 +84,9 @@ configuration.
 
 Describe the user-visible outcome, the tests run, and any platform or hardware
 validation. Call out schema, security, accessibility, or native-build impact
-explicitly. The protected `main` ruleset requires a pull request, current green
-checks, and resolved review threads.
+explicitly. [Repository protections](docs/testing-and-ci.md#repository-protections)
+lists what the protected `main` ruleset requires, and what to do when it refuses
+a merge with every check green.
 
 Report security vulnerabilities privately as described in
 [SECURITY.md](SECURITY.md), not in a public issue.
