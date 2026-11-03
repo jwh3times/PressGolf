@@ -72,6 +72,8 @@ edited by hand.
 - [Accessibility](docs/accessibility.md) — automated guarantees, iOS validation,
   the manual regression pass, and the open Android follow-up.
 - [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
+- [Changelog](CHANGELOG.md) — what each release changed, from `1.0.0`;
+  [releases](docs/agents/releases.md) says how one is cut and tagged.
 - [Agent guide](AGENTS.md) — the rules Claude Code and Codex follow here, the
   development flow, and the agent skills and their settings in `docs/agents/`.
 - [pressgolf.cc](https://pressgolf.cc) — support, privacy policy, terms and

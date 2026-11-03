@@ -14,6 +14,8 @@ Closes #
 - [ ] `npm run typecheck`
 - [ ] `npm run lint`
 - [ ] `npx expo-doctor` when dependencies or app configuration changed
+- [ ] `CHANGELOG.md` `Unreleased` has this change's entries, when it touches `src/`, `site/`,
+      `supabase/migrations/` or `supabase/functions/`
 
 ## Impact review
 

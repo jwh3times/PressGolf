@@ -54,6 +54,8 @@
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
   pressgolf.cc. **When:** what the app collects, where data goes, or how an account is deleted
   changes — update the page and the date at its top in the same change.
+- `CHANGELOG.md` — release notes, Keep a Changelog and SemVer: `Unreleased` collects each change,
+  and a release PR cuts a dated section (`docs/agents/releases.md`). `ship-owned`.
 - `CONTEXT.md` — the domain glossary, kept by `/domain-modeling`. `docs/adr/*.md` — created lazily
   by `/domain-modeling`; none exist yet. An accepted ADR is `frozen`: report a contradiction instead
   of editing it.
