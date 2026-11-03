@@ -82,8 +82,14 @@ export interface OutingGroupDraft {
 export interface AppStore extends AppState {
   /** Where this phone's data stands with the server. Never blocks an edit. */
   sync: SyncState;
-  // Derived — the active round (one foursome)
+  // Derived — the active group, and the active round (one foursome)
   group: Group | null;
+  /**
+   * The group the active round belongs to: its players and its "you". Not
+   * always the active group: switching groups leaves a round in progress open,
+   * and it still scores and settles with its own players.
+   */
+  roundGroup: Group | null;
   course: Course | null;
   round: Round | null;
   settlement: Settlement | null;
@@ -419,14 +425,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       state.rounds.find((r) => r.id === state.cardRoundId) ??
       state.rounds.find((r) => r.id === state.activeRoundId) ??
       null;
+    const roundGroup = round ? state.groups.find((g) => g.id === round.groupId) ?? group : null;
     const course = round ? state.courses.find((c) => c.id === round.courseId) ?? null : null;
     const outing = state.outings.find((o) => o.id === state.activeOutingId) ?? null;
     const outingCourse = outing ? state.courses.find((c) => c.id === outing.courseId) ?? null : null;
     const outingGroup = outing ? state.groups.find((g) => g.id === outing.groupId) ?? null : null;
 
     let settlement: Settlement | null = null;
-    if (round && course && group) {
-      settlement = settleRound(round, course, group.players);
+    if (round && course && roundGroup) {
+      settlement = settleRound(round, course, roundGroup.players);
     }
 
     // The whole day, when there is one: every group's games plus the field pots.
@@ -483,6 +490,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       ...state,
       sync,
       group,
+      roundGroup,
       course,
       round,
       settlement,

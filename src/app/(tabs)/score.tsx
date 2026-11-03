@@ -43,7 +43,7 @@ export default function ScoreScreen() {
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
-  const { round, course, group, settlement } = store;
+  const { round, course, roundGroup: group, settlement } = store;
 
   const ctx = useMemo(
     () => (round && course && group ? new RoundContext(round, course, group.players) : null),
@@ -388,7 +388,7 @@ function WolfPicker({ hole }: { hole: number }) {
   const store = useStore();
   const largeText = useLargeText();
   const round = store.round!;
-  const group = store.group!;
+  const group = store.roundGroup!;
   const ctx = new RoundContext(round, store.course!, group.players);
   const wolfId = wolfForHole(ctx, hole);
   if (!wolfId) return null;
@@ -464,7 +464,7 @@ function PressPanel({ youId, hole }: { youId: PlayerId; hole: number }) {
   const store = useStore();
   const largeText = useLargeText();
   const round = store.round!;
-  const group = store.group!;
+  const group = store.roundGroup!;
   const ctx = new RoundContext(round, store.course!, group.players);
   const [from, to] = ctx.nineFor(hole);
   const stake = round.games.nassau.stake;
@@ -545,7 +545,7 @@ function CardPresses({ hole }: { hole: number }) {
   const store = useStore();
   const largeText = useLargeText();
   const round = store.round!;
-  const ctx = new RoundContext(round, store.course!, store.group!.players);
+  const ctx = new RoundContext(round, store.course!, store.roundGroup!.players);
   const [by, setBy] = useState<PlayerId | null>(null);
   const [against, setAgainst] = useState<PlayerId | null>(null);
 

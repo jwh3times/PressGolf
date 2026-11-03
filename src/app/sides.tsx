@@ -31,7 +31,7 @@ export default function SidesScreen() {
   const { colors, ink, tint } = useTheme();
   const store = useStore();
   const router = useRouter();
-  const { round, course, group } = store;
+  const { round, course, roundGroup: group } = store;
 
   if (!round || !course || !group) {
     return (
