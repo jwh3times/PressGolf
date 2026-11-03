@@ -64,8 +64,8 @@ Minor and patch releases still come through Dependabot.
 route into its own bundle; under that split, the hole map opened from the
 course guide mounted nothing on the web export. Native builds never used async
 routes, so this keeps the web preview on the single bundle it used before
-SDK 58. The cause inside Expo Router was not found; try removing the setting on
-the next SDK, with the web suite's course-map tests as the check.
+SDK 58. The cause inside Expo Router was not found, so the setting stays until
+the web suite's course-map tests pass without it.
 
 As of 2026-11-03, `npm ci` still reports deprecation warnings, all from test
 tooling the SDK pins: `glob@7` and `inflight` through `@react-native/jest-preset`
