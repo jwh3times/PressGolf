@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
 import { applyFollowed, applyMoveNotices, followMoveNotices, keepingPhoneOnly, type MoveNotice } from './move-notices';
-import { emptySnapshot, fromRows, toRows, type Documents, type Snapshot } from './rows';
+import { emptySnapshot, fromRows, seenIn, toRows, type Documents, type SeenCells, type Snapshot } from './rows';
 
 export interface SyncState {
   /**
@@ -50,8 +50,12 @@ export function useDataSync(options: {
   onSharedData: (documents: Documents) => void;
   /** An organiser's account went: applies these to what the store holds, then takes these days from the server. */
   onMoveNotices: (notices: MoveNotice[], taken: Documents) => void;
+  /** The shared cells as this phone last took them, saved from the last `onSeen`. */
+  seen: SeenCells | null;
+  /** The phone has caught up with a pull: to save with the documents. */
+  onSeen: (cells: SeenCells) => void;
 }): DataSync {
-  const { enabled, documents, onAdoptRemote, onSharedData, onMoveNotices } = options;
+  const { enabled, documents, onAdoptRemote, onSharedData, onMoveNotices, seen, onSeen } = options;
   const [state, setState] = useState<SyncState>(OFF);
 
   // What we believe the server is holding. Later pushes diff against this to
@@ -68,14 +72,18 @@ export function useDataSync(options: {
   const adopt = useRef(onAdoptRemote);
   const shared = useRef(onSharedData);
   const moved = useRef(onMoveNotices);
+  const seenLast = useRef(seen);
+  const caughtUp = useRef(onSeen);
   const latest = useRef(documents);
 
   useEffect(() => {
     adopt.current = onAdoptRemote;
     shared.current = onSharedData;
     moved.current = onMoveNotices;
+    seenLast.current = seen;
+    caughtUp.current = onSeen;
     latest.current = documents;
-  }, [onAdoptRemote, onSharedData, onMoveNotices, documents]);
+  }, [onAdoptRemote, onSharedData, onMoveNotices, seen, onSeen, documents]);
 
   const fail = useCallback((error: unknown) => {
     setState({
@@ -103,7 +111,7 @@ export function useDataSync(options: {
   // Pull, and either adopt what is there or send ours up.
   const contact = useCallback(async (held: Documents, stillOn: () => boolean) => {
     const local = toRows(held);
-    const outcome = await reconcile(local);
+    const outcome = await reconcile(local, seenLast.current);
     if (!stillOn()) return;
     sharedHas.current = outcome.shared;
     if (outcome.status === 'adopted-remote') {
@@ -162,7 +170,13 @@ export function useDataSync(options: {
     if (!enabled) return;
 
     const push = () => {
-      if (inFlight.current || !serverHas.current) return;
+      // Still busy, as on a slow connection. Dropping this would leave an edit, or the
+      // merge after first contact, waiting for the next edit.
+      if (inFlight.current) {
+        timer.current = setTimeout(push, PUSH_DELAY_MS);
+        return;
+      }
+      if (!serverHas.current) return;
       const server = serverHas.current;
       const started = session.current;
       inFlight.current = true;
@@ -195,6 +209,7 @@ export function useDataSync(options: {
           const current = applyFollowed(latest.current, notices, taken);
           const merged = mergeShared(current, incoming);
           if (changesAnything(current, merged)) shared.current(merged);
+          caughtUp.current(seenIn(sharedHas.current));
           setState({ status: 'synced', at: Date.now(), message: null });
         } catch (error) {
           fail(error);

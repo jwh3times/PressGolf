@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_VERSION, storageNamespace } from '../config/flags';
 import { houseRulesOrDefault } from '../domain/formats';
 import type { AppData, AppSettings, Course, Hole } from '../domain/types';
+import type { SeenCells } from '../sync/rows';
 import { DEFAULT_THEME_CHOICE, THEME_ACCENTS, THEME_BASES, type ThemeChoice } from '../theme/themes';
 
 /** Where the demo/live preference lives — outside both datasets, so it survives switching. */
@@ -25,6 +26,8 @@ interface StoredPayload {
   activeRoundId: string | null;
   activeOutingId: string | null;
   cardRoundId: string | null;
+  /** In the one blob with the documents, so a phone killed mid-save can't have one without the other. */
+  seenCells?: SeenCells | null;
 }
 
 export const EMPTY_DATA: Omit<AppData, 'settings'> & {
@@ -32,6 +35,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeRoundId: null;
   activeOutingId: null;
   cardRoundId: null;
+  seenCells: null;
 } = {
   groups: [],
   courses: [],
@@ -44,6 +48,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeRoundId: null,
   activeOutingId: null,
   cardRoundId: null,
+  seenCells: null,
 };
 
 function dataKey(demoMode: boolean): string {
@@ -101,6 +106,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     activeRoundId: parsed.activeRoundId ?? null,
     activeOutingId: parsed.activeOutingId ?? null,
     cardRoundId: parsed.cardRoundId ?? null,
+    seenCells: parsed.seenCells ?? null,
   };
 }
 

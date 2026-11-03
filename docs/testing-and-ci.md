@@ -52,6 +52,13 @@ CI-equivalent suite and enforces the global thresholds in `package.json`:
 On pull requests, `scripts/check-patch-coverage.mjs` also requires at least 90%
 line coverage on executable lines added or changed relative to the merge base.
 That prevents a well-tested legacy codebase from hiding untested new behavior.
+The script diffs `origin/main...HEAD`, so it can't see uncommitted changes: run
+before a commit, it reports the previous commit's lines against current coverage.
+To run it locally, commit first:
+
+```bash
+npm run test:coverage && node scripts/check-patch-coverage.mjs origin/main 90
+```
 
 `src/domain/__tests__/properties.test.ts` checks settlement invariants over
 generated rounds and outings rather than worked examples. The generators in
@@ -84,7 +91,7 @@ figures, are authoritative.
 | **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, generated agent-skill mirrors are current, agent and skill sources are tool-neutral, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
-| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't. An account deletes itself through the real Edge Function, leaving nothing behind; a wrong password, a missing token or another account deletes nothing, and the clean-up function refuses everyone but the service role. A guest deletes their account and the organiser keeps the scores they typed, including on a phone that hadn't seen them. An organiser deletes theirs and nothing of the day remains on the server, while two guests' phones keep it and go on syncing, in a running session, after a restart and after being offline. A guest with a round or outing of their own on that group or course keeps it on a copy nobody else can see, on which the server and the phone agree about every id, and a third account in that outing keeps syncing on it. A deleted account's still-valid token can't write, and an auth user who still has rows can't be deleted |
+| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't. An account deletes itself through the real Edge Function, leaving nothing behind; a wrong password, a missing token or another account deletes nothing, and the clean-up function refuses everyone but the service role. A phone that's behind on a shared card doesn't overwrite what another phone typed, and a score typed while away still goes up. A guest deletes their account and the organiser keeps the scores they typed, including on a phone that hadn't seen them. An organiser deletes theirs and nothing of the day remains on the server, while two guests' phones keep it and go on syncing, in a running session, after a restart and after being offline. A guest with a round or outing of their own on that group or course keeps it on a copy nobody else can see, on which the server and the phone agree about every id, and a third account in that outing keeps syncing on it. A deleted account's still-valid token can't write, and an auth user who still has rows can't be deleted |
 | **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 95 account-isolation and write-boundary assertions pass (October 2026) |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
@@ -376,8 +383,15 @@ The active `Protect main` ruleset applies to the default branch. It:
 
 - requires pull requests and resolved review threads;
 - requires the six PR checks above against the latest `main`;
+- allows merge commits only (`allowed_merge_methods: ["merge"]`);
+- requires extra approval for unattributed changes
+  (`require_extra_approval_for_unattributed_changes: true`);
 - blocks force pushes and branch deletion; and
 - blocks merge on CodeQL errors or high-or-higher security alerts.
+
+Because of the extra approval, `gh pr merge` can refuse a clean PR whose required
+checks have all passed, with "the base branch policy prohibits the merge". A PR
+refused this way is merged in the GitHub web interface.
 
 GitHub secret scanning and push protection are enabled. Dependabot checks npm
 and GitHub Actions daily at 05:00 America/New_York. Workflow actions are pinned

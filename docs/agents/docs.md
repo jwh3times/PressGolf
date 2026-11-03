@@ -8,7 +8,7 @@
   - a command or `package.json` script changes: `## Commands`;
   - the gate, its exemptions or the phase skills change: `## Development flow` (with
     `docs/agents/dev-flow.md`);
-  - a skill is added, removed, replaced or locally edited (`.agents/skills/`, `skills-lock.json`),
+  - a skill is added, removed or replaced (`.agents/skills/`, `skills-lock.json`),
     or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
     `scripts/check-docs.mjs`):
     `## Agent skills`;
@@ -58,11 +58,12 @@
   by `/domain-modeling`; none exist yet. An accepted ADR is `frozen`: report a contradiction instead
   of editing it.
 - `.agents/skills/*/**` — skills, mirrored to `.claude/skills/`. The `mattpocock/skills` set in
-  `skills-lock.json` (`wayfinder` and `setup-matt-pocock-skills` carry local edits re-applied by
-  hand after an update) and `end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` from
+  `skills-lock.json` and `end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` from
   `jwh3times/skills`: `frozen` here. **When:** a skill is added, removed or replaced:
   `AGENTS.md` § Agent skills.
 - `LICENSE` — `owner-only`.
+- `THIRD_PARTY_NOTICES.md` — the license notices of third-party files kept here. `owner-only`: report
+  the change when a skill's source changes.
 
 **Never in public docs:** secrets, service-role keys, database passwords, tokens or resolved
 1Password values; the Supabase project ref; unpatched vulnerability or data-isolation detail;

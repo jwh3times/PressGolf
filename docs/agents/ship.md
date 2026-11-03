@@ -9,12 +9,13 @@ Together they cover what the required **Tests, types, lint** check runs. All nee
 - repo root: `npm run test:scripts` (**Tests, types, lint**: repository script tests)
 - repo root: `npm run lint:agents` (**Tests, types, lint**)
 - repo root: `node scripts/check-docs.mjs` (**Tests, types, lint**)
+- repo root: `node scripts/check-skills.mjs` (**Tests, types, lint**)
 - repo root: `npm run sync:agents:check` (**Tests, types, lint**), fixed by `npm run sync:agents`,
   committing the regenerated mirror
 - repo root, only when `src/`, `package.json`, `package-lock.json`, `babel.config.js` or
   `tsconfig.json` changed: `npm run test:coverage` (**Tests, types, lint**: Jest with the
   `coverageThreshold` floors), then `node scripts/check-patch-coverage.mjs origin/main 90` (its
-  pull-request step "New code is covered")
+  pull-request step "New code is covered"). It reads committed changes only, so commit first
 - repo root, only when `package.json`, `package-lock.json`, `app.json`, `app.config.js` or
   `eas.json` changed: `npx expo-doctor` (**Tests, types, lint**; needs network), fixed by
   `npx expo install --fix`

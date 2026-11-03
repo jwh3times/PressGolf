@@ -89,12 +89,13 @@ Supabase configuration, Press remains a fully usable single-device app.
 
 ## Current validation
 
+On 2026-11-02, `npm run test:coverage` passed 45 Jest suites and 947 tests,
+including property-based settlement checks. Repository coverage was 95.95%
+statements, 91.57% branches, 93.2% functions, and 96.73% lines; enforced
+thresholds live in `package.json`.
+
 As of October 2026:
 
-- 25 Jest suites and 386 tests pass, including property-based settlement
-  checks. Repository coverage is 94.14% statements, 91.36% branches,
-  89.48% functions, and 95.14% lines; enforced thresholds live in
-  `package.json`.
 - Every pull request checks each main screen of the web build against committed
   screenshots and accessibility trees, at phone width and 320 px, and runs axe
   (WCAG 2.1 A and AA).
@@ -136,9 +137,9 @@ pass.
   with a sync error. So can a fresh install of a guest with a round of their own on
   a group someone else owns, after an organiser leaves an outing on that group,
   until the phone holding that round pushes it.
-- A score or junk claim an organiser clears on a shared round comes back if the
-  app closes before it's pushed. First contact can't tell it from one a guest
-  typed that the phone hasn't seen.
+- Until a phone on this build has merged a shared card once, it has no record of
+  what it last saw there. Its first sync can still send an old score over a newer
+  one, and a score or junk claim cleared there while the app was closed comes back.
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
 - Web is a preview target. Native `Alert` confirmations do not provide the full
