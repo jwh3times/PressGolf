@@ -26,7 +26,8 @@ up, by simulating each club's spread of shots from where the player stands.
 ## Quick start
 
 Press currently targets [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/),
-which requires Node.js 22.13 or newer (24.3 or newer on the 24 line). Install
+which requires Node.js 22.13 or newer on the 22 line, 24.3 or newer on the 24
+line, or 26 and later. Install
 [Expo Go](https://expo.dev/go) on a phone, then run:
 
 ```bash

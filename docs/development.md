@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - Node.js 22.13 or newer on the 22 line, 24.3 or newer on the 24 line, or 26
-  and later; Expo does not support odd-numbered releases. Expo SDK 58 targets
+  and later (`engines` in `expo`'s `package.json`); 23 and 25 are not
+  supported. Expo SDK 58 targets
   React Native 0.88 and React 19.3.0; see the
   [versioned SDK reference](https://docs.expo.dev/versions/v58.0.0/).
 - npm, using the committed `package-lock.json`.
@@ -54,16 +55,23 @@ Do not install a different React, React Native, or Expo package version merely
 because npm reports a newer release. An SDK upgrade is a deliberate change and
 must follow the matching Expo upgrade guide.
 
-Jest is SDK-owned as well: `jest-expo` 58 is a Jest 30 preset, so `jest` and
-`@types/jest` move only with `jest-expo`, on an SDK upgrade.
+Jest's major is SDK-owned as well: `jest-expo` 58 is a Jest 30 preset, so a
+new major of `jest` or `@types/jest` waits for the `jest-expo` of a later SDK.
+Minor and patch releases still come through Dependabot.
 
 `app.json` turns off Expo Router's async routes (`"asyncRoutes": false` on the
 `expo-router` plugin). SDK 58 made them the web default, which splits each
 route into its own bundle; under that split, the hole map opened from the
 course guide mounted nothing on the web export. Native builds never used async
-routes, so this keeps the web preview on the single bundle SDK 57 shipped.
+routes, so this keeps the web preview on the single bundle it used before
+SDK 58. The cause inside Expo Router was not found; try removing the setting on
+the next SDK, with the web suite's course-map tests as the check.
 
-Never run `npm audit fix --force`; it proposes downgrading Expo.
+As of 2026-11-03, `npm ci` still reports deprecation warnings, all from test
+tooling the SDK pins: `glob@7` and `inflight` through `@react-native/jest-preset`
+→ `babel-jest@29`, `glob@10` through Jest 30's `test-exclude`, and
+`whatwg-encoding` through jsdom 26. Never run `npm audit fix --force`; it
+proposes downgrading Expo.
 
 This project uses Continuous Native Generation. Configure native behavior in
 `app.json` or a config plugin. Generated `ios/` and `android/` folders are
