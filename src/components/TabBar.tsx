@@ -61,7 +61,7 @@ const LABELS: Record<string, string> = {
   settle: 'Settle',
 };
 
-export function TabBar({ state, navigation }: BottomTabBarProps) {
+export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
   const styles = useStyles();
   const { colors, ink, scheme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -94,7 +94,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   // A light tick makes the bar feel physical when you are not
                   // looking at the phone, which is most of a round.
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                  navigation.navigate(route.name);
+                  navigateToTab(route.key);
                 }
               }}
               style={styles.tab}
