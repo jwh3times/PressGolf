@@ -24,7 +24,7 @@ const routes = [
 function props(index = 0) {
   return {
     state: { index, routes },
-    navigation: { navigate: jest.fn() },
+    navigateToTab: jest.fn(),
     descriptors: {},
     insets: { top: 0, right: 0, bottom: 0, left: 0 },
   };
@@ -46,12 +46,12 @@ describe('TabBar', () => {
     await render(<TabBar {...(value as unknown as React.ComponentProps<typeof TabBar>)} />);
 
     await user.press(screen.getByRole('tab', { name: 'Home' }));
-    expect(value.navigation.navigate).not.toHaveBeenCalled();
+    expect(value.navigateToTab).not.toHaveBeenCalled();
     await user.press(screen.getByRole('tab', { name: 'Format' }));
     await user.press(screen.getByRole('tab', { name: 'Score' }));
     await user.press(screen.getByRole('tab', { name: 'Settle' }));
     await user.press(screen.getByRole('tab', { name: 'other' }));
-    expect(value.navigation.navigate).toHaveBeenCalledTimes(4);
+    expect(value.navigateToTab).toHaveBeenCalledTimes(4);
     expect(impact).toHaveBeenCalledTimes(4);
   });
 
@@ -78,6 +78,6 @@ describe('TabBar', () => {
     jest.spyOn(Haptics, 'impactAsync').mockRejectedValueOnce(new Error('no haptics'));
     await render(<TabBar {...(value as unknown as React.ComponentProps<typeof TabBar>)} />);
     await userEvent.setup().press(screen.getByRole('tab', { name: 'Home' }));
-    expect(value.navigation.navigate).toHaveBeenCalledWith('index');
+    expect(value.navigateToTab).toHaveBeenCalledWith('home-key');
   });
 });

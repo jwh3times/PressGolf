@@ -18,10 +18,10 @@ updates:
     # ── What Expo owns, and we do not ──────────────────────────────────────────
     # The version of these is not ours to choose. Expo pins them to the SDK, and
     # the only correct way to move them is `npx expo install --fix` when the SDK
-    # itself moves. Dependabot offering react-native 0.87 the day it ships is not
-    # an upgrade — it is a version Expo has never shipped against.
+    # itself moves. Dependabot offering the next react-native minor the day it
+    # ships is not an upgrade — it is a version Expo has never shipped against.
     #
-    # Grouping cannot prevent that on its own: on the day react-native 0.87 lands,
+    # Grouping cannot prevent that on its own: on the day that minor lands,
     # `expo` has no update to be grouped with it, so the group arrives holding
     # only the React Native half. Hence ignores as well as groups.
     #
@@ -39,7 +39,7 @@ updates:
       - dependency-name: react-native
       - dependency-name: "@react-native-async-storage/*"
       # Not matched by react-native-* below: it lives under a scope. Expo pins it
-      # exactly, and 9.1.0 to 9.2.1 failed expo-doctor (#45).
+      # exactly, and a lone bump of it ahead of the SDK failed expo-doctor (#45).
       - dependency-name: "@react-native-community/datetimepicker"
       # Matched by react-native-* below, which lets patches through, but Expo
       # pins both exactly: react-native-svg 15.15.4 to 15.15.5 failed
@@ -47,9 +47,8 @@ updates:
       - dependency-name: react-native-svg
       - dependency-name: react-native-maps
       # Direct only so they stop floating: as bare peers of expo-router, npm
-      # resolved them to reanimated 4.7.1 and worklets 0.13.0 on an unrelated
-      # Expo patch, past the worklets range expo-modules-core supports. Expo
-      # pins both exactly.
+      # once resolved them past the worklets range expo-modules-core supported,
+      # on an unrelated Expo patch. Expo pins both exactly.
       - dependency-name: react-native-reanimated
       - dependency-name: react-native-worklets
 
@@ -67,20 +66,14 @@ updates:
       - dependency-name: "@types/react"
         update-types: [version-update:semver-minor, version-update:semver-major]
 
-      # jest-expo@57 is a jest 29 preset: it depends on babel-jest,
-      # jest-environment-jsdom and jest-snapshot at ^29. A jest 30 runner over
-      # jest 29 internals is the sort of mismatch a green suite can miss, so jest
-      # waits for the jest-expo that comes with the next SDK.
+      # jest-expo@58 is a jest 30 preset: it depends on babel-jest,
+      # jest-environment-jsdom and jest-snapshot at ^30. A newer jest runner over
+      # those internals is the sort of mismatch a green suite can miss, so a jest
+      # major waits for the jest-expo that comes with a later SDK.
       - dependency-name: jest
         update-types: [version-update:semver-major]
       - dependency-name: "@types/jest"
         update-types: [version-update:semver-major]
-
-      # test-renderer 1.3 depends on react-reconciler 0.34, which wants React
-      # 19.3 — a React the SDK does not ship. 1.2 is the line built for 19.2.
-      # Patches within it still come through; the rest waits for the SDK.
-      - dependency-name: test-renderer
-        update-types: [version-update:semver-minor, version-update:semver-major]
 
       # Expo's own packages move within an SDK constantly and those are welcome.
       # A major is the SDK upgrade itself — a deliberate act, with a changelog to

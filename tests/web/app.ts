@@ -47,6 +47,33 @@ export async function expectAccessible(page: Page): Promise<void> {
 }
 
 /**
+ * Makes Chromium draw every `backdrop-filter` (the tab bar's glass) afresh.
+ *
+ * Since Expo SDK 58, after a tab switch Chromium sometimes keeps the glass's
+ * anti-aliased corners as they were drawn over the previous tab: about twenty
+ * pixels, a few colour levels off, stable once there. Roughly one run in four
+ * ended that way, so a zero-tolerance screenshot failed at random. Dropping the
+ * filter for two frames and restoring it gives the same pixels every run.
+ */
+async function repaintBackdrops(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    const glass = [...document.querySelectorAll<HTMLElement>('*')].filter(
+      (el) => getComputedStyle(el).backdropFilter !== 'none',
+    );
+    const filters = glass.map((el) => el.style.backdropFilter);
+    for (const el of glass) el.style.backdropFilter = 'none';
+    await frame();
+    await frame();
+    glass.forEach((el, i) => {
+      el.style.backdropFilter = filters[i];
+    });
+    await frame();
+    await frame();
+  });
+}
+
+/**
  * What the screen looks like, and what a screen reader is told about it.
  *
  * The aria snapshot is the accessibility tree as text: every role, name and
@@ -56,6 +83,7 @@ export async function expectAccessible(page: Page): Promise<void> {
 export async function expectScreen(page: Page, name: string): Promise<void> {
   // Let fonts, layout and JS-driven animation settle.
   await page.waitForTimeout(400);
+  await repaintBackdrops(page);
   await expect(page).toHaveScreenshot(`${name}.png`);
   await expect(page.locator('body')).toMatchAriaSnapshot({ name: `${name}.aria.yml` });
 }

@@ -143,7 +143,10 @@ tapping through the app, as a user would. On each screen it checks three things:
 
 1. **Screenshot.** It must match `tests/web/__snapshots__/<project>/<screen>.png`
    exactly: there is no per-pixel tolerance, so even a one-step change to a
-   colour token fails.
+   colour token fails. Before the capture, `expectScreen` redraws every
+   `backdrop-filter` (the tab bar's glass): after a tab switch Chromium can
+   otherwise keep the glass's corners as drawn over the previous tab, which
+   failed about one run in four.
 2. **Accessibility tree.** It must match `<screen>.aria.yml`: every role, name
    and state, as a screen reader reads it. Playwright lets extra elements through,
    so a new control passes without being recorded, and plain `--update-snapshots`

@@ -74,7 +74,7 @@ volatile service prices or quotas outside a dated research note.
 ## Drift probes
 
 - npm scripts: `scripts` in `package.json`
-- Expo SDK: `expo` in `package.json`; the `v57.0.0` doc links in `AGENTS.md` and
+- Expo SDK: `expo` in `package.json`; the `v58.0.0` doc links in `README.md` and
   `docs/development.md`
 - Node: `node-version` in `.github/workflows/*.yml` against "Node.js 22.13 or newer" in
   `docs/development.md`

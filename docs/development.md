@@ -2,8 +2,11 @@
 
 ## Prerequisites
 
-- Node.js 22.13 or newer. Expo SDK 57 targets React Native 0.86 and React
-  19.2.3; see the [versioned SDK reference](https://docs.expo.dev/versions/v57.0.0/).
+- Node.js 22.13 or newer on the 22 line, 24.3 or newer on the 24 line, or 26
+  and later (`engines` in `expo`'s `package.json`); 23 and 25 are not
+  supported. Expo SDK 58 targets
+  React Native 0.88 and React 19.3.0; see the
+  [versioned SDK reference](https://docs.expo.dev/versions/v58.0.0/).
 - npm, using the committed `package-lock.json`.
 - Expo Go for the quickest device loop, or native build tools/a development
   build when a dependency contains custom native code.
@@ -40,7 +43,7 @@ install `expo-dev-client` with `npx expo install expo-dev-client` and use a
 ## Adding or updating dependencies
 
 Use Expo's installer for Expo or React Native packages so versions remain
-compatible with SDK 57:
+compatible with SDK 58:
 
 ```bash
 npx expo install <package>
@@ -52,21 +55,22 @@ Do not install a different React, React Native, or Expo package version merely
 because npm reports a newer release. An SDK upgrade is a deliberate change and
 must follow the matching Expo upgrade guide.
 
-Two pins exist only because SDK 57 fixes React at 19.2:
+Jest's major is SDK-owned as well: `jest-expo` 58 is a Jest 30 preset, so a
+new major of `jest` or `@types/jest` waits for the `jest-expo` of a later SDK.
+Minor and patch releases still come through Dependabot.
 
-- `test-renderer` stays on `~1.2.0`. Version 1.3 depends on
-  `react-reconciler@0.34`, which requires React 19.3 and causes an `ERESOLVE`
-  peer warning. Lift the pin, and its Dependabot ignore rule, when the SDK
-  moves to React 19.3.
-- `overrides.uuid` forces `^11.1.1` under `xcode` (used by config plugins at
-  prebuild time) to clear GHSA-w5hq-g745-h8pq. Remove it once
-  `@expo/config-plugins` no longer resolves an older `uuid`.
+`app.json` turns off Expo Router's async routes (`"asyncRoutes": false` on the
+`expo-router` plugin). SDK 58 made them the web default, which splits each
+route into its own bundle; under that split, the hole map opened from the
+course guide mounted nothing on the web export. Native builds never used async
+routes, so this keeps the web preview on the single bundle it used before
+SDK 58. The cause inside Expo Router was not found, so the setting stays until
+the web suite's course-map tests pass without it.
 
-As of 2026-09-25, `npm ci` still reports deprecation warnings from Jest 29 and
-jsdom 20 (`glob@7`, `inflight`, `abab`, `domexception`, `whatwg-encoding`), and
-`npm audit` reports decode-uri-component GHSA-vcc3-ghjq-m6fr through
-`expo-router` → `query-string@7`. The patched `decode-uri-component` is
-ESM-only, so it cannot be overridden. Never run `npm audit fix --force`; it
+As of 2026-11-03, `npm ci` still reports deprecation warnings, all from test
+tooling the SDK pins: `glob@7` and `inflight` through `@react-native/jest-preset`
+→ `babel-jest@29`, `glob@10` through Jest 30's `test-exclude`, and
+`whatwg-encoding` through jsdom 26. Never run `npm audit fix --force`; it
 proposes downgrading Expo.
 
 This project uses Continuous Native Generation. Configure native behavior in
@@ -433,5 +437,5 @@ npx eas-cli@latest build --platform android --profile production --auto-submit
   `npx expo start --clear`.
 - If browser-based Expo login cannot open a browser on Windows, copy the URL
   printed by the CLI into a browser manually while the command remains running.
-- Do not use Node releases below the SDK 57 minimum or untested bleeding-edge
+- Do not use Node releases below the SDK 58 minimum or untested bleeding-edge
   releases merely to work around an install problem.

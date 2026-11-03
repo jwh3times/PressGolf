@@ -11,6 +11,19 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 No unreleased changes.
 
+## [1.1.0] - 2026-11-03
+
+### Changed
+
+- Press runs on Expo SDK 58, with React Native 0.88 and React 19.3. The screens and what they do
+  are unchanged, but this version needs a new store build: it can't reach installed copies over
+  the air.
+
+### Security
+
+- Opening a link into the app no longer goes through a URL-decoding package with a published
+  advisory against it.
+
 ## [1.0.0] - 2026-11-03
 
 ### Added

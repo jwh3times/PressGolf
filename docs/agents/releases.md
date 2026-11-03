@@ -19,7 +19,9 @@ fails when the two differ.
 `node scripts/set-version.mjs <version>`
 
 From the repository root. It sets `package.json` and its lockfile, through `npm version`, and
-`app.json`'s `expo.version`; a second run with the same version changes nothing.
+`app.json`'s `expo.version`; a second run with the same version changes nothing. Settings shows the
+version, so the web suite's Settings baselines change with it: run `npm run test:web:update` after
+the bump and commit the `settings-account` and `theme-settings` baselines it rewrites.
 
 ## Ask before bumping
 
