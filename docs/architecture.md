@@ -763,6 +763,9 @@ scripts/
   lint-agent-neutrality.mjs checks agent and skill sources read correctly from their mirrors
   check-docs.mjs          checks local doc links and anchors, and that the doc map lists every document
   check-skills.mjs        checks installed skills against skills-lock.json and the shared install commands
+  check-changelog.mjs     checks CHANGELOG.md for the merge a branch will make (with next-version.mjs)
+  next-version.mjs        reads the release line from the version file; shared with check-changelog.mjs
+  set-version.mjs         sets a release's version in package.json and app.json's expo.version
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/

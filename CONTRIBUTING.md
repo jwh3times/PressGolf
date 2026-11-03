@@ -83,7 +83,11 @@ configuration.
 ## Pull requests
 
 Describe the user-visible outcome, the tests run, and any platform or hardware
-validation. Call out schema, security, accessibility, or native-build impact
+validation. A change under `src/`, `site/`, `supabase/migrations/` or
+`supabase/functions/` adds its entries under `Unreleased` in
+[CHANGELOG.md](CHANGELOG.md); CI checks it with the command under
+`Changelog check` in [docs/agents/releases.md](docs/agents/releases.md), which
+also says how a release is cut and tagged. Call out schema, security, accessibility, or native-build impact
 explicitly. [Repository protections](docs/testing-and-ci.md#repository-protections)
 lists what the protected `main` ruleset requires, and what to do when it refuses
 a merge with every check green.

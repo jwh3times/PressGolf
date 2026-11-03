@@ -22,7 +22,11 @@ Markdown under `src/` or `site/` is code.
   `npx expo install --fix`. A bump touches `package.json`, `package-lock.json` and
   `.github/dependabot.yml`; the exemption also covers the fixes needed to keep CI green on it, as in
   #169. Anything beyond that is a separate change.
-- **Release prep** is a change to `expo.version` in `app.json` or to the `submit` profile in
-  `eas.json` for a store build. Build numbers need no commit: `eas.json` sets
+- **Release prep** is a release PR, committed as `chore: prepare v<version>, <headline>`: it moves
+  `Unreleased` in `CHANGELOG.md` into a dated section and sets the version with
+  `node scripts/set-version.mjs <version>` (`package.json`, its lockfile and `app.json`'s
+  `expo.version`); the maintainer tags `v<version>` on `main` after it merges
+  (`docs/agents/releases.md`). A change to the `submit` profile in `eas.json` for a store build
+  is release prep too. Build numbers need no commit: `eas.json` sets
   `appVersionSource: "remote"` and `autoIncrement: true`.
 - **A user waiver** covers the one change it was given for.

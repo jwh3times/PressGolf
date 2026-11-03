@@ -48,6 +48,14 @@ jobs:
       - name: Repository script tests
         run: npm run test:scripts
 
+      # A change to the app, the support site, the schema or the Edge Function
+      # adds its entries under [Unreleased]; a release PR that sets a new version
+      # cuts its dated section (docs/agents/releases.md). It compares with the
+      # merge base, so it runs on pull requests only.
+      - name: Changelog
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-changelog.mjs --source src --source site --source supabase/migrations --source supabase/functions
+
       # `.claude/skills/` is generated from `.agents/skills/` (and
       # `.codex/agents/` from `.claude/agents/`). Editing a skill without
       # re-running the sync fails here, so the Claude and Codex copies
