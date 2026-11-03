@@ -22,7 +22,10 @@ function run(command, args) {
 process.env.EXPO_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:9';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'web-suite';
 
-run('npx', ['expo', 'export', '--platform', 'web']);
+// --clear, as CI's fresh checkout effectively is: Metro's cache otherwise keeps
+// the app config from an earlier export, so a version bump in app.json still
+// showed the old version in Settings.
+run('npx', ['expo', 'export', '--platform', 'web', '--clear']);
 run('docker', [
   'run', '--rm', '--ipc=host',
   '-v', `${process.cwd()}:/work`, '-w', '/work',

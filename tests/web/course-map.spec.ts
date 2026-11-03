@@ -29,7 +29,7 @@ async function importTorrey(page: Page) {
   await page.route('**/api/interpreter', (route) => route.fulfill({ json: torrey }));
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: /^Courses/ }).click();
-  await page.getByRole('button', { name: /Pine Hollow/ }).click();
+  await page.getByRole('button', { name: /^Pine Hollow \d+ holes/ }).click();
   await page.getByRole('button', { name: 'Import from OpenStreetMap' }).click();
   await page.getByLabel('Course name on OpenStreetMap').fill('Torrey Pines South');
   await page.getByRole('button', { name: 'Search' }).click();
@@ -169,7 +169,7 @@ for (const [base, name] of Object.entries(THEME_NAMES)) {
     await page.getByRole('button', { name: 'Done' }).last().click();
     await page.getByRole('radio', { name }).click();
     await page.getByRole('button', { name: /^Courses/ }).click();
-    await page.getByRole('button', { name: /Pine Hollow/ }).click();
+    await page.getByRole('button', { name: /^Pine Hollow \d+ holes/ }).click();
     await openHoleThree(page);
     await expectScreen(page, `theme-${base}-green-hole-strategy`);
     await expectAccessible(page);
