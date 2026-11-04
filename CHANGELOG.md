@@ -9,7 +9,13 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Each group has its own round going. Switching groups in Settings shows that group's round on
+  Home, Score, Settle and Format, or Start a round when it has none, instead of the other group's.
+  The other group's round stays open, with its scores, and is back when you switch back. Finishing
+  an outing closes only that day's rounds. A round left going before this update stays open for
+  the group it belongs to.
 
 ## [1.1.1] - 2026-11-03
 
