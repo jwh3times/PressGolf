@@ -392,7 +392,8 @@ export function buildDemoDataset(now = Date.now()): {
   usualScore: UsualScore | null;
   practice: Record<string, PracticeMark>;
   activeGroupId: string;
-  activeRoundId: string;
+  /** Each group's open round: the Dogs' Saturday round. */
+  openRoundIds: string[];
   activeOutingId: string | null;
   cardRoundId: string | null;
 } {
@@ -407,7 +408,7 @@ export function buildDemoDataset(now = Date.now()): {
     usualScore: '80s',
     practice: {},
     activeGroupId: DEMO_GROUP_ID,
-    activeRoundId: DEMO_ROUND_ID,
+    openRoundIds: [DEMO_ROUND_ID],
     activeOutingId: null,
     cardRoundId: null,
   };

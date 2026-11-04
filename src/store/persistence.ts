@@ -23,7 +23,10 @@ interface StoredPayload {
   usualScore: AppData['usualScore'];
   practice: AppData['practice'];
   activeGroupId: string | null;
-  activeRoundId: string | null;
+  /** Each group's open round (#258). */
+  openRoundIds: string[];
+  /** The one open round the whole phone had before #258. Read only, to migrate. */
+  activeRoundId?: string | null;
   activeOutingId: string | null;
   cardRoundId: string | null;
   /** In the one blob with the documents, so a phone killed mid-save can't have one without the other. */
@@ -32,7 +35,7 @@ interface StoredPayload {
 
 export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeGroupId: null;
-  activeRoundId: null;
+  openRoundIds: string[];
   activeOutingId: null;
   cardRoundId: null;
   seenCells: null;
@@ -45,7 +48,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   usualScore: null,
   practice: {},
   activeGroupId: null,
-  activeRoundId: null,
+  openRoundIds: [],
   activeOutingId: null,
   cardRoundId: null,
   seenCells: null,
@@ -65,7 +68,8 @@ function dataKey(demoMode: boolean): string {
  * the low man at 100% with its pops as typed, so nothing it already settled moves.
  * Courses saved before greens, the course map or hole notes know none, and data
  * saved before the bag has no clubs and no usual score, and none before
- * practice rounds marks any.
+ * practice rounds marks any. The one open round a phone had before each group
+ * had its own stays open, for the group it belongs to.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -103,7 +107,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     usualScore: parsed.usualScore ?? null,
     practice: parsed.practice ?? {},
     activeGroupId: parsed.activeGroupId ?? null,
-    activeRoundId: parsed.activeRoundId ?? null,
+    openRoundIds: parsed.openRoundIds ?? (parsed.activeRoundId ? [parsed.activeRoundId] : []),
     activeOutingId: parsed.activeOutingId ?? null,
     cardRoundId: parsed.cardRoundId ?? null,
     seenCells: parsed.seenCells ?? null,

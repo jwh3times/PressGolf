@@ -47,7 +47,17 @@ describe('dataset persistence', () => {
     const loaded = await loadDataset(true);
 
     expect(loaded.rounds[0]).toMatchObject({ outingId: null, name: 'Our group', teeTime: null });
-    expect(loaded).toMatchObject({ courses: [], outings: [], activeGroupId: null, activeRoundId: null, activeOutingId: null });
+    expect(loaded).toMatchObject({ courses: [], outings: [], activeGroupId: null, openRoundIds: [], activeOutingId: null });
+  });
+
+  it('keeps the one open round saved before each group had its own (#258)', async () => {
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ activeRoundId: 'r1', activeGroupId: 'g2' }));
+    const loaded = await loadDataset(false);
+    expect(loaded.openRoundIds).toEqual(['r1']);
+    expect(loaded).not.toHaveProperty('activeRoundId');
+
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ activeRoundId: 'r1', openRoundIds: ['r2', 'r3'] }));
+    await expect(loadDataset(false)).resolves.toMatchObject({ openRoundIds: ['r2', 'r3'] });
   });
 
   it('gives data saved before max scores no max and no pick-ups', async () => {
