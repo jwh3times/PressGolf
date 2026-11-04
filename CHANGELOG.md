@@ -9,6 +9,10 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.1.1] - 2026-11-03
+
 ### Fixed
 
 - The Android app opens again. Since the move to Expo SDK 58, an Android store or preview build
