@@ -9,7 +9,10 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Switching groups in Settings during a round no longer breaks it. The round keeps its own players:
+  Score's whole card no longer crashes, and Settle still settles it.
 
 ## [1.1.0] - 2026-11-03
 

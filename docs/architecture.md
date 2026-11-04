@@ -469,7 +469,11 @@ rule:
 state. A card being typed in lives in its own slot (`cardRoundId`) beside the
 active round. While it is open, `store.round` is the card and edits land on
 it. The live round is untouched, and returns when the card is saved or
-discarded. Server availability is never on the path of score entry. Demo and live
+discarded. The round scores and settles with its own group's players
+(`store.roundGroup`, found by the round's `groupId`), not the active group's:
+switching groups in Settings leaves a round in progress open, while the active
+group (`store.group`) drives the season, the roster, history and new rounds
+(#249). Server availability is never on the path of score entry. Demo and live
 datasets have separate namespaces and demo data is excluded from sync.
 
 The demo seed contains an in-progress Saturday Dogs round and prior completed
