@@ -59,9 +59,17 @@ interface Dataset {
   /** Rounds this phone marked as practice (#136). Saved here, never synced. */
   practice: Record<RoundId, PracticeMark>;
   activeGroupId: string | null;
-  activeRoundId: string | null;
+  /**
+   * Each group's open round, at most one per group (#258). The active group's is
+   * the one on Home and Score; another group's waits for a switch back. Held as
+   * round ids, which never change, rather than keyed by group ids, which can.
+   */
+  openRoundIds: RoundId[];
   activeOutingId: string | null;
-  /** A finished card being typed in. While set it stands in for the live round, which is left alone. */
+  /**
+   * A finished card being typed in. While its group is active it stands in for
+   * that group's live round, which is left alone.
+   */
   cardRoundId: string | null;
   seenCells: SeenCells | null;
 }
@@ -82,12 +90,14 @@ export interface OutingGroupDraft {
 export interface AppStore extends AppState {
   /** Where this phone's data stands with the server. Never blocks an edit. */
   sync: SyncState;
-  // Derived — the active group, and the active round (one foursome)
+  // Derived — the active group, and its open round (one foursome)
   group: Group | null;
+  /** The active group's open live round, if it has one. A card being typed in is not it. */
+  activeRoundId: RoundId | null;
   /**
-   * The group the active round belongs to: its players and its "you". Not
-   * always the active group: switching groups leaves a round in progress open,
-   * and it still scores and settles with its own players.
+   * The group the active round belongs to: its players and its "you". The
+   * active group, since a group only shows its own round; a round whose group
+   * has gone falls back to the active one.
    */
   roundGroup: Group | null;
   course: Course | null;
@@ -212,7 +222,7 @@ const EMPTY_STATE: AppState = {
   usualScore: null,
   practice: {},
   activeGroupId: null,
-  activeRoundId: null,
+  openRoundIds: [],
   activeOutingId: null,
   cardRoundId: null,
   seenCells: null,
@@ -245,11 +255,49 @@ function withFieldHandicapPops(state: AppState, rounds: Round[]): Round[] {
   return withHandicapPops([...rounds, ...others], course, roster).slice(0, rounds.length);
 }
 
-/** Points the store at a round: a card round opens in the card slot, a live one as the active round. */
+type Pointers = Pick<Dataset, 'groups' | 'rounds' | 'activeGroupId' | 'openRoundIds' | 'cardRoundId'>;
+
+/** The active group: the one chosen, or the first when none is. */
+function activeGroupOf(state: Pointers): Group | null {
+  return state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;
+}
+
+/** A group's open live round, if it has one. */
+function openRoundOf(state: Pointers, groupId: string | undefined): Round | null {
+  if (!groupId) return null;
+  return state.rounds.find((r) => r.groupId === groupId && state.openRoundIds.includes(r.id)) ?? null;
+}
+
+/** The round the active group shows: its card being typed in, else its open live round. */
+function shownRound(state: Pointers): Round | null {
+  const groupId = activeGroupOf(state)?.id;
+  const card = state.rounds.find((r) => r.id === state.cardRoundId);
+  if (card && card.groupId === groupId) return card;
+  return openRoundOf(state, groupId);
+}
+
+/** The open rounds with `round` as its group's, in place of whatever that group had open. */
+function withOpen(state: Pointers, round: Round): RoundId[] {
+  const others = state.openRoundIds.filter((id) => {
+    const open = state.rounds.find((r) => r.id === id);
+    return open != null && open.id !== round.id && open.groupId !== round.groupId;
+  });
+  return [...others, round.id];
+}
+
+/**
+ * Points the store at a round, making its group the active one: a card round
+ * opens in the card slot, a live one as its group's open round. No round closes
+ * the active group's open round.
+ */
 function focusRound(state: AppState, id: string | null): AppState {
   const round = state.rounds.find((r) => r.id === id);
-  if (round?.entry === 'card') return { ...state, cardRoundId: round.id };
-  return { ...state, activeRoundId: id };
+  if (!round) {
+    const closing = openRoundOf(state, activeGroupOf(state)?.id);
+    return closing ? { ...state, openRoundIds: state.openRoundIds.filter((rid) => rid !== closing.id) } : state;
+  }
+  if (round.entry === 'card') return { ...state, cardRoundId: round.id, activeGroupId: round.groupId };
+  return { ...state, openRoundIds: withOpen(state, round), activeGroupId: round.groupId };
 }
 
 /** Finishes a round. A card is dated the day it was played, not the day it was typed in. */
@@ -270,7 +318,7 @@ function completeIn(state: AppState, id: string, markBlanksPickedUp: boolean): A
   return {
     ...state,
     rounds,
-    activeRoundId: state.activeRoundId === id ? null : state.activeRoundId,
+    openRoundIds: state.openRoundIds.filter((rid) => rid !== id),
     cardRoundId: state.cardRoundId === id ? null : state.cardRoundId,
   };
 }
@@ -294,7 +342,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         usualScore: next.usualScore,
         practice: next.practice,
         activeGroupId: next.activeGroupId,
-        activeRoundId: next.activeRoundId,
+        openRoundIds: next.openRoundIds,
         activeOutingId: next.activeOutingId,
         cardRoundId: next.cardRoundId,
         seenCells: next.seenCells,
@@ -341,7 +389,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       await saveSettings({
         demoMode: on,
         activeGroupId: dataset.activeGroupId,
-        activeRoundId: dataset.activeRoundId,
+        activeRoundId: openRoundOf(dataset, activeGroupOf(dataset)?.id)?.id ?? null,
         activeOutingId: dataset.activeOutingId,
       });
       setState({ ready: true, demoMode: on, ...dataset });
@@ -420,11 +468,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   });
 
   const store = useMemo<AppStore>(() => {
-    const group = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0] ?? null;
-    const round =
-      state.rounds.find((r) => r.id === state.cardRoundId) ??
-      state.rounds.find((r) => r.id === state.activeRoundId) ??
-      null;
+    const group = activeGroupOf(state);
+    const round = shownRound(state);
     const roundGroup = round ? state.groups.find((g) => g.id === round.groupId) ?? group : null;
     const course = round ? state.courses.find((c) => c.id === round.courseId) ?? null : null;
     const outing = state.outings.find((o) => o.id === state.activeOutingId) ?? null;
@@ -452,11 +497,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         return { ...prev, outings };
       });
 
-    /** Applies a patch to the active round. No active round means the call is a no-op. */
+    /** Applies a patch to the round the active group shows. None means the call is a no-op. */
     const patchRound = (fn: (r: Round, prev: AppState) => Round) =>
       commit((prev) => {
-        let idx = prev.rounds.findIndex((r) => r.id === prev.cardRoundId);
-        if (idx < 0) idx = prev.rounds.findIndex((r) => r.id === prev.activeRoundId);
+        const shown = shownRound(prev);
+        const idx = shown ? prev.rounds.indexOf(shown) : -1;
         if (idx < 0) return prev;
         const rounds = prev.rounds.slice();
         rounds[idx] = fn(rounds[idx], prev);
@@ -478,7 +523,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           usualScore: null,
           practice: {},
           activeGroupId: null,
-          activeRoundId: null,
+          openRoundIds: [],
           activeOutingId: null,
           cardRoundId: null,
           seenCells: null,
@@ -490,6 +535,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       ...state,
       sync,
       group,
+      activeRoundId: openRoundOf(state, group?.id)?.id ?? null,
       roundGroup,
       course,
       round,
@@ -505,22 +551,19 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         : [],
 
       startOuting: (created, groups) =>
-        commit((prev) => ({
-          ...prev,
-          outings: [...prev.outings, created],
-          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, groups)],
-          activeOutingId: created.id,
-          activeGroupId: created.groupId,
+        commit((prev) => {
+          const next = {
+            ...prev,
+            outings: [...prev.outings, created],
+            rounds: [...prev.rounds, ...withFieldHandicapPops(prev, groups)],
+            activeOutingId: created.id,
+            activeGroupId: created.groupId,
+          };
           // Drop the phone straight into whichever group holds "you".
-          activeRoundId:
-            groups.find((r) =>
-              r.playerIds.includes(
-                prev.groups.find((g) => g.id === created.groupId)?.youId ?? '',
-              ),
-            )?.id ??
-            groups[0]?.id ??
-            null,
-        })),
+          const youId = prev.groups.find((g) => g.id === created.groupId)?.youId ?? '';
+          const mine = groups.find((r) => r.playerIds.includes(youId)) ?? groups[0];
+          return mine ? focusRound(next, mine.id) : next;
+        }),
       setActiveOuting: (id) => commit((prev) => ({ ...prev, activeOutingId: id })),
       updateOuting: (patch) =>
         commit((prev) => {
@@ -587,7 +630,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             r.outingId === id ? { ...r, status: 'completed' as const, completedAt: Date.now() } : r,
           ),
           activeOutingId: prev.activeOutingId === id ? null : prev.activeOutingId,
-          activeRoundId: null,
+          // Only the day's rounds close; another group's round stays open.
+          openRoundIds: prev.openRoundIds.filter((rid) => prev.rounds.find((r) => r.id === rid)?.outingId !== id),
         })),
 
       setDemoMode,
@@ -643,8 +687,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const groups = prev.groups.filter((g) => g.id !== id);
           const rounds = prev.rounds.filter((r) => r.groupId !== id);
           const activeGroupId = prev.activeGroupId === id ? groups[0]?.id ?? null : prev.activeGroupId;
-          const activeRoundId = rounds.some((r) => r.id === prev.activeRoundId) ? prev.activeRoundId : null;
-          return { ...prev, groups, rounds, activeGroupId, activeRoundId };
+          const kept = (rid: string | null) => rounds.some((r) => r.id === rid);
+          const openRoundIds = prev.openRoundIds.filter(kept);
+          const cardRoundId = kept(prev.cardRoundId) ? prev.cardRoundId : null;
+          return { ...prev, groups, rounds, activeGroupId, openRoundIds, cardRoundId };
         }),
       setActiveGroup: (id) => commit((prev) => ({ ...prev, activeGroupId: id })),
 
@@ -782,13 +828,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           return { ...prev, practice: { ...prev.practice, [roundId]: { on, ever: on || (was?.ever ?? false) } } };
         }),
 
+      // A new round takes its group's open slot; other groups keep theirs.
       startRound: (created) =>
-        commit((prev) => ({
-          ...prev,
-          rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])],
-          activeRoundId: created.id,
-          activeGroupId: created.groupId,
-        })),
+        commit((prev) =>
+          focusRound({ ...prev, rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])] }, created.id),
+        ),
       // A card round opens in the card slot, never as the live round.
       setActiveRound: (id) => commit((prev) => focusRound(prev, id)),
       completeRound: (id) => commit((prev) => completeIn(prev, id, false)),
@@ -808,7 +852,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           rounds: prev.rounds.filter((r) => r.id !== id),
-          activeRoundId: prev.activeRoundId === id ? null : prev.activeRoundId,
+          openRoundIds: prev.openRoundIds.filter((rid) => rid !== id),
           cardRoundId: prev.cardRoundId === id ? null : prev.cardRoundId,
         })),
 
@@ -906,15 +950,16 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   }, [state, sync, commit, setDemoMode, signOut]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
+  const { activeRoundId } = store;
   useEffect(() => {
     if (!state.ready) return;
     void saveSettings({
       demoMode: state.demoMode,
       activeGroupId: state.activeGroupId,
-      activeRoundId: state.activeRoundId,
+      activeRoundId,
       activeOutingId: state.activeOutingId,
     });
-  }, [state.ready, state.demoMode, state.activeGroupId, state.activeRoundId, state.activeOutingId]);
+  }, [state.ready, state.demoMode, state.activeGroupId, activeRoundId, state.activeOutingId]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
@@ -941,7 +986,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     usualScore: stored.usualScore,
     practice: stored.practice,
     activeGroupId: stored.activeGroupId,
-    activeRoundId: stored.activeRoundId,
+    openRoundIds: stored.openRoundIds,
     activeOutingId: stored.activeOutingId,
     cardRoundId: stored.cardRoundId,
     seenCells: stored.seenCells ?? null,

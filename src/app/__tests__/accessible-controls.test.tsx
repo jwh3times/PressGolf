@@ -236,7 +236,7 @@ const actions = {
 const dataset = buildDemoDataset(1_750_000_000_000);
 const course = dataset.courses[0];
 const group = dataset.groups.find((candidate) => candidate.id === dataset.activeGroupId)!;
-const round = dataset.rounds.find((candidate) => candidate.id === dataset.activeRoundId)!;
+const round = dataset.rounds.find((candidate) => candidate.id === dataset.openRoundIds[0])!;
 const outing = dataset.outings[0];
 const outingGroup = dataset.groups.find((candidate) => candidate.id === outing.groupId)!;
 const outingRounds = outing.roundIds.map(
@@ -250,6 +250,7 @@ const roundStore = {
   demoMode: true,
   sync: { status: 'off' as const, at: null, message: null },
   group,
+  activeRoundId: round.id,
   roundGroup: group,
   course,
   round,

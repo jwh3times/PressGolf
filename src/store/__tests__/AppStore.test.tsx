@@ -48,9 +48,8 @@ function Probe() {
 }
 
 type SeededDataset = ReturnType<typeof buildDemoDataset>;
-type Dataset = Omit<SeededDataset, 'activeGroupId' | 'activeRoundId' | 'activeOutingId'> & {
+type Dataset = Omit<SeededDataset, 'activeGroupId' | 'activeOutingId'> & {
   activeGroupId: string | null;
-  activeRoundId: string | null;
   activeOutingId: string | null;
 };
 
@@ -65,7 +64,7 @@ function stored(data: Dataset) {
     usualScore: data.usualScore,
     practice: data.practice,
     activeGroupId: data.activeGroupId,
-    activeRoundId: data.activeRoundId,
+    openRoundIds: data.openRoundIds,
     activeOutingId: data.activeOutingId,
     cardRoundId: data.cardRoundId,
   };
@@ -75,7 +74,7 @@ async function mount(data: Dataset = buildDemoDataset(1_750_000_000_000), demoMo
   mockLoadSettings.mockResolvedValueOnce({
     demoMode,
     activeGroupId: data.activeGroupId,
-    activeRoundId: data.activeRoundId,
+    activeRoundId: data.openRoundIds[0] ?? null,
     activeOutingId: data.activeOutingId,
   });
   mockLoadDataset.mockResolvedValueOnce(stored(data));
@@ -182,7 +181,7 @@ describe('deleting the account', () => {
       usualScore: null,
       practice: {},
       activeGroupId: null,
-      activeRoundId: null,
+      openRoundIds: [],
       activeOutingId: null,
       cardRoundId: null,
     });
@@ -305,7 +304,7 @@ describe('AppStoreProvider', () => {
       ready: true,
       demoMode: true,
       group: expect.objectContaining({ id: data.activeGroupId }),
-      round: expect.objectContaining({ id: data.activeRoundId }),
+      round: expect.objectContaining({ id: data.openRoundIds[0] }),
       course: expect.any(Object),
       settlement: expect.any(Object),
       outing: expect.any(Object),
@@ -337,7 +336,7 @@ describe('AppStoreProvider', () => {
       usualScore: null,
       practice: {},
       activeGroupId: null,
-      activeRoundId: null,
+      openRoundIds: [],
       activeOutingId: null,
       cardRoundId: null,
     };
@@ -382,19 +381,82 @@ describe('AppStoreProvider', () => {
     expect(store.groups.length).toBeGreaterThan(0);
   });
 
-  it('keeps the open round on its own players when another group becomes active', async () => {
+  it('gives each group its own open round, both ways across a switch', async () => {
     await mount();
-    const round = store.round!;
-    const before = store.settlement!;
-    expect(Object.keys(before.net)).toEqual(round.playerIds);
-    const other = store.groups.find((g) => g.id !== round.groupId)!;
+    const dogs = store.group!;
+    const dogsRound = store.round!;
+    const dogsSettlement = store.settlement!;
+    expect(dogsRound.groupId).toBe(dogs.id);
+    const society = store.groups.find((g) => g.id !== dogs.id)!;
 
-    await change(() => store.setActiveGroup(other.id));
+    // The society has no open round of its own on the phone: it offers Start a round.
+    await change(() => store.setActiveGroup(society.id));
+    expect(store.group?.id).toBe(society.id);
+    expect(store.round).toBeNull();
+    expect(store.settlement).toBeNull();
 
-    expect(store.group?.id).toBe(other.id);
-    expect(store.round?.id).toBe(round.id);
-    expect(store.settlement).toEqual(before);
-    expect(store.roundGroup?.id).toBe(round.groupId);
+    // It can start one while the Dogs' round stays open.
+    const societyRound = makeRound(society, store.courses[0]);
+    await change(() => store.startRound(societyRound));
+    expect(store.round?.id).toBe(societyRound.id);
+    expect(store.roundGroup?.id).toBe(society.id);
+    await change(() => store.setScore(society.players[0].id, 0, 5));
+    expect(store.rounds.find((r) => r.id === dogsRound.id)?.status).toBe('active');
+
+    // Back to the Dogs: their round, with its scores, untouched.
+    await change(() => store.setActiveGroup(dogs.id));
+    expect(store.round?.id).toBe(dogsRound.id);
+    expect(store.round?.scores).toEqual(dogsRound.scores);
+    expect(store.settlement).toEqual(dogsSettlement);
+    expect(store.roundGroup?.id).toBe(dogs.id);
+
+    // And the society's round is still there when it comes back.
+    await change(() => store.setActiveGroup(society.id));
+    expect(store.round?.id).toBe(societyRound.id);
+    expect(store.round?.scores[society.players[0].id]?.[0]).toBe(5);
+  });
+
+  it("keeps a card and an outing's rounds with their own group", async () => {
+    await mount();
+    const dogs = store.group!;
+    const dogsRoundId = store.activeRoundId!;
+    const society = store.groups.find((g) => g.id !== dogs.id)!;
+    const ids = dogs.players.slice(0, 2).map((p) => p.id);
+    const card = makeRound(dogs, store.courses[0], ids, { entry: 'card' });
+    await change(() => store.startCard(card));
+
+    // The Dogs' card waits behind a switch, and nothing typed in the society lands on it.
+    await change(() => store.setActiveGroup(society.id));
+    expect(store.round).toBeNull();
+    await change(() => store.setScore(ids[0], 0, 9));
+    expect(store.rounds.find((r) => r.id === card.id)?.scores[ids[0]]?.[0]).not.toBe(9);
+
+    // Opening one of the society's outing rounds makes it the society's open round.
+    const outing = store.outings.find((o) => o.groupId === society.id)!;
+    await change(() => store.setActiveGroup(dogs.id));
+    expect(store.round?.id).toBe(card.id);
+    await change(() => store.setActiveRound(outing.roundIds[1]));
+    expect(store.group?.id).toBe(society.id);
+    expect(store.round?.id).toBe(outing.roundIds[1]);
+    await change(() => store.setActiveRound(outing.roundIds[0]));
+    expect(store.openRoundIds).toEqual([dogsRoundId, outing.roundIds[0]]);
+
+    // Finishing the society's day closes its round only.
+    await change(() => store.completeOuting(outing.id));
+    expect(store.round).toBeNull();
+    expect(store.openRoundIds).toEqual([dogsRoundId]);
+    await change(() => store.setActiveGroup(dogs.id));
+    expect(store.round?.id).toBe(card.id);
+    await change(() => store.discardCard());
+    expect(store.round?.id).toBe(dogsRoundId);
+
+    // No round closes the active group's open round; with none open, nothing changes.
+    await change(() => store.setActiveRound(null));
+    expect(store.round).toBeNull();
+    expect(store.openRoundIds).toEqual([]);
+    const before = store.openRoundIds;
+    await change(() => store.setActiveRound(null));
+    expect(store.openRoundIds).toBe(before);
   });
 
   it('covers group, player, course, and round lifecycle branches', async () => {
@@ -530,15 +592,16 @@ describe('AppStoreProvider', () => {
     await change(() => store.startOuting(noYou, [onlyOther]));
     expect(store.activeRoundId).toBe(onlyOther.id);
     const empty = makeOuting(group, course);
+    // An outing with no rounds leaves the group's open round as it was.
     await change(() => store.startOuting(empty, []));
-    expect(store.activeRoundId).toBeNull();
+    expect(store.activeRoundId).toBe(onlyOther.id);
   });
 
   it('reconciles a removed player only from active rounds and supports course fallbacks', async () => {
     const data = buildDemoDataset(1_750_000_000_000);
     const group = data.groups.find((candidate) => candidate.id === data.activeGroupId)!;
     const player = group.players[0];
-    const active = data.rounds.find((round) => round.id === data.activeRoundId)!;
+    const active = data.rounds.find((round) => round.id === data.openRoundIds[0])!;
     const completed: Round = { ...active, id: 'completed', status: 'completed', completedAt: 1 };
     const otherGroup = { ...active, id: 'other-group', groupId: 'elsewhere' };
     const absent = { ...active, id: 'absent', playerIds: active.playerIds.filter((id) => id !== player.id) };

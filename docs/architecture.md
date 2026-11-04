@@ -466,15 +466,23 @@ rule:
 ## Local data and demo isolation
 
 `AppStore` writes the active dataset to AsyncStorage and renders from local
-state. A card being typed in lives in its own slot (`cardRoundId`) beside the
-active round. While it is open, `store.round` is the card and edits land on
-it. The live round is untouched, and returns when the card is saved or
-discarded. The round scores and settles with its own group's players
-(`store.roundGroup`, found by the round's `groupId`), not the active group's:
-switching groups in Settings leaves a round in progress open, while the active
-group (`store.group`) drives the season, the roster, history and new rounds
-(#249). Server availability is never on the path of score entry. Demo and live
-datasets have separate namespaces and demo data is excluded from sync.
+state. Each group has its own open round (#258): the dataset keeps the open
+rounds as `openRoundIds`, at most one per group, and `store.round` is the one
+whose `groupId` is the active group's (`store.group`). Switching groups in
+Settings shows the new group's open round on Home, Score, Settle and Format, or
+Start a round when it has none; the other group's round stays open for the
+switch back. They are kept as round ids because a move notice can change a
+group's id but never a round's. A dataset saved with the single phone-wide
+`activeRoundId` from before keeps that round open, for its own group.
+
+A card being typed in lives in its own slot (`cardRoundId`) beside its group's
+live round. While it is open and its group is active, `store.round` is the
+card and edits land on it. The live round is untouched, and returns when the
+card is saved or discarded. The round scores and settles with its own group's
+players (`store.roundGroup`, found by the round's `groupId`, #249), which is
+the active group except for a round whose group has gone. Server availability
+is never on the path of score entry. Demo and live datasets have separate
+namespaces and demo data is excluded from sync.
 
 The demo seed contains an in-progress Saturday Dogs round and prior completed
 rounds generated from a fixed seed. Its Pine Hollow course has two tees: Blue,
