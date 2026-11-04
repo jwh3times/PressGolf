@@ -3,11 +3,13 @@ import type { Session } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   getSupabase,
+  requestPasswordReset,
   signInWithPassword,
   signOut as signOutRemote,
   signUpWithPassword,
   type SignUpResult,
 } from '../sync/supabase';
+import type { PasswordResetResult } from './validate';
 
 export type AuthStatus =
   /** No server on this build, so there is nobody to be. The app is local-only. */
@@ -41,6 +43,8 @@ interface AuthValue {
   unverified: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
+  /** Emails a reset link. Resolves the same way whether or not the address has an account. */
+  requestPasswordReset: (email: string) => Promise<PasswordResetResult>;
   signOut: () => Promise<void>;
 }
 
@@ -148,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [forget]);
 
   const value = useMemo<AuthValue>(
-    () => ({ status, email, userId, unverified, signIn, signUp, signOut }),
+    () => ({ status, email, userId, unverified, signIn, signUp, requestPasswordReset, signOut }),
     [status, email, userId, unverified, signIn, signUp, signOut],
   );
 

@@ -10,7 +10,13 @@ import {
 } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { resendConfirmation } from '../sync/supabase';
-import { MIN_PASSWORD_LENGTH, authErrorMessage, emailProblem, passwordProblem } from '../auth/validate';
+import {
+  MIN_PASSWORD_LENGTH,
+  authErrorMessage,
+  emailProblem,
+  passwordProblem,
+  passwordResetMessage,
+} from '../auth/validate';
 import { Screen } from './Screen';
 import { SiteLinks } from './SiteLinks';
 import { Body, Display, Eyebrow, Mono, PrimaryButton } from './primitives';
@@ -30,7 +36,7 @@ type Mode = 'sign-in' | 'sign-up';
 export function SignInScreen() {
   const styles = useStyles();
   const { colors, ink } = useTheme();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, requestPasswordReset } = useAuth();
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,6 +68,27 @@ export function SignInScreen() {
     }
   };
 
+  // Uses the address typed for signing in, so nobody types it twice. The answer
+  // is the same whether or not the address has an account.
+  const forgot = async () => {
+    const problem = emailProblem(email);
+    if (problem) {
+      setError(problem);
+      setNotice(null);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const message = passwordResetMessage(await requestPasswordReset(email));
+      setNotice(message.notice ?? null);
+      setError(message.error ?? null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async () => {
     const problem = emailProblem(email) ?? passwordProblem(password);
     if (problem) {
@@ -77,7 +104,7 @@ export function SignInScreen() {
         if (needsConfirmation) {
           setUnconfirmed(email);
           setNotice(
-            'Account created. Tap the link in the email we sent, then come back here and sign in.',
+            'Account created. Tap the link in the email we sent and press Confirm my email, then come back here and sign in.',
           );
           setMode('sign-in');
         }
@@ -161,6 +188,21 @@ export function SignInScreen() {
             }}
           />
         )}
+
+        {mode === 'sign-in' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy }}
+            disabled={busy}
+            onPress={() => {
+              void forgot();
+            }}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed || busy ? 0.6 : 1, alignItems: 'center' })}
+          >
+            <Text style={styles.swap}>Forgot password?</Text>
+          </Pressable>
+        ) : null}
 
         {unconfirmed && !busy ? (
           <Pressable

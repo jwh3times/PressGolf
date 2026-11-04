@@ -558,6 +558,50 @@ This path provides local-first scoring, account backup, and shared snapshots.
 It is not currently an instant, conflict-free multi-device feed. A device that
 makes no local change does not continuously pull another phone's edits.
 
+## Password reset and email confirmation
+
+The account emails link to web pages on pressgolf.cc, not into the app, so a
+link works on any device and in a mail app that won't open a `press://` link.
+The app passes no redirect URL when it signs up, resends a confirmation or asks
+for a reset; the texts in `supabase/templates/` build the links from the
+project's Site URL: `/confirm/?token_hash=…` and `/reset/?token_hash=…`. Both
+work for an hour, once. The app adds no deep-link handling, and
+`detectSessionInUrl` stays off.
+
+**Asking for a reset.** **Forgot password?** on the sign-in screen
+(`src/components/SignInScreen.tsx`) checks the typed address as sign-in does,
+then calls `requestPasswordReset` (the auth context, then `src/sync/supabase.ts`).
+That returns a `PasswordResetResult` (`src/auth/validate.ts`): `sent`,
+`held-back`, `no-signal` or `failed`. An address with no account is `sent`, and
+`held-back` (the server declining to send again so soon, or at its hourly cap,
+which happens only for an address with an account) reads exactly like it, so
+the screen never says whether an account exists.
+
+**The pages** are `site/link-pages.ts`, served by the site's Worker. They are
+server-rendered forms that run no script. Opening a link only shows the form,
+with the token in a hidden field; the token is spent when the form is sent, so a
+mail scanner that opens the link first uses nothing. The Worker calls the
+Supabase Auth REST API itself, with the project's URL and anon key from two
+Worker secrets ([testing-and-ci.md](testing-and-ci.md#support-and-privacy-site)).
+
+- **`/reset/`** checks the two passwords first (they match, and have at least
+  8 characters), so a typo never spends the link. Then it verifies the token as
+  `recovery`, sets the password with the session that buys, and signs out with
+  `global` scope, which ends every session on the account, this one included.
+  When the server refuses the password (leaked, too weak, or the current one),
+  the form comes back carrying that short-lived session instead of the spent
+  token, so the person can try again.
+- **`/confirm/`** verifies the token as `email`, then signs out that session
+  with `local` scope.
+
+Neither page leaves anyone signed in, there or anywhere else: the person opens
+Press and signs in. A phone signed out by a reset keeps its local data, and
+syncs again once its owner signs in with the new password. A used or expired
+link gets a page saying how to get a new one. Every response from these pages
+sends `Referrer-Policy: no-referrer`, `Cache-Control: no-store` and a
+Content-Security-Policy that allows no script. A changed password also sends the
+password-changed email.
+
 ## Deleting an account
 
 **Settings → Account → Delete account** opens `src/app/delete-account.tsx`,
@@ -765,7 +809,12 @@ src/
 supabase/
   migrations/       versioned production schema
   functions/        Edge Functions (Deno), deployed by CI
+  templates/        the account emails' texts (applied to production by hand)
   ci/               Postgres stand-ins and RLS assertions
+site/
+  worker.ts         the pressgolf.cc Worker, deployed by Cloudflare Workers Builds
+  link-pages.ts     the reset and confirmation pages the account emails link to
+  public/           the static support, privacy, terms and account-deletion pages
 scripts/
   check-patch-coverage.mjs
   generate-icons.py

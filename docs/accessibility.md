@@ -27,6 +27,12 @@ substitute for assistive-technology use on both platforms.
   runs signed in; a Jest test covers both screens. They haven't been tried yet
   with VoiceOver or TalkBack or at the largest text size on a phone
   ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
+- **Forgot password?** on the sign-in screen is a named button that reads as
+  disabled while its request is in flight; a Jest test covers it, since the web
+  suite runs signed in. The reset and confirmation pages on pressgolf.cc label
+  their fields, and an error there is an `alert` that the password field points
+  at with `aria-describedby`. None of this has been tried yet with VoiceOver or
+  TalkBack or at the largest text size.
 - A control's name contains the words it shows, in order (WCAG 2.5.3, Label
   in Name), so a voice-control user can say what they see. axe enforces this
   from 4.14 (October 2026). Chips that show initials say them after the name

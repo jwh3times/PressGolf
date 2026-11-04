@@ -20,5 +20,3 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
-// Only the confirmation email's redirect uses it, and local auth sends no email.
-jest.mock('expo-linking', () => ({ createURL: (path: string) => `press://${path}` }));

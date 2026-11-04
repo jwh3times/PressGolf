@@ -9,6 +9,28 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.2.0] - 2026-11-04
+
+### Added
+
+- **Forgot password?** on the sign-in screen. It emails a link to the address typed there, and
+  Press answers the same way whether or not that address has an account. The link opens a page on
+  pressgolf.cc, on any phone or computer, where you type the new password twice and press **Set
+  password**. Then you sign in to Press with it. Every phone signed in to the account is signed
+  out, with its scores kept, and an email says the password was changed. Links work for an hour
+  and only once.
+
+### Changed
+
+- The link in the email that confirms a new account opens a page on pressgolf.cc, where **Confirm
+  my email** confirms it; then you sign in to Press. It no longer tries to open the app, which many
+  mail apps wouldn't do, and it works from a computer too. Opening either link does nothing until
+  its button is pressed, so a mail scanner that opens it first doesn't use it up.
+- The support page's "I can't sign in" answer starts with **Forgot password?**, and the privacy
+  policy names Cloudflare, which runs those pages, and the reset and password-changed emails.
+
 ### Fixed
 
 - Each group has its own round going. Switching groups in Settings shows that group's round on

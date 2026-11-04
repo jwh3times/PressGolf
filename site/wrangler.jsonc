@@ -1,19 +1,27 @@
 // pressgolf.cc: the support, privacy, terms and account-deletion pages, served
-// as static files by a Cloudflare Worker. Workers Builds deploys it from main,
-// with this folder as the root directory. See docs/testing-and-ci.md.
+// as static files by a Cloudflare Worker, and the reset and confirmation pages
+// the Worker renders for the links in Press's emails. Workers Builds deploys it
+// from main, with this folder as the root directory. See docs/testing-and-ci.md.
+//
+// The reset and confirmation pages need two Worker secrets, SUPABASE_URL and
+// SUPABASE_ANON_KEY, set in the Cloudflare dashboard and never here: the
+// repository is public. A deploy keeps secrets; without them both pages say to
+// try again later.
 {
   "name": "pressgolf-site",
-  "main": "./worker.js",
+  "main": "./worker.ts",
   "compatibility_date": "2026-10-13",
   "workers_dev": false,
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    // The Worker runs first only to send www to the bare domain.
+    // The Worker runs first to send www to the bare domain and to answer
+    // /reset/ and /confirm/.
     "run_worker_first": true,
     "not_found_handling": "none"
   },
   // Workers Builds runs `npx wrangler preview` on every other branch, which
-  // needs this block. Empty: the site has no variables or bindings to swap.
+  // needs this block. Empty: the site has no variables or bindings to swap, and
+  // a preview without the secrets just says to try again later.
   "previews": {}
 }

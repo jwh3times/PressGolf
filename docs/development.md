@@ -141,7 +141,16 @@ Maintainers can instead resolve the committed references in `.env.op`:
 npm run start:op
 ```
 
-`start:op` uses `eval`, `grep`, and `sed`, so run it in Bash, Git Bash, or WSL.
+`start:op` uses `eval`, `grep`, and `sed`, so it needs npm to run scripts in a
+POSIX shell: it works on macOS, Linux and WSL. On Windows, npm runs scripts
+through `cmd.exe` whatever terminal started it, so `npm run start:op` fails with
+`'eval' is not recognized`, in Git Bash too. In Git Bash, run the command
+yourself instead:
+
+```bash
+eval "$(op inject -i .env.op | grep -v '^#' | grep . | sed 's/^/export /')" && npx expo start
+```
+
 In native PowerShell, inject the two values into the current process without
 writing them to disk:
 
@@ -161,15 +170,33 @@ To configure a project:
 1. Create a Supabase project and leave email/password authentication enabled.
 2. Keep anonymous sign-ins disabled; Press attributes remote writes to signed-in
    users.
-3. Under **Authentication → URL Configuration**, add `press://**` for installed
-   builds. Add the Expo development redirect produced by `Linking.createURL`
-   when testing confirmation links in Expo Go; `exp://**` is suitable for local
-   development only.
-4. Use a custom SMTP provider before onboarding a group. Supabase's built-in
-   sender is intended for testing and has restrictive, changeable rate limits.
-   See the [SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp) and
+3. Deploy the site in `site/` with its two Worker secrets, `SUPABASE_URL` and
+   `SUPABASE_ANON_KEY`, set in the Cloudflare dashboard; see
+   [Support and privacy site](testing-and-ci.md#support-and-privacy-site). Its
+   `/reset/` and `/confirm/` pages are where the account emails link. Do this
+   before the next two steps, so no email links to a page that can't yet use
+   its token.
+4. Under **Authentication → URL Configuration**, set the Site URL to the site
+   that serves those pages (`https://pressgolf.cc` for Press), and make the
+   redirect allow-list hold only its `/reset/` and `/confirm/` pages. The app
+   passes no redirect URL and nothing links into it, so it needs no `press://`
+   or `exp://` entry.
+5. Apply the email texts in `supabase/templates/`: `confirmation.html` (Confirm
+   signup), `recovery.html` (Reset password) and `password_changed.html` (the
+   password-changed notification, which must be turned on), with the subjects
+   `supabase/config.toml` gives them. They link to `{{ .SiteURL }}/confirm/` and
+   `{{ .SiteURL }}/reset/`. The dashboard doesn't read `config.toml`, so a change
+   to a template is applied there by hand.
+6. In the Email sign-in provider's settings, keep **Confirm email** on, turn on
+   leaked-password protection, and set the minimum password length to 8, the
+   app's `MIN_PASSWORD_LENGTH`.
+7. Use a custom SMTP provider before onboarding a group, with the project's
+   email rate limit at 30 an hour, checked against the provider's own daily
+   cap. Supabase's built-in sender is intended for testing and has restrictive,
+   changeable rate limits. See the
+   [SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp) and
    [production checklist](https://supabase.com/docs/guides/deployment/going-into-prod).
-5. Link and migrate the project:
+8. Link and migrate the project:
 
    ```bash
    npx supabase login
@@ -177,13 +204,17 @@ To configure a project:
    npm run db:push
    ```
 
-6. Deploy the Edge Function, or **Delete account** can't reach a server; see
+9. Deploy the Edge Function, or **Delete account** can't reach a server; see
    [Edge Functions](#edge-functions).
 
-The custom scheme comes from `app.json`; do not edit generated native manifests
-for deep linking. Supabase's
-[native mobile deep-linking guide](https://supabase.com/docs/guides/auth/native-mobile-deep-linking)
-has the current platform details.
+How the reset and confirmation links work is in
+[architecture.md](architecture.md#password-reset-and-email-confirmation).
+
+The local stack sends the same texts: `supabase/config.toml` points
+`[auth.email.template.confirmation]`, `[auth.email.template.recovery]` and
+`[auth.email.notification.password_changed]` at `supabase/templates/`. Local
+`enable_confirmations` stays `false`, unlike production, because the integration
+tests sign up throwaway accounts and sign straight in.
 
 ## Database migrations
 
@@ -210,10 +241,12 @@ GitHub `production` environment.
 
 ### Sync integration tests
 
-`npm run test:integration` runs `src/sync/**/*.integration.test.ts` against a
-local Supabase stack (Docker required): real auth, PostgREST, row-level
-security, realtime and the Edge Function, with every migration applied. Start
-the stack first, with only the services the app uses:
+`npm run test:integration` runs every `*.integration.test.ts` against a local
+Supabase stack (Docker required): the sync suites in `src/sync/` and the site's
+reset and confirmation pages (`site/__tests__/link-pages.integration.test.ts`),
+through real auth, PostgREST, row-level security, realtime and the Edge
+Function, with every migration applied. Start the stack first, with only the
+services the app uses:
 
 ```bash
 npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
@@ -224,7 +257,9 @@ npx supabase stop            # when you're done
 The runner reads the stack's URL, anon key and service-role key from
 `supabase status`. The account-deletion tests use the service role to read what
 a deleted account has left behind, and to try deleting an auth user who still
-has rows. Every run signs up fresh accounts and prefixes every id, so it can be
+has rows. The link-page tests use it to make the token a reset or confirmation
+email would carry (`generateLink`), so no mail service is needed and Mailpit
+can stay off. Every run signs up fresh accounts and prefixes every id, so it can be
 repeated against a stack that stays up. It refuses any host but `localhost` or
 `127.0.0.1`.
 

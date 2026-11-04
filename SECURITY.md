@@ -44,6 +44,13 @@ maintain parallel release branches yet.
   data. An account reads only its own, and nothing can write one from the client.
   Where a guest's own rows stay on the departed account's group, their copy of it
   holds only the players they could already read or that those rows name.
+- Asking for a password reset never reveals whether an address has an account.
+  The reset and confirmation links open pages on pressgolf.cc that spend the
+  link's token only when the person presses the button, run no script, send no
+  referrer, and can't be cached. A reset signs out every session on the
+  account and leaves none behind; the site's Worker holds only the public URL
+  and anon key, as Worker secrets outside the repository. See
+  [architecture.md](docs/architecture.md#password-reset-and-email-confirmation).
 - Every new row must name an account that exists, through foreign keys to
   `auth.users`, so a deleted account's token, which stays valid for up to an hour,
   can't write. The same keys stop an auth user being deleted while they still have

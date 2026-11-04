@@ -308,6 +308,7 @@ beforeEach(() => {
     unverified: false,
     signIn: jest.fn(),
     signUp: jest.fn(),
+    requestPasswordReset: jest.fn(),
     signOut: jest.fn(),
   });
 });
@@ -535,6 +536,105 @@ describe('sign-in interactions', () => {
     expect(await screen.findByText('Sent again. It can take a minute to arrive.')).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Send the confirmation email again' }));
     expect(await screen.findByText('Could not reach the server. Check your signal and try again.')).toBeOnTheScreen();
+  });
+
+  it('says to tap the link, confirm on the page, then sign in', async () => {
+    const signUp = jest.fn().mockResolvedValue({ needsConfirmation: true });
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), signUp });
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.press(screen.getByRole('button', { name: 'No account yet? Create one' }));
+    const fields = credentials();
+    await user.type(fields.email, 'new@example.com');
+    await user.type(fields.password, 'password1');
+    await user.press(screen.getByRole('button', { name: 'Create account' }));
+    expect(
+      await screen.findByText(
+        'Account created. Tap the link in the email we sent and press Confirm my email, then come back here and sign in.',
+      ),
+    ).toBeOnTheScreen();
+  });
+});
+
+describe('forgot password', () => {
+  const SENT = "If there's an account for that address, we've emailed a link to it. The link works for an hour.";
+
+  function emailField() {
+    return screen.getAllByDisplayValue('')[0];
+  }
+
+  it('asks for the email first, and checks it before anything is sent', async () => {
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.press(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(screen.getByText('Enter your email address.')).toBeOnTheScreen();
+    await user.type(emailField(), 'not-an-address');
+    await user.press(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(screen.getByText('That does not look like an email address.')).toBeOnTheScreen();
+    expect(mockUseAuth().requestPasswordReset).not.toHaveBeenCalled();
+  });
+
+  it('sends the reset to the address typed for sign-in, and never says whether it has an account', async () => {
+    const requestPasswordReset = jest.fn().mockResolvedValue('sent');
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), requestPasswordReset });
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.type(emailField(), 'Golfer@Example.com');
+    await user.press(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(await screen.findByText(SENT)).toBeOnTheScreen();
+    expect(requestPasswordReset).toHaveBeenCalledWith('Golfer@Example.com');
+  });
+
+  it('answers the same way when the server holds the email back', async () => {
+    const requestPasswordReset = jest.fn().mockResolvedValue('held-back');
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), requestPasswordReset });
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.type(emailField(), 'golfer@example.com');
+    await user.press(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(await screen.findByText(SENT)).toBeOnTheScreen();
+  });
+
+  it.each([
+    ['no-signal', 'Could not reach the server. Check your signal and try again.'],
+    ['failed', 'The server could not send the email. Try again in a moment.'],
+  ])('says so when the request is %s', async (result, message) => {
+    const requestPasswordReset = jest.fn().mockResolvedValue(result);
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), requestPasswordReset });
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.type(emailField(), 'golfer@example.com');
+    await user.press(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(await screen.findByText(message)).toBeOnTheScreen();
+    expect(screen.queryByText(SENT)).not.toBeOnTheScreen();
+  });
+
+  it('stays on screen but does nothing while the request is in flight', async () => {
+    let finish: (result: string) => void = () => {};
+    const requestPasswordReset = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), requestPasswordReset } as ReturnType<typeof useAuth>);
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.type(emailField(), 'golfer@example.com');
+    await user.press(screen.getByRole('button', { name: 'Forgot password?' }));
+    const button = screen.getByRole('button', { name: 'Forgot password?' });
+    expect(button).toBeDisabled();
+    await user.press(button);
+    expect(requestPasswordReset).toHaveBeenCalledTimes(1);
+    await act(async () => finish('sent'));
+    expect(await screen.findByText(SENT)).toBeOnTheScreen();
+  });
+
+  it('is offered only when signing in', async () => {
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.press(screen.getByRole('button', { name: 'No account yet? Create one' }));
+    expect(screen.queryByRole('button', { name: 'Forgot password?' })).not.toBeOnTheScreen();
   });
 });
 

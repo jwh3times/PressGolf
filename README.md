@@ -77,8 +77,9 @@ edited by hand.
   [releases](docs/agents/releases.md) says how one is cut and tagged.
 - [Agent guide](AGENTS.md) — the rules Claude Code and Codex follow here, the
   development flow, and the agent skills and their settings in `docs/agents/`.
-- [pressgolf.cc](https://pressgolf.cc) — support, privacy policy, terms and
-  account deletion, served by a Cloudflare Worker from `site/`.
+- [pressgolf.cc](https://pressgolf.cc) — support, privacy policy, terms,
+  account deletion, and the password-reset and email-confirmation pages the
+  account emails link to, served by a Cloudflare Worker from `site/`.
 
 ## Demo and live data
 

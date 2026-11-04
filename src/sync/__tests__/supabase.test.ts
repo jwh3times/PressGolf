@@ -1,12 +1,10 @@
 import type { Mutation } from '../types';
 
 const mockCreateClient = jest.fn();
-const mockCreateUrl = jest.fn(() => 'press://');
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: mockCreateClient,
 }));
-jest.mock('expo-linking', () => ({ createURL: mockCreateUrl }));
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: { getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn() },
@@ -30,6 +28,7 @@ function client(overrides: Record<string, unknown> = {}) {
       getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
       signUp: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
       resend: jest.fn().mockResolvedValue({ error: null }),
+      resetPasswordForEmail: jest.fn().mockResolvedValue({ data: {}, error: null }),
       signInWithPassword: jest.fn().mockResolvedValue({ error: null }),
       signOut: jest.fn().mockResolvedValue({ error: null }),
     },
@@ -50,7 +49,6 @@ function load(configured = true): typeof import('../supabase') {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockCreateUrl.mockReturnValue('press://');
 });
 
 afterAll(() => {
@@ -107,15 +105,13 @@ describe('Supabase client and authentication helpers', () => {
     });
     fake.auth.signUp.mockResolvedValueOnce({ data: { session: { user: { id: 'u' } } }, error: null });
     await expect(api.signUpWithPassword('a@b.com', 'long-password')).resolves.toEqual({ needsConfirmation: false });
-    expect(fake.auth.signUp).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'test@example.com', options: { emailRedirectTo: 'press://' } }),
-    );
-    expect(mockCreateUrl).toHaveBeenCalledWith('/');
+    // No redirect: the email's own link goes to the confirmation page on the site.
+    expect(fake.auth.signUp).toHaveBeenCalledWith({ email: 'test@example.com', password: 'long-password' });
 
     await api.resendConfirmation(' TEST@Example.COM ');
     await api.signInWithPassword(' TEST@Example.COM ', 'long-password');
     await api.signOut();
-    expect(fake.auth.resend).toHaveBeenCalledWith(expect.objectContaining({ email: 'test@example.com' }));
+    expect(fake.auth.resend).toHaveBeenCalledWith({ type: 'signup', email: 'test@example.com' });
     expect(fake.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'test@example.com', password: 'long-password' });
     expect(fake.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
@@ -139,6 +135,43 @@ describe('Supabase client and authentication helpers', () => {
           ? api.resendConfirmation('a@b.com')
           : api.signInWithPassword('a@b.com', 'password');
     await expect(call).rejects.toThrow(/.+/);
+  });
+});
+
+describe('asking for a password reset', () => {
+  it('sends to the normalised address, with no redirect into the app', async () => {
+    const fake = client();
+    mockCreateClient.mockReturnValue(fake as never);
+    const api = await load();
+    await expect(api.requestPasswordReset(' Golfer@Example.COM ')).resolves.toBe('sent');
+    expect(fake.auth.resetPasswordForEmail).toHaveBeenCalledWith('golfer@example.com');
+  });
+
+  it.each([
+    ['an address with no account', { code: 'user_not_found', message: 'User not found' }, 'sent'],
+    ['the per-address wait', { code: 'over_email_send_rate_limit', message: 'For security purposes, you can only request this after 42 seconds.' }, 'held-back'],
+    ['the hourly cap', { code: 'over_email_send_rate_limit', message: 'email rate limit exceeded' }, 'held-back'],
+    ['no signal', { name: 'AuthRetryableFetchError', message: 'Network request failed' }, 'no-signal'],
+    ['any other refusal', { code: 'over_request_rate_limit', message: 'Request rate limit reached' }, 'failed'],
+  ])('reads %s', async (_label, error, result) => {
+    const fake = client();
+    fake.auth.resetPasswordForEmail.mockResolvedValueOnce({ data: null, error });
+    mockCreateClient.mockReturnValue(fake as never);
+    const api = await load();
+    await expect(api.requestPasswordReset('golfer@example.com')).resolves.toBe(result);
+  });
+
+  it('reads a fetch that threw as no signal', async () => {
+    const fake = client();
+    fake.auth.resetPasswordForEmail.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mockCreateClient.mockReturnValue(fake as never);
+    const api = await load();
+    await expect(api.requestPasswordReset('golfer@example.com')).resolves.toBe('no-signal');
+  });
+
+  it('fails without a server configured', async () => {
+    const api = await load(false);
+    await expect(api.requestPasswordReset('golfer@example.com')).resolves.toBe('failed');
   });
 });
 
