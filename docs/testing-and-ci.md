@@ -14,7 +14,7 @@ npx expo-doctor
 When a change touches `scripts/`, `app.json`, `.agents/skills/` or `.claude/agents/`, also run:
 
 ```bash
-npm run test:scripts        # node:test suites for the repository scripts and the generated Info.plist
+npm run test:scripts        # node:test suites for the repository scripts and the generated native config
 npm run sync:agents:check   # .claude/skills matches .agents/skills
 npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```

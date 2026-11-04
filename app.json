@@ -60,6 +60,14 @@
           "locationAlwaysPermission": false,
           "motionUsagePermission": "Press doesn't use motion or fitness activity. A location library it includes contains motion code, which Press never turns on."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": false
+          }
+        }
       ]
     ],
     "experiments": {
