@@ -19,9 +19,11 @@ npm run sync:agents:check   # .claude/skills matches .agents/skills
 npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```
 
-When a change touches `src/sync/`, `supabase/migrations/` or
-`supabase/functions/`, run the sync integration tests against a local Supabase
-stack (Docker required; see
+When a change touches `src/sync/`, `supabase/migrations/`,
+`supabase/functions/`, `supabase/templates/`, the auth settings in
+`supabase/config.toml`, or the site's reset and confirmation pages
+(`site/worker.ts`, `site/link-pages.ts`), run the integration tests against a
+local Supabase stack (Docker required; see
 [development.md](development.md#sync-integration-tests)):
 
 ```bash
@@ -91,7 +93,7 @@ figures, are authoritative.
 | **Tests, types, lint** | Jest coverage, 90% patch coverage on PRs, TypeScript, Oxlint, repository-script tests, on PRs a `CHANGELOG.md` entry for a change to the app, site, schema or Edge Function (`docs/agents/releases.md`), generated agent-skill mirrors are current, agent and skill sources are tool-neutral, and Expo dependency/config compatibility |
 | **Expo production bundle** | Metro, Babel, assets, and production transforms can export Android and iOS bundles |
 | **UI regression and accessibility** | Each main screen of the web build matches its committed screenshot and accessibility tree, at phone width and at 320 px, and passes axe's WCAG 2.1 A and AA rules |
-| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't. An account deletes itself through the real Edge Function, leaving nothing behind; a wrong password, a missing token or another account deletes nothing, and the clean-up function refuses everyone but the service role. A phone that's behind on a shared card doesn't overwrite what another phone typed, and a score typed while away still goes up. A guest deletes their account and the organiser keeps the scores they typed, including on a phone that hadn't seen them. An organiser deletes theirs and nothing of the day remains on the server, while two guests' phones keep it and go on syncing, in a running session, after a restart and after being offline. A guest with a round or outing of their own on that group or course keeps it on a copy nobody else can see, on which the server and the phone agree about every id, and a third account in that outing keeps syncing on it. A deleted account's still-valid token can't write, and an auth user who still has rows can't be deleted |
+| **Sync against a local Supabase stack** | A full season round-trips through the real API. Two accounts can't read or write each other's data through it. A guest joins a shared outing by code and sees that day and nothing else. Members' edits reach each other through the log and live over realtime, and a stranger's don't. An account deletes itself through the real Edge Function, leaving nothing behind; a wrong password, a missing token or another account deletes nothing, and the clean-up function refuses everyone but the service role. A phone that's behind on a shared card doesn't overwrite what another phone typed, and a score typed while away still goes up. A guest deletes their account and the organiser keeps the scores they typed, including on a phone that hadn't seen them. An organiser deletes theirs and nothing of the day remains on the server, while two guests' phones keep it and go on syncing, in a running session, after a restart and after being offline. A guest with a round or outing of their own on that group or course keeps it on a copy nobody else can see, on which the server and the phone agree about every id, and a third account in that outing keeps syncing on it. A deleted account's still-valid token can't write, and an auth user who still has rows can't be deleted. The site's reset and confirmation pages, driven with links the admin API makes: opening a link leaves it usable, a reset makes the new password the one that signs in and signs out every phone, a mismatched or refused password can be retried without spending the link, a used link is refused, and confirming confirms the address |
 | **Migrations and row-level security** | Every migration applies to Postgres 16, the baseline is repeatable, and 95 account-isolation and write-boundary assertions pass (October 2026) |
 | **Dependency review** | A pull request does not introduce a dependency with a known high-or-critical vulnerability |
 
@@ -107,7 +109,9 @@ function is deployed on every merge.
 ## Support and privacy site
 
 `site/` is a Cloudflare Worker that serves [pressgolf.cc](https://pressgolf.cc):
-four static pages in `site/public/`, with no build step.
+four static pages in `site/public/`, and the two pages the account emails link
+to, which the Worker renders. There is no build step of the repository's own;
+Wrangler bundles the TypeScript Worker on deploy.
 
 | URL | Page |
 |---|---|
@@ -115,6 +119,8 @@ four static pages in `site/public/`, with no build step.
 | `https://pressgolf.cc/privacy/` | Privacy policy |
 | `https://pressgolf.cc/terms/` | Terms of use, which carry the notice Google's Maps terms require |
 | `https://pressgolf.cc/delete-account/` | How to delete an account, the URL Google Play's Data safety form asks for |
+| `https://pressgolf.cc/reset/` | Sets a new password, from the link in a reset email (rendered by the Worker) |
+| `https://pressgolf.cc/confirm/` | Confirms a new account's address, from the link in a confirmation email (rendered by the Worker) |
 
 The app links to the first two from Settings' About section and the sign-in screen
 (`src/components/SiteLinks.tsx`), so a phone keeps opening those URLs until its build
@@ -126,8 +132,23 @@ it), its root directory is `site`, its deploy command is `npx wrangler deploy`,
 and its build watch path is `site/*`. Pushes to other branches build a Preview
 with `npx wrangler preview`, which needs the (empty) `previews` block in the
 config. `pressgolf.cc` and `www.pressgolf.cc` are the Worker's custom domains.
-`site/worker.js` sends `www` to the bare domain and serves everything else from
+`site/worker.ts` sends `www` to the bare domain, answers `/reset/` and
+`/confirm/` (`site/link-pages.ts`), and serves everything else from
 `site/public/`. To try it locally, run `npx wrangler dev` in `site/`.
+
+The reset and confirmation pages call the Supabase Auth API with two Worker
+secrets, `SUPABASE_URL` and `SUPABASE_ANON_KEY`, set in the Cloudflare dashboard
+and never in the repository or `site/wrangler.jsonc`. A Workers Builds deploy
+keeps them. Without them, as in a Preview or a local `wrangler dev`, both pages
+say to try again later. How the pages use a link's token is in
+[architecture.md](architecture.md#password-reset-and-email-confirmation).
+
+`npm test` runs the Worker's suites in `site/__tests__/`: `worker.test.ts` drives
+every page's branches with the network stubbed, and `email-templates.test.ts`
+checks that each email in `supabase/templates/` links to the page that serves
+it. Coverage is collected from `src/` only, so `site/` is outside the coverage
+floors and the patch-coverage check. The real exchange with Supabase is
+`link-pages.integration.test.ts`, in the integration suite.
 
 The pages describe what the app does today. A change that alters what the app
 collects, where data goes, or how an account is deleted updates them, and the
