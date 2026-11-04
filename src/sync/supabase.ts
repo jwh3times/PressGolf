@@ -1,7 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Linking from 'expo-linking';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { authErrorMessage, deleteAccountMessage, normaliseEmail, type DeleteAccountFailure } from '../auth/validate';
+import {
+  authErrorMessage,
+  deleteAccountMessage,
+  isNetworkFailure,
+  normaliseEmail,
+  type DeleteAccountFailure,
+  type PasswordResetResult,
+} from '../auth/validate';
 import type { Mutation, RemoteChanges, SyncTransport } from './types';
 
 /**
@@ -65,27 +71,17 @@ export interface SignUpResult {
 }
 
 /**
- * Where the link in a confirmation email should land.
- *
- * Left unset, Supabase sends people to the project's Site URL, which starts
- * life as http://localhost:3000 — so the address gets confirmed and the person
- * is shown a connection error, which reads exactly like failure. This hands it
- * a link back into the app instead, and expo-linking picks the right scheme for
- * whatever this is running as. The address is confirmed by the time the
- * redirect happens either way, so a redirect that goes nowhere useful costs
- * nothing: signing in with the new password still works.
+ * Neither this, the resend nor the reset passes a redirect URL. The email
+ * templates link to the confirmation and reset pages on the site, which work on
+ * whichever device the email is opened; a press:// link often can't even be
+ * tapped in a mail app. See supabase/templates/.
  */
-function confirmationRedirect(): string {
-  return Linking.createURL('/');
-}
-
 export async function signUpWithPassword(email: string, password: string): Promise<SignUpResult> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('This build has no server configured.');
   const { data, error } = await supabase.auth.signUp({
     email: normaliseEmail(email),
     password,
-    options: { emailRedirectTo: confirmationRedirect() },
   });
   if (error) throw new Error(authErrorMessage(error.message));
   // With confirmation off a session comes back straight away; with it on there
@@ -106,9 +102,41 @@ export async function resendConfirmation(email: string): Promise<void> {
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: normaliseEmail(email),
-    options: { emailRedirectTo: confirmationRedirect() },
   });
   if (error) throw new Error(authErrorMessage(error.message));
+}
+
+/**
+ * Asks the server to email a password-reset link.
+ *
+ * The server answers an address with no account exactly as it answers one with
+ * an account, and this keeps it that way: nothing here can tell the two apart.
+ * The link goes to the reset page on the site, not back into the app.
+ */
+export async function requestPasswordReset(email: string): Promise<PasswordResetResult> {
+  const supabase = getSupabase();
+  if (!supabase) return 'failed';
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(normaliseEmail(email));
+    if (!error) return 'sent';
+    return passwordResetFailure(error);
+  } catch (e) {
+    return passwordResetFailure(e as { message?: string });
+  }
+}
+
+/**
+ * The per-address wait and the project's hourly cap both mean an email was held
+ * back, and both happen only for an address with an account. Anything else
+ * rate-limited is just a failure: it is no evidence about the address.
+ */
+function passwordResetFailure(error: { name?: string; message?: string; code?: string }): PasswordResetResult {
+  const message = error.message ?? '';
+  const lower = message.toLowerCase();
+  if (error.code === 'user_not_found') return 'sent';
+  if (lower.includes('for security purposes') || lower.includes('email rate limit')) return 'held-back';
+  if (error.name === 'AuthRetryableFetchError' || isNetworkFailure(message)) return 'no-signal';
+  return 'failed';
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<void> {

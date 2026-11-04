@@ -1,4 +1,4 @@
-/* pressgolf.cc: the support, privacy, terms and account-deletion pages. */
+/* pressgolf.cc: the support, privacy, terms and account-deletion pages, and the email link pages. */
 :root { --bg:#fbfbf8; --fg:#1b1f1c; --muted:#5a635d; --line:#dde2dc; --accent:#1f7a4a; }
 @media (prefers-color-scheme: dark) { :root { --bg:#0f1411; --fg:#e8ede9; --muted:#9aa59e; --line:#26302a; --accent:#8BE0AE; } }
 * { box-sizing: border-box; }
@@ -15,3 +15,11 @@ h3 { font-size: 1.05rem; margin-bottom: .25rem; }
 ul { padding-left: 1.25rem; }
 li { margin: .25rem 0; }
 footer { color: var(--muted); font-size: .9rem; padding-top: 2rem; padding-bottom: 32px; border-top:1px solid var(--line); margin-top: 2.5rem; }
+.link-form { display:flex; flex-direction:column; gap:8px; margin: 1.5rem 0; }
+.link-form label { font-weight:600; margin-top:8px; }
+.link-form input { font: inherit; padding: 12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); width:100%; }
+.link-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.link-form button { font: inherit; font-weight:600; margin-top:16px; padding: 12px 16px; border:0; border-radius:8px; background:var(--accent); color:var(--bg); cursor:pointer; min-height:48px; }
+.link-form button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.error { color:#b3261e; font-weight:600; }
+@media (prefers-color-scheme: dark) { .error { color:#f2b8b5; } }

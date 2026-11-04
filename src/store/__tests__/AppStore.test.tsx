@@ -127,6 +127,7 @@ beforeEach(() => {
     unverified: false,
     signIn: jest.fn(),
     signUp: jest.fn(),
+    requestPasswordReset: jest.fn(),
     signOut: jest.fn(),
   });
   mockSettle.mockResolvedValue();

@@ -222,6 +222,9 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
+# Off locally, though production has it on: the integration tests sign up
+# throwaway accounts and sign straight in. The confirmation page's own tests
+# make their links with the admin API, so they don't need it.
 enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
@@ -242,16 +245,22 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Press's own email texts. The links go to the reset and confirmation pages on
+# the site (site/), which act on the token only when the person presses the
+# button there. Production uses the same texts, applied by hand in the
+# dashboard along with the Site URL and redirect allow-list.
+[auth.email.template.confirmation]
+subject = "Confirm your Press account"
+content_path = "./supabase/templates/confirmation.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./supabase/templates/password_changed_notification.html"
+[auth.email.template.recovery]
+subject = "Reset your Press password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your Press password was changed"
+content_path = "./supabase/templates/password_changed.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

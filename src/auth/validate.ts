@@ -40,6 +40,43 @@ export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+const NO_SIGNAL = 'Could not reach the server. Check your signal and try again.';
+
+/** A request that never reached the server, as the runtime words it. */
+export function isNetworkFailure(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes('network request failed') || lower.includes('failed to fetch') || lower.includes('fetch failed');
+}
+
+/**
+ * How asking for a reset email went. `sent` covers an address with no account
+ * too: the server answers both the same way, and so does Press. `held-back` is
+ * the server declining to send just now, because it emailed the address seconds
+ * ago or has hit its hourly limit.
+ */
+export type PasswordResetResult = 'sent' | 'held-back' | 'no-signal' | 'failed';
+
+/**
+ * What to show after asking for a reset email.
+ *
+ * `held-back` reads exactly like `sent`. The server only holds back an email to
+ * an address that has an account, so saying anything different would tell
+ * whoever is typing that it does.
+ */
+export function passwordResetMessage(result: PasswordResetResult): { notice?: string; error?: string } {
+  switch (result) {
+    case 'sent':
+    case 'held-back':
+      return {
+        notice: "If there's an account for that address, we've emailed a link to it. The link works for an hour.",
+      };
+    case 'no-signal':
+      return { error: NO_SIGNAL };
+    case 'failed':
+      return { error: 'The server could not send the email. Try again in a moment.' };
+  }
+}
+
 /** How deleting an account can fail, as far as someone holding the phone cares. */
 export type DeleteAccountFailure = 'wrong-password' | 'no-signal' | 'not-signed-in' | 'failed';
 
@@ -97,12 +134,6 @@ export function authErrorMessage(raw: string): string {
   }
   // Fetch failures surface as a TypeError from the runtime, not as anything
   // Supabase wrote, and they are by far the likeliest thing out on a course.
-  if (
-    lower.includes('network request failed') ||
-    lower.includes('failed to fetch') ||
-    lower.includes('fetch failed')
-  ) {
-    return 'Could not reach the server. Check your signal and try again.';
-  }
+  if (isNetworkFailure(message)) return NO_SIGNAL;
   return message || 'Something went wrong. Try again.';
 }
