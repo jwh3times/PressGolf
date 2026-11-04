@@ -77,6 +77,15 @@ This project uses Continuous Native Generation. Configure native behavior in
 `app.json` or a config plugin. Generated `ios/` and `android/` folders are
 ignored and must not be committed or edited as source.
 
+Android release builds are not minified. Expo SDK 58's native template turns R8
+on for them, and under R8 the WorkManager library that `react-native-maps`
+brings in can't create its database, so the app crashed on launch (#250). The
+`expo-build-properties` plugin in `app.json` sets
+`android.enableMinifyInReleaseBuilds` to `false`, as SDK 57 had it, and
+`scripts/app-config.test.mjs` fails if that goes. Turning R8 on means adding keep
+rules (`extraProguardRules`) for every library that needs them, then proving the
+release build in the native smoke run.
+
 Location (for yardage to the green) is foreground-only. The `expo-location`
 plugin in `app.json` sets the one iOS prompt, "when in use", and turns off the
 plugin's default "always" prompt, which the app never asks for. Its motion

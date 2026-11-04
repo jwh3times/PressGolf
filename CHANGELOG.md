@@ -9,7 +9,10 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- The Android app opens again. Since the move to Expo SDK 58, an Android store or preview build
+  closed as soon as it was launched, before showing a screen; iPhone builds were not affected.
 
 ## [1.1.0] - 2026-11-03
 
