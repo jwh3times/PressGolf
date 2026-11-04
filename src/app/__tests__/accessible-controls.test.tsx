@@ -250,6 +250,7 @@ const roundStore = {
   demoMode: true,
   sync: { status: 'off' as const, at: null, message: null },
   group,
+  roundGroup: group,
   course,
   round,
   settlement: settleRound(round, course, group.players),
@@ -266,6 +267,7 @@ const outingStore = {
   activeRoundId: outingRounds[0].id,
   activeOutingId: outing.id,
   group: outingGroup,
+  roundGroup: outingGroup,
   course,
   round: outingRounds[0],
   settlement: settleRound(outingRounds[0], course, outingGroup.players),
@@ -309,8 +311,13 @@ beforeEach(() => {
   });
 });
 
+/**
+ * A group given here is the open round's group too, as it is in the store while
+ * the round's own group is active. Pass `roundGroup` to tell them apart.
+ */
 function useStoreValue(overrides: Partial<AppStore>) {
-  mockUseStore.mockReturnValue({ ...roundStore, ...overrides } as AppStore);
+  const roundGroup = 'group' in overrides ? overrides.group : roundStore.roundGroup;
+  mockUseStore.mockReturnValue({ ...roundStore, roundGroup, ...overrides } as AppStore);
 }
 
 describe('screen accessibility', () => {
@@ -745,6 +752,24 @@ describe('high-branch screen state matrices', () => {
     expect(screen.getAllByText('2/2').length).toBeGreaterThan(0);
     expect(screen.getAllByText('✓').length).toBeGreaterThan(0);
     expect(screen.getByText(/not on a side/)).toBeOnTheScreen();
+  });
+
+  it('scores, settles and sides the open round with its own players while another group is active', async () => {
+    const other = dataset.groups.find((candidate) => candidate.id !== round.groupId)!;
+    const first = group.players.find((player) => player.id === round.playerIds[0])!;
+    useStoreValue({ group: other, activeGroupId: other.id, roundGroup: group });
+
+    let view = await render(<ScoreScreen />);
+    await userEvent.setup().press(screen.getByRole('button', { name: 'Whole card' }));
+    expect(screen.getByText(new RegExp(`^${first.name} · hole 1 · par`))).toBeOnTheScreen();
+    await view.unmount();
+
+    view = await render(<SettleScreen />);
+    expect(screen.getAllByText(first.name).length).toBeGreaterThan(0);
+    await view.unmount();
+
+    await render(<SidesScreen />);
+    expect(screen.getAllByText(first.name).length).toBeGreaterThan(0);
   });
 });
 

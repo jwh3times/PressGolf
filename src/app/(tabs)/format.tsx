@@ -35,7 +35,7 @@ export default function FormatScreen() {
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
-  const { round, course, group } = store;
+  const { round, course, roundGroup: group } = store;
 
   if (!round || !course || !group) {
     return (
@@ -298,7 +298,7 @@ function FormatRequirement({
   const { colors } = useTheme();
   const store = useStore();
   const round = store.round!;
-  const group = store.group!;
+  const group = store.roundGroup!;
   const initials = (id: string) => group.players.find((p) => p.id === id)?.initials ?? '??';
 
   if (requirement === 'wolfPicks') {

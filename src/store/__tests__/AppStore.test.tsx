@@ -382,6 +382,21 @@ describe('AppStoreProvider', () => {
     expect(store.groups.length).toBeGreaterThan(0);
   });
 
+  it('keeps the open round on its own players when another group becomes active', async () => {
+    await mount();
+    const round = store.round!;
+    const before = store.settlement!;
+    expect(Object.keys(before.net)).toEqual(round.playerIds);
+    const other = store.groups.find((g) => g.id !== round.groupId)!;
+
+    await change(() => store.setActiveGroup(other.id));
+
+    expect(store.group?.id).toBe(other.id);
+    expect(store.round?.id).toBe(round.id);
+    expect(store.settlement).toEqual(before);
+    expect(store.roundGroup?.id).toBe(round.groupId);
+  });
+
   it('covers group, player, course, and round lifecycle branches', async () => {
     const data = buildDemoDataset(1_750_000_000_000);
     await mount(data);

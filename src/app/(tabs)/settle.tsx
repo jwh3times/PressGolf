@@ -25,7 +25,7 @@ export default function SettleScreen() {
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
-  const { round, course, group, settlement } = store;
+  const { round, course, roundGroup: group, settlement } = store;
 
   if (!round || !course || !group || !settlement) {
     return (
