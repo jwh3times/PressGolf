@@ -165,3 +165,9 @@ How rows hang together, which matters to any cleanup that deletes by `owner_id`:
 - The app sends `Linking.createURL('/')` (`src/sync/supabase.ts`) with `detectSessionInUrl: false` and has no link handler.
 - So: set the Site URL to a `press://` URL and allow-list the exact URLs the release build produces, or `press://**`.
 - If password reset is added, it will need a handler that consumes the link.
+
+> **Amended 2026-11-04:** this has been overtaken.
+> [#165](https://github.com/jwh3times/PressGolf/issues/165) decided against `press://` links, and
+> v1.2.0 (#267) built what it decided. The app now sends no redirect URL. The email templates link
+> to `/reset/` and `/confirm/` on pressgolf.cc, which is production's Site URL, and those two pages
+> are the whole allow list. See `docs/architecture.md`.
