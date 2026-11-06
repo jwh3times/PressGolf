@@ -187,6 +187,13 @@ presses its button, which is how that test sees the no-signal message. A bare
 `npx expo export --platform web` names no server, so it has no Account section
 and doesn't match the baselines.
 
+`tests/web/demo.spec.ts` (#275) is the one signed-out journey. It seeds
+nothing, so the web build opens on the sign-in screen (`sign-in`); it taps
+**Try the demo**, lands on the demo data, and checks Settings' "Trying the
+demo" card with **Sign in** and no Sign out (`settings-demo`). It also checks
+that a reload stays in the demo and that **Sign in** returns to the sign-in
+screen.
+
 `tests/web/themes.spec.ts` does the same for the themes other than the
 default: Home, Score (hole by hole) and Settle in dark high contrast, light,
 light high contrast, and light with the violet accent, each opened from a saved

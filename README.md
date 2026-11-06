@@ -85,7 +85,11 @@ edited by hand.
 
 `EXPO_PUBLIC_DEMO_MODE` controls the build-time default. Preview and native
 smoke-test builds enable it; production builds disable it. The user can switch
-datasets later under **Settings → Demo data**.
+datasets later under **Settings → Demo data**. A build with a server opens on
+the sign-in screen, where **Try the demo** opens the demo data with no account
+and nothing is uploaded. Sharing or joining an outing, or switching to your own
+data, needs an account and goes back to the sign-in screen
+([details](docs/architecture.md#local-data-and-demo-isolation)).
 
 Demo and live data use separate AsyncStorage namespaces (`press:demo:*` and
 `press:live:*`). Demo data is never uploaded. With demo mode off and no

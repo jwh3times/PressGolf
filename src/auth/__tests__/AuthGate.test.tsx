@@ -37,7 +37,7 @@ it('shows sign-in after loading and hides the splash', async () => {
   await waitFor(() => expect(hide).toHaveBeenCalled());
 });
 
-it.each(['signed-in', 'disabled'] as AuthStatus[])('shows the app when status is %s', async (status) => {
+it.each(['signed-in', 'disabled', 'demo'] as AuthStatus[])('shows the app when status is %s', async (status) => {
   setStatus(status);
   await render(<AuthGate><Text>App</Text></AuthGate>);
   expect(screen.getByText('App')).toBeOnTheScreen();
