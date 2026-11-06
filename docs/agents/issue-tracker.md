@@ -57,8 +57,15 @@ jwh3times/PressGolf
 
 ## Board
 
-none
+jwh3times 11
 
 ## Board fields
 
-none
+- `Status`: `Todo` / `In Progress` / `Done`. Closed issues move to `Done` on their own.
+- `Priority`: `P0`, the critical path to store submission (#149), longest waits first; `P1`, required
+  before submission; `P2`, next after launch, and quality fixes; `P3`, later, ideas and research.
+- `Gate`: why an item can or can't be picked up now. `Ready`; `Owner decision` or `Owner action`,
+  which only the maintainer can move; `Needs a spec`, a design session (`/grill-with-docs` or
+  `/to-spec`) first; `Research needed`; and `Depends on another issue`, `External wait` or `Upstream`,
+  which go with the `blocked` label.
+- `Track`: `Launch`, `Post-launch` or `Quality & tooling`.
