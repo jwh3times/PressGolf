@@ -407,10 +407,11 @@ For a local `npx expo run:android`, set the variable for that one command:
 ### Android permissions
 
 A store build should declare only what Press uses, so the Play listing and the
-Data safety form explain nothing the app never does. Press declares fine and
-coarse location (`expo-location`, for yardage and marking greens), internet,
-network state and vibrate. A dependency's background work library adds wake
-lock, boot completed and foreground service for its own work.
+Data safety form explain nothing the app never does. The app's own manifest
+declares fine and coarse location (`expo-location`, for yardage and marking
+greens), internet and vibrate. Libraries add network state, and a dependency's
+background work library adds wake lock, boot completed and foreground service
+for its own work; those are merged in at build time.
 
 `android.blockedPermissions` in `app.json` removes these from the merged
 manifest, which marks each one `tools:node="remove"`:
@@ -423,16 +424,16 @@ manifest, which marks each one `tools:node="remove"`:
   blocked so that a future library can't add it, because the Data safety form
   says Press doesn't use the advertising ID.
 
-`src/config/__tests__/android-permissions.test.ts` fails if one of these is
-dropped from the list, or if a permission Press needs is added to it. To see the
-manifest without a cloud build, run `npx expo prebuild --platform android
---clean --no-install`, read `android/app/src/main/AndroidManifest.xml`, then
+`scripts/app-config.test.mjs` reads the manifest prebuild would write
+(`expo config --type introspect`). It fails if one of these stops being removed,
+or if location, internet or vibrate stops being declared. To read that manifest
+yourself without a cloud build, run `npx expo prebuild --platform android
+--clean --no-install`, open `android/app/src/main/AndroidManifest.xml`, then
 delete `android/` and revert the `scripts` that prebuild rewrites in
-`package.json`. That manifest holds the app's own permissions; the ones that
-libraries add are merged at build time. So before submitting, check a production
-`.aab` with
+`package.json`. Neither shows what libraries merge in. So before submitting,
+check a production `.aab` with
 [bundletool](https://developer.android.com/tools/bundletool):
-`bundletool dump manifest --bundle <file>.aab | grep uses-permission`.
+`bundletool dump manifest --bundle=<file>.aab | grep uses-permission`.
 
 ### App Store submission (iOS)
 
