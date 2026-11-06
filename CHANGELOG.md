@@ -9,7 +9,18 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- **Try the demo** on the sign-in screen opens Press with an example group, without an account.
+  Nothing is sent to Press's server, and the phone reopens on the demo until you sign in. Settings
+  shows **Sign in** in place of the account section. Switching **Demo data** off, **Join an outing
+  by code** and **Share this outing** need an account, so each one takes you to sign in and the
+  sign-in screen says why, out loud to a screen reader too. Signing in opens your own groups and
+  rounds, and the demo stays on the phone.
+
+### Changed
+
+- The support page's "Do I need an account?" answer points to **Try the demo**.
 
 ## [1.2.0] - 2026-11-04
 

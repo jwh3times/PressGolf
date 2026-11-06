@@ -492,6 +492,24 @@ and a forward Red tee that plays one par 4 as a par 5 and swaps the two
 hardest stroke indexes. Its season ledger is calculated by the same
 engine as live data.
 
+**Trying the demo** (#275). On a build with a server, the sign-in screen
+offers **Try the demo**, which opens the demo dataset with nobody signed in.
+`AuthProvider` adds the `'demo'` status beside `'signed-out'` and
+`'signed-in'`: there is no email and no user id, so nothing that needs an
+identity treats the phone as signed in, and sync stays off. `AuthGate` renders
+the sign-in screen only for `'signed-out'`. The choice is kept under
+`press:auth:trying-demo`, so the app reopens on the demo; a stored session or a
+remembered sign-in always wins over it, and adopting a session clears it.
+While trying the demo the store opens the demo dataset whatever the saved
+preference says, never reads the live one, and saves `demoMode: false`, so
+whoever signs in next opens their own data; the demo dataset stays in its
+namespace. What needs an account ends the demo with a reason from
+`src/auth/demo.ts`, which the sign-in screen shows: switching **Demo data**
+off, **Share this outing**, and **Join an outing by code** (a link to `/join`
+too). In Settings, a "Trying the demo" card with **Sign in** takes the place of
+the account section, so there is no Sign out or Delete account. A build with no
+server has no sign-in screen and is unchanged.
+
 ## Active server synchronization
 
 When the two Supabase public variables are present and a user is signed in,

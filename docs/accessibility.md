@@ -23,16 +23,27 @@ substitute for assistive-technology use on both platforms.
   or at the largest text size on a phone
   ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
 - Privacy policy and Support are links on Settings and the sign-in screen, named
-  without their chevron. The web suite only reaches them on Settings, since it
-  runs signed in; a Jest test covers both screens. They haven't been tried yet
+  without their chevron. The web suite checks both screens' accessibility trees
+  and runs axe on them (the sign-in screen in `tests/web/demo.spec.ts`), and a
+  Jest test covers both screens. They haven't been tried yet
   with VoiceOver or TalkBack or at the largest text size on a phone
   ([#215](https://github.com/jwh3times/PressGolf/issues/215)).
 - **Forgot password?** on the sign-in screen is a named button that reads as
-  disabled while its request is in flight; a Jest test covers it, since the web
-  suite runs signed in. The reset and confirmation pages on pressgolf.cc label
+  disabled while its request is in flight; a Jest test covers that, since the
+  web suite never presses it. The reset and confirmation pages on pressgolf.cc label
   their fields, and an error there is an `alert` that the password field points
   at with `aria-describedby`. None of this has been tried yet with VoiceOver or
   TalkBack or at the largest text size.
+- **Try the demo** ([#275](https://github.com/jwh3times/PressGolf/issues/275)) on the sign-in screen is a named button, in both sign-in
+  and create-account modes, that reads as disabled while a request is in
+  flight. When something in the demo needed an account, the sign-in screen
+  shows why in its notice and reads it out with `announceForAccessibility`,
+  since a screen reader starts at the top of the screen. Settings' **Sign in**
+  while trying the demo is a named button. Jest covers the names and the
+  announcement; the web suite records the sign-in screen and Settings in the
+  demo (`sign-in`, `settings-demo`) at both widths and runs axe on them. The
+  maintainer checked it on a phone with a screen reader and at the largest text
+  size on 2026-11-06, before the change merged.
 - A control's name contains the words it shows, in order (WCAG 2.5.3, Label
   in Name), so a voice-control user can say what they see. axe enforces this
   from 4.14 (October 2026). Chips that show initials say them after the name
