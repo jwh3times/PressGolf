@@ -20,7 +20,7 @@ none
 - `.env`, `.env.*` (all but the tracked `.env.op`) — resolved values; `.env.op` holds only
   1Password references
 - `supabase/.temp/` — the `npx supabase link` state that `db:push`, `db:status` and
-  `db:lint --linked` use; recreating it needs the maintainer's login
+  `db:lint` use (through `--remote`); recreating it needs the maintainer's login
 - `supabase/.branches/`, `supabase/.env.keys`, `supabase/.env.local`
 - `.expo/` — Expo's local device and dev-server state, not debris
 - `*.jks`, `*.p8`, `*.p12`, `*.key`, `*.pem`, `*.mobileprovision` — signing material, not

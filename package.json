@@ -71,9 +71,9 @@
     "sync:agents:check": "node scripts/sync-agents.mjs --check",
     "lint:agents": "node scripts/lint-agent-neutrality.mjs",
     "db:new": "supabase migration new",
-    "db:push": "supabase db push",
-    "db:status": "supabase migration list --linked",
-    "db:lint": "supabase db lint --linked"
+    "db:push": "supabase db push --remote",
+    "db:status": "supabase migration list --remote",
+    "db:lint": "supabase db lint --remote"
   },
   "private": true,
   "jest": {
