@@ -40,8 +40,10 @@ export default function SettingsScreen() {
 
   const toggleDemo = () => {
     const goingLive = store.demoMode;
-    if (!goingLive) {
-      store.setDemoMode(true);
+    // Trying the demo there's no own data to switch to: the store sends the
+    // person to sign in instead, so there's nothing to confirm (#275).
+    if (!goingLive || auth.status === 'demo') {
+      store.setDemoMode(!goingLive);
       return;
     }
     Alert.alert(
@@ -205,9 +207,38 @@ export default function SettingsScreen() {
           { label: 'Set up an outing', href: '/new-outing' as const },
           { label: 'Join an outing by code', href: '/join' as const },
         ].map((item) => (
-          <ChevronRow key={item.href} label={item.label} onPress={() => router.push(item.href)} />
+          <ChevronRow
+            key={item.href}
+            label={item.label}
+            onPress={() =>
+              // Joining needs an account; trying the demo has none (#275).
+              auth.status === 'demo' && item.href === '/join'
+                ? auth.stopDemo('join')
+                : router.push(item.href)
+            }
+          />
         ))}
       </View>
+
+      {auth.status === 'demo' ? (
+        <View style={{ gap: 10 }}>
+          <Eyebrow>Account</Eyebrow>
+          <Card style={{ padding: 16, gap: 8 }}>
+            <Text style={styles.name}>Trying the demo</Text>
+            <Mono size={10.5} style={{ color: ink.quiet, lineHeight: 16 }}>
+              The demo is on this phone only, and nothing is backed up. Sign in or create an account
+              to keep your own season.
+            </Mono>
+          </Card>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => auth.stopDemo()}
+            style={[styles.action, { borderColor: alpha(colors.accent, 0.4) }]}
+          >
+            <Text style={[styles.actionText, { color: colors.accent }]}>Sign in</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {auth.status === 'signed-in' ? (
         <View style={{ gap: 10 }}>

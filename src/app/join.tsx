@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '../auth/AuthProvider';
 import { Field } from '../components/Field';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, PrimaryButton } from '../components/primitives';
@@ -14,13 +15,18 @@ import { fonts, radius } from '../theme/tokens';
  *
  * The code is the shared secret that decides which outing you land in; the
  * account behind it is what puts your name on the edits once you are there.
- * You are already signed in by the time this screen can be reached.
+ * Joining needs an account. Settings offers it to someone trying the demo only as
+ * a way to sign in, and a link that opens it then is sent to sign in too (#275).
  */
 export default function JoinScreen() {
   const styles = useStyles();
   const { colors, ink } = useTheme();
   const store = useStore();
   const router = useRouter();
+  const { status, stopDemo } = useAuth();
+  useEffect(() => {
+    if (status === 'demo') stopDemo('join');
+  }, [status, stopDemo]);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

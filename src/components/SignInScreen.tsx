@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -9,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
+import { NEEDS_AN_ACCOUNT } from '../auth/demo';
 import { resendConfirmation } from '../sync/supabase';
 import {
   MIN_PASSWORD_LENGTH,
@@ -36,13 +38,19 @@ type Mode = 'sign-in' | 'sign-up';
 export function SignInScreen() {
   const styles = useStyles();
   const { colors, ink } = useTheme();
-  const { signIn, signUp, requestPasswordReset } = useAuth();
+  const { signIn, signUp, requestPasswordReset, tryDemo, demoExitReason } = useAuth();
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // Opens with the reason when something in the demo needed an account.
+  const exitReason = demoExitReason ? NEEDS_AN_ACCOUNT[demoExitReason] : null;
+  const [notice, setNotice] = useState<string | null>(exitReason);
+  useEffect(() => {
+    // Read out, since a screen reader starts at the top and could miss it.
+    if (exitReason) AccessibilityInfo.announceForAccessibility(exitReason);
+  }, [exitReason]);
   // Set once an address is known to exist but not yet be confirmed, which is
   // the only state where offering to send the email again makes sense.
   const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
@@ -226,6 +234,17 @@ export function SignInScreen() {
           <Text style={styles.swap}>
             {mode === 'sign-in' ? 'No account yet? Create one' : 'Already have an account? Sign in'}
           </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          onPress={tryDemo}
+          hitSlop={8}
+          style={({ pressed }) => ({ opacity: pressed || busy ? 0.6 : 1, alignItems: 'center' })}
+        >
+          <Text style={styles.swap}>Try the demo</Text>
         </Pressable>
 
         <View style={{ gap: 6 }}>

@@ -129,6 +129,9 @@ beforeEach(() => {
     signUp: jest.fn(),
     requestPasswordReset: jest.fn(),
     signOut: jest.fn(),
+    tryDemo: jest.fn(),
+    stopDemo: jest.fn(),
+    demoExitReason: null,
   });
   mockSettle.mockResolvedValue();
   mockUseDataSync.mockReturnValue({ status: 'off', at: null, message: null, settle: mockSettle });
@@ -136,6 +139,79 @@ beforeEach(() => {
   mockSaveDataset.mockResolvedValue();
   mockSaveSettings.mockResolvedValue();
   mockClearDataset.mockResolvedValue();
+});
+
+describe('trying the demo without an account', () => {
+  const syncEnabled = () => mockUseDataSync.mock.calls.at(-1)?.[0].enabled;
+
+  function authAs(status: 'demo' | 'signed-in', stopDemo = jest.fn()) {
+    mockUseAuth.mockReturnValue({
+      ...mockUseAuth(),
+      status,
+      email: status === 'demo' ? null : 'golfer@example.com',
+      userId: status === 'demo' ? null : 'user-1',
+      stopDemo,
+    });
+    return stopDemo;
+  }
+
+  it('opens the demo data even when this phone last used its own, and never reads or syncs the own data', async () => {
+    authAs('demo');
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    expect(store.demoMode).toBe(true);
+    expect(mockLoadDataset).toHaveBeenCalledWith(true);
+    expect(mockLoadDataset).not.toHaveBeenCalledWith(false);
+    expect(syncEnabled()).toBe(false);
+  });
+
+  it('sends someone who switches Demo data off to sign in, and stays on the demo', async () => {
+    const stopDemo = authAs('demo');
+    await mount();
+    await change(() => store.setDemoMode(false));
+    expect(stopDemo).toHaveBeenCalledWith('ownData');
+    expect(store.demoMode).toBe(true);
+    expect(mockLoadDataset).not.toHaveBeenCalledWith(false);
+  });
+
+  it('opens their own data once they sign in, and leaves the demo data where it is', async () => {
+    // Sign in ends the demo first, which takes the store off screen; signing in
+    // then opens a fresh one, which reads the preference saved while in the demo.
+    authAs('demo');
+    const view = await mount(buildDemoDataset(1_750_000_000_000), true);
+    const saved = mockSaveSettings.mock.calls.at(-1)?.[0];
+    expect(saved?.demoMode).toBe(false);
+    await view.unmount();
+
+    authAs('signed-in');
+    const own = { ...buildDemoDataset(1_750_000_000_000), groups: [], rounds: [], outings: [], openRoundIds: [] };
+    mockLoadSettings.mockResolvedValueOnce(saved!);
+    mockLoadDataset.mockResolvedValueOnce(stored({ ...own, activeGroupId: null, activeOutingId: null }));
+    await render(
+      <AppStoreProvider>
+        <Probe />
+      </AppStoreProvider>,
+    );
+    await waitFor(() => expect(store.ready).toBe(true));
+    expect(store.demoMode).toBe(false);
+    expect(mockLoadDataset).toHaveBeenLastCalledWith(false);
+    expect(store.groups).toEqual([]);
+    expect(mockClearDataset).not.toHaveBeenCalled();
+  });
+
+  it('opens their own data when a session arrives during the demo', async () => {
+    authAs('demo');
+    const view = await mount();
+    const own = { ...buildDemoDataset(1_750_000_000_000), groups: [], rounds: [], outings: [], openRoundIds: [] };
+    mockLoadDataset.mockResolvedValueOnce(stored({ ...own, activeGroupId: null, activeOutingId: null }));
+    authAs('signed-in');
+    await view.rerender(
+      <AppStoreProvider>
+        <Probe />
+      </AppStoreProvider>,
+    );
+    await waitFor(() => expect(store.demoMode).toBe(false));
+    expect(mockLoadDataset).toHaveBeenLastCalledWith(false);
+  });
 });
 
 describe('deleting the account', () => {

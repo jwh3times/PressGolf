@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
-import { Alert, Linking, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Alert, Linking, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { AuthGate } from '../../auth/AuthGate';
 import { useAuth } from '../../auth/AuthProvider';
 import { SignInScreen } from '../../components/SignInScreen';
@@ -310,6 +310,9 @@ beforeEach(() => {
     signUp: jest.fn(),
     requestPasswordReset: jest.fn(),
     signOut: jest.fn(),
+    tryDemo: jest.fn(),
+    stopDemo: jest.fn(),
+    demoExitReason: null,
   });
 });
 
@@ -553,6 +556,84 @@ describe('sign-in interactions', () => {
         'Account created. Tap the link in the email we sent and press Confirm my email, then come back here and sign in.',
       ),
     ).toBeOnTheScreen();
+  });
+});
+
+describe('trying the demo', () => {
+  function inDemo() {
+    const stopDemo = jest.fn();
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), status: 'demo', email: null, userId: null, stopDemo });
+    return stopDemo;
+  }
+
+  it('is offered on the sign-in screen in both modes', async () => {
+    const tryDemo = jest.fn();
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), status: 'signed-out', tryDemo });
+    const user = userEvent.setup();
+    await render(<SignInScreen />);
+    await user.press(screen.getByRole('button', { name: 'Try the demo' }));
+    await user.press(screen.getByRole('button', { name: 'No account yet? Create one' }));
+    await user.press(screen.getByRole('button', { name: 'Try the demo' }));
+    expect(tryDemo).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['ownData', 'Your own groups and rounds need an account. Sign in or create one; the demo stays here for later.'],
+    ['share', 'Sharing an outing needs an account, so the other phones know whose card is whose.'],
+    ['join', 'Joining an outing needs an account.'],
+  ] as const)('says on the sign-in screen, and out loud, why the demo sent someone there: %s', async (reason, text) => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(jest.fn());
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), status: 'signed-out', demoExitReason: reason });
+    await render(<SignInScreen />);
+    expect(screen.getByText(text)).toBeOnTheScreen();
+    expect(announce).toHaveBeenCalledWith(text);
+  });
+
+  it('sends someone who switches Demo data off straight to sign in, with no promise of a switch', async () => {
+    inDemo();
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    await user.press(screen.getByRole('switch', { name: 'Demo data' }));
+    expect(alert).not.toHaveBeenCalled();
+    expect(actions.setDemoMode).toHaveBeenCalledWith(false);
+  });
+
+  it('sends a link straight to joining an outing to sign in', async () => {
+    const stopDemo = inDemo();
+    await render(<JoinScreen />);
+    expect(stopDemo).toHaveBeenCalledWith('join');
+  });
+
+  it('shows Sign in in Settings instead of the account, with no way to sign out or delete', async () => {
+    const stopDemo = inDemo();
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    expect(screen.getByText('Trying the demo')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete account' })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Sign in' }));
+    expect(stopDemo).toHaveBeenCalledWith();
+  });
+
+  it('sends someone who wants to join an outing to sign in', async () => {
+    const stopDemo = inDemo();
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    await user.press(screen.getByRole('button', { name: /Join an outing by code/ }));
+    expect(stopDemo).toHaveBeenCalledWith('join');
+    expect(mockRouter.push).not.toHaveBeenCalledWith('/join');
+  });
+
+  it('sends someone who wants to share an outing to sign in, without asking the server', async () => {
+    const stopDemo = inDemo();
+    mockIsSupabaseConfigured.mockReturnValue(true);
+    mockUseStore.mockReturnValue(outingStore);
+    const user = userEvent.setup();
+    await render(<OutingScreen />);
+    await user.press(screen.getByRole('button', { name: 'Share this outing' }));
+    expect(stopDemo).toHaveBeenCalledWith('share');
+    expect(mockHostOuting).not.toHaveBeenCalled();
   });
 });
 
