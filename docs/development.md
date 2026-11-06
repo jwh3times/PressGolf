@@ -228,6 +228,11 @@ npm run db:lint
 npm run db:push
 ```
 
+`db:status`, `db:lint` and `db:push` act on the linked project through
+`--remote`. Since Supabase CLI v3, the same commands with no target act on the
+local stack, so a bare `npx supabase db push` never reaches production.
+`db:push` asks before it changes the project.
+
 The initial migration is intentionally safe to reapply because it adopted a
 schema that existed before migration history. New migrations should be normal,
 single-application migrations and must not imitate that baseline unless there
@@ -272,7 +277,7 @@ If another project's local Supabase already holds the default ports (54321 and
 up), start this one on others and point the runner at it:
 
 ```bash
-SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_STUDIO_PORT=55323 SUPABASE_INBUCKET_PORT=55324 SUPABASE_ANALYTICS_PORT=55327 SUPABASE_DB_POOLER_PORT=55329 npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
+SUPABASE_API_PORT=55321 SUPABASE_DB_PORT=55322 SUPABASE_DB_SHADOW_PORT=55320 SUPABASE_STUDIO_PORT=55323 SUPABASE_LOCAL_SMTP_PORT=55324 SUPABASE_ANALYTICS_PORT=55327 SUPABASE_DB_POOLER_PORT=55329 npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
 SUPABASE_TEST_URL=http://127.0.0.1:55321 SUPABASE_TEST_ANON_KEY=<ANON_KEY from that start> SUPABASE_TEST_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY from that start> npm run test:integration
 ```
 
@@ -287,7 +292,7 @@ there's nothing to set on a project. CI's `migrate` job deploys it. To deploy it
 to a personal project:
 
 ```bash
-npx supabase functions deploy delete-account --project-ref <project-ref> --use-api
+npx supabase functions deploy delete-account --remote=<project-ref> --use-api
 ```
 
 `supabase/config.toml` turns off the platform's token check for it
