@@ -21,6 +21,7 @@ import type { FieldGameResult, PlayerId } from '../domain/types';
 import { useLargeText } from '../hooks/useLargeText';
 import { useStore } from '../store/AppStore';
 import { hostOuting, isSupabaseConfigured } from '../sync/supabase';
+import { useAuth } from '../auth/AuthProvider';
 import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
@@ -37,6 +38,7 @@ export default function OutingScreen() {
   const { colors, ink } = useTheme();
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const auth = useAuth();
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
@@ -142,6 +144,11 @@ export default function OutingScreen() {
               label={sharing ? 'Getting a code…' : 'Share this outing'}
               onPress={() => {
                 if (sharing) return;
+                // Sharing needs an account; trying the demo has none (#275).
+                if (auth.status === 'demo') {
+                  auth.stopDemo('share');
+                  return;
+                }
                 setSharing(true);
                 void hostOuting(outing.id)
                   .then((result) => setJoinCode(result.joinCode))

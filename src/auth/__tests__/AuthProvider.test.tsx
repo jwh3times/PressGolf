@@ -176,6 +176,76 @@ describe('AuthProvider', () => {
     expect(auth.status).toBe('signed-out');
   });
 
+  describe('trying the demo', () => {
+    const DEMO_KEY = 'press:auth:trying-demo';
+
+    async function renderWithStorage(stored: Record<string, string> = {}) {
+      const fake = configured(null);
+      storage.getItem.mockImplementation(async (key: string) => stored[key] ?? null);
+      mockGetSupabase.mockReturnValue(fake.supabase as never);
+      const view = await render(
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>,
+      );
+      return { fake, view };
+    }
+
+    it('lets a signed-out phone in, with nobody signed in, and keeps it for next time', async () => {
+      await renderWithStorage();
+      await waitFor(() => expect(auth.status).toBe('signed-out'));
+      await act(async () => auth.tryDemo());
+      expect(auth.status).toBe('demo');
+      expect(auth.email).toBeNull();
+      expect(auth.userId).toBeNull();
+      expect(storage.setItem).toHaveBeenCalledWith(DEMO_KEY, '1');
+    });
+
+    it('reopens on the demo', async () => {
+      await renderWithStorage({ [DEMO_KEY]: '1' });
+      await waitFor(() => expect(auth.status).toBe('demo'));
+    });
+
+    it('never stands in for a stored session or a remembered sign-in', async () => {
+      const fake = configured(session());
+      storage.getItem.mockImplementation(async (key: string) => (key === DEMO_KEY ? '1' : null));
+      mockGetSupabase.mockReturnValue(fake.supabase as never);
+      await render(
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>,
+      );
+      await waitFor(() => expect(auth.status).toBe('signed-in'));
+
+      await renderWithStorage({ [DEMO_KEY]: '1', 'press:auth:remembered-email': 'golfer@example.com' });
+      await waitFor(() => expect(auth.status).toBe('signed-in'));
+      expect(auth.unverified).toBe(true);
+    });
+
+    it('ends with the reason that led to sign-in, and forgets it', async () => {
+      await renderWithStorage({ [DEMO_KEY]: '1' });
+      await waitFor(() => expect(auth.status).toBe('demo'));
+      await act(async () => auth.stopDemo('join'));
+      expect(auth.status).toBe('signed-out');
+      expect(auth.demoExitReason).toBe('join');
+      expect(storage.removeItem).toHaveBeenCalledWith(DEMO_KEY);
+
+      await act(async () => auth.tryDemo());
+      expect(auth.demoExitReason).toBeNull();
+    });
+
+    it('ends when a session arrives', async () => {
+      const { fake } = await renderWithStorage({ [DEMO_KEY]: '1' });
+      await waitFor(() => expect(auth.status).toBe('demo'));
+      await act(async () => {
+        fake.emit('SIGNED_IN', session());
+        await Promise.resolve();
+      });
+      expect(auth.status).toBe('signed-in');
+      expect(storage.removeItem).toHaveBeenCalledWith(DEMO_KEY);
+    });
+  });
+
   it('ignores an initial read that finishes after unmount', async () => {
     let resolve: ((value: unknown) => void) | undefined;
     const fake = configured(null);

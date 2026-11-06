@@ -363,6 +363,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [persist],
   );
 
+  const auth = useAuth();
+  const { signOut, stopDemo } = auth;
+  // Someone trying the demo has no account, so only the demo dataset opens (#275).
+  const tryingDemo = auth.status === 'demo';
+  const tryingDemoRef = useRef(tryingDemo);
+  useEffect(() => {
+    tryingDemoRef.current = tryingDemo;
+  }, [tryingDemo]);
+
   // Initial load.
   useEffect(() => {
     let cancelled = false;
@@ -373,9 +382,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         activeRoundId: null,
         activeOutingId: null,
       });
-      const dataset = await hydrate(settings.demoMode);
+      // The saved preference is a signed-in person's; the demo overrides it
+      // without touching it, and their own dataset is never read.
+      const demoMode = tryingDemoRef.current || settings.demoMode;
+      const dataset = await hydrate(demoMode);
       if (cancelled) return;
-      setState({ ready: true, demoMode: settings.demoMode, ...dataset });
+      setState({ ready: true, demoMode, ...dataset });
     })();
     return () => {
       cancelled = true;
@@ -383,6 +395,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setDemoMode = useCallback((on: boolean) => {
+    if (!on && tryingDemoRef.current) {
+      stopDemo('ownData');
+      return;
+    }
     setState((prev) => ({ ...prev, ready: false }));
     void (async () => {
       const dataset = await hydrate(on);
@@ -394,10 +410,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       });
       setState({ ready: true, demoMode: on, ...dataset });
     })();
-  }, []);
+  }, [stopDemo]);
 
-  const auth = useAuth();
-  const { signOut } = auth;
+  // Signing in after trying the demo opens the person's own data, to start their
+  // own season. The demo dataset stays in its own namespace for later.
+  const wasTryingDemo = useRef(tryingDemo);
+  useEffect(() => {
+    if (wasTryingDemo.current && auth.status === 'signed-in') setDemoMode(false);
+    wasTryingDemo.current = tryingDemo;
+  }, [auth.status, tryingDemo, setDemoMode]);
 
   // Demo data is never synced: it is invented, and it would land in a real
   // account's season looking exactly like a real Saturday.
@@ -954,12 +975,14 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!state.ready) return;
     void saveSettings({
-      demoMode: state.demoMode,
+      // The saved preference is for whoever signs in next. After trying the demo
+      // that's their own data, so it reads live while the demo is open (#275).
+      demoMode: tryingDemo ? false : state.demoMode,
       activeGroupId: state.activeGroupId,
       activeRoundId,
       activeOutingId: state.activeOutingId,
     });
-  }, [state.ready, state.demoMode, state.activeGroupId, activeRoundId, state.activeOutingId]);
+  }, [state.ready, state.demoMode, state.activeGroupId, activeRoundId, state.activeOutingId, tryingDemo]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
