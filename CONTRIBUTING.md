@@ -26,9 +26,10 @@ npm run lint
 npx expo-doctor
 ```
 
-A change to `scripts/`, `app.json`, `supabase/config.toml`, `.agents/skills/` or
-`.claude/agents/` also runs the script and agent checks in
-[Testing and CI § Local checks](docs/testing-and-ci.md#local-checks).
+A change to `scripts/`, `app.json`, `supabase/config.toml`, `skills-lock.json`,
+`.agents/skills/` or `.claude/agents/` also runs the script and agent checks in
+[Testing and CI § Local checks](docs/testing-and-ci.md#local-checks), and a change
+to a document runs its docs check.
 
 Add tests with behavior changes. New executable lines must meet the 90% patch
 coverage gate, and total coverage must remain above the thresholds in
