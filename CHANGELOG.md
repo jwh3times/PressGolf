@@ -29,6 +29,13 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
   advertising ID permission is blocked too, so a library can't add it: Press doesn't read it, as
   the Play Store's Data safety section says.
 
+### Fixed
+
+- **Delete account** no longer fails once Press's server holds a lot of rounds. Deleting an account
+  that had organised an outing someone else joined took longer as everyone's scores added up, and
+  past about 1.5 million score rows the server gave up and Press said it couldn't delete the
+  account. It now takes a fraction of a second at that size.
+
 ## [1.2.0] - 2026-11-04
 
 ### Added

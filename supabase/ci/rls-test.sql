@@ -310,6 +310,43 @@ select expect('every owner and member column refuses an unknown account', (
     )
 ), 0);
 
+-- Deleting an account looks rows up by these columns, and so do the owner's
+-- policies on every pull. Without an index each lookup reads the whole table, and
+-- on a large enough one the deletion times out (#242). Read from the catalog, as
+-- above, so a new table without the index fails here.
+create or replace function led_by_index(tbl regclass, col name)
+returns boolean language sql stable as $$
+  select exists (
+    select 1 from pg_index i
+    join pg_attribute a on a.attrelid = i.indrelid and a.attnum = i.indkey[0]
+    where i.indrelid = tbl and a.attname = col
+  )
+$$;
+
+select expect('every owner and member column leads an index', (
+  select count(*)
+  from pg_attribute a
+  join pg_class t on t.oid = a.attrelid
+  join pg_namespace n on n.oid = t.relnamespace
+  where n.nspname = 'public' and t.relkind = 'r' and not a.attisdropped
+    and a.attname in ('owner_id', 'user_id')
+    and not led_by_index(t.oid, a.attname)
+), 0);
+
+-- The columns delete_account_data moves onto a guest's copy, read from its own
+-- list, so one added there without an index fails here too.
+create temporary table rewritten as
+  select m[1] as table_name, m[2] as column_name
+  from regexp_matches(
+    pg_get_functiondef('delete_account_data'::regproc),
+    '\(''(\w+)'', ''(\w+)'', ''(?:player|tee|group|course)''\)', 'g') m;
+select expect('the columns the deletion rewrites are read from it', (
+  select (count(*) > 0)::int from rewritten), 1);
+select expect('every column the deletion rewrites leads an index', (
+  select count(*) from rewritten
+  where not led_by_index(table_name::regclass, column_name)
+), 0);
+
 -- ── Move notices ────────────────────────────────────────────────────────────
 -- What an organiser's deletion leaves each guest. Only the clean-up writes them.
 

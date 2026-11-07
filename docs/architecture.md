@@ -649,7 +649,10 @@ The server side has two parts, and the app reaches them only through the first:
   guests' cells, memberships and edit-log entries on those outings. It finds the
   tables from the catalog, so a new table with an `owner_id` is covered without
   changing it. The columns naming a moved id are listed by hand, in the function
-  and in `applyMoveNotices`: a new one has to go in both.
+  and in `applyMoveNotices`: a new one has to go in both, and needs an index that
+  starts with it. Every lookup the function makes, by owner or by a moved id, uses
+  an index, so it stays inside the API's statement timeout; without them it read
+  whole tables and timed out on 1.5 million scores (#242).
 
 Calling again is safe. If `deleteUser` fails after the clean-up committed, the
 next call finds nothing to clean and retries it. If the account has already gone
@@ -677,8 +680,8 @@ two jobs:
   still has rows, from the dashboard too. If a second phone writes between the
   clean-up and `deleteUser`, `deleteUser` fails and the next call clears that row.
 
-A new table with one of these columns needs its own key; `rls-test.sql` reads the
-catalog and fails until it has one.
+A new table with one of these columns needs its own key, and an index that starts
+with the column; `rls-test.sql` reads the catalog and fails until it has both.
 
 **A guest can delete their account.** A membership in someone else's outing
 doesn't stop it, and the outing no longer lists them. A round or outing of their
