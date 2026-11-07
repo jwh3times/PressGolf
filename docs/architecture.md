@@ -852,7 +852,7 @@ scripts/
   next-version.mjs        reads the release line from the version file; shared with check-changelog.mjs
   set-version.mjs         sets a release's version in package.json and app.json's expo.version
   test-integration.mjs    runs the sync integration tests against the local Supabase stack
-  test-web.mjs            runs the Playwright web suite in CI's Playwright container (Docker)
+  test-web.mjs            builds the web export and runs the Playwright suite in CI's container (Docker)
 .agents/skills/     authored agent skills (Claude Code and Codex)
 .claude/skills/     generated copy for Claude Code; do not edit
 .maestro/

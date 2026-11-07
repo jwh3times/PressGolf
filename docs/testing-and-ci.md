@@ -16,14 +16,14 @@ When a change touches `scripts/`, `app.json`, `supabase/config.toml`, `skills-lo
 ```bash
 npm run test:scripts        # node:test suites for the repository scripts, the generated native config and supabase/config.toml
 npm run sync:agents:check   # .claude/skills matches .agents/skills
-node scripts/check-skills.mjs  # installed skills match skills-lock.json and the shared install commands
+node scripts/check-skills.mjs # installed skills match skills-lock.json and the shared install commands
 npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
 ```
 
 When a change touches a Markdown document, or adds or removes one, also run:
 
 ```bash
-node scripts/check-docs.mjs # local links and anchors resolve, and the doc map lists every document
+node scripts/check-docs.mjs   # local links and anchors resolve, and the doc map lists every document
 ```
 
 When a change touches `src/sync/`, `supabase/migrations/`,

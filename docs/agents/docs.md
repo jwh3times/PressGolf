@@ -31,8 +31,8 @@
   sync, themes, repository layout, app artwork. **When:** `src/domain/`, `src/store/`,
   `src/sync/`, `src/theme/` or the data model (`supabase/migrations/`) changes; what the
   `delete-account` Edge Function does changes (`supabase/functions/`: § Deleting an account); a
-  top-level `src/`
-  directory, a `scripts/` file or a `.maestro/` file is added or removed (§ Repository layout).
+  top-level `src/` directory, a `scripts/` file or a `.maestro/` file is added or removed
+  (§ Repository layout).
 - `docs/testing-and-ci.md` — local checks, coverage floors, CI jobs, the support site's deploy,
   web UI and native smoke suites, repository protections, manual validation status. **When:**
   `.github/workflows/`, a test or check script in `package.json`, `coverageThreshold`,
