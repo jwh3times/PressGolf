@@ -404,6 +404,37 @@ npx eas-cli@latest env:set --name GOOGLE_MAPS_ANDROID_API_KEY \
 For a local `npx expo run:android`, set the variable for that one command:
 `GOOGLE_MAPS_ANDROID_API_KEY="$(op read 'op://PressGolf/Google Maps/android_api_key')" npx expo run:android`.
 
+### Android permissions
+
+A store build should declare only what Press uses, so the Play listing and the
+Data safety form explain nothing the app never does. The app's own manifest
+declares fine and coarse location (`expo-location`, for yardage and marking
+greens), internet and vibrate. Libraries add network state, and a dependency's
+background work library adds wake lock, boot completed and foreground service
+for its own work; those are merged in at build time.
+
+`android.blockedPermissions` in `app.json` removes these from the merged
+manifest, which marks each one `tools:node="remove"`:
+
+- `SYSTEM_ALERT_WINDOW`, `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE`,
+  which Expo's default Android template declares and Press doesn't use. They
+  were in the first production build (#162) and were still in the SDK 58
+  prebuild on 2026-11-06.
+- `com.google.android.gms.permission.AD_ID`, which nothing declares today. It is
+  blocked so that a future library can't add it, because the Data safety form
+  says Press doesn't use the advertising ID.
+
+`scripts/app-config.test.mjs` reads the manifest prebuild would write
+(`expo config --type introspect`). It fails if one of these stops being removed,
+or if location, internet or vibrate stops being declared. To read that manifest
+yourself without a cloud build, run `npx expo prebuild --platform android
+--clean --no-install`, open `android/app/src/main/AndroidManifest.xml`, then
+delete `android/` and revert the `scripts` that prebuild rewrites in
+`package.json`. Neither shows what libraries merge in. So before submitting,
+check a production `.aab` with
+[bundletool](https://developer.android.com/tools/bundletool):
+`bundletool dump manifest --bundle=<file>.aab | grep uses-permission`.
+
 ### App Store submission (iOS)
 
 The `production` submit profile sends iOS builds to TestFlight. Its only
