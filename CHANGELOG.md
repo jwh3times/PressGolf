@@ -22,6 +22,13 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 - The support page's "Do I need an account?" answer points to **Try the demo**.
 
+### Removed
+
+- The Android app no longer declares the permissions to draw over other apps and to read and write
+  shared storage. They came from Expo's default Android template, and Press uses neither. The
+  advertising ID permission is blocked too, so a library can't add it: Press doesn't read it, as
+  the Play Store's Data safety section says.
+
 ## [1.2.0] - 2026-11-04
 
 ### Added

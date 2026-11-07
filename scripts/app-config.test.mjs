@@ -38,10 +38,6 @@ test("Info.plist asks for location only while in use", () => {
   assert.equal(infoPlist.NSLocationAlwaysAndWhenInUseUsageDescription, undefined);
 });
 
-// SDK 58's native template turns R8 on for Android release builds, and under it
-// WorkManager (from react-native-maps) can't create its database: the release
-// build crashed on launch (#250). Only the native smoke run catches that, an
-// hour later, so this keeps the setting that turns R8 off from going quietly.
 // A store build that declares a permission has to explain it on the Play listing
 // and in the Data safety form (#278). Expo's Android template declares these three,
 // and Press uses none of them. The advertising ID isn't declared by anything today;
@@ -71,6 +67,10 @@ test("Android manifest keeps location, internet and vibrate, and never removes n
   assert.notEqual(manifestPermissions["android.permission.ACCESS_NETWORK_STATE"], "remove");
 });
 
+// SDK 58's native template turns R8 on for Android release builds, and under it
+// WorkManager (from react-native-maps) can't create its database: the release
+// build crashed on launch (#250). Only the native smoke run catches that, an
+// hour later, so this keeps the setting that turns R8 off from going quietly.
 test("Android release builds stay unminified", () => {
   const entry = expoConfig("prebuild").plugins.find((p) => [].concat(p)[0] === "expo-build-properties");
   assert.equal(entry?.[1]?.android?.enableMinifyInReleaseBuilds, false);
