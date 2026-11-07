@@ -214,7 +214,11 @@ The local stack sends the same texts: `supabase/config.toml` points
 `[auth.email.template.confirmation]`, `[auth.email.template.recovery]` and
 `[auth.email.notification.password_changed]` at `supabase/templates/`. Local
 `enable_confirmations` stays `false`, unlike production, because the integration
-tests sign up throwaway accounts and sign straight in.
+tests sign up throwaway accounts and sign straight in. The email provider is on
+and the phone provider off (`enabled` under `[auth.email]` and `[auth.sms]`,
+which switch sign-up and sign-in together). `scripts/supabase-config.test.mjs`
+fails when the installed Supabase CLI warns that a `config.toml` key is
+deprecated, so the next CLI major can't quietly drop a setting.
 
 ## Database migrations
 
