@@ -103,8 +103,8 @@ because the function calls what the migrations create. It runs only after the
 tests, the bundle, the throwaway database and the sync integration tests have
 all passed. It uses `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and
 `SUPABASE_DB_PASSWORD` from the protected GitHub `production` environment.
-`supabase db push --remote` is safe to run when there are no pending migrations, and the
-function is deployed on every merge.
+`supabase db push --remote` is safe to run when there are no pending migrations,
+and the function is deployed on every merge.
 
 ## Support and privacy site
 

@@ -39,6 +39,6 @@ none
 - **Never run:** `npx supabase stop --no-backup` or `docker volume rm`/`prune` on the
   `supabase_*_PressGolf` volumes — they delete the local database; `npx supabase db reset`; and
   `npm run db:push`, `npx supabase db push --remote` (with or without a value) or
-  `npx supabase functions deploy` — they act on the linked production project, which only CI's
-  `migrate` job changes. Since Supabase CLI v3 a bare `npx supabase db push` applies pending
-  migrations to the local stack only.
+  `npx supabase functions deploy` — they act on a hosted project, the linked production one by
+  default, which only CI's `migrate` job changes. A bare `npx supabase db push` targets the local
+  stack ([development § Database migrations](../development.md#database-migrations)).
