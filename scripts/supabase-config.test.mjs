@@ -16,6 +16,9 @@ const { stdout, stderr } = spawnSync("npx", ["supabase", "status"], {
 
 test("supabase/config.toml uses no key the installed Supabase CLI deprecates", () => {
   assert.notEqual(stdout.trim(), "", `the Supabase CLI didn't run:\n${stderr}`);
-  const deprecated = stderr.split(/\r?\n/).filter((line) => /deprecated/i.test(line));
+  // npm's and Node's own notices from the npx wrapper aren't about config.toml.
+  const deprecated = stderr
+    .split(/\r?\n/)
+    .filter((line) => /deprecated/i.test(line) && !/^(npm |\(node:)/.test(line));
   assert.deepEqual(deprecated, []);
 });
