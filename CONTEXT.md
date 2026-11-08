@@ -1,9 +1,16 @@
 # Press
 
-Press scores and settles golf side games. These are the words that matter when several accounts
-share a day.
+Press scores and settles golf side games. These are the words that matter in a round's life, and
+when several accounts share a day.
 
 ## Language
+
+**Posted**:
+Of a round, closed from Settle with its net positions added to the season ledger; it can be reopened from History.
+
+**Abandoned**:
+Of a round, closed without posting; it stays in History, never counts in the season ledger, and can be reopened.
+_Avoid_: cancelled, discarded (discarding a card deletes it)
 
 **Organiser**:
 The account that created an outing and shares it by its code; owns the outing's group, course and rounds.

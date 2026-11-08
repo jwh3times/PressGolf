@@ -9,10 +9,12 @@ import {
   EmptyState,
   Eyebrow,
   GameDot,
+  GhostButton,
   Money,
   Mono,
   PrimaryButton,
 } from '../../components/primitives';
+import { askToAbandon } from '../../components/AbandonRound';
 import { RoundContext, money, signedMoney } from '../../domain/engine';
 import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
@@ -190,6 +192,24 @@ export default function SettleScreen() {
       </View>
 
       <PrimaryButton label="Post to the season ledger" onPress={finish} />
+      {/* A round in an outing ends with the outing. */}
+      {round.outingId ? null : (
+        <GhostButton
+          label="Abandon round"
+          onPress={() =>
+            askToAbandon({
+              onKeep: () => {
+                store.abandonRound(round.id);
+                router.replace('/');
+              },
+              onDelete: () => {
+                store.deleteRound(round.id);
+                router.replace('/');
+              },
+            })
+          }
+        />
+      )}
     </Screen>
   );
 }

@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { askToAbandon } from '../components/AbandonRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Avatar, Body, Card, Eyebrow, Money, Mono } from '../components/primitives';
 import { settleRound } from '../domain/engine';
@@ -98,11 +99,41 @@ export default function HistoryScreen() {
                 accessibilityRole="button"
                 onPress={() => {
                   if (round.status === 'active') {
-                    store.setActiveRound(round.id);
-                    router.replace('/score');
+                    const resume = {
+                      text: 'Resume',
+                      onPress: () => {
+                        store.setActiveRound(round.id);
+                        router.replace('/score');
+                      },
+                    };
+                    // A round in an outing ends with the outing, so it can't be abandoned.
+                    const abandon = {
+                      text: 'Abandon round',
+                      style: 'destructive' as const,
+                      onPress: () =>
+                        askToAbandon({
+                          onKeep: () => {
+                            store.abandonRound(round.id);
+                            router.replace('/');
+                          },
+                          onDelete: () => {
+                            store.deleteRound(round.id);
+                            router.replace('/');
+                          },
+                        }),
+                    };
+                    Alert.alert(label, 'This round is still going.', [
+                      { text: 'Cancel', style: 'cancel' },
+                      ...(round.outingId ? [] : [abandon]),
+                      resume,
+                    ]);
                     return;
                   }
-                  Alert.alert(label, 'Reopen this round to correct a score?', [
+                  const message =
+                    round.status === 'abandoned'
+                      ? 'This round was abandoned. It doesn’t count in the season ledger.'
+                      : 'Reopen this round to correct a score?';
+                  Alert.alert(label, message, [
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Delete',
@@ -130,6 +161,11 @@ export default function HistoryScreen() {
                         <Text style={styles.liveText}>LIVE</Text>
                       </View>
                     ) : null}
+                    {round.status === 'abandoned' ? (
+                      <Mono size={10} style={{ color: ink.quiet, letterSpacing: 0.85 }}>
+                        ABANDONED
+                      </Mono>
+                    ) : null}
                     {/* Aiming advice was on in it, on this phone. */}
                     {store.practice[round.id]?.ever ? (
                       <Mono size={10} style={{ color: ink.quiet, letterSpacing: 0.85 }}>
@@ -141,7 +177,10 @@ export default function HistoryScreen() {
                     {date} · {round.playerIds.length} players · thru {settlement?.thru ?? 0}
                   </Text>
                 </View>
-                {group.youId ? <Money cents={you} label={signedMoney(you)} size={13} /> : null}
+                {/* An abandoned round never counted, so it shows no money. */}
+                {group.youId && round.status !== 'abandoned' ? (
+                  <Money cents={you} label={signedMoney(you)} size={13} />
+                ) : null}
               </Pressable>
             );
           })
