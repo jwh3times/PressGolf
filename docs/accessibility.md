@@ -32,8 +32,10 @@ substitute for assistive-technology use on both platforms.
   disabled while its request is in flight; a Jest test covers that, since the
   web suite never presses it. The reset and confirmation pages on pressgolf.cc label
   their fields, and an error there is an `alert` that the password field points
-  at with `aria-describedby`. None of this has been tried yet with VoiceOver or
-  TalkBack or at the largest text size.
+  at with `aria-describedby`. The maintainer checked all of it in November 2026
+  with VoiceOver on an iPhone and TalkBack on an Android phone, and at the
+  largest text size on both, opening the pages from real reset and confirmation
+  emails ([#265](https://github.com/jwh3times/PressGolf/issues/265)).
 - **Try the demo** ([#275](https://github.com/jwh3times/PressGolf/issues/275)) on the sign-in screen is a named button, in both sign-in
   and create-account modes, that reads as disabled while a request is in
   flight. When something in the demo needed an account, the sign-in screen
@@ -185,23 +187,34 @@ Later features had the same iOS pass at maximum text size and with VoiceOver:
   ([issue #39](https://github.com/jwh3times/PressGolf/issues/39), October 2026):
   the card grid's Wolf row and picker, including RESET, and adding and removing
   a press. Also switching Wolf on for a card from the Format tab.
+- Card entry and the max-score controls
+  ([issue #40](https://github.com/jwh3times/PressGolf/issues/40), November
+  2026): entering a finished card in the Whole card grid and saving it, the
+  keypad (10+ and its stepper, Pick up, Clear box), the Save card and Discard
+  card prompts, Hole by hole's PICK UP chip, the max-score picker on Format,
+  the roster and Field pots, and New round's Played-on date. The Android half
+  is below.
 
-## Required Android follow-up
+## Completed Android validation
 
-Physical Android validation remains open in
-[issue #22](https://github.com/jwh3times/PressGolf/issues/22). The acceptance
-criteria are:
+In November 2026 the maintainer repeated the device pass on an Android phone
+([issue #22](https://github.com/jwh3times/PressGolf/issues/22)), and found
+nothing to fix:
 
-- At maximum Android font size, Home, Format, Score, Settle, Settings, and
-  Outing remain usable without clipped or missing names, ranks, values, or
+- At the maximum Android font size, Home, Format, Score, Settle, Settings, and
+  Outing stayed usable, with no clipped or missing names, ranks, values, or
   money figures.
-- With TalkBack and swipe navigation, a user can sign in, start a round, enter
-  scores, settle, and post to the ledger without an unnamed control,
-  double-announcement, skipped content, or navigation trap.
-- Any Android-specific defects are fixed or split into focused issues.
+- With TalkBack and swipe navigation, a full flow completed: sign in, start a
+  round, enter scores, settle, and post to the ledger. No control was unnamed,
+  announced twice, skipped, or a trap, and the tab bar read each tab by name.
+- The card entry and max-score checks above
+  ([issue #40](https://github.com/jwh3times/PressGolf/issues/40)) passed with
+  TalkBack and at the maximum font size, including New round's Played-on date,
+  which on Android opens a dialog the tests don't cover.
 
-The passing Android emulator/Maestro run proves the native journeys, not
-TalkBack semantics or physical-device rendering.
+The Android emulator run in the native nightly proves the journeys, not
+TalkBack or how a physical screen renders, so a change to these screens still
+needs the regression checklist below.
 
 ## Automated large-text pass
 
@@ -219,7 +232,7 @@ What still needs a device:
 
 - **Screen readers.** Maestro reads the accessibility tree but does not drive
   VoiceOver or TalkBack, so announcement order, double announcements, and
-  focus traps stay manual (issue #40, and #22 on Android).
+  focus traps stay manual: the [regression checklist](#regression-checklist).
 - **Physical rendering.** A label clipped mid-word or overlapping its
   neighbour can still be found and tapped, so it passes the flow. Truncation,
   safe areas, and how the screen reads at arm's length need a look on real
