@@ -38,8 +38,8 @@
   `.github/workflows/`, a test or check script in `package.json`, `coverageThreshold`,
   `scripts/check-patch-coverage.mjs`, `playwright.config.ts`, `tests/web/`, `.maestro/`,
   `site/wrangler.jsonc`, or the `main` ruleset changes.
-- `docs/accessibility.md` — automated guarantees, completed iOS validation, the Android
-  follow-up, the large-text pass, the native accessibility-tree lint, the regression checklist.
+- `docs/accessibility.md` — automated guarantees, completed iOS and Android
+  validation, the large-text pass, the native accessibility-tree lint, the regression checklist.
   **When:** accessible names, roles or layout branches change (`src/app/`, `src/components/`),
   `.maestro/a11y-allowlist.json` or `scripts/a11y-lint.mjs` changes, or a manual pass completes.
 - `docs/research/*.md` — dated research notes for an issue (#151–#153), each with its sources and

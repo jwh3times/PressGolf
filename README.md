@@ -70,8 +70,8 @@ edited by hand.
   sync boundaries, repository layout, and settlement behavior.
 - [Testing and CI](docs/testing-and-ci.md) — local checks, coverage gates,
   protected-branch checks, native smoke tests, and deployment controls.
-- [Accessibility](docs/accessibility.md) — automated guarantees, iOS validation,
-  the manual regression pass, and the open Android follow-up.
+- [Accessibility](docs/accessibility.md) — automated guarantees, iOS and Android
+  device validation, and the manual regression pass.
 - [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
 - [Changelog](CHANGELOG.md) — what each release changed, from `1.0.0`;
   [releases](docs/agents/releases.md) says how one is cut and tagged.
@@ -119,11 +119,8 @@ As of October 2026:
 - Maximum Dynamic Type and a complete VoiceOver flow were validated on iOS
   hardware: sign in, start a round, enter scores, settle, and post to the
   ledger.
-
-Android hardware validation at maximum font size and with TalkBack remains
-open in [issue #22](https://github.com/jwh3times/PressGolf/issues/22). Passing
-the Android emulator smoke test does not replace that device accessibility
-pass.
+- The same pass at maximum font size and with TalkBack was completed on an
+  Android phone (November 2026), as was card entry with both screen readers.
 
 ## Known limits
 
