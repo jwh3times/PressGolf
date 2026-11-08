@@ -10,7 +10,8 @@
     `docs/agents/dev-flow.md`);
   - a skill is added, removed or replaced (`.agents/skills/`, `skills-lock.json`),
     or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
-    `scripts/check-docs.mjs`):
+    `scripts/check-docs.mjs`, `scripts/check-skills.mjs`, `scripts/next-version.mjs`,
+    `scripts/check-changelog.mjs`):
     `## Agent skills`;
   - the handoff transport or machine config changes: `### Machine handoff`.
 - `CLAUDE.md` — `@AGENTS.md` only. **When:** never for operating context.
@@ -24,11 +25,14 @@
   scripts or the Expo SDK change; `app.json`'s `android.blockedPermissions` or a plugin's
   permissions change; an env var changes (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`);
   `eas.json` build or submit profiles change; `supabase/config.toml` or the migration workflow
-  changes.
+  changes; an Edge Function is added or removed, or its secrets or deploy command change
+  (`supabase/functions/`: § Edge Functions).
 - `docs/architecture.md` — domain engine, formats and game rules, local data and demo isolation,
   sync, themes, repository layout, app artwork. **When:** `src/domain/`, `src/store/`,
-  `src/sync/`, `src/theme/` or the data model (`supabase/migrations/`) changes; a top-level `src/`
-  directory, a `scripts/` file or a `.maestro/` file is added or removed (§ Repository layout).
+  `src/sync/`, `src/theme/` or the data model (`supabase/migrations/`) changes; what the
+  `delete-account` Edge Function does changes (`supabase/functions/`: § Deleting an account); a
+  top-level `src/` directory, a `scripts/` file or a `.maestro/` file is added or removed
+  (§ Repository layout).
 - `docs/testing-and-ci.md` — local checks, coverage floors, CI jobs, the support site's deploy,
   web UI and native smoke suites, repository protections, manual validation status. **When:**
   `.github/workflows/`, a test or check script in `package.json`, `coverageThreshold`,
@@ -54,7 +58,8 @@
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
   pressgolf.cc. **When:** what the app collects, where data goes, or how an account is deleted
-  changes — update the page and the date at its top in the same change.
+  changes — update the page in the same change, and on the privacy and terms pages the
+  "Effective" date at its top (the support and account-deletion pages carry no date).
 - `CHANGELOG.md` — release notes, Keep a Changelog and SemVer: `Unreleased` collects each change,
   and a release PR cuts a dated section (`docs/agents/releases.md`). `ship-owned`.
 - `CONTEXT.md` — the domain glossary, kept by `/domain-modeling`. `docs/adr/*.md` — created lazily
@@ -85,7 +90,7 @@ volatile service prices or quotas outside a dated research note.
   one's `name:`
 - Required checks and ruleset: `gh api repos/jwh3times/PressGolf/rules/branches/main`
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`
-- RLS assertion count ("95" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
+- RLS assertion count ("98" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
   `grep -cE "select (expect|refused|refused_by_key)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
 - Migrations: `supabase/migrations/*.sql`
 - EAS profiles: the `build` and `submit` keys in `eas.json`
