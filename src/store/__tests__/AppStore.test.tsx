@@ -701,6 +701,15 @@ describe('AppStoreProvider', () => {
     expect(reopened.status).toBe('active');
     expect(reopened.completedAt).toBeNull();
     expect(store.activeRoundId).toBe(active.id);
+
+    // A round abandoned while it fills the card slot leaves the slot, as posting does.
+    const card = makeRound(store.group!, store.courses[0], store.group!.players.slice(0, 2).map((p) => p.id), {
+      entry: 'card',
+    });
+    await change(() => store.startCard(card));
+    expect(store.cardRoundId).toBe(card.id);
+    await change(() => store.abandonRound(card.id));
+    expect(store.cardRoundId).toBeNull();
   });
 
   it('reconciles a removed player only from active rounds and supports course fallbacks', async () => {

@@ -317,9 +317,21 @@ function completeIn(state: AppState, id: string, markBlanksPickedUp: boolean): A
     const completedAt = r.entry === 'card' ? r.startedAt : Date.now();
     return { ...r, pickups, status: 'completed' as const, completedAt };
   });
+  return closeIn({ ...state, rounds }, id);
+}
+
+/** Abandons a round: closed without posting, so it never counts in the season ledger. */
+function abandonIn(state: AppState, id: string): AppState {
+  const rounds = state.rounds.map((r) =>
+    r.id === id ? { ...r, status: 'abandoned' as const, completedAt: Date.now() } : r,
+  );
+  return closeIn({ ...state, rounds }, id);
+}
+
+/** Takes a round that has just closed out of its group's open slot and the card slot. */
+function closeIn(state: AppState, id: string): AppState {
   return {
     ...state,
-    rounds,
     openRoundIds: state.openRoundIds.filter((rid) => rid !== id),
     cardRoundId: state.cardRoundId === id ? null : state.cardRoundId,
   };
@@ -859,14 +871,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       // A card round opens in the card slot, never as the live round.
       setActiveRound: (id) => commit((prev) => focusRound(prev, id)),
       completeRound: (id) => commit((prev) => completeIn(prev, id, false)),
-      abandonRound: (id) =>
-        commit((prev) => ({
-          ...prev,
-          rounds: prev.rounds.map((r) =>
-            r.id === id ? { ...r, status: 'abandoned' as const, completedAt: Date.now() } : r,
-          ),
-          openRoundIds: prev.openRoundIds.filter((rid) => rid !== id),
-        })),
+      abandonRound: (id) => commit((prev) => abandonIn(prev, id)),
       reopenRound: (id) =>
         commit((prev) =>
           focusRound(

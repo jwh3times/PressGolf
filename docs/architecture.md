@@ -483,8 +483,9 @@ completed rounds count in the season ledger. **Abandon round** (#259), on Settle
 or in the prompt History shows for an open round, either deletes it after a
 second confirm or closes it as `abandoned`. An abandoned round stays in History,
 tagged and with no money, and never counts. History reopens a completed or
-abandoned round to `active`. A round in an outing can't be abandoned: closing the
-outing completes the day's rounds. The server keeps `rounds.status` as free text,
+abandoned round to `active`. Only a live round outside an outing can be
+abandoned: closing an outing completes the day's rounds, and a card being typed in
+has **Discard card**. The server keeps `rounds.status` as free text,
 so `abandoned` needed no migration, and an older build shows an abandoned round
 as finished and leaves it out of the ledger.
 

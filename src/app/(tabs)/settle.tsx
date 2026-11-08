@@ -14,7 +14,7 @@ import {
   Mono,
   PrimaryButton,
 } from '../../components/primitives';
-import { askToAbandon } from '../../components/AbandonRound';
+import { canAbandon, useAbandonRound } from '../../hooks/useAbandonRound';
 import { RoundContext, money, signedMoney } from '../../domain/engine';
 import { useLargeText } from '../../hooks/useLargeText';
 import { useStore } from '../../store/AppStore';
@@ -27,6 +27,7 @@ export default function SettleScreen() {
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
+  const abandon = useAbandonRound();
   const { round, course, roundGroup: group, settlement } = store;
 
   if (!round || !course || !group || !settlement) {
@@ -192,24 +193,7 @@ export default function SettleScreen() {
       </View>
 
       <PrimaryButton label="Post to the season ledger" onPress={finish} />
-      {/* A round in an outing ends with the outing. */}
-      {round.outingId ? null : (
-        <GhostButton
-          label="Abandon round"
-          onPress={() =>
-            askToAbandon({
-              onKeep: () => {
-                store.abandonRound(round.id);
-                router.replace('/');
-              },
-              onDelete: () => {
-                store.deleteRound(round.id);
-                router.replace('/');
-              },
-            })
-          }
-        />
-      )}
+      {canAbandon(round) ? <GhostButton label="Abandon round" onPress={() => abandon(round)} /> : null}
     </Screen>
   );
 }

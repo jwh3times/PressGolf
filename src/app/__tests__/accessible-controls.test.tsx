@@ -1305,6 +1305,12 @@ describe('management screen state matrices', () => {
     view = await render(<SettleScreen />);
     expect(screen.queryByRole('button', { name: 'Abandon round' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Post to the season ledger' })).toBeOnTheScreen();
+    await view.unmount();
+
+    // A card being typed in has Discard card on Score instead.
+    useStoreValue({ round: { ...round, entry: 'card' } });
+    view = await render(<SettleScreen />);
+    expect(screen.queryByRole('button', { name: 'Abandon round' })).toBeNull();
     alert.mockRestore();
   });
 
@@ -1340,6 +1346,13 @@ describe('management screen state matrices', () => {
 
     // A round in an outing ends with the outing.
     useStoreValue({ rounds: [{ ...round, outingId: outing.id }], courses: [course] });
+    view = await render(<HistoryScreen />);
+    await user.press(screen.getByRole('button', { name: label }));
+    expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Resume']);
+    await view.unmount();
+
+    // Nor does a card being typed in, which has Discard card.
+    useStoreValue({ rounds: [{ ...round, entry: 'card' }], courses: [course] });
     view = await render(<HistoryScreen />);
     await user.press(screen.getByRole('button', { name: label }));
     expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Resume']);

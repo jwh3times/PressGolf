@@ -6,10 +6,10 @@ when several accounts share a day.
 ## Language
 
 **Posted**:
-Of a round, closed from Settle with its net positions added to the season ledger; it can be reopened from History.
+A round closed and counted in the season ledger.
 
 **Abandoned**:
-Of a round, closed without posting; it stays in History, never counts in the season ledger, and can be reopened.
+A round closed without being posted, so it never counts in the season ledger.
 _Avoid_: cancelled, discarded (discarding a card deletes it)
 
 **Organiser**:

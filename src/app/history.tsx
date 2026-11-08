@@ -1,12 +1,12 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { askToAbandon } from '../components/AbandonRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Avatar, Body, Card, Eyebrow, Money, Mono } from '../components/primitives';
 import { settleRound } from '../domain/engine';
 import { signedMoney } from '../domain/engine/context';
 import { buildSeason } from '../domain/season';
+import { canAbandon, useAbandonRound } from '../hooks/useAbandonRound';
 import { useStore } from '../store/AppStore';
 import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -17,6 +17,7 @@ export default function HistoryScreen() {
   const { ink } = useTheme();
   const store = useStore();
   const router = useRouter();
+  const abandon = useAbandonRound();
   const group = store.group;
 
   const rounds = useMemo(() => {
@@ -99,33 +100,16 @@ export default function HistoryScreen() {
                 accessibilityRole="button"
                 onPress={() => {
                   if (round.status === 'active') {
-                    const resume = {
-                      text: 'Resume',
-                      onPress: () => {
-                        store.setActiveRound(round.id);
-                        router.replace('/score');
-                      },
-                    };
-                    // A round in an outing ends with the outing, so it can't be abandoned.
-                    const abandon = {
-                      text: 'Abandon round',
-                      style: 'destructive' as const,
-                      onPress: () =>
-                        askToAbandon({
-                          onKeep: () => {
-                            store.abandonRound(round.id);
-                            router.replace('/');
-                          },
-                          onDelete: () => {
-                            store.deleteRound(round.id);
-                            router.replace('/');
-                          },
-                        }),
-                    };
                     Alert.alert(label, 'This round is still going.', [
                       { text: 'Cancel', style: 'cancel' },
-                      ...(round.outingId ? [] : [abandon]),
-                      resume,
+                      ...(canAbandon(round) ? [{ text: 'Abandon round', onPress: () => abandon(round) }] : []),
+                      {
+                        text: 'Resume',
+                        onPress: () => {
+                          store.setActiveRound(round.id);
+                          router.replace('/score');
+                        },
+                      },
                     ]);
                     return;
                   }
