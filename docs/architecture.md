@@ -834,7 +834,8 @@ src/
   config/           build-time feature flags
   demo/             deterministic sample data
   domain/           types, constructors, formats, and settlement engine
-  hooks/            responsive accessibility helpers
+  hooks/            hooks screens share: large text, live location, and the
+                    abandon-round prompt
   osm/              OpenStreetMap course search, greens and course-map import
   store/            application state and AsyncStorage persistence
   sync/             row translation, snapshot sync, and staged mutation sync

@@ -17,6 +17,12 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
   by code** and **Share this outing** need an account, so each one takes you to sign in and the
   sign-in screen says why, out loud to a screen reader too. Signing in opens your own groups and
   rounds, and the demo stays on the phone.
+- **Abandon round** closes a round without posting it to the season ledger. It sits under **Post to
+  the season ledger** on Settle, and in History's prompt for a round that's still going. **Keep in
+  History** keeps the round, marked ABANDONED and showing no money; it never counts in the season
+  ledger, and **Reopen** brings it back. **Delete round** removes it after a second confirmation. A
+  round in an outing, or a scorecard being typed in (which has **Discard card**), has no Abandon.
+  On an older build, an abandoned round shows as finished.
 
 ### Changed
 
