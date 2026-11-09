@@ -309,7 +309,12 @@ export interface WolfPick {
   partner: PlayerId | null;
 }
 
-export type RoundStatus = 'active' | 'completed';
+/**
+ * A round is played while `active`. It closes as `completed` when it's posted to
+ * the season ledger, or as `abandoned` when it's kept without counting. Either
+ * can be reopened.
+ */
+export type RoundStatus = 'active' | 'completed' | 'abandoned';
 
 /** How the scores arrived: hole by hole on the course, or typed from a finished paper card. */
 export type RoundEntry = 'live' | 'card';

@@ -477,6 +477,18 @@ Open rounds are kept as round ids because a move notice can change a
 group's id but never a round's. A dataset saved with the single phone-wide
 `activeRoundId` from before keeps that round open, for its own group.
 
+A round is `active` while it's played, and it ends in one of three ways.
+**Post to the season ledger** on Settle closes it as `completed`, and only
+completed rounds count in the season ledger. **Abandon round** (#259), on Settle
+or in the prompt History shows for an open round, either deletes it after a
+second confirm or closes it as `abandoned`. An abandoned round stays in History,
+tagged and with no money, and never counts. History reopens a completed or
+abandoned round to `active`. Only a live round outside an outing can be
+abandoned: closing an outing completes the day's rounds, and a card being typed in
+has **Discard card**. The server keeps `rounds.status` as free text,
+so `abandoned` needed no migration, and an older build shows an abandoned round
+as finished and leaves it out of the ledger.
+
 A card being typed in lives in its own slot (`cardRoundId`) beside its group's
 live round. While it is open and its group is active, `store.round` is the
 card and edits land on it. The live round is untouched, and returns when the
@@ -822,7 +834,8 @@ src/
   config/           build-time feature flags
   demo/             deterministic sample data
   domain/           types, constructors, formats, and settlement engine
-  hooks/            responsive accessibility helpers
+  hooks/            hooks screens share: large text, live location, and the
+                    abandon-round prompt
   osm/              OpenStreetMap course search, greens and course-map import
   store/            application state and AsyncStorage persistence
   sync/             row translation, snapshot sync, and staged mutation sync

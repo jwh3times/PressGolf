@@ -212,6 +212,7 @@ const actions = {
   startRound: jest.fn(),
   setActiveRound: jest.fn(),
   completeRound: jest.fn(),
+  abandonRound: jest.fn(),
   reopenRound: jest.fn(),
   deleteRound: jest.fn(),
   setScore: jest.fn(),
@@ -1278,6 +1279,101 @@ describe('management screen state matrices', () => {
     alert.mockRestore();
   });
 
+  it('abandons a solo round from Settle: kept in History, or deleted after a second confirm', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const choose = (text: string) => alert.mock.calls.at(-1)?.[2]?.find((b) => b.text === text)?.onPress?.();
+    const user = userEvent.setup();
+    let view = await render(<SettleScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Abandon round' }));
+    expect(alert.mock.calls.at(-1)?.[0]).toBe('Abandon this round?');
+    expect(alert.mock.calls.at(-1)?.[2]?.map((b) => b.text)).toEqual(['Not yet', 'Delete round', 'Keep in History']);
+    choose('Keep in History');
+    expect(actions.abandonRound).toHaveBeenCalledWith(round.id);
+    expect(mockRouter.replace).toHaveBeenCalledWith('/');
+
+    await user.press(screen.getByRole('button', { name: 'Abandon round' }));
+    choose('Delete round');
+    expect(alert.mock.calls.at(-1)?.[0]).toBe('Delete this round?');
+    expect(actions.deleteRound).not.toHaveBeenCalled();
+    choose('Delete');
+    expect(actions.deleteRound).toHaveBeenCalledWith(round.id);
+    await view.unmount();
+
+    // A round in an outing ends with the outing.
+    mockUseStore.mockReturnValue(outingStore);
+    view = await render(<SettleScreen />);
+    expect(screen.queryByRole('button', { name: 'Abandon round' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Post to the season ledger' })).toBeOnTheScreen();
+    await view.unmount();
+
+    // A card being typed in has Discard card on Score instead.
+    useStoreValue({ round: { ...round, entry: 'card' } });
+    view = await render(<SettleScreen />);
+    expect(screen.queryByRole('button', { name: 'Abandon round' })).toBeNull();
+    alert.mockRestore();
+  });
+
+  it('offers Abandon on a solo open round in History, and shows an abandoned round without money', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const last = () => alert.mock.calls.at(-1)!;
+    const choose = (text: string) => last()[2]?.find((b) => b.text === text)?.onPress?.();
+    const user = userEvent.setup();
+    const label = new RegExp(course.name);
+
+    useStoreValue({ rounds: [round], courses: [course] });
+    let view = await render(<HistoryScreen />);
+    await user.press(screen.getByRole('button', { name: label }));
+    expect(last()[1]).toBe('This round is still going.');
+    expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Abandon round', 'Resume']);
+    choose('Resume');
+    expect(actions.setActiveRound).toHaveBeenCalledWith(round.id);
+    expect(mockRouter.replace).toHaveBeenCalledWith('/score');
+
+    await user.press(screen.getByRole('button', { name: label }));
+    choose('Abandon round');
+    expect(last()[0]).toBe('Abandon this round?');
+    choose('Keep in History');
+    expect(actions.abandonRound).toHaveBeenCalledWith(round.id);
+    expect(mockRouter.replace).toHaveBeenLastCalledWith('/');
+
+    await user.press(screen.getByRole('button', { name: label }));
+    choose('Abandon round');
+    choose('Delete round');
+    choose('Delete');
+    expect(actions.deleteRound).toHaveBeenCalledWith(round.id);
+    await view.unmount();
+
+    // A round in an outing ends with the outing.
+    useStoreValue({ rounds: [{ ...round, outingId: outing.id }], courses: [course] });
+    view = await render(<HistoryScreen />);
+    await user.press(screen.getByRole('button', { name: label }));
+    expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Resume']);
+    await view.unmount();
+
+    // Nor does a card being typed in, which has Discard card.
+    useStoreValue({ rounds: [{ ...round, entry: 'card' }], courses: [course] });
+    view = await render(<HistoryScreen />);
+    await user.press(screen.getByRole('button', { name: label }));
+    expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Resume']);
+    await view.unmount();
+
+    // An abandoned round is tagged, shows no money, and can be reopened or deleted.
+    const abandoned = { ...round, status: 'abandoned' as const, completedAt: round.startedAt + 1 };
+    useStoreValue({ rounds: [abandoned], courses: [course] });
+    view = await render(<HistoryScreen />);
+    expect(screen.getByText('ABANDONED')).toBeOnTheScreen();
+    expect(screen.queryByText(/^([+−]\$\d|even)/)).toBeNull();
+    // It's the only round, and it doesn't count, so there are no season totals.
+    expect(screen.queryByText(/Season totals/)).toBeNull();
+    await user.press(screen.getByRole('button', { name: label }));
+    expect(last()[1]).toBe('This round was abandoned. It doesn’t count in the season ledger.');
+    expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Delete', 'Reopen']);
+    choose('Reopen');
+    expect(actions.reopenRound).toHaveBeenCalledWith(round.id);
+    alert.mockRestore();
+  });
+
   it('covers history without a group, without rounds, and active/completed actions', async () => {
     useStoreValue({ group: null });
     let view = await render(<HistoryScreen />);
@@ -1302,6 +1398,9 @@ describe('management screen state matrices', () => {
       const liveText = screen.getByText('LIVE');
       await user.press(liveText);
     }
+    // An open round asks first, then resumes.
+    expect(actions.setActiveRound).not.toHaveBeenCalled();
+    alert.mock.calls.at(-1)?.[2]?.find((b) => b.text === 'Resume')?.onPress?.();
     expect(actions.setActiveRound).toHaveBeenCalled();
 
     await view.unmount();
@@ -1326,12 +1425,15 @@ describe('management screen state matrices', () => {
       rounds: [{ ...round, courseId: 'deleted-course', status: 'active' }],
       courses: [],
     });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const user = userEvent.setup();
     await render(<HistoryScreen />);
     expect(screen.getByText('Unknown course')).toBeOnTheScreen();
     expect(screen.getByText(/thru 0/)).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: /Unknown course/ }));
+    alert.mock.calls.at(-1)?.[2]?.find((b) => b.text === 'Resume')?.onPress?.();
     expect(actions.setActiveRound).toHaveBeenCalledWith(round.id);
+    alert.mockRestore();
   });
 
   it('covers live settings, demo settings, group switching, sync errors, and auth variants', async () => {

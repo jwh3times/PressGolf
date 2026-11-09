@@ -177,6 +177,13 @@ describe('toRows / fromRows round trip', () => {
     expect(fromRows(rows).rounds[0].junk).toEqual(round.junk);
   });
 
+  it('round-trips an abandoned round as abandoned, with when it was abandoned', () => {
+    const round = { ...makeTestRound({ scores: [], playerCount: 4 }), status: 'abandoned' as const, completedAt: 1_750_000_000_000 };
+    const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] });
+    expect(rows.rounds[0]).toMatchObject({ status: 'abandoned', completed_at: 1_750_000_000_000 });
+    expect(fromRows(rows).rounds[0]).toMatchObject({ status: 'abandoned', completedAt: 1_750_000_000_000 });
+  });
+
   it('writes a row for every format, on or off, so a stake is never lost', () => {
     const round = makeTestRound({ scores: [], playerCount: 4 });
     const rows = toRows({ groups: [], courses: [], rounds: [round], outings: [], clubs: [] });

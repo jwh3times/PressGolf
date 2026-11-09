@@ -15,6 +15,7 @@ import {
 } from '../persistence';
 import { AppStoreProvider, useStore, type AppStore } from '../AppStore';
 import { teesChanged } from '../../domain/handicap';
+import { buildSeason } from '../../domain/season';
 
 jest.mock('../../auth/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('../../sync/useDataSync', () => ({ useDataSync: jest.fn() }));
@@ -672,6 +673,43 @@ describe('AppStoreProvider', () => {
     // An outing with no rounds leaves the group's open round as it was.
     await change(() => store.startOuting(empty, []));
     expect(store.activeRoundId).toBe(onlyOther.id);
+  });
+
+  it('abandons a round: out of the ledger, closed here, kept as played, and reopenable', async () => {
+    const data = buildDemoDataset(1_750_000_000_000);
+    const group = data.groups.find((candidate) => candidate.id === data.activeGroupId)!;
+    const active = data.rounds.find((round) => round.id === data.openRoundIds[0])!;
+    const player = active.playerIds[0];
+    await mount(data);
+    const counted = buildSeason(group, store.rounds, store.courses).roundsCounted;
+
+    await change(() => store.abandonRound('missing'));
+    await change(() => store.abandonRound(active.id));
+    const abandoned = store.rounds.find((round) => round.id === active.id)!;
+    expect(abandoned.status).toBe('abandoned');
+    expect(abandoned.completedAt).toEqual(expect.any(Number));
+    expect(abandoned.scores).toEqual(active.scores);
+    expect(store.activeRoundId).not.toBe(active.id);
+    expect(buildSeason(group, store.rounds, store.courses).roundsCounted).toBe(counted);
+
+    // A kept round stays as it was played, like a posted one.
+    await change(() => store.removePlayer(group.id, player));
+    expect(store.rounds.find((round) => round.id === active.id)?.playerIds).toContain(player);
+
+    await change(() => store.reopenRound(active.id));
+    const reopened = store.rounds.find((round) => round.id === active.id)!;
+    expect(reopened.status).toBe('active');
+    expect(reopened.completedAt).toBeNull();
+    expect(store.activeRoundId).toBe(active.id);
+
+    // A round abandoned while it fills the card slot leaves the slot, as posting does.
+    const card = makeRound(store.group!, store.courses[0], store.group!.players.slice(0, 2).map((p) => p.id), {
+      entry: 'card',
+    });
+    await change(() => store.startCard(card));
+    expect(store.cardRoundId).toBe(card.id);
+    await change(() => store.abandonRound(card.id));
+    expect(store.cardRoundId).toBeNull();
   });
 
   it('reconciles a removed player only from active rounds and supports course fallbacks', async () => {

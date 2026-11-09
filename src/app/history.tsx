@@ -6,6 +6,7 @@ import { Avatar, Body, Card, Eyebrow, Money, Mono } from '../components/primitiv
 import { settleRound } from '../domain/engine';
 import { signedMoney } from '../domain/engine/context';
 import { buildSeason } from '../domain/season';
+import { canAbandon, useAbandonRound } from '../hooks/useAbandonRound';
 import { useStore } from '../store/AppStore';
 import { alpha } from '../theme/color';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -16,6 +17,7 @@ export default function HistoryScreen() {
   const { ink } = useTheme();
   const store = useStore();
   const router = useRouter();
+  const abandon = useAbandonRound();
   const group = store.group;
 
   const rounds = useMemo(() => {
@@ -98,11 +100,24 @@ export default function HistoryScreen() {
                 accessibilityRole="button"
                 onPress={() => {
                   if (round.status === 'active') {
-                    store.setActiveRound(round.id);
-                    router.replace('/score');
+                    Alert.alert(label, 'This round is still going.', [
+                      { text: 'Cancel', style: 'cancel' },
+                      ...(canAbandon(round) ? [{ text: 'Abandon round', onPress: () => abandon(round) }] : []),
+                      {
+                        text: 'Resume',
+                        onPress: () => {
+                          store.setActiveRound(round.id);
+                          router.replace('/score');
+                        },
+                      },
+                    ]);
                     return;
                   }
-                  Alert.alert(label, 'Reopen this round to correct a score?', [
+                  const message =
+                    round.status === 'abandoned'
+                      ? 'This round was abandoned. It doesn’t count in the season ledger.'
+                      : 'Reopen this round to correct a score?';
+                  Alert.alert(label, message, [
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Delete',
@@ -130,6 +145,11 @@ export default function HistoryScreen() {
                         <Text style={styles.liveText}>LIVE</Text>
                       </View>
                     ) : null}
+                    {round.status === 'abandoned' ? (
+                      <Mono size={10} style={{ color: ink.quiet, letterSpacing: 0.85 }}>
+                        ABANDONED
+                      </Mono>
+                    ) : null}
                     {/* Aiming advice was on in it, on this phone. */}
                     {store.practice[round.id]?.ever ? (
                       <Mono size={10} style={{ color: ink.quiet, letterSpacing: 0.85 }}>
@@ -141,7 +161,10 @@ export default function HistoryScreen() {
                     {date} · {round.playerIds.length} players · thru {settlement?.thru ?? 0}
                   </Text>
                 </View>
-                {group.youId ? <Money cents={you} label={signedMoney(you)} size={13} /> : null}
+                {/* An abandoned round never counted, so it shows no money. */}
+                {group.youId && round.status !== 'abandoned' ? (
+                  <Money cents={you} label={signedMoney(you)} size={13} />
+                ) : null}
               </Pressable>
             );
           })
