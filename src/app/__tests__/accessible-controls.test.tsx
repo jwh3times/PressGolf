@@ -203,6 +203,9 @@ const actions = {
   fillBag: jest.fn(),
   setCarry: jest.fn(),
   removeClub: jest.fn(),
+  markBall: jest.fn(),
+  changeMark: jest.fn(),
+  undoMark: jest.fn(),
   setUsualScore: jest.fn(),
   setPractice: jest.fn(),
   deleteTee: jest.fn(),
@@ -1594,6 +1597,44 @@ describe('management screen state matrices', () => {
     expect(screen.getByRole('button', { name: 'Add a club' })).toBeTruthy();
   });
 
+  it('says how many tracked shots go with a club it removes, and asks nothing for a club with none (#295)', async () => {
+    const user = userEvent.setup();
+    const alert = jest.spyOn(Alert, 'alert');
+    const clubs = [
+      { id: 'k6', name: '6 iron', carry: 165 },
+      { id: 'k7', name: '7 iron', carry: 155 },
+      { id: 'k8', name: '8 iron', carry: 145 },
+    ];
+    const mark = (id: string, clubId: string | null, kind: 'full' | 'green' = 'full') => ({
+      id,
+      roundId: round.id,
+      hole: 1,
+      position: { lat: 45.5, lng: -122.6 },
+      accuracy: 5,
+      at: 1,
+      kind,
+      clubId,
+    });
+    useStoreValue({ clubs, marks: [mark('m1', 'k7'), mark('m2', 'k7'), mark('m3', 'k8'), mark('m4', null, 'green')] });
+    await render(<BagScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Remove 6 iron' }));
+    expect(alert).not.toHaveBeenCalled();
+    expect(actions.removeClub).toHaveBeenLastCalledWith('k6');
+
+    await user.press(screen.getByRole('button', { name: 'Remove 7 iron' }));
+    expect(alert).toHaveBeenLastCalledWith('Remove 7 iron?', 'Its 2 tracked shots go with it.', expect.any(Array));
+    expect(actions.removeClub).toHaveBeenCalledTimes(1);
+    const buttons = alert.mock.lastCall?.[2] as { text: string; onPress?: () => void }[];
+    expect(buttons.map((b) => b.text)).toEqual(['Cancel', 'Remove']);
+    await act(async () => buttons.find((b) => b.text === 'Remove')?.onPress?.());
+    expect(actions.removeClub).toHaveBeenLastCalledWith('k7');
+
+    await user.press(screen.getByRole('button', { name: 'Remove 8 iron' }));
+    expect(alert).toHaveBeenLastCalledWith('Remove 8 iron?', 'Its 1 tracked shot goes with it.', expect.any(Array));
+    alert.mockRestore();
+  });
+
   it('says a full bag holds no more', async () => {
     useStoreValue({ clubs: Array.from({ length: 20 }, (_, i) => ({ id: `k${i}`, name: `Club ${i}`, carry: null })) });
     await render(<BagScreen />);
@@ -1974,6 +2015,82 @@ describe('controls that say what they act on', () => {
     await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
     expect(screen.getByRole('button', { name: '⌖ YARDS TO GREEN' })).toBeOnTheScreen();
     alert.mockRestore();
+  });
+
+  it('marks the ball on Score in a live round and an outing, and offers no Mark ball on a card being typed in (#295)', async () => {
+    const user = userEvent.setup();
+    const [driver] = dataset.clubs;
+    const seven = dataset.clubs.find((club) => club.name === '7 iron')!;
+    let send!: (location: Location.LocationObject) => void;
+    jest.mocked(Location.watchPositionAsync).mockImplementationOnce(async (_options, callback) => {
+      send = callback;
+      return { remove: jest.fn() };
+    });
+    let view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 1' }));
+    expect(screen.getByRole('button', { name: 'Finding where your ball is' })).toBeOnTheScreen();
+    await act(async () => send({ coords: { latitude: 45.5, longitude: -122.6, accuracy: 5 }, timestamp: 0 } as Location.LocationObject));
+
+    // The bag longest first, as it is, with nothing chosen; then the two that only finish a shot.
+    const options = [...dataset.clubs.map((club) => club.name), 'Not a full swing', 'On the green'];
+    const listed = screen
+      .getAllByRole('button')
+      .map((button) => button.props.accessibilityLabel as string)
+      .filter((name) => options.includes(name));
+    expect(listed).toEqual(options);
+    screen.getAllByRole('button').forEach((button) => expect(button).toHaveAccessibleName());
+    for (const name of options) expect(screen.getByRole('button', { name })).not.toBeSelected();
+    await user.press(screen.getByRole('button', { name: '7 iron' }));
+    expect(actions.markBall).toHaveBeenCalledWith(
+      round.id,
+      1,
+      { position: { lat: 45.5, lng: -122.6 }, accuracy: 5 },
+      { kind: 'full', clubId: seven.id },
+    );
+    await view.unmount();
+
+    // The card confirms the last mark on the hole it shows, and nothing else.
+    const mark = (id: string, hole: number, at: number, clubId: string | null, kind: 'full' | 'green' = 'full') => ({
+      id,
+      roundId: round.id,
+      hole,
+      position: { lat: 45.5, lng: -122.6 },
+      accuracy: 5,
+      at,
+      kind,
+      clubId,
+    });
+    useStoreValue({ marks: [mark('m0', 1, 1, driver.id), mark('m1', 1, 2, seven.id), mark('m2', 2, 3, null, 'green')] });
+    view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.getByRole('button', { name: 'Marked: 7 iron' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Marked: 7 iron' }));
+    await user.press(screen.getByRole('button', { name: driver.name }));
+    expect(actions.changeMark).toHaveBeenCalledWith('m1', { kind: 'full', clubId: driver.id });
+    await user.press(screen.getByRole('button', { name: 'Marked: 7 iron' }));
+    await user.press(screen.getByRole('button', { name: 'Undo the mark' }));
+    expect(actions.undoMark).toHaveBeenCalledWith('m1');
+    await user.press(screen.getByRole('button', { name: 'Go to hole 2' }));
+    expect(screen.getByRole('button', { name: 'Marked: On the green' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
+    expect(screen.queryByRole('button', { name: /^Marked:/ })).toBeNull();
+    await view.unmount();
+
+    // An outing's group marks the same way.
+    mockUseStore.mockReturnValue(outingStore);
+    view = await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.getByRole('button', { name: 'Mark ball, hole 1' })).toBeOnTheScreen();
+    await view.unmount();
+
+    // Nobody stood at the ball for a card typed in afterwards.
+    useStoreValue({ round: { ...round, entry: 'card' } as typeof round });
+    await render(<ScoreScreen />);
+    await user.press(screen.getByRole('button', { name: 'Hole by hole' }));
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+    expect(screen.getByRole('button', { name: /Mark this green|Re-mark/ })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Mark ball, hole/ })).toBeNull();
   });
 
   it('names each junk chip, pick-up and clear on Score for its player', async () => {

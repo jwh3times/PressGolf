@@ -64,6 +64,7 @@ function stored(data: Dataset) {
     clubs: data.clubs,
     usualScore: data.usualScore,
     practice: data.practice,
+    marks: data.marks,
     activeGroupId: data.activeGroupId,
     openRoundIds: data.openRoundIds,
     activeOutingId: data.activeOutingId,
@@ -241,8 +242,11 @@ describe('deleting the account', () => {
   });
 
   it('erases the live dataset and signs out, leaving the demo dataset and the preference alone', async () => {
-    await mount(buildDemoDataset(1_750_000_000_000), false);
+    const data = buildDemoDataset(1_750_000_000_000);
+    const mark = { id: 'm1', roundId: data.openRoundIds[0], hole: 1, position: { lat: 1, lng: 2 }, accuracy: 5, at: 1, kind: 'green' as const, clubId: null };
+    await mount({ ...data, marks: [mark] }, false);
     expect(store.groups.length).toBeGreaterThan(0);
+    expect(store.marks).toEqual([mark]);
 
     await act(async () => store.deleteAccount('hunter22'));
 
@@ -258,6 +262,7 @@ describe('deleting the account', () => {
       clubs: [],
       usualScore: null,
       practice: {},
+      marks: [],
       activeGroupId: null,
       openRoundIds: [],
       activeOutingId: null,
@@ -413,6 +418,7 @@ describe('AppStoreProvider', () => {
       clubs: [],
       usualScore: null,
       practice: {},
+      marks: [],
       activeGroupId: null,
       openRoundIds: [],
       activeOutingId: null,
@@ -1096,6 +1102,126 @@ describe('AppStoreProvider', () => {
     expect(store.clubs[0].carry).toBe(245);
     await change(() => store.removeClub('k2'));
     expect(store.clubs.map((c) => c.name)).toEqual(['Driver', '7 iron']);
+  });
+
+  describe('marking the ball (#295)', () => {
+    const TEE = { lat: 32.899236, lng: -117.249958 };
+    const FAIRWAY = { lat: 32.8985, lng: -117.2503 };
+
+    it('marks the ball with the club about to be hit, changes it, and undoes it', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      await mount(data);
+      const live = data.openRoundIds[0];
+      const driver = data.clubs[0];
+      const seven = data.clubs.find((c) => c.name === '7 iron')!;
+      expect(store.marks).toEqual([]);
+
+      await change(() => store.markBall(live, 3, { position: TEE, accuracy: 4 }, { kind: 'full', clubId: driver.id }));
+      expect(store.marks).toEqual([
+        {
+          id: expect.any(String),
+          roundId: live,
+          hole: 3,
+          position: TEE,
+          accuracy: 4,
+          at: expect.any(Number),
+          kind: 'full',
+          clubId: driver.id,
+        },
+      ]);
+      // No player id: only the bag's owner marks, and only their own ball.
+      expect(store.marks[0]).not.toHaveProperty('playerId');
+
+      await change(() => store.markBall(live, 3, { position: FAIRWAY, accuracy: null }, { kind: 'partial' }));
+      const [first, second] = store.marks;
+      expect(second).toMatchObject({ hole: 3, accuracy: null, kind: 'partial', clubId: null });
+
+      await change(() => store.changeMark(second.id, { kind: 'full', clubId: seven.id }));
+      expect(store.marks[1]).toMatchObject({ id: second.id, kind: 'full', clubId: seven.id, position: FAIRWAY });
+      await change(() => store.changeMark(second.id, { kind: 'green' }));
+      expect(store.marks[1]).toMatchObject({ kind: 'green', clubId: null });
+
+      await change(() => store.undoMark(second.id));
+      expect(store.marks).toEqual([first]);
+      await waitFor(() => expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ marks: [first] })));
+    });
+
+    it('refuses a mark with no round, for a card being typed in, or with a club not in the bag', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      await mount(data);
+      const fix = { position: TEE, accuracy: 4 };
+      const driver = { kind: 'full' as const, clubId: data.clubs[0].id };
+
+      let made: boolean | undefined;
+      await change(() => {
+        made = store.markBall('missing', 1, fix, driver);
+      });
+      expect(made).toBe(false);
+
+      const card = makeRound(store.group!, store.courses[0], store.group!.players.slice(0, 2).map((p) => p.id), {
+        entry: 'card',
+      });
+      await change(() => store.startCard(card));
+      await change(() => {
+        made = store.markBall(card.id, 1, fix, driver);
+      });
+      expect(made).toBe(false);
+      await change(() => {
+        made = store.markBall(data.openRoundIds[0], 1, fix, { kind: 'full', clubId: 'not-in-the-bag' });
+      });
+      expect(made).toBe(false);
+      expect(store.marks).toEqual([]);
+    });
+
+    it('takes a round\'s marks when it is deleted, and a club\'s when it leaves the bag, and leaves them otherwise', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      await mount(data);
+      const live = data.openRoundIds[0];
+      const [driver, three] = data.clubs;
+      const fix = { position: TEE, accuracy: 4 };
+      await change(() => store.markBall(live, 1, fix, { kind: 'full', clubId: driver.id }));
+      await change(() => store.markBall(live, 1, fix, { kind: 'full', clubId: three.id }));
+      await change(() => store.markBall(live, 1, fix, { kind: 'green' }));
+      expect(store.marks).toHaveLength(3);
+
+      // Posting, abandoning and reopening keep them: the swings were real.
+      await change(() => store.completeRound(live));
+      await change(() => store.reopenRound(live));
+      await change(() => store.abandonRound(live));
+      expect(store.marks).toHaveLength(3);
+
+      await change(() => store.removeClub(driver.id));
+      expect(store.marks.map((m) => m.clubId)).toEqual([three.id, null]);
+
+      await change(() => store.deleteRound(live));
+      expect(store.marks).toEqual([]);
+    });
+
+    it('takes the marks of a deleted group\'s rounds', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      await mount(data);
+      await change(() =>
+        store.markBall(data.openRoundIds[0], 1, { position: TEE, accuracy: 4 }, { kind: 'full', clubId: data.clubs[0].id }),
+      );
+      await change(() => store.deleteGroup(data.activeGroupId));
+      expect(store.marks).toEqual([]);
+    });
+
+    it('opens with the marks saved on the phone', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      const saved = {
+        id: 'm1',
+        roundId: data.openRoundIds[0],
+        hole: 2,
+        position: TEE,
+        accuracy: 6,
+        at: 1,
+        kind: 'full' as const,
+        clubId: data.clubs[0].id,
+      };
+      await mount({ ...data, marks: [saved] });
+      expect(store.marks).toEqual([saved]);
+    });
   });
 
   it('sets how the bag\'s owner usually scores, saves it and syncs it with the bag, and takes the account\'s', async () => {

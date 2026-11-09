@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CardGrid } from '../../components/CardGrid';
 import { ScoreClubSuggestion } from '../../components/ClubSuggestion';
-import { GreenYardage } from '../../components/GreenYardage';
+import { GreenYardage, type BallMarking } from '../../components/GreenYardage';
 import { HoleMapPreview } from '../../components/HoleMapPreview';
 import { HoleStrategyLine } from '../../components/HoleStrategy';
 import { Screen } from '../../components/Screen';
@@ -24,6 +24,7 @@ import {
 } from '../../components/primitives';
 import { MANUAL_JUNK, RoundContext, matchStatus, money, wolfForHole, wolfPickForHole } from '../../domain/engine';
 import { greenFor } from '../../domain/geo';
+import { latestMark } from '../../domain/marks';
 import type { JunkKind, LatLng, PlayerId } from '../../domain/types';
 import {
   MAX_CONTROL_SCALE,
@@ -101,6 +102,16 @@ export default function ScoreScreen() {
   const playedTee = youId && round.playerIds.includes(youId) ? ctx.teeFor(youId) : ctx.tee;
   const openGuide = () =>
     router.push({ pathname: '/course-guide', params: { course: course.id, tee: playedTee.id, round: round.id } });
+
+  // The card reads only the hole's last mark, to confirm it: nothing here looks at tracked shots (#293).
+  const lastMark = latestMark(store.marks, round.id, holeInfo.number);
+  const ballMarking: BallMarking = {
+    clubs: store.clubs,
+    mark: lastMark,
+    onMark: (fix, hit) => store.markBall(round.id, holeInfo.number, fix, hit),
+    onChange: (hit) => lastMark && store.changeMark(lastMark.id, hit),
+    onUndo: () => lastMark && store.undoMark(lastMark.id),
+  };
 
   const skinsGame = settlement.games.find((g) => g.key === 'skins');
   const carry = skinsGame?.carry ?? 1;
@@ -185,6 +196,8 @@ export default function ScoreScreen() {
         green={greenFor(course.greens, holeInfo.number)}
         onMark={(green) => store.setGreen(course.id, green)}
         onPosition={(at) => setPosition({ hole: holeInfo.number, at })}
+        // Only a ball being played can be marked: a card typed in afterwards has none (#295).
+        ball={round.entry === 'live' ? ballMarking : undefined}
       />
       {/* A course with a map shows the hole; a hole with only a green can still be mapped. */}
       {course.features.length ? (

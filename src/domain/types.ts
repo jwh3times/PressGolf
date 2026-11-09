@@ -191,6 +191,34 @@ export interface Club {
 export type UsualScore = '70s' | '80s' | '90s' | '100s';
 
 /**
+ * What a mark says was hit from it (#295): a full swing with a club from the
+ * bag, a swing that wasn't full (a chip, punch-out or lay-up), or nothing at
+ * all, because the ball is on the green. The last two only finish a shot.
+ */
+export type MarkHit = { kind: 'full'; clubId: string } | { kind: 'partial' } | { kind: 'green' };
+
+/**
+ * Where the bag's owner's ball lay when they stood at it in a round (#295):
+ * the glossary's **Mark**. It's the owner's alone, so it names no player.
+ * What was hit is held flat, as `kind` and `clubId`, the way the `marks` table
+ * #296 syncs it to has its columns; `hitOf` reads it back as a `MarkHit`.
+ */
+export interface Mark {
+  id: string;
+  roundId: RoundId;
+  /** The hole the Score screen was showing, numbered from 1. */
+  hole: number;
+  position: LatLng;
+  /** Metres, as the fix gave it; null where the platform didn't say. */
+  accuracy: number | null;
+  /** When it was marked, in ms since the epoch: marks pair up in this order. */
+  at: number;
+  kind: MarkHit['kind'];
+  /** The club hit from it, for a full swing; null otherwise. */
+  clubId: string | null;
+}
+
+/**
  * A round this phone has marked as a practice round (#136), where aiming
  * advice is shown. Kept on the phone only: each phone chooses for itself, and
  * it never syncs.
@@ -563,5 +591,7 @@ export interface AppData {
   usualScore: UsualScore | null;
   /** This phone's practice-round marks, by round. Never synced. */
   practice: Record<RoundId, PracticeMark>;
+  /** The bag's owner's marks (#295), kept on the phone until #296 backs them up. */
+  marks: Mark[];
   settings: AppSettings;
 }

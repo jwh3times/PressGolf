@@ -489,6 +489,31 @@ has **Discard card**. The server keeps `rounds.status` as free text,
 so `abandoned` needed no migration, and an older build shows an abandoned round
 as finished and leaves it out of the ledger.
 
+**Marks** (#295, part of tracked shots, #293). In a live round, an outing's
+included, **Mark ball** in the Score screen's yardage card records where the
+bag's owner's ball lies and what they're about to hit from it: `AppData.marks`.
+A `Mark` holds its round, the hole the Score screen is showing, the position,
+the fix's accuracy in metres (or null where the platform doesn't say), the time,
+and its `kind`: a `full` swing with a `clubId` from the bag, `partial` (not a
+full swing), or `green` (on the green). It names no player: only the bag's
+owner marks, and only their own ball. Marking runs the yardage card's watch
+(`useLiveLocation().fixWithin`) and waits up to 20 s (`MARK_WAIT_MS`) for a fix
+within 10 m (`MARK_GOOD_WITHIN_M`), keeping the closest fix so far when the time
+runs out. Both limits are judgement calls from #293, not published figures
+(`src/domain/marks.ts`). The club picker lists the bag in its own order with
+nothing chosen, so it never suggests a club in a counted round. Afterwards the
+card says "Marked: <club>" for the hole's last mark, and a tap on it changes
+what was hit or undoes the mark. Nothing else on the Score screen or the hole
+map reads marks.
+
+The store refuses a mark for a round it doesn't have, for a card being typed in
+(nobody stood at the ball), and for a club that isn't in the bag. Deleting a
+round, or the group that holds it, deletes its marks. Posting, abandoning and
+reopening leave them. Removing a club deletes the marks that name it, and the
+Bag screen asks first when there are any, saying how many tracked shots go. Marks
+are saved on the phone with the rest of the dataset, the demo's included. They
+don't sync yet: backing them up with the account is #296.
+
 A card being typed in lives in its own slot (`cardRoundId`) beside its group's
 live round. While it is open and its group is active, `store.round` is the
 card and edits land on it. The live round is untouched, and returns when the
