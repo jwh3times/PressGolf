@@ -3,6 +3,7 @@ import { act, render, waitFor } from '@testing-library/react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { buildDemoDataset } from '../../demo/seed';
 import { makeCourse, makeOuting, makePlayer, makeRound } from '../../domain/factory';
+import { frame } from '../../domain/hole-map';
 import type { Mark, Round } from '../../domain/types';
 import { deleteAccount } from '../../sync/supabase';
 import { useDataSync } from '../../sync/useDataSync';
@@ -1213,6 +1214,32 @@ describe('AppStoreProvider', () => {
 
       await change(() => store.deleteRound(live));
       expect(store.marks).toEqual([]);
+    });
+
+    it('uses a club\'s tracked carry once it has five counting shots, and not before (#297)', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      const posted = data.rounds.find((r) => r.status === 'completed')!;
+      const seven = data.clubs.find((c) => c.name === '7 iron')!;
+      const eight = data.clubs.find((c) => c.name === '8 iron')!;
+      // Due north from the tee: the demo's courses have no map, so every lie reads as rough.
+      const north = frame(TEE, 0);
+      const fix = (yards: number) => north.toLatLng([0, yards * 0.9144]);
+      let at = 1;
+      const shot = (clubId: string, yards: number): Mark[] => [
+        { id: `m${at}`, roundId: posted.id, hole: 1, position: fix(0), accuracy: 4, at: at++, kind: 'full', clubId },
+        { id: `m${at}`, roundId: posted.id, hole: 1, position: fix(yards), accuracy: 4, at: at++, kind: 'partial', clubId: null },
+      ];
+      // 152.25 yards, less a short iron's roll in rough (1.5%), is a 150-yard carry. Four 8 irons aren't enough.
+      const marks = [...Array.from({ length: 5 }, () => shot(seven.id, 152.25)), ...Array.from({ length: 4 }, () => shot(eight.id, 142))].flat();
+      await mount({ ...data, marks });
+
+      await change(() => store.takeTrackedCarry(eight.id));
+      expect(store.clubs.find((c) => c.id === eight.id)!.carry).toBe(eight.carry);
+      await change(() => store.takeTrackedCarry(seven.id));
+      expect(store.clubs.find((c) => c.id === seven.id)!.carry).toBe(150);
+      await waitFor(() =>
+        expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ clubs: expect.arrayContaining([{ ...seven, carry: 150 }]) })),
+      );
     });
 
     it('takes the marks of a deleted group\'s rounds', async () => {

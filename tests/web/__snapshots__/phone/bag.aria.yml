@@ -1,6 +1,6 @@
 - text: Settings My bag
 - button "Done"
-- text: How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before the round are allowed in a counted one. Usual score
+- text: How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before the round are allowed in a counted one. Once a club has 5 tracked shots from rounds that have closed, its tracked carry shows beside it. Usual score
 - radiogroup "Usual score":
   - radio /\d+[hmsp]+/: 70S
   - radio /\d+[hmsp]+/ [checked]: 80S

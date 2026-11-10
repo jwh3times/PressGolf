@@ -177,8 +177,9 @@ interface Ground {
   known: Map<number, Surface>;
 }
 
+/** The ground around a hole, seen from `start` towards the green; from the north, for a hole with no green to see. */
 function groundFor(plan: HolePlan, start: LatLng): Ground {
-  const middle = plan.green!.middle;
+  const middle = plan.green?.middle ?? start;
   const view = frame(start, bearing(start, middle));
   const hole = view.toXY(middle);
   const areas = plan.features
@@ -189,7 +190,8 @@ function groundFor(plan: HolePlan, start: LatLng): Ground {
     });
   // The green's own outline, if it is mapped: the one the middle is in.
   const outline = areas.find((a) => a.kind === 'green' && within(hole, a));
-  const { front, back } = plan.green!;
+  const front = plan.green?.front;
+  const back = plan.green?.back;
   const greenRadius = outline
     ? Math.max(...outline.ring.map((p) => distance(p, hole)))
     : front && back
@@ -200,7 +202,8 @@ function groundFor(plan: HolePlan, start: LatLng): Ground {
     view,
     hole,
     greenRadius: outline ? Math.min(greenRadius, (outline.box[2] - outline.box[0] + outline.box[3] - outline.box[1]) / 4) : greenRadius,
-    green: outline ? (p) => within(p, outline) : (p) => distance(p, hole) <= greenRadius,
+    // A hole with no green to see has none to read, unless its outline is under `start`.
+    green: outline ? (p) => within(p, outline) : plan.green ? (p) => distance(p, hole) <= greenRadius : () => false,
     areas: areas.filter((a) => a.kind !== 'green'),
     edges: lines.filter((f) => f.kind === 'courseEdge').map((f) => {
       const ring = f.points.map(view.toXY);
@@ -212,7 +215,7 @@ function groundFor(plan: HolePlan, start: LatLng): Ground {
   };
 }
 
-type Surface = 'green' | 'fairway' | 'tee' | 'rough' | 'sand' | 'water' | 'lateralWater' | 'outOfBounds';
+export type Surface = 'green' | 'fairway' | 'tee' | 'rough' | 'sand' | 'water' | 'lateralWater' | 'outOfBounds';
 
 /** What a point is, to the nearest metre. */
 function groundAt(ground: Ground, p: XY): Surface {
@@ -460,6 +463,14 @@ function oddsOf(finishes: Record<Finish, number>): string | null {
     return `about 1 in ${Math.max(2, Math.round(1 / share))} ${one}`;
   }
   return null;
+}
+
+/**
+ * What the course map says a point on a hole is, read the way the suggestions
+ * read a lie. Tracked shots (#297) take their lies from here.
+ */
+export function surfaceAt(course: Course, hole: number, point: LatLng): Surface {
+  return classify(groundFor(holePlan(course, hole), point), ORIGIN_XY);
 }
 
 // ─── Choosing ───────────────────────────────────────────────────────────────

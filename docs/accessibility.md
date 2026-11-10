@@ -116,10 +116,18 @@ substitute for assistive-technology use on both platforms.
   rough in text. The picker's chips wrap at any text size, and the "Marked"
   line wraps beside **Mark ball**. Removing a club that has tracked shots asks
   first in a system alert that says how many. Jest covers the names, the
-  picker's order and selection, and the alert's text. The web suite's Score
+  picker's order and selection, and the alert's text, and the web suite's Score
   baselines show **Mark ball** in the live round. It hasn't been tried yet
   with VoiceOver or TalkBack or at the largest text size on a phone: that's
   the device check in #301.
+- A club's tracked carry (#297) is a line of text under its carry on the Bag
+  screen ("Tracked 150 yd, from 5 tracked shots"). While it differs from the
+  typed carry, a **Use** chip follows it, named "Use 150 yards for 7 iron", and
+  the line wraps with the chip at any text size. Jest covers the line, the
+  chip's name, its absence when the carries match, and what **Use** types in.
+  The demo has no tracked shots, so the web suite's Bag baselines don't show
+  the line. It hasn't been tried with VoiceOver or TalkBack or at the largest
+  text size on a phone: that's step 12 of the device check in #301.
 - How each hole plays (#136) is text: each side of each zone is read as one
   sentence ("Right: bad. Water, 260–290 off the tee."), and the grade's colour
   only backs up its name, which is always written. axe checks the grades'

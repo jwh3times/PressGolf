@@ -12,6 +12,7 @@ import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { withClub } from '../domain/bag';
 import { hitFields, inBag } from '../domain/marks';
+import { trackedShots } from '../domain/tracked-shots';
 import { withNote } from '../domain/course-map';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
@@ -170,6 +171,8 @@ export interface AppStore extends AppState {
   /** A whole set of clubs, with no carries yet, for an empty bag. */
   fillBag(clubs: Club[]): void;
   setCarry(id: string, carry: number | null): void;
+  /** Sets a club's carry to its tracked carry (#297); nothing for a club without one yet. Press never does this on its own. */
+  takeTrackedCarry(id: string): void;
   removeClub(id: string): void;
   setUsualScore(score: UsualScore): void;
 
@@ -320,6 +323,9 @@ function focusRound(state: AppState, id: string | null): AppState {
 }
 
 /** Finishes a round. A card is dated the day it was played, not the day it was typed in. */
+/** The bag with one club's carry set. */
+const withCarry = (clubs: Club[], id: string, carry: number | null) => clubs.map((c) => (c.id === id ? { ...c, carry } : c));
+
 function completeIn(state: AppState, id: string, markBlanksPickedUp: boolean): AppState {
   const rounds = state.rounds.map((r) => {
     if (r.id !== id) return r;
@@ -872,8 +878,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
       addClub: (name) => commit((prev) => ({ ...prev, clubs: withClub(prev.clubs, name) })),
       fillBag: (clubs) => commit((prev) => (prev.clubs.length ? prev : { ...prev, clubs })),
-      setCarry: (id, carry) =>
-        commit((prev) => ({ ...prev, clubs: prev.clubs.map((c) => (c.id === id ? { ...c, carry } : c)) })),
+      setCarry: (id, carry) => commit((prev) => ({ ...prev, clubs: withCarry(prev.clubs, id, carry) })),
+      takeTrackedCarry: (id) =>
+        commit((prev) => {
+          const carry = trackedShots(prev)[id]?.trackedCarry;
+          return carry == null ? prev : { ...prev, clubs: withCarry(prev.clubs, id, carry) };
+        }),
       // Its tracked shots go with it: a club added back may be a different club.
       removeClub: (id) =>
         commit((prev) => ({

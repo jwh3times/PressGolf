@@ -23,7 +23,9 @@ typed in once and backed up with their account. In a practice round, or
 looking a course over, the app suggests a club, where to aim and when to lay
 up, by simulating each club's spread of shots from where the player stands.
 In a live round, the bag's owner can mark where their ball lies and what they
-hit from it, backed up with their account and seen by nobody else.
+hit from it, backed up with their account and seen by nobody else. Once a
+round has closed, those tracked shots give each club a tracked carry beside
+the typed one, which **Use** copies into the bag.
 
 ## Quick start
 
@@ -166,13 +168,20 @@ As of October 2026:
 - The hole map has been checked in Jest and in the web build on Torrey Pines
   South's real map, not yet on a phone. It is drawn from the saved map, so it
   works without signal; its satellite switch, on phones only, needs signal.
-- The bag (Settings → My bag) is typed in by hand. Checked on an iPhone,
-  except at the largest text size and on a second device.
+- The bag (Settings → My bag) is typed in by hand, and a club's tracked carry
+  changes it only when **Use** is pressed. Checked on an iPhone, except at the
+  largest text size and on a second device.
 - Marking the ball ([#295](https://github.com/jwh3times/PressGolf/issues/295))
   is checked in Jest, and its sync with the account
   ([#296](https://github.com/jwh3times/PressGolf/issues/296)) against a local
   Supabase stack, but not yet on a phone on a course
   ([#301](https://github.com/jwh3times/PressGolf/issues/301)).
+- A club's tracked carry ([#297](https://github.com/jwh3times/PressGolf/issues/297))
+  is checked in Jest, not yet on a phone
+  ([#301](https://github.com/jwh3times/PressGolf/issues/301)). GPS can't tell
+  roll from carry, so it takes off the shot model's estimated roll, and its
+  counting rules are judgement calls, not published figures
+  ([architecture](docs/architecture.md#local-data-and-demo-isolation)).
 - Club suggestions ([#146](https://github.com/jwh3times/PressGolf/issues/146))
   rest on published shot patterns by usual score, the bag's typed carries and
   the course map. Trees, wind, slope and pin positions aren't known, and roll
