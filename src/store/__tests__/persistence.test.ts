@@ -164,6 +164,17 @@ describe('dataset persistence', () => {
     expect((await loadDataset(false)).practice).toEqual({});
   });
 
+  it('keeps the marked ball positions (#295), and gives data saved before them none', async () => {
+    const marks = [
+      { id: 'm1', roundId: 'r1', hole: 4, position: { lat: 32.9, lng: -117.2 }, accuracy: 7, at: 5, kind: 'full', clubId: 'k7' },
+      { id: 'm2', roundId: 'r1', hole: 4, position: { lat: 32.91, lng: -117.21 }, accuracy: null, at: 6, kind: 'green', clubId: null },
+    ];
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ marks }));
+    expect((await loadDataset(false)).marks).toEqual(marks);
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ groups: [] }));
+    expect((await loadDataset(false)).marks).toEqual([]);
+  });
+
   it('treats rounds saved before card entry as scored live', async () => {
     const dataset = buildDemoDataset(123);
     const round = { ...dataset.rounds[0] } as Record<string, unknown>;

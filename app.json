@@ -61,7 +61,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Press uses your location only when you ask: to give the distance to the green, and to save where a green is when you mark it standing on it.",
+          "locationWhenInUsePermission": "Press uses your location only when you ask: to give the distance to the green, to save where a green is when you mark it standing on it, and to save where your ball lies when you mark it.",
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
           "motionUsagePermission": "Press doesn't use motion or fitness activity. A location library it includes contains motion code, which Press never turns on."

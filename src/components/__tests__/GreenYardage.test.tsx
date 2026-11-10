@@ -3,9 +3,10 @@ import { act, render, screen, userEvent } from '@testing-library/react-native';
 import { Alert, Linking, type AlertButton } from 'react-native';
 import * as Location from 'expo-location';
 import { yardsBetween } from '../../domain/geo';
-import type { Green } from '../../domain/types';
+import { MARK_WAIT_MS } from '../../domain/marks';
+import type { Club, Green, Mark } from '../../domain/types';
 import { LIVE_FOR_MS } from '../../hooks/useLiveLocation';
-import { GreenYardage } from '../GreenYardage';
+import { GreenYardage, type BallMarking } from '../GreenYardage';
 
 jest.mock('expo-location', () => ({
   Accuracy: { High: 4, Highest: 5 },
@@ -199,5 +200,183 @@ describe('GreenYardage', () => {
     await choose('Mark');
     expect(location.getCurrentPositionAsync).not.toHaveBeenCalled();
     expect(onMark).not.toHaveBeenCalled();
+  });
+});
+
+describe('marking the ball (#295)', () => {
+  const FAIRWAY = { lat: 32.8985, lng: -117.2503 };
+  const clubs: Club[] = [
+    { id: 'k1', name: 'Driver', carry: 250 },
+    { id: 'k7', name: '7 iron', carry: 160 },
+    { id: 'k9', name: '9 iron', carry: 135 },
+  ];
+  const ball = (extra: Partial<BallMarking> = {}): BallMarking => ({
+    clubs,
+    mark: null,
+    onMark: jest.fn(),
+    onChange: jest.fn(),
+    onUndo: jest.fn(),
+    ...extra,
+  });
+  const marked = (extra: Partial<Mark> = {}): Mark => ({
+    id: 'm1',
+    roundId: 'r1',
+    hole: 3,
+    position: FAIRWAY,
+    accuracy: 5,
+    at: 1,
+    kind: 'full',
+    clubId: 'k7',
+    ...extra,
+  });
+
+  it('waits for a fix within 10 m, showing the yardage meanwhile, then asks what is being hit', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const marking = ball();
+    await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={marking} />);
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    expect(screen.getByRole('button', { name: 'Finding where your ball is' })).toBeDisabled();
+    expect(screen.getByText('FINDING…')).toBeOnTheScreen();
+
+    // Too rough to stop on: the yardage shows, and the wait goes on.
+    await act(async () => send(at(TEE, 25)));
+    expect(screen.getByText(String(yardsBetween(TEE, MIDDLE)))).toBeOnTheScreen();
+    expect(screen.queryByText('What are you hitting?')).toBeNull();
+
+    await act(async () => send(at(FAIRWAY, 6)));
+    expect(screen.getByText('What are you hitting?')).toBeOnTheScreen();
+    // The bag in its own order, nothing chosen, then the two that only finish a shot.
+    const names = ['Driver', '7 iron', '9 iron', 'Not a full swing', 'On the green'];
+    const listed = screen
+      .getAllByRole('button')
+      .map((b) => b.props.accessibilityLabel as string)
+      .filter((name) => names.includes(name));
+    expect(listed).toEqual(names);
+    for (const name of names) expect(screen.getByRole('button', { name })).not.toBeSelected();
+    expect(screen.queryByText(/only good to/)).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: '7 iron' }));
+    expect(marking.onMark).toHaveBeenCalledWith({ position: FAIRWAY, accuracy: 6 }, { kind: 'full', clubId: 'k7' });
+    expect(screen.queryByText('What are you hitting?')).toBeNull();
+  });
+
+  it('keeps the best fix so far, with its accuracy, when 20 seconds go by without a good one', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const marking = ball();
+    await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={marking} />);
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    await act(async () => send(at(TEE, 25)));
+    await act(async () => send(at(FAIRWAY, 18)));
+    await act(async () => send(at(MIDDLE, 30)));
+    await act(async () => jest.advanceTimersByTime(MARK_WAIT_MS));
+
+    expect(screen.getByText('GPS is only good to 18 m here.')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'On the green' }));
+    expect(marking.onMark).toHaveBeenCalledWith({ position: FAIRWAY, accuracy: 18 }, { kind: 'green' });
+  });
+
+  it('marks nothing when it is cancelled, or when no fix comes at all', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    jest.spyOn(Alert, 'alert');
+    const marking = ball();
+    await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={marking} />);
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    await act(async () => send(at(FAIRWAY, 4)));
+    await user.press(screen.getByRole('button', { name: 'Cancel the mark' }));
+    expect(screen.queryByText('What are you hitting?')).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    await act(async () => jest.advanceTimersByTime(MARK_WAIT_MS));
+    expect(screen.queryByText('What are you hitting?')).toBeNull();
+    expect(Alert.alert).toHaveBeenLastCalledWith('Couldn’t get your location', expect.any(String));
+    expect(screen.getByRole('button', { name: 'Mark ball, hole 3' })).toBeEnabled();
+    expect(marking.onMark).not.toHaveBeenCalled();
+  });
+
+  it('starts the 20 seconds once GPS is running, not while the phone asks for permission', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    let grant!: () => void;
+    location.requestForegroundPermissionsAsync.mockReturnValueOnce(
+      new Promise((resolve) => {
+        grant = () => resolve({ granted: true } as Location.LocationPermissionResponse);
+      }),
+    );
+    jest.spyOn(Alert, 'alert');
+    const marking = ball();
+    await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={marking} />);
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    // The golfer reads the permission prompt for half a minute.
+    await act(async () => jest.advanceTimersByTime(30_000));
+    await act(async () => grant());
+    expect(Alert.alert).not.toHaveBeenCalled();
+    await act(async () => send(at(FAIRWAY, 6)));
+    expect(screen.getByText('What are you hitting?')).toBeOnTheScreen();
+  });
+
+  it('marks nothing when location is refused', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    location.requestForegroundPermissionsAsync.mockResolvedValue({ granted: false } as Location.LocationPermissionResponse);
+    const marking = ball();
+    await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={marking} />);
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    expect(screen.getByText(/Allow it in Settings/)).toBeOnTheScreen();
+    expect(screen.queryByText('What are you hitting?')).toBeNull();
+    expect(marking.onMark).not.toHaveBeenCalled();
+  });
+
+  it('marks a ball on a hole with no green saved', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const marking = ball();
+    await render(<GreenYardage holeNumber={3} green={null} onMark={jest.fn()} ball={marking} />);
+
+    await user.press(screen.getByRole('button', { name: 'Mark ball, hole 3' }));
+    await act(async () => send(at(FAIRWAY, null)));
+    await act(async () => jest.advanceTimersByTime(MARK_WAIT_MS));
+    expect(screen.getByText('This phone didn’t say how accurate GPS is here.')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Not a full swing' }));
+    expect(marking.onMark).toHaveBeenCalledWith({ position: FAIRWAY, accuracy: null }, { kind: 'partial' });
+  });
+
+  it('confirms the last mark, and changes what was hit or undoes it', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const marking = ball({ mark: marked() });
+    const view = await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={marking} />);
+
+    const line = screen.getByRole('button', { name: 'Marked: 7 iron' });
+    expect(line).toHaveProp('accessibilityHint', 'Change what was hit, or undo the mark');
+    // Another ball can still be marked beside it.
+    expect(screen.getByRole('button', { name: 'Mark ball, hole 3' })).toBeOnTheScreen();
+
+    await user.press(line);
+    expect(screen.getByRole('button', { name: '7 iron' })).toBeSelected();
+    await user.press(screen.getByRole('button', { name: 'Driver' }));
+    expect(marking.onChange).toHaveBeenCalledWith({ kind: 'full', clubId: 'k1' });
+    expect(location.watchPositionAsync).not.toHaveBeenCalled();
+
+    await user.press(screen.getByRole('button', { name: 'Marked: 7 iron' }));
+    await user.press(screen.getByRole('button', { name: 'Keep the mark as it is' }));
+    expect(screen.queryByRole('button', { name: 'Undo the mark' })).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Marked: 7 iron' }));
+    await user.press(screen.getByRole('button', { name: 'Undo the mark' }));
+    expect(marking.onUndo).toHaveBeenCalledTimes(1);
+
+    await view.rerender(
+      <GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={ball({ mark: marked({ kind: 'partial', clubId: null }) })} />,
+    );
+    expect(screen.getByRole('button', { name: 'Marked: Not a full swing' })).toBeOnTheScreen();
+    await view.rerender(
+      <GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} ball={ball({ mark: marked({ kind: 'green', clubId: null }) })} />,
+    );
+    expect(screen.getByRole('button', { name: 'Marked: On the green' })).toBeOnTheScreen();
+  });
+
+  it('offers no Mark ball without marking, as on a card being typed in', async () => {
+    await render(<GreenYardage holeNumber={3} green={green()} onMark={jest.fn()} />);
+    expect(screen.queryByRole('button', { name: /Mark ball, hole/ })).toBeNull();
   });
 });

@@ -22,6 +22,7 @@ interface StoredPayload {
   clubs: AppData['clubs'];
   usualScore: AppData['usualScore'];
   practice: AppData['practice'];
+  marks: AppData['marks'];
   activeGroupId: string | null;
   /** Each group's open round (#258). */
   openRoundIds: string[];
@@ -47,6 +48,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   clubs: [],
   usualScore: null,
   practice: {},
+  marks: [],
   activeGroupId: null,
   openRoundIds: [],
   activeOutingId: null,
@@ -68,8 +70,9 @@ function dataKey(demoMode: boolean): string {
  * the low man at 100% with its pops as typed, so nothing it already settled moves.
  * Courses saved before greens, the course map or hole notes know none, and data
  * saved before the bag has no clubs and no usual score, and none before
- * practice rounds marks any. The one open round a phone had before each group
- * had its own stays open, for the group it belongs to.
+ * practice rounds marks any, and none before marking (#295) has marks. The one
+ * open round a phone had before each group had its own stays open, for the
+ * group it belongs to.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -106,6 +109,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     clubs: parsed.clubs ?? [],
     usualScore: parsed.usualScore ?? null,
     practice: parsed.practice ?? {},
+    marks: parsed.marks ?? [],
     activeGroupId: parsed.activeGroupId ?? null,
     openRoundIds: parsed.openRoundIds ?? (parsed.activeRoundId ? [parsed.activeRoundId] : []),
     activeOutingId: parsed.activeOutingId ?? null,

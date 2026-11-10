@@ -23,6 +23,7 @@
 - button /Go to hole \d+/
 - text: No green saved for this hole. Standing on it?
 - button /Mark this green, hole \d+/: MARK THIS GREEN
+- button /Mark ball, hole \d+/: MARK BALL
 - text: MB Marcus no score yet
 - button "Decrease score for Marcus": −
 - text: –

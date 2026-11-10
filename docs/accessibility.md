@@ -104,6 +104,22 @@ substitute for assistive-technology use on both platforms.
   hazards, edges and lines reach 3:1 (4.5:1 on the high-contrast bases)
   against both the rough and the fairway in every theme
   (`src/theme/__tests__/course-colors.test.ts`).
+- Marking the ball (#295) in the Score screen's yardage card is all named
+  buttons: **Mark ball** is "Mark ball, hole N", and reads as disabled,
+  named "Finding where your ball is", while it waits for GPS. The picker's
+  options are named for what they show: each club by its name, then "Not a full
+  swing" and "On the green". None reads as selected when marking, and the
+  current one does when changing a mark. "Marked: 7 iron" is a button whose name
+  is the line it shows, with a hint that it changes what was hit or undoes the
+  mark, and **Undo**, **Keep** and **Cancel** are "Undo the mark", "Keep the
+  mark as it is" and "Cancel the mark". When GPS stays rough the picker says how
+  rough in text. The picker's chips wrap at any text size, and the "Marked"
+  line wraps beside **Mark ball**. Removing a club that has tracked shots asks
+  first in a system alert that says how many. Jest covers the names, the
+  picker's order and selection, and the alert's text. The web suite's Score
+  baselines show **Mark ball** in the live round. It hasn't been tried yet
+  with VoiceOver or TalkBack or at the largest text size on a phone: that's
+  the device check in #301.
 - How each hole plays (#136) is text: each side of each zone is read as one
   sentence ("Right: bad. Water, 260–290 off the tee."), and the grade's colour
   only backs up its name, which is always written. axe checks the grades'

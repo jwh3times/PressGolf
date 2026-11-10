@@ -11,6 +11,7 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { withClub } from '../domain/bag';
+import { hitFields, inBag } from '../domain/marks';
 import { withNote } from '../domain/course-map';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
@@ -28,6 +29,8 @@ import type {
   Group,
   Hole,
   JunkKind,
+  Mark,
+  MarkHit,
   Outing,
   OutingSettlement,
   Player,
@@ -58,6 +61,8 @@ interface Dataset {
   usualScore: UsualScore | null;
   /** Rounds this phone marked as practice (#136). Saved here, never synced. */
   practice: Record<RoundId, PracticeMark>;
+  /** The bag's owner's marks (#295). On the phone only, until #296 backs them up. */
+  marks: Mark[];
   activeGroupId: string | null;
   /**
    * Each group's open round, at most one per group (#258). The active group's is
@@ -168,6 +173,17 @@ export interface AppStore extends AppState {
   removeClub(id: string): void;
   setUsualScore(score: UsualScore): void;
 
+  // Marking the ball (#295)
+  /**
+   * Marks where the owner's ball lies on a hole of a live round, with what
+   * they're about to hit. False, and nothing saved, for no such round, a card
+   * being typed in, or a club that isn't in the bag.
+   */
+  markBall(roundId: RoundId, hole: number, fix: Pick<Mark, 'position' | 'accuracy'>, hit: MarkHit): boolean;
+  /** Changes what was hit from a mark; nothing for a club that isn't in the bag. */
+  changeMark(id: string, hit: MarkHit): void;
+  undoMark(id: string): void;
+
   // Rounds
   startRound(round: Round): void;
   /**
@@ -223,6 +239,7 @@ const EMPTY_STATE: AppState = {
   clubs: [],
   usualScore: null,
   practice: {},
+  marks: [],
   activeGroupId: null,
   openRoundIds: [],
   activeOutingId: null,
@@ -355,6 +372,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         clubs: next.clubs,
         usualScore: next.usualScore,
         practice: next.practice,
+        marks: next.marks,
         activeGroupId: next.activeGroupId,
         openRoundIds: next.openRoundIds,
         activeOutingId: next.activeOutingId,
@@ -557,6 +575,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           clubs: [],
           usualScore: null,
           practice: {},
+          marks: [],
           activeGroupId: null,
           openRoundIds: [],
           activeOutingId: null,
@@ -725,7 +744,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const kept = (rid: string | null) => rounds.some((r) => r.id === rid);
           const openRoundIds = prev.openRoundIds.filter(kept);
           const cardRoundId = kept(prev.cardRoundId) ? prev.cardRoundId : null;
-          return { ...prev, groups, rounds, activeGroupId, openRoundIds, cardRoundId };
+          const marks = prev.marks.filter((m) => kept(m.roundId));
+          return { ...prev, groups, rounds, activeGroupId, openRoundIds, cardRoundId, marks };
         }),
       setActiveGroup: (id) => commit((prev) => ({ ...prev, activeGroupId: id })),
 
@@ -853,8 +873,37 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       fillBag: (clubs) => commit((prev) => (prev.clubs.length ? prev : { ...prev, clubs })),
       setCarry: (id, carry) =>
         commit((prev) => ({ ...prev, clubs: prev.clubs.map((c) => (c.id === id ? { ...c, carry } : c)) })),
-      removeClub: (id) => commit((prev) => ({ ...prev, clubs: prev.clubs.filter((c) => c.id !== id) })),
+      // Its tracked shots go with it: a club added back may be a different club.
+      removeClub: (id) =>
+        commit((prev) => ({
+          ...prev,
+          clubs: prev.clubs.filter((c) => c.id !== id),
+          marks: prev.marks.some((m) => m.clubId === id) ? prev.marks.filter((m) => m.clubId !== id) : prev.marks,
+        })),
       setUsualScore: (usualScore) => commit((prev) => (prev.usualScore === usualScore ? prev : { ...prev, usualScore })),
+
+      markBall: (roundId, hole, fix, hit) => {
+        const marked = state.rounds.find((r) => r.id === roundId);
+        if (!marked || marked.entry === 'card' || !inBag(state.clubs, hit)) return false;
+        const created: Mark = {
+          id: makeId('m'),
+          roundId,
+          hole,
+          position: fix.position,
+          accuracy: fix.accuracy,
+          at: Date.now(),
+          ...hitFields(hit),
+        };
+        commit((prev) => ({ ...prev, marks: [...prev.marks, created] }));
+        return true;
+      },
+      changeMark: (id, hit) =>
+        commit((prev) =>
+          inBag(prev.clubs, hit)
+            ? { ...prev, marks: prev.marks.map((m) => (m.id === id ? { ...m, ...hitFields(hit) } : m)) }
+            : prev,
+        ),
+      undoMark: (id) => commit((prev) => ({ ...prev, marks: prev.marks.filter((m) => m.id !== id) })),
 
       setPractice: (roundId, on) =>
         commit((prev) => {
@@ -888,6 +937,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit((prev) => ({
           ...prev,
           rounds: prev.rounds.filter((r) => r.id !== id),
+          // Gone for good means its marks too.
+          marks: prev.marks.filter((m) => m.roundId !== id),
           openRoundIds: prev.openRoundIds.filter((rid) => rid !== id),
           cardRoundId: prev.cardRoundId === id ? null : prev.cardRoundId,
         })),
@@ -1023,6 +1074,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     clubs: stored.clubs,
     usualScore: stored.usualScore,
     practice: stored.practice,
+    marks: stored.marks,
     activeGroupId: stored.activeGroupId,
     openRoundIds: stored.openRoundIds,
     activeOutingId: stored.activeOutingId,

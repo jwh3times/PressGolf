@@ -86,9 +86,10 @@ brings in can't create its database, so the app crashed on launch (#250). The
 rules (`extraProguardRules`) for every library that needs them, then proving the
 release build in the native smoke run.
 
-Location (for yardage to the green) is foreground-only. The `expo-location`
-plugin in `app.json` sets the one iOS prompt, "when in use", and turns off the
-plugin's default "always" prompt, which the app never asks for. Its motion
+Location (for yardage to the green, marking a green and marking the ball) is
+foreground-only. The `expo-location` plugin in `app.json` sets the one iOS
+prompt, "when in use", and turns off the plugin's default "always" prompt, which
+the app never asks for. Its motion
 purpose string stays, worded to say Press doesn't use motion: `expo-location`
 compiles motion code into every iOS build, and App Store Connect rejects an
 upload that references it without the string (ITMS-90683, #188). Press never
@@ -412,10 +413,11 @@ For a local `npx expo run:android`, set the variable for that one command:
 
 A store build should declare only what Press uses, so the Play listing and the
 Data safety form explain nothing the app never does. The app's own manifest
-declares fine and coarse location (`expo-location`, for yardage and marking
-greens), internet and vibrate. Libraries add network state, and a dependency's
-background work library adds wake lock, boot completed and foreground service
-for its own work; those are merged in at build time.
+declares fine and coarse location (`expo-location`, for yardage, marking
+greens and marking the ball), internet and vibrate. Libraries add network
+state, and a dependency's background work library adds wake lock, boot
+completed and foreground service for its own work; those are merged in at build
+time.
 
 `android.blockedPermissions` in `app.json` removes these from the merged
 manifest, which marks each one `tools:node="remove"`:

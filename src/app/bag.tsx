@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Field } from '../components/Field';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Chip, CHIP_ROW_GAP, EmptyState, Eyebrow, GhostButton, Mono, PrimaryButton } from '../components/primitives';
 import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag, USUAL_SCORES, usualScoreFor } from '../domain/bag';
+import { marksNaming } from '../domain/marks';
 import type { Club } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -27,6 +28,18 @@ export default function BagScreen() {
   const passes = new Map(outOfOrder(store.clubs).map((w) => [w.id, w.passes]));
   const usual = usualScoreFor(store.usualScore, store.groups);
   const full = store.clubs.length >= MAX_CLUBS;
+  // A club's tracked shots go with it (#295), so taking one with any asks first, saying how many.
+  const remove = (club: Club) => {
+    const shots = marksNaming(store.marks, club.id);
+    if (shots === 0) {
+      store.removeClub(club.id);
+      return;
+    }
+    Alert.alert(`Remove ${club.name}?`, `Its ${shots} tracked shot${shots === 1 ? ' goes' : 's go'} with it.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => store.removeClub(club.id) },
+    ]);
+  };
   const addOther = () => {
     if (!other.trim()) return;
     store.addClub(other);
@@ -76,7 +89,7 @@ export default function BagScreen() {
               club={club}
               passes={passes.get(club.id) ?? null}
               onCarry={(carry) => store.setCarry(club.id, carry)}
-              onRemove={() => store.removeClub(club.id)}
+              onRemove={() => remove(club)}
             />
           ))}
         </View>
