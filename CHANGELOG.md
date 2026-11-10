@@ -9,6 +9,10 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.3.0] - 2026-11-10
+
 ### Added
 
 - **Try the demo** on the sign-in screen opens Press with an example group, without an account.
@@ -35,6 +39,14 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
   account's when it first syncs, and one that has marks keeps its own. Marks made on an outing
   whose organiser has deleted their account stay on the phone with that day. **Delete account**
   deletes your marks too, including those on someone else's round.
+- The Bag screen shows a club's **tracked carry** once five of your marked shots with it count:
+  "Tracked 152 yd, from 7 tracked shots". A tracked shot runs from a full swing you marked to the
+  next mark on the same hole. It counts once its round is posted or abandoned, if it was hit from
+  the tee, fairway or rough, both GPS fixes were good to 10 m, and it went at least 40% of the
+  club's carry, and only a club's latest 20 count. The tracked carry is the middle of their
+  carries, after taking off the roll the club suggestions allow for where the ball stopped. **Use**
+  copies it into the club's carry. Press never changes a carry on its own, and club suggestions
+  use only the carry in your bag.
 
 ### Changed
 
