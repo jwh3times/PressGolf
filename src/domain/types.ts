@@ -591,7 +591,7 @@ export interface AppData {
   usualScore: UsualScore | null;
   /** This phone's practice-round marks, by round. Never synced. */
   practice: Record<RoundId, PracticeMark>;
-  /** The bag's owner's marks (#295), kept on the phone until #296 backs them up. */
+  /** The bag's owner's marks (#295), backed up with their account (#296). */
   marks: Mark[];
   settings: AppSettings;
 }

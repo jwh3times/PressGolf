@@ -23,7 +23,7 @@ typed in once and backed up with their account. In a practice round, or
 looking a course over, the app suggests a club, where to aim and when to lay
 up, by simulating each club's spread of shots from where the player stands.
 In a live round, the bag's owner can mark where their ball lies and what they
-hit from it, kept on the phone.
+hit from it, backed up with their account and seen by nobody else.
 
 ## Quick start
 
@@ -113,7 +113,7 @@ As of October 2026:
   Supabase stack (real auth, API, row-level security, realtime and the
   account-deletion function) with two accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 98 row-level-security assertions against Postgres 16
+  database migration plus 109 row-level-security assertions against Postgres 16
   (November 2026).
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
@@ -169,9 +169,10 @@ As of October 2026:
 - The bag (Settings → My bag) is typed in by hand. Checked on an iPhone,
   except at the largest text size and on a second device.
 - Marking the ball ([#295](https://github.com/jwh3times/PressGolf/issues/295))
-  keeps its marks on the phone only: they aren't backed up with the account, so
-  a new phone starts without them. Checked in Jest, not yet on a phone on a
-  course ([#301](https://github.com/jwh3times/PressGolf/issues/301)).
+  is checked in Jest, and its sync with the account
+  ([#296](https://github.com/jwh3times/PressGolf/issues/296)) against a local
+  Supabase stack, but not yet on a phone on a course
+  ([#301](https://github.com/jwh3times/PressGolf/issues/301)).
 - Club suggestions ([#146](https://github.com/jwh3times/PressGolf/issues/146))
   rest on published shot patterns by usual score, the bag's typed carries and
   the course map. Trees, wind, slope and pin positions aren't known, and roll

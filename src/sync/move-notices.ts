@@ -28,6 +28,8 @@ export interface MoveNotice {
 }
 
 type Held = Pick<Documents, 'groups' | 'courses' | 'rounds' | 'outings'> & { activeGroupId?: string | null };
+/** What the phone holds, with what is its owner's alone and never moves. */
+type HeldWithBag = Held & Pick<Documents, 'clubs' | 'marks'>;
 
 function movesOf(notices: MoveNotice[], kind: MoveNotice['kind']): Map<string, string> {
   return new Map(notices.flatMap((n) => (n.kind === kind && n.to_id ? [[n.from_id, n.to_id] as const] : [])));
@@ -171,10 +173,10 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
 }
 
 /** The notices applied, then the server's copy of the days in `taken`. */
-export function applyFollowed<T extends Held & Pick<Documents, 'clubs'>>(held: T, notices: MoveNotice[], taken: Documents): T {
+export function applyFollowed<T extends HeldWithBag>(held: T, notices: MoveNotice[], taken: Documents): T {
   const moved = applyMoveNotices(held, notices);
-  const { groups, courses, rounds, outings, clubs } = moved;
-  return taken.outings.length === 0 ? moved : { ...moved, ...mergeShared({ groups, courses, rounds, outings, clubs }, taken) };
+  const { groups, courses, rounds, outings, clubs, marks } = moved;
+  return taken.outings.length === 0 ? moved : { ...moved, ...mergeShared({ groups, courses, rounds, outings, clubs, marks }, taken) };
 }
 
 /**
@@ -192,7 +194,7 @@ export function applyFollowed<T extends Held & Pick<Documents, 'clubs'>>(held: T
  * Hands back `held` itself if that's nothing, so the caller doesn't save and go round
  * again.
  */
-export function followMoveNotices<T extends Held & Pick<Documents, 'clubs'>>(
+export function followMoveNotices<T extends HeldWithBag>(
   held: T,
   notices: MoveNotice[],
   shared: Documents,
@@ -225,6 +227,7 @@ export function followMoveNotices<T extends Held & Pick<Documents, 'clubs'>>(
     rounds: shared.rounds.filter((round) => days.some((day) => day.id === round.outingId)),
     outings: days,
     clubs: [],
+    marks: [],
   };
   return { held: applyFollowed(held, toApply, taken), notices: toApply, taken };
 }
@@ -233,11 +236,14 @@ export function followMoveNotices<T extends Held & Pick<Documents, 'clubs'>>(
  * What the server has, plus what only this phone holds.
  *
  * A phone holding nothing but a detached day has nothing to send, which reads as
- * a fresh install. Taking the account's season outright would throw that day away.
+ * a fresh install. Taking the account's season outright would throw that day away,
+ * and the marks made on it.
  */
-export function keepingPhoneOnly(local: Held, remote: Documents): Documents {
+export function keepingPhoneOnly(local: Held & Pick<Documents, 'marks'>, remote: Documents): Documents {
   const detached = local.outings.filter((outing) => outing.detached);
   const detachedIds = new Set(detached.map((outing) => outing.id));
+  const keptRounds = local.rounds.filter((round) => round.outingId !== null && detachedIds.has(round.outingId));
+  const keptRoundIds = new Set(keptRounds.map((round) => round.id));
   const missingFrom = <I extends { id: string; phoneOnly?: true }>(there: I[], here: I[]) => {
     const ids = new Set(there.map((item) => item.id));
     return here.filter((item) => item.phoneOnly && !ids.has(item.id));
@@ -246,7 +252,8 @@ export function keepingPhoneOnly(local: Held, remote: Documents): Documents {
     ...remote,
     groups: [...remote.groups, ...missingFrom(remote.groups, local.groups)],
     courses: [...remote.courses, ...missingFrom(remote.courses, local.courses)],
-    rounds: [...remote.rounds, ...local.rounds.filter((round) => round.outingId !== null && detachedIds.has(round.outingId))],
+    rounds: [...remote.rounds, ...keptRounds],
     outings: [...remote.outings, ...detached],
+    marks: [...remote.marks, ...local.marks.filter((mark) => keptRoundIds.has(mark.roundId))],
   };
 }

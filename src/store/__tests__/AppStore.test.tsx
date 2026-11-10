@@ -3,7 +3,7 @@ import { act, render, waitFor } from '@testing-library/react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { buildDemoDataset } from '../../demo/seed';
 import { makeCourse, makeOuting, makePlayer, makeRound } from '../../domain/factory';
-import type { Round } from '../../domain/types';
+import type { Mark, Round } from '../../domain/types';
 import { deleteAccount } from '../../sync/supabase';
 import { useDataSync } from '../../sync/useDataSync';
 import {
@@ -397,7 +397,7 @@ describe('AppStoreProvider', () => {
     expect(mockUseDataSync).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
 
     const syncOptions = mockUseDataSync.mock.calls.at(-1)?.[0];
-    const replacement = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
+    const replacement = { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] };
     await change(() => syncOptions?.onAdoptRemote(replacement));
     expect(store.groups).toEqual([]);
     await change(() => syncOptions?.onSharedData({ ...replacement, groups: data.groups }));
@@ -1085,7 +1085,7 @@ describe('AppStoreProvider', () => {
   });
 
   it('fills an empty bag, adds clubs in their place, types carries and takes clubs out', async () => {
-    await mount({ ...buildDemoDataset(1_750_000_000_000), clubs: [] });
+    await mount({ ...buildDemoDataset(1_750_000_000_000), clubs: [], marks: [] });
     const set = [
       { id: 'k1', name: 'Driver', carry: null },
       { id: 'k2', name: '9 iron', carry: null },
@@ -1107,6 +1107,24 @@ describe('AppStoreProvider', () => {
   describe('marking the ball (#295)', () => {
     const TEE = { lat: 32.899236, lng: -117.249958 };
     const FAIRWAY = { lat: 32.8985, lng: -117.2503 };
+
+    it("hands its marks to sync, takes the account's, and keeps them when a shared outing comes in (#296)", async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      await mount(data);
+      const live = data.openRoundIds[0];
+      await change(() => store.markBall(live, 3, { position: TEE, accuracy: 4 }, { kind: 'partial' }));
+      const syncOptions = () => mockUseDataSync.mock.calls.at(-1)?.[0];
+      expect(syncOptions()?.documents.marks).toBe(store.marks);
+
+      const accounts: Mark = { id: 'm-account', roundId: live, hole: 2, position: FAIRWAY, accuracy: 6, at: 1, kind: 'green', clubId: null };
+      await change(() => syncOptions()?.onAdoptRemote({ marks: [accounts] }));
+      expect(store.marks).toEqual([accounts]);
+
+      const documents = syncOptions()!.documents;
+      await change(() => syncOptions()?.onSharedData({ ...documents, rounds: [...documents.rounds], marks: [] }));
+      expect(store.marks).toEqual([accounts]);
+      await waitFor(() => expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ marks: [accounts] })));
+    });
 
     it('marks the ball with the club about to be hit, changes it, and undoes it', async () => {
       const data = buildDemoDataset(1_750_000_000_000);
@@ -1247,7 +1265,7 @@ describe('AppStoreProvider', () => {
           { kind: 'outing', from_id: outing.id, to_id: null },
           { kind: 'group', from_id: outing.groupId, to_id: 'my-copy' },
         ],
-        { groups: [], courses: [], rounds: [], outings: [], clubs: [] },
+        { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] },
       ),
     );
 

@@ -68,6 +68,7 @@ const held = {
   rounds: [round, mine],
   outings: [outing],
   clubs: demo.clubs,
+  marks: [],
   activeGroupId: 'g1',
 };
 
@@ -263,7 +264,7 @@ describe('what goes to the server', () => {
 
 describe('adopting what the server has', () => {
   const moved = applyMoveNotices(held, notices);
-  const remote: Documents = { groups: [demo.groups[1]], courses: [], rounds: [mine], outings: [], clubs: demo.clubs };
+  const remote: Documents = { groups: [demo.groups[1]], courses: [], rounds: [mine], outings: [], clubs: demo.clubs, marks: [] };
 
   it('keeps the detached day and the moved group and course, which the server never had', () => {
     const adopted = keepingPhoneOnly(moved, remote);
@@ -272,6 +273,16 @@ describe('adopting what the server has', () => {
     expect(adopted.groups).toEqual([demo.groups[1], moved.groups[0]]);
     expect(adopted.courses).toEqual([moved.courses[0]]);
     expect(adopted.clubs).toBe(demo.clubs);
+  });
+
+  it("keeps the detached day's marks, and takes the account's for the rest (#296)", () => {
+    const mark = (id: string, roundId: string) => ({
+      id, roundId, hole: 1, position: { lat: 45.5, lng: -122.6 }, accuracy: 5, at: 1, kind: 'partial' as const, clubId: null,
+    });
+    const onDay = mark('on-day', moved.rounds[0].id);
+    const accounts = mark('account', mine.id);
+    const adopted = keepingPhoneOnly({ ...moved, marks: [onDay, mark('stale', mine.id)] }, { ...remote, marks: [accounts] });
+    expect(adopted.marks).toEqual([accounts, onDay]);
   });
 
   it('takes the server at its word for anything else', () => {
@@ -291,7 +302,7 @@ describe('following notices, with the shared pull in hand', () => {
   const copiedCourse: Course = { ...course, id: 'CB', tees: course.tees.map((tee) => ({ ...tee, id: `${tee.id}B` })) };
   const sharedOuting: Outing = { ...held.outings[0], id: 'theirs', groupId: 'GB', courseId: 'CB', field: copy.players.map((p) => p.id), fieldGames: { fieldSkins: { ...held.outings[0].fieldGames.fieldSkins, entrants: [] }, scats: { ...held.outings[0].fieldGames.scats, entrants: [] } }, roundIds: ['r-theirs'] };
   const sharedRound: Round = { ...round, id: 'r-theirs', outingId: 'theirs', groupId: 'GB', courseId: 'CB', playerIds: copy.players.map((p) => p.id), options: { ...round.options, teams: [], matchPairings: [] }, presses: [], wolfPicks: [], scores: {}, junk: {}, pickups: {}, pops: {}, playerTees: {}, handicapTees: {}, teeId: 'CB_default' };
-  const shared: Documents = { groups: [copy], courses: [copiedCourse], rounds: [sharedRound], outings: [sharedOuting], clubs: [] };
+  const shared: Documents = { groups: [copy], courses: [copiedCourse], rounds: [sharedRound], outings: [sharedOuting], clubs: [], marks: [] };
   const noticesLessOuting = notices.filter((n) => n.kind !== 'outing');
   const phone = {
     ...held,
@@ -346,6 +357,7 @@ describe('following notices, with the shared pull in hand', () => {
       rounds: [],
       outings: [{ ...held.outings[0], id: 'still-shared', roundIds: [] }],
       clubs: [],
+      marks: [],
     };
     const { held: after, notices: followed } = followMoveNotices({ ...held, outings: [], rounds: [mine] }, noticesLessOuting, shown);
     expect(followed).toEqual([]);
@@ -356,13 +368,13 @@ describe('following notices, with the shared pull in hand', () => {
   });
 
   it('hands back what it was given when nothing is left to follow, so nothing renders and nothing loops', () => {
-    const shown: Documents = { groups: [group], courses: [course], rounds: [], outings: [{ ...held.outings[0], id: 'still-shared', roundIds: [] }], clubs: [] };
+    const shown: Documents = { groups: [group], courses: [course], rounds: [], outings: [{ ...held.outings[0], id: 'still-shared', roundIds: [] }], clubs: [], marks: [] };
     const start = { ...held, outings: [], rounds: [mine] };
     expect(followMoveNotices(start, noticesLessOuting, shown).held).toBe(start);
   });
 
   it('marks a day the server no longer shows as detached, as before', () => {
-    const { held: after } = followMoveNotices(held, notices, { groups: [], courses: [], rounds: [], outings: [], clubs: [] });
+    const { held: after } = followMoveNotices(held, notices, { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] });
     expect(after).toEqual(applyMoveNotices(held, notices));
   });
 });

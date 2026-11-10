@@ -29,6 +29,7 @@ const documents = {
   rounds: seeded.rounds,
   outings: seeded.outings,
   clubs: seeded.clubs,
+  marks: [],
 };
 
 function options(enabled = true) {
@@ -286,12 +287,31 @@ it('debounces later changes, pushes deletions, and merges changed shared data', 
 
 it("takes the account's bag when first contact gave this phone one", async () => {
   const input = options();
-  const clubs = toRows({ groups: [], courses: [], rounds: [], outings: [], clubs: seeded.clubs }).clubs;
+  const clubs = toRows({ groups: [], courses: [], rounds: [], outings: [], clubs: seeded.clubs, marks: [] }).clubs;
   const own = toRows(documents);
   mockReconcile.mockResolvedValueOnce({ status: 'pushed', upserted: 1, deleted: 0, own, shared: emptySnapshot(), clubs });
   const view = await renderHook(() => useDataSync(input));
   await waitFor(() => expect(view.result.current.status).toBe('synced'));
   expect(input.onAdoptRemote).toHaveBeenCalledWith({ clubs: seeded.clubs });
+});
+
+it("takes the account's marks on their own when first contact gave this phone them", async () => {
+  const input = options();
+  const marks = [
+    { id: 'm9', roundId: seeded.rounds[0].id, hole: 2, position: { lat: 45.5, lng: -122.6 }, accuracy: 6, at: 1, kind: 'green' as const, clubId: null },
+  ];
+  const own = toRows(documents);
+  mockReconcile.mockResolvedValueOnce({
+    status: 'pushed',
+    upserted: 1,
+    deleted: 0,
+    own,
+    shared: emptySnapshot(),
+    marks: toRows({ groups: [], courses: [], rounds: [], outings: [], clubs: [], marks }).marks,
+  });
+  const view = await renderHook(() => useDataSync(input));
+  await waitFor(() => expect(view.result.current.status).toBe('synced'));
+  expect(input.onAdoptRemote).toHaveBeenCalledWith({ marks });
 });
 
 it("takes the account's usual score on its own when first contact gave this phone one", async () => {
@@ -312,7 +332,7 @@ it("takes the account's usual score on its own when first contact gave this phon
 it('pushes against what the server holds and the last shared pull, and keeps what each push returns', async () => {
   const input = options();
   const own = toRows({ ...documents, outings: [] });
-  const shared = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings, clubs: [] });
+  const shared = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings, clubs: [], marks: [] });
   mockReconcile.mockResolvedValueOnce({ status: 'pushed', upserted: 1, deleted: 0, own, shared });
   const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
   await waitFor(() => expect(view.result.current.status).toBe('synced'));
@@ -320,7 +340,7 @@ it('pushes against what the server holds and the last shared pull, and keeps wha
   const renamed = { ...documents, groups: [{ ...documents.groups[0], name: 'Renamed' }, ...documents.groups.slice(1)] };
   const afterFirst = toRows({ ...renamed, outings: [] });
   mockPush.mockResolvedValueOnce(afterFirst);
-  const pulled = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings.slice(0, 1), clubs: [] });
+  const pulled = toRows({ groups: [], courses: [], rounds: [], outings: documents.outings.slice(0, 1), clubs: [], marks: [] });
   mockPullShared.mockResolvedValueOnce(pulled);
   await view.rerender({ ...input, documents: renamed });
   await advancePush();

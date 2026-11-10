@@ -287,18 +287,18 @@ export type SyncOutcome = { shared: Snapshot } & (
   /**
    * `own` is this account's rows as pushed, whole. `clubs` is set when the
    * phone had no bag and took the account's, for the app to take too, and
-   * `bag_settings` likewise.
+   * `bag_settings` and `marks` likewise.
    */
-  | {
-      status: 'pushed';
-      upserted: number;
-      deleted: number;
-      own: Snapshot;
-      clubs?: Snapshot['clubs'];
-      bag_settings?: Snapshot['bag_settings'];
-    }
+  | ({ status: 'pushed'; upserted: number; deleted: number; own: Snapshot } & Partial<Pick<Snapshot, OnTheirOwn>>)
   | { status: 'nothing-to-do' }
 );
+
+/**
+ * The rows that are their owner's alone and are settled apart from the season:
+ * the bag, its settings, and the marks made with it (#296).
+ */
+const ON_THEIR_OWN = ['clubs', 'bag_settings', 'marks'] as const;
+type OnTheirOwn = (typeof ON_THEIR_OWN)[number];
 
 /**
  * Reconciles one account's data, once.
@@ -314,7 +314,7 @@ export type SyncOutcome = { shared: Snapshot } & (
  * with no clubs takes the account's; one with clubs is the side asking, and
  * wins. A fresh install that adopts the account's season keeps clubs typed on
  * it before signing in when the account has none. The bag's settings (#146)
- * are settled the same way, apart from the clubs.
+ * and the marks (#296) are settled the same way, each apart from the others.
  */
 export async function reconcile(local: Snapshot, seen: SeenCells | null = null): Promise<SyncOutcome> {
   const remote = await pullSnapshot();
@@ -322,32 +322,27 @@ export async function reconcile(local: Snapshot, seen: SeenCells | null = null):
   // from an earlier session, knows which of its rows are theirs.
   const shared = await pullSharedOutings();
 
-  const takesBag = local.clubs.length === 0 && remote.clubs.length > 0;
-  const takesSettings = local.bag_settings.length === 0 && remote.bag_settings.length > 0;
-  if (isEmpty(local) && (!isEmpty(remote) || takesBag || takesSettings)) {
-    // The account's bag and settings when it has them; otherwise what this phone has, sent up.
-    const kept = {
-      ...emptySnapshot(),
-      clubs: remote.clubs.length > 0 ? [] : local.clubs,
-      bag_settings: remote.bag_settings.length > 0 ? [] : local.bag_settings,
-    };
+  // Each of these that the phone has none of and the account has some of.
+  const takes: Partial<Pick<Snapshot, OnTheirOwn>> = Object.fromEntries(
+    ON_THEIR_OWN.filter((table) => local[table].length === 0 && remote[table].length > 0).map((table) => [table, remote[table]]),
+  );
+  if (isEmpty(local) && (!isEmpty(remote) || Object.keys(takes).length > 0)) {
+    // The account's when it has them; otherwise what this phone has, sent up.
+    const kept = emptySnapshot();
+    const snapshot = { ...remote };
+    for (const table of ON_THEIR_OWN) {
+      const theirs = remote[table].length > 0;
+      (kept as Record<OnTheirOwn, unknown[]>)[table] = theirs ? [] : local[table];
+      (snapshot as Record<OnTheirOwn, unknown[]>)[table] = theirs ? remote[table] : local[table];
+    }
     if (countRows(kept) > 0) await pushSnapshot(kept);
-    const snapshot = {
-      ...remote,
-      clubs: remote.clubs.length > 0 ? remote.clubs : local.clubs,
-      bag_settings: remote.bag_settings.length > 0 ? remote.bag_settings : local.bag_settings,
-    };
     return { status: 'adopted-remote', rows: countRows(snapshot), snapshot, shared };
   }
-  if (isEmpty(local) && isEmpty(remote) && local.clubs.length === 0 && local.bag_settings.length === 0) {
+  if (isEmpty(local) && isEmpty(remote) && ON_THEIR_OWN.every((table) => local[table].length === 0)) {
     return { status: 'nothing-to-do', shared };
   }
 
-  const mine = {
-    ...local,
-    ...(takesBag ? { clubs: remote.clubs } : {}),
-    ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
-  };
+  const mine = { ...local, ...takes };
   const ownerId = await requireUserId();
   const { own, guest } = splitByOwner(mine, shared, ownerId);
   const prune = keepUnseenCells(deletions(remote, own), shared, ownerId, seen);
@@ -365,7 +360,6 @@ export async function reconcile(local: Snapshot, seen: SeenCells | null = null):
       ...shared,
       scores: shared.scores.map((cell) => ({ ...cell, ...heldCells.get(identify('scores', { ...cell })) })),
     },
-    ...(takesBag ? { clubs: remote.clubs } : {}),
-    ...(takesSettings ? { bag_settings: remote.bag_settings } : {}),
+    ...takes,
   };
 }

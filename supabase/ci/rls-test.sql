@@ -100,6 +100,15 @@ insert into rounds (id, group_id, course_id, name, started_at)
   values ('r9', 'g9', 'c9', 'Private', 1);
 insert into clubs (id, name, carry_yards, position) values ('k1', '7 iron', 150, 0);
 insert into bag_settings (usual_score) values ('90s');
+-- Her marks, on the shared round and on her own (#296).
+insert into marks (id, round_id, hole, lat, lng, accuracy_m, marked_at, kind, club_id) values
+  ('m1', 'r1', 1, 45.5, -122.6, 4.5, 1, 'full', 'k1'),
+  ('m9', 'r9', 1, 44.1, -121.3, null, 2, 'partial', null);
+do $$ begin
+  insert into marks (id, round_id, hole, lat, lng, marked_at, kind) values ('m-bad', 'r9', 1, 44.1, -121.3, 3, 'full');
+  raise exception 'FAILED: a full swing was marked with no club';
+exception when check_violation then raise notice 'ok: a full swing names its club';
+end $$;
 -- Not shared: nobody holds its code.
 insert into outings (id, group_id, course_id, name, date, started_at)
   values ('o9', 'g9', 'c9', 'Private day', 1, 1);
@@ -122,6 +131,7 @@ select expect('stranger sees no map',      (select count(*) from course_features
 select expect('stranger sees no notes',    (select count(*) from course_hole_notes), 0);
 select expect('stranger sees no bag',      (select count(*) from clubs), 0);
 select expect('stranger sees no usual score', (select count(*) from bag_settings), 0);
+select expect('stranger sees no marks',    (select count(*) from marks), 0);
 
 -- ── The same stranger, now holding the code ─────────────────────────────────
 
@@ -149,6 +159,7 @@ select expect('guest sees no private map',    (select count(*) from course_featu
 select expect('guest sees no private notes',  (select count(*) from course_hole_notes where course_id = 'c9'), 0);
 select expect('guest sees no organiser bag',  (select count(*) from clubs), 0);
 select expect('guest sees no organiser usual score', (select count(*) from bag_settings), 0);
+select expect('guest sees no organiser marks, even on the shared round', (select count(*) from marks), 0);
 
 -- ── What a guest may write ──────────────────────────────────────────────────
 
@@ -185,6 +196,17 @@ insert into bag_settings (usual_score) values ('100s');
 select expect('guest keeps a usual score of his own', (select count(*) from bag_settings), 1);
 select refused('guest can''t write the organiser''s usual score', $q$
   insert into bag_settings (owner_id, usual_score) values ('11111111-1111-1111-1111-111111111111', '70s') $q$);
+update marks set kind = 'green', club_id = null;
+delete from marks;
+-- Marks of his own on the shared round are his, and his alone.
+insert into marks (id, round_id, hole, lat, lng, accuracy_m, marked_at, kind, club_id)
+  values ('m-bob', 'r1', 1, 45.5, -122.6, 6, 3, 'full', 'k2');
+select expect('guest sees only his own marks', (select count(*) from marks), 1);
+select refused('guest can''t mark for the organiser', $q$
+  insert into marks (id, owner_id, round_id, hole, lat, lng, marked_at, kind)
+    values ('m-forged', '11111111-1111-1111-1111-111111111111', 'r1', 1, 45.5, -122.6, 4, 'green') $q$);
+select refused('guest can''t hand his mark to the organiser', $q$
+  update marks set owner_id = '11111111-1111-1111-1111-111111111111' where id = 'm-bob' $q$);
 -- A refused insert raises, where a refused update or delete just finds no rows.
 select refused('guest can''t draw on the shared course', $q$
   insert into course_features (course_id, id, kind, hole, points, source)
@@ -262,6 +284,15 @@ select expect('outing survived',        (select count(*) from outings where id =
 select expect('bag untouched',          (select carry_yards from clubs where id = 'k1'), 150);
 select expect('usual score untouched',  (select count(*) from bag_settings where usual_score = '90s'), 1);
 select expect('sees only her own bag',  (select count(*) from clubs), 1);
+select expect('marks untouched',        (select count(*) from marks where id = 'm1' and kind = 'full' and club_id = 'k1'), 1);
+select expect('sees only her own marks, not his on her round', (select count(*) from marks), 2);
+-- She changes her own, and his stays as he left it.
+update marks set hole = 2;
+delete from marks where id = 'm-bob';
+select expect('changed her own marks',  (select count(*) from marks where hole = 2), 2);
+set request.jwt.claim.sub = :'bob';
+select expect('his mark untouched',     (select count(*) from marks where id = 'm-bob' and hole = 1), 1);
+set request.jwt.claim.sub = :'alice';
 
 -- The organiser joined her own outing when she shared it, which is the only
 -- reason she can see what her guests wrote.
@@ -281,6 +312,8 @@ select refused_by_key('an unknown account can''t save a course', $q$
   insert into courses (id, name, created_at) values ('c-gone', 'Gone', 1) $q$);
 select refused_by_key('an unknown account can''t save a club', $q$
   insert into clubs (id, name, carry_yards, position) values ('k-gone', '7i', 150, 1) $q$);
+select refused_by_key('an unknown account can''t save a mark', $q$
+  insert into marks (id, round_id, hole, lat, lng, marked_at, kind) values ('m-gone', 'r1', 1, 45.5, -122.6, 5, 'green') $q$);
 select refused_by_key('an unknown account can''t join an outing', $q$
   select join_outing('ABC234', null, 'Gone') $q$);
 

@@ -59,6 +59,18 @@ today. No screen sends it, so the `mutations` table is empty in practice. Fonts 
 > synced, so nothing new leaves it. Deleting the round, or removing the club a mark names, deletes
 > them. See `docs/architecture.md` § Local data and demo isolation.
 
+> **Amended 2026-11-09, again:** [#296](https://github.com/jwh3times/PressGolf/issues/296) syncs
+> those marks with the account, to an owner-only Supabase table (`marks`,
+> `20261110033336_marks.sql`), so a ball mark is now the user's precise GPS fix leaving the phone.
+> It isn't shared: there is no guest policy, so the people in a shared outing never see it, even
+> on the organiser's round. It's deleted with the round, the club it names, or the account,
+> including a guest's mark on someone else's round. Rechecked against the store answers below:
+> **none change.** Precise Location is already declared as collected for App Functionality,
+> linked to the account and optional. A ball mark takes away the judgement call in the
+> Precise Location rows, since it describes only where the user stood. The iOS prompt now names
+> marking a green and marking the ball (`app.json`, from #295), which answers the prompt question
+> in the Maps terms row.
+
 ## 2. What the third-party SDKs and services collect themselves
 
 | Party | What it says it collects | Role | Source |

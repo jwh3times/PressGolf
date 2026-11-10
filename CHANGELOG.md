@@ -27,15 +27,20 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
   where your ball lies and what you're about to hit. It waits up to 20 seconds for a close GPS
   fix, keeping the closest it got and saying how rough it is when none is close. Then you pick a
   club from your bag, **Not a full swing** or **On the green**, and the card says "Marked: 7
-  iron". A tap on that changes what was hit, or **Undo** removes the mark. Marks stay on the
-  phone: they aren't backed up with your account yet. Deleting a round deletes its marks, and
-  removing a club from the bag deletes the marks that name it, after the Bag screen says how many
-  tracked shots go. A scorecard being typed in has no Mark ball.
+  iron". A tap on that changes what was hit, or **Undo** removes the mark. Deleting a round
+  deletes its marks, and removing a club from the bag deletes the marks that name it, after the Bag
+  screen says how many tracked shots go. A scorecard being typed in has no Mark ball.
+- Ball marks are backed up with your account, like your bag, and reach your other phones. Nobody
+  else sees them, not even someone in the same outing. A phone with no marks of its own takes the
+  account's when it first syncs, and one that has marks keeps its own. Marks made on an outing
+  whose organiser has deleted their account stay on the phone with that day. **Delete account**
+  deletes your marks too, including those on someone else's round.
 
 ### Changed
 
 - The iPhone's location prompt says Press also uses your location to save where your ball lies
-  when you mark it. The privacy policy says what a ball mark keeps and that it stays on the phone.
+  when you mark it. The privacy policy says what a ball mark keeps, and that it is backed up with
+  your account and seen by nobody else. The account-deletion page lists ball marks among what goes.
 - The support page's "Do I need an account?" answer points to **Try the demo**.
 
 ### Removed

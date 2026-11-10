@@ -5,9 +5,9 @@ import type { Documents } from '../rows';
  *  twenty-man outing with field pots, eighteen settled rounds and a live one.
  *  The demo has nobody pressing, no Wolf picks and no explicit match pairings
  *  (round robin is derived, not stored), and Pine Hollow has no greens,
- *  course map or hole notes, so one of each is added here —
- *  otherwise those tables would go untested and the gap would look like a
- *  passing suite. */
+ *  course map or hole notes, and nobody has marked a ball, so some of each
+ *  are added here — otherwise those tables would go untested and the gap
+ *  would look like a passing suite. */
 export function demoDocuments(runPrefix?: string): Documents {
   const data = buildDemoDataset(1_700_000_000_000);
   const rounds = data.rounds.map((round, index) =>
@@ -109,7 +109,13 @@ export function demoDocuments(runPrefix?: string): Documents {
         }
       : c,
   );
-  const documents: Documents = { groups, courses, rounds, outings, clubs: data.clubs, usualScore: data.usualScore ?? undefined };
+  // Two shots and the green on the first hole of the first round.
+  const marks: Documents['marks'] = [
+    { id: 'demo_mark_1', roundId: rounds[0].id, hole: 1, position: { lat: 45.5101, lng: -122.6101 }, accuracy: 4, at: 1_700_000_100_000, kind: 'full', clubId: data.clubs[0].id },
+    { id: 'demo_mark_2', roundId: rounds[0].id, hole: 1, position: { lat: 45.5112, lng: -122.6114 }, accuracy: null, at: 1_700_000_160_000, kind: 'partial', clubId: null },
+    { id: 'demo_mark_3', roundId: rounds[0].id, hole: 1, position: { lat: 45.5118, lng: -122.612 }, accuracy: 7.5, at: 1_700_000_220_000, kind: 'green', clubId: null },
+  ];
+  const documents: Documents = { groups, courses, rounds, outings, clubs: data.clubs, marks, usualScore: data.usualScore ?? undefined };
   if (!runPrefix) return documents;
   // Ids are global primary keys on the server, so a run against a shared
   // database gives every id its own prefix. Every demo id starts with demo_.

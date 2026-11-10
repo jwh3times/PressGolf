@@ -119,11 +119,17 @@ export function useDataSync(options: {
       adopt.current(keepingPhoneOnly(held, fromRows(outcome.snapshot)));
     } else {
       serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
-      if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings)) {
-        const bag = fromRows({ ...emptySnapshot(), clubs: outcome.clubs ?? [], bag_settings: outcome.bag_settings ?? [] });
+      if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings || outcome.marks)) {
+        const taken = fromRows({
+          ...emptySnapshot(),
+          clubs: outcome.clubs ?? [],
+          bag_settings: outcome.bag_settings ?? [],
+          marks: outcome.marks ?? [],
+        });
         adopt.current({
-          ...(outcome.clubs ? { clubs: bag.clubs } : {}),
-          ...(bag.usualScore ? { usualScore: bag.usualScore } : {}),
+          ...(outcome.clubs ? { clubs: taken.clubs } : {}),
+          ...(taken.usualScore ? { usualScore: taken.usualScore } : {}),
+          ...(outcome.marks ? { marks: taken.marks } : {}),
         });
       }
     }

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-import type { Outing, Round } from '../../domain/types';
+import type { Mark, Outing, Round } from '../../domain/types';
 import { mergeShared } from '../merge-shared';
 import { applyMoveNotices, followMoveNotices, keepingPhoneOnly } from '../move-notices';
 import { pullMoveNotices, pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
@@ -109,7 +109,7 @@ async function guestOnTheCard(prefix: string) {
   const ben = await signUp('ben');
   await joinOuting(joinCode, null, 'Ben');
   const pulled = await pullSharedOutings();
-  const merged = mergeShared({ groups: [], courses: [], rounds: [], outings: [], clubs: [] }, fromRows(pulled));
+  const merged = mergeShared({ groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] }, fromRows(pulled));
   const theirs = merged.rounds.find((r) => r.id === day.id)!;
   const typed = [...theirs.scores[scorer]];
   typed[hole - 1] = 5;
@@ -132,7 +132,7 @@ async function guestOnTheCard(prefix: string) {
   return { ann, ben, outing, day, before, card, benPhone, cells, joinCode };
 }
 
-const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
+const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] };
 
 /** A guest's phone after first contact: what it holds, and what it would next push against. */
 async function joinedPhone(holding: Documents = NOTHING) {
@@ -793,6 +793,31 @@ describe('a guest deleting their account', () => {
     await expect(signInWithPassword(ben.email, PASSWORD)).rejects.toThrow('do not match an account');
   });
 
+  it("takes the marks they made on the organiser's round with them, rather than leaving them hers (#296)", async () => {
+    const { ann, ben, season, outing } = await sharedDay('marks');
+    const round = season.rounds.find((r) => r.outingId === outing.id)!;
+    const theirs: Mark = {
+      id: `${RUN}marks-ben`,
+      roundId: round.id,
+      hole: 1,
+      position: { lat: 45.5, lng: -122.6 },
+      accuracy: 5,
+      at: 1,
+      kind: 'green',
+      clubId: null,
+    };
+    await pushSnapshot(toRows({ ...NOTHING, marks: [theirs] }));
+    const mark = () => admin.from('marks').select('owner_id').eq('id', theirs.id);
+    expect((await mark()).data).toEqual([{ owner_id: ben.id }]);
+
+    await deleteAccount(PASSWORD);
+
+    expect((await mark()).data).toEqual([]);
+    expect(await rowsHeldBy(ben)).toBe(0);
+    const { count } = await admin.from('marks').select('*', { count: 'exact', head: true }).eq('owner_id', ann.id);
+    expect(count).toBe(season.marks.length);
+  });
+
   it("leaves the organiser's phone syncing, with the card still adding up", async () => {
     const { ann, ben, before, card, cells } = await guestOnTheCard('sync');
     await signInAs(ann);
@@ -1417,6 +1442,7 @@ describe('a phone still signed in to a deleted account', () => {
     ['courses', { id: `${RUN}gone-c`, name: 'Gone', created_at: 1 }],
     ['clubs', { id: `${RUN}gone-k`, name: '7i', position: 0 }],
     ['bag_settings', { usual_score: '90s' }],
+    ['marks', { id: `${RUN}gone-m`, round_id: `${RUN}gone-r`, hole: 1, lat: 45.5, lng: -122.6, marked_at: 1, kind: 'green' }],
   ])("can't write to %s", async (table, row) => {
     const ann = await signUp('ann');
     await deleteFromAnotherPhone(ann);
