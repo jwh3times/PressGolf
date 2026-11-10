@@ -115,8 +115,11 @@ substitute for assistive-technology use on both platforms.
   mark as it is" and "Cancel the mark". When GPS stays rough the picker says how
   rough in text. The picker's chips wrap at any text size, and the "Marked"
   line wraps beside **Mark ball**. Removing a club that has tracked shots asks
-  first in a system alert that says how many. Jest covers the names, the
-  picker's order and selection, and the alert's text. The web suite's Score
+  first in a system alert that says how many. A club's tracked carry (#297) is
+  a line of text under its carry, and its **Use** chip is named "Use 150 yards
+  for 7 iron"; the line wraps with the chip at any text size. Jest covers the
+  names, the picker's order and selection, the alert's text, and **Use**. The
+  web suite's Score
   baselines show **Mark ball** in the live round. It hasn't been tried yet
   with VoiceOver or TalkBack or at the largest text size on a phone: that's
   the device check in #301.

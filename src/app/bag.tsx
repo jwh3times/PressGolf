@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Field } from '../components/Field';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Chip, CHIP_ROW_GAP, EmptyState, Eyebrow, GhostButton, Mono, PrimaryButton } from '../components/primitives';
 import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag, USUAL_SCORES, usualScoreFor } from '../domain/bag';
 import { marksNaming } from '../domain/marks';
+import { SHOTS_FOR_CARRY, trackedShots, type ClubShots } from '../domain/tracked-shots';
 import type { Club } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -16,6 +17,8 @@ import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
  * and how they usually score, which club suggestions in a practice round use
  * (#146). Distances you wrote down yourself before the round are allowed in a
  * counted one, so this is plain information; nothing here suggests a club.
+ * Neither is a club's tracked carry (#297): it comes only from rounds that have
+ * closed, and changes the bag only when the player taps Use.
  */
 export default function BagScreen() {
   const styles = useStyles();
@@ -28,6 +31,8 @@ export default function BagScreen() {
   const passes = new Map(outOfOrder(store.clubs).map((w) => [w.id, w.passes]));
   const usual = usualScoreFor(store.usualScore, store.groups);
   const full = store.clubs.length >= MAX_CLUBS;
+  const { marks, rounds, courses, clubs } = store;
+  const tracked = useMemo(() => trackedShots({ marks, rounds, courses, clubs }), [marks, rounds, courses, clubs]);
   // A club's tracked shots go with it (#295), so taking one with any asks first, saying how many.
   const remove = (club: Club) => {
     const shots = marksNaming(store.marks, club.id);
@@ -51,8 +56,7 @@ export default function BagScreen() {
       <ModalHeader eyebrow="Settings" title="My bag" onClose={() => router.back()} />
 
       <Body style={{ color: ink.soft, lineHeight: 19 }}>
-        How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before
-        the round are allowed in a counted one.
+        {`How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before the round are allowed in a counted one. Once a club has ${SHOTS_FOR_CARRY} tracked shots from rounds that have closed, its tracked carry shows beside it.`}
       </Body>
 
       <View style={{ gap: 8 }}>
@@ -88,7 +92,9 @@ export default function BagScreen() {
               key={club.id}
               club={club}
               passes={passes.get(club.id) ?? null}
+              tracked={tracked[club.id] ?? null}
               onCarry={(carry) => store.setCarry(club.id, carry)}
+              onUseTracked={() => store.takeTrackedCarry(club.id)}
               onRemove={() => remove(club)}
             />
           ))}
@@ -135,22 +141,27 @@ export default function BagScreen() {
   );
 }
 
-/** One club: its name, its carry as typed, and a way out of the bag. Typed text is held here, so "1" on the way to 150 survives. */
+/** One club: its name, its carry as typed, its tracked carry once it has one, and a way out of the bag. Typed text is held here, so "1" on the way to 150 survives. */
 function ClubRow({
   club,
   passes,
+  tracked,
   onCarry,
+  onUseTracked,
   onRemove,
 }: {
   club: Club;
   passes: string | null;
+  tracked: ClubShots | null;
   onCarry: (carry: number | null) => void;
+  onUseTracked: () => void;
   onRemove: () => void;
 }) {
   const styles = useStyles();
   const { colors, ink, scheme } = useTheme();
   const [text, setText] = useState(club.carry == null ? '' : String(club.carry));
   const typed = text.trim() !== '' && parseCarry(text) == null;
+  const carry = tracked?.trackedCarry ?? null;
   const note = typed ? `A carry is 1 to ${MAX_CARRY} yards.` : passes ? `Carries further than your ${passes}.` : null;
 
   return (
@@ -189,6 +200,23 @@ function ClubRow({
         </Pressable>
       </View>
       {note ? <Text style={[styles.note, { color: colors.clay }]}>{note}</Text> : null}
+      {carry != null ? (
+        <View style={styles.tracked}>
+          <Text style={styles.trackedNote}>
+            {`Tracked ${carry} yd, from ${tracked!.counting} tracked shots`}
+          </Text>
+          {carry !== club.carry ? (
+            <Chip
+              label="USE"
+              accessibilityLabel={`Use ${carry} yards for ${club.name}`}
+              onPress={() => {
+                setText(String(carry));
+                onUseTracked();
+              }}
+            />
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -223,6 +251,8 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     },
     remove: { width: MIN_TAP_TARGET, height: MIN_TAP_TARGET, alignItems: 'center', justifyContent: 'center' },
     removeMark: { fontFamily: fonts.sans, fontSize: 20, color: ink.muted },
+    tracked: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, paddingRight: 10, paddingBottom: 4 },
+    trackedNote: { flexShrink: 1, fontFamily: fonts.sans, fontSize: 11.5, lineHeight: 16, color: ink.soft },
     note: { fontFamily: fonts.sans, fontSize: 11.5, lineHeight: 16, paddingBottom: 6, paddingRight: 10 },
     adder: { padding: 14, gap: 12 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 6, rowGap: CHIP_ROW_GAP },

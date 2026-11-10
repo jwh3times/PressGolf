@@ -332,8 +332,9 @@ the lie, the bag, the usual score and a seed, it returns the suggestion.
   green against laying up, or the driver against less off the tee of a hole no
   club reaches) shows within a third of a stroke, and never as a lay-up to a
   part-swing.
-- **Roll** after landing is a share of carry by kind of club: estimates, for
-  tracked shots to replace.
+- **Roll** after landing is a share of carry by kind of club: estimates.
+  Tracked shots can't replace them: GPS measures where the ball stopped, and
+  can't tell roll from carry, so a tracked carry takes these off instead.
 
 The tests check the model against Broadie's figures: the median leave for each
 group from 125 yards, and a 90s golfer's share of greens from 150 (about 35%).
@@ -517,6 +518,27 @@ are saved on the phone with the rest of the dataset, the demo's included. A
 signed-in account's marks sync with it, and nobody else's phone sees them
 ([Active server synchronization](#active-server-synchronization), #296). The
 demo's never leave the phone.
+
+**Tracked shots** (#297). `trackedShots` (`src/domain/tracked-shots.ts`) is
+pure, and the one place the counting rules and figures live. From the owner's
+marks, the rounds, the courses' maps and the bag, it pairs each full-swing mark
+with the next mark by time on the same hole of the same round (*Not a full
+swing* and *On the green* marks only finish a shot), and gives every shot its
+measured yards, its finish lie (fairway, rough or green; green for an *On the
+green* mark), its inferred carry (the yards ÷ (1 + the shot model's roll for
+the club and the finish lie)) and a status. A shot counts unless, in this
+order: its round is still active (a reopened round's shots stop counting until
+it closes again), it has no finish, the map says it was hit from anywhere but
+a tee, fairway or rough, either fix is worse than 10 m, it went under 40% of
+the club's typed carry (skipped with none typed), or it isn't among the club's
+latest 20 that pass the rest. Lies are read with `surfaceAt`
+(`src/domain/club-suggestion.ts`), the suggestions' own map reading; a hole
+with nothing mapped reads as rough. From 5 counting shots a club has a
+**tracked carry**, their median inferred carry to the yard, which the Bag
+screen shows beside the typed one with its shot count, and **Use** sets the
+typed carry to it (`takeTrackedCarry`). Press never changes a carry on its own,
+and club suggestions use only the typed carry. The 5, 20, 40% and 10 m are
+judgement calls from the #293 design session, not published figures.
 
 A card being typed in lives in its own slot (`cardRoundId`) beside its group's
 live round. While it is open and its group is active, `store.round` is the

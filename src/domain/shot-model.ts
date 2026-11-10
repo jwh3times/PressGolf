@@ -69,11 +69,12 @@ export const SAND_SPREAD = 1.5;
 export type ClubKind = 'wood' | 'long' | 'short' | 'wedge';
 
 /**
- * Roll after landing on fairway, as a share of carry. Estimates, for tracked
- * shots (phase 5) to replace: about 7% for a driver is the one figure found
- * (TrackMan, second-hand), and the rest step down with the landing angle
- * TrackMan publishes for each club. Half that in rough, and a quarter on the
- * green, which holds a ball better than either.
+ * Roll after landing on fairway, as a share of carry. Estimates: about 7% for a
+ * driver is the one figure found (TrackMan, second-hand), and the rest step
+ * down with the landing angle TrackMan publishes for each club. Half that in
+ * rough, and a quarter on the green, which holds a ball better than either.
+ * Tracked shots (#297) can't improve them: GPS measures where the ball stopped,
+ * and can't tell roll from carry, so a tracked carry takes these off instead.
  */
 export const ROLL: Record<ClubKind, number> = { wood: 0.07, long: 0.05, short: 0.03, wedge: 0.01 };
 export const ROLL_IN_ROUGH = 0.5;

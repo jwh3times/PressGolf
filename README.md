@@ -23,7 +23,9 @@ typed in once and backed up with their account. In a practice round, or
 looking a course over, the app suggests a club, where to aim and when to lay
 up, by simulating each club's spread of shots from where the player stands.
 In a live round, the bag's owner can mark where their ball lies and what they
-hit from it, backed up with their account and seen by nobody else.
+hit from it, backed up with their account and seen by nobody else. Once a
+round has closed, those tracked shots give each club a tracked carry beside
+the typed one, which **Use** copies into the bag.
 
 ## Quick start
 

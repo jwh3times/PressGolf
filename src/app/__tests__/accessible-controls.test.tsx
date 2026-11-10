@@ -202,6 +202,7 @@ const actions = {
   addClub: jest.fn(),
   fillBag: jest.fn(),
   setCarry: jest.fn(),
+  takeTrackedCarry: jest.fn(),
   removeClub: jest.fn(),
   markBall: jest.fn(),
   changeMark: jest.fn(),
@@ -1633,6 +1634,37 @@ describe('management screen state matrices', () => {
     await user.press(screen.getByRole('button', { name: 'Remove 8 iron' }));
     expect(alert).toHaveBeenLastCalledWith('Remove 8 iron?', 'Its 1 tracked shot goes with it.', expect.any(Array));
     alert.mockRestore();
+  });
+
+  it('shows a club\'s tracked carry from five counting shots, and Use types it in (#297)', async () => {
+    const user = userEvent.setup();
+    const clubs = [
+      { id: 'k7', name: '7 iron', carry: 155 },
+      { id: 'k8', name: '8 iron', carry: 145 },
+      { id: 'k9', name: '9 iron', carry: 135 },
+    ];
+    // Due north on hole 1 of a posted round, where the demo's courses have no map: every lie reads rough.
+    const north = frame({ lat: 45.5, lng: -122.6 }, 0);
+    let at = 1;
+    const shot = (clubId: string, yards: number) => [
+      { id: `m${at}`, roundId: round.id, hole: 1, position: north.toLatLng([0, 0]), accuracy: 4, at: at++, kind: 'full' as const, clubId },
+      { id: `m${at}`, roundId: round.id, hole: 1, position: north.toLatLng([0, yards * 0.9144]), accuracy: 4, at: at++, kind: 'partial' as const, clubId: null },
+    ];
+    const times = (n: number, clubId: string, yards: number) => Array.from({ length: n }, () => shot(clubId, yards)).flat();
+    // 152.25 yards, less a short iron's roll in rough (1.5%), is a 150-yard carry; the 9 iron's 137 is a 135 it already has.
+    const marks = [...times(5, 'k7', 152.25), ...times(4, 'k8', 142), ...times(6, 'k9', 137)];
+    useStoreValue({ clubs, marks, rounds: [{ ...round, status: 'completed' }] });
+    await render(<BagScreen />);
+
+    expect(screen.getByText('Tracked 150 yd, from 5 tracked shots')).toBeTruthy();
+    expect(screen.queryByText(/^Tracked .* from 4 tracked shots/)).toBeNull();
+    expect(screen.getByText('Tracked 135 yd, from 6 tracked shots')).toBeTruthy();
+    // Nothing to use where the typed carry is already the tracked one.
+    expect(screen.queryByRole('button', { name: 'Use 135 yards for 9 iron' })).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Use 150 yards for 7 iron' }));
+    expect(actions.takeTrackedCarry).toHaveBeenCalledWith('k7');
+    expect(screen.getByLabelText('7 iron carry, in yards').props.value).toBe('150');
   });
 
   it('says a full bag holds no more', async () => {
