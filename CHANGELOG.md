@@ -23,9 +23,19 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
   ledger, and **Reopen** brings it back. **Delete round** removes it after a second confirmation. A
   round in an outing, or a scorecard being typed in (which has **Discard card**), has no Abandon.
   On an older build, an abandoned round shows as finished.
+- **Mark ball** in the Score screen's yardage card, in a live round, an outing or the demo, saves
+  where your ball lies and what you're about to hit. It waits up to 20 seconds for a close GPS
+  fix, keeping the closest it got and saying how rough it is when none is close. Then you pick a
+  club from your bag, **Not a full swing** or **On the green**, and the card says "Marked: 7
+  iron". A tap on that changes what was hit, or **Undo** removes the mark. Marks stay on the
+  phone: they aren't backed up with your account yet. Deleting a round deletes its marks, and
+  removing a club from the bag deletes the marks that name it, after the Bag screen says how many
+  tracked shots go. A scorecard being typed in has no Mark ball.
 
 ### Changed
 
+- The iPhone's location prompt says Press also uses your location to save where your ball lies
+  when you mark it. The privacy policy says what a ball mark keeps and that it stays on the phone.
 - The support page's "Do I need an account?" answer points to **Try the demo**.
 
 ### Removed

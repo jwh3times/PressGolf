@@ -499,8 +499,9 @@ full swing), or `green` (on the green). It names no player: only the bag's
 owner marks, and only their own ball. Marking runs the yardage card's watch
 (`useLiveLocation().fixWithin`) and waits up to 20 s (`MARK_WAIT_MS`) for a fix
 within 10 m (`MARK_GOOD_WITHIN_M`), keeping the closest fix so far when the time
-runs out. Both limits are judgement calls from #293, not published figures
-(`src/domain/marks.ts`). The club picker lists the bag in its own order with
+runs out, or saying so when none came. The wait counts from when GPS is running,
+so a permission prompt doesn't use it up. Both limits are judgement calls from
+#293, not published figures (`src/domain/marks.ts`). The club picker lists the bag in its own order with
 nothing chosen, so it never suggests a club in a counted round. Afterwards the
 card says "Marked: <club>" for the hole's last mark, and a tap on it changes
 what was hit or undoes the mark. Nothing else on the Score screen or the hole

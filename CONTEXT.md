@@ -13,7 +13,7 @@ A round closed without being posted, so it never counts in the season ledger.
 _Avoid_: cancelled, discarded (discarding a card deletes it)
 
 **Mark**:
-Where a player's ball lay when they stood at it during a round, with the club they were about to hit, or that it wasn't a full swing.
+Where a player's ball lay when they stood at it during a round, with the club they were about to hit, or that it wasn't a full swing, or that the ball was on the green.
 _Avoid_: pin, waypoint
 
 **Tracked shot**:

@@ -52,6 +52,13 @@ today. No screen sends it, so the `mutations` table is empty in practice. Fonts 
 (`@expo-google-fonts/*`, `src/app/_layout.tsx`), not fetched. The only outbound links open
 `openstreetmap.org/copyright`.
 
+> **Amended 2026-11-09:** the live-location row is no longer the whole story.
+> [#295](https://github.com/jwh3times/PressGolf/issues/295) stores a fix when the bag's owner
+> marks their ball in a round: position, accuracy, time, round, hole and what was hit
+> (`AppData.marks`, `src/store/AppStore.tsx`). The marks are saved on the phone only and are not
+> synced, so nothing new leaves it. Deleting the round, or removing the club a mark names, deletes
+> them. See `docs/architecture.md` § Local data and demo isolation.
+
 ## 2. What the third-party SDKs and services collect themselves
 
 | Party | What it says it collects | Role | Source |

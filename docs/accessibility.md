@@ -119,7 +119,7 @@ substitute for assistive-technology use on both platforms.
   picker's order and selection, and the alert's text. The web suite's Score
   baselines show **Mark ball** in the live round. It hasn't been tried yet
   with VoiceOver or TalkBack or at the largest text size on a phone: that's
-  the device check for #295.
+  the device check in #301.
 - How each hole plays (#136) is text: each side of each zone is read as one
   sentence ("Right: bad. Water, 260–290 off the tee."), and the grade's colour
   only backs up its name, which is always written. axe checks the grades'
