@@ -501,8 +501,9 @@ owner marks, and only their own ball. Marking runs the yardage card's watch
 within 10 m (`MARK_GOOD_WITHIN_M`), keeping the closest fix so far when the time
 runs out, or saying so when none came. The wait counts from when GPS is running,
 so a permission prompt doesn't use it up. Both limits are judgement calls from
-#293, not published figures (`src/domain/marks.ts`). The club picker lists the bag in its own order with
-nothing chosen, so it never suggests a club in a counted round. Afterwards the
+#293, not published figures (`src/domain/marks.ts`). The club picker lists the
+bag in its own order with nothing chosen, so it never suggests a club in a
+counted round. Afterwards the
 card says "Marked: <club>" for the hole's last mark, and a tap on it changes
 what was hit or undoes the mark. Nothing else on the Score screen or the hole
 map reads marks.
@@ -512,8 +513,10 @@ The store refuses a mark for a round it doesn't have, for a card being typed in
 round, or the group that holds it, deletes its marks. Posting, abandoning and
 reopening leave them. Removing a club deletes the marks that name it, and the
 Bag screen asks first when there are any, saying how many tracked shots go. Marks
-are saved on the phone with the rest of the dataset, the demo's included. They
-don't sync yet: backing them up with the account is #296.
+are saved on the phone with the rest of the dataset, the demo's included. A
+signed-in account's marks sync with it, and nobody else's phone sees them
+([Active server synchronization](#active-server-synchronization), #296). The
+demo's never leave the phone.
 
 A card being typed in lives in its own slot (`cardRoundId`) beside its group's
 live round. While it is open and its group is active, `store.round` is the
@@ -556,13 +559,14 @@ When the two Supabase public variables are present and a user is signed in,
 0. Before every push, on first contact and on the debounced path, it reads the
    account's move notices and applies them ([below](#deleting-an-account)). If
    that read fails, sync reports an error like any other, and the phone carries on.
-1. On first contact, it pulls the signed-in account's 24 snapshot tables (its
+1. On first contact, it pulls the signed-in account's 25 snapshot tables (its
    own rows only) and the outings shared with it.
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed. The bag is settled on its own: a phone with no clubs takes
    the account's, rather than pruning it, and a fresh install keeps clubs typed
    before signing in when the account has none. The usual score (`bag_settings`)
-   is settled the same way, apart from the clubs. A phone holding only a bag
+   and the marks (`marks`, #296) are settled the same way, each apart from the
+   others (`ON_THEIR_OWN` in `src/sync/remote.ts`). A phone holding only a bag
    still counts as fresh, so it can never prune a season. On a shared card, first
    contact sends only what this phone changed. A phone that's behind looks just like
    one that edited a cell, so it compares with `seenCells`, the shared scores and
@@ -600,7 +604,17 @@ outing. Those stay on the phone. A round or outing of the guest's own may
 still be on her group and course. Before this (#127), a guest's every push
 after joining failed on the organiser's group.
 
-The schema has 27 application tables: 24 snapshot tables plus
+Marks are their owner's alone, like the bag. The `marks` table has owner
+policies and no guest policy, so a guest's mark on the organiser's round is the
+guest's, and the organiser never reads it. Its `round_id` and `club_id` aren't
+foreign keys, since that round can be someone else's and a club can leave the bag
+on another phone first. The shared pull never asks for marks, and a merge keeps
+the phone's. `toRows` leaves a detached day's marks on the phone with the day, and
+`keepingPhoneOnly` keeps them when the phone adopts the account's season. A
+mark whose round the phone doesn't hold yet still goes up, since a fresh install
+takes the account's marks before the shared outings' rounds arrive.
+
+The schema has 28 application tables: 25 snapshot tables plus
 `outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need. Every owner write also checks the row it hangs from (`owns_group`,
@@ -677,7 +691,9 @@ The server side has two parts, and the app reaches them only through the first:
   phone.
 - **`delete_account_data(target)`**, a `security definer` SQL function that only
   the service role may execute. Scores and junk the account typed on someone
-  else's round become that round's owner's, so the day's money still adds up. It
+  else's round become that round's owner's, so the day's money still adds up. Its
+  marks on someone else's round don't: the hand-over skips the `marks` table, and
+  they go with the account (#296). It
   leaves [move notices](#move-notices) for the guests of any outing the account
   organised, for anyone with rows that stay on its groups or courses, and for anyone
   else in an outing on them. Those rows move to
@@ -799,7 +815,7 @@ so its sync stays in error until the phone holding it pushes first.
 
 **Rows from older builds.** The policies refuse these now. A row of the departing
 account's under someone else's round, outing, group or course becomes theirs, like a
-score on their card, so a press or a hole note outlives it, until their phone, which
+score on their card (a mark excepted), so a press or a hole note outlives it, until their phone, which
 never held it, prunes it at first contact. Its own round in someone else's outing goes
 with it. A row of someone else's under the departing account's
 group or course goes in their copy if they get one, and with the parent if they don't.

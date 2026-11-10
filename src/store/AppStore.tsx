@@ -61,7 +61,7 @@ interface Dataset {
   usualScore: UsualScore | null;
   /** Rounds this phone marked as practice (#136). Saved here, never synced. */
   practice: Record<RoundId, PracticeMark>;
-  /** The bag's owner's marks (#295). On the phone only, until #296 backs them up. */
+  /** The bag's owner's marks (#295), synced with their account like the bag (#296). */
   marks: Mark[];
   activeGroupId: string | null;
   /**
@@ -464,9 +464,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       rounds: state.rounds,
       outings: state.outings,
       clubs: state.clubs,
+      marks: state.marks,
       ...(state.usualScore ? { usualScore: state.usualScore } : {}),
     }),
-    [state.groups, state.courses, state.rounds, state.outings, state.clubs, state.usualScore],
+    [state.groups, state.courses, state.rounds, state.outings, state.clubs, state.marks, state.usualScore],
   );
 
   const adoptRemote = useCallback(

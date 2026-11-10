@@ -663,6 +663,44 @@ describe('reconcile, the bag', () => {
     recording(emptySnapshot());
     await expect(reconcile({ ...emptySnapshot(), bag_settings: settings('70s') })).resolves.toMatchObject({ status: 'pushed' });
   });
+
+  const mark = (id: string): Snapshot['marks'][number] => ({
+    id,
+    round_id: 'r1',
+    hole: 1,
+    lat: 45.5,
+    lng: -122.6,
+    accuracy_m: 5,
+    marked_at: 1_700_000_000_000,
+    kind: 'full',
+    club_id: 'k1',
+  });
+
+  it("brings the account's marks to a fresh install with its season", async () => {
+    const remote = { ...snapshotWithGroup(), marks: [mark('m9')] };
+    const { writes } = recording(remote);
+    await expect(reconcile(emptySnapshot())).resolves.toMatchObject({ status: 'adopted-remote', snapshot: { marks: [mark('m9')] } });
+    expect(writes).toEqual([]);
+  });
+
+  it("takes the account's marks on a phone with a season and none, rather than deleting them", async () => {
+    const remote = { ...snapshotWithGroup(), marks: [mark('m9')] };
+    const { deletes } = recording(remote);
+    const outcome = await reconcile(snapshotWithGroup());
+    expect(deletes).toEqual([]);
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 0, own: { marks: [mark('m9')] }, marks: [mark('m9')] });
+    expect(outcome).not.toHaveProperty('clubs');
+  });
+
+  it("puts a phone's own marks over the account's", async () => {
+    const remote = { ...snapshotWithGroup(), marks: [mark('m9')] };
+    const { writes, deletes } = recording(remote);
+    const outcome = await reconcile({ ...snapshotWithGroup(), marks: [mark('m1')] });
+    expect(deletes).toEqual(['marks']);
+    expect(writes).toContainEqual({ table: 'marks', rows: [{ ...mark('m1'), owner_id: 'owner-1' }] });
+    expect(outcome).toMatchObject({ status: 'pushed', deleted: 1 });
+    expect(outcome).not.toHaveProperty('marks');
+  });
 });
 
 describe('pushChanges', () => {

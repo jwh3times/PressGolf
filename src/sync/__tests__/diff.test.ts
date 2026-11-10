@@ -10,6 +10,7 @@ function demoRows(): Snapshot {
     rounds: data.rounds,
     outings: data.outings,
     clubs: data.clubs,
+    marks: data.marks,
   };
   return toRows(documents);
 }

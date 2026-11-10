@@ -78,6 +78,7 @@ function byId(documents: Documents): Documents {
     rounds: sorted(documents.rounds),
     outings: sorted(documents.outings),
     clubs: documents.clubs,
+    marks: documents.marks,
     usualScore: documents.usualScore,
   };
 }
@@ -151,7 +152,11 @@ describe('sync against a local Supabase stack', () => {
     await joinOuting(joinCode, null, 'Ben');
     expect((await pullSharedOutings()).clubs).toEqual([]);
     expect((await pullSharedOutings()).bag_settings).toEqual([]);
+    expect(season.marks.length).toBeGreaterThan(0);
+    expect((await pullSharedOutings()).marks).toEqual([]);
     const supabase = getSupabase()!;
+    const { data: marks } = await supabase.from('marks').select('id');
+    expect(marks).toEqual([]);
     const { data: seen } = await supabase.from('clubs').select('id').eq('id', season.clubs[0].id);
     expect(seen).toEqual([]);
     const { data: scores } = await supabase.from('bag_settings').select('usual_score');
@@ -219,7 +224,7 @@ describe('sync against a local Supabase stack', () => {
     // Ben keeps a group of his own, then joins Ann's day and merges it in, as his phone does.
     await signUp('ben');
     const own = demoDocuments(`${RUN}gpben`);
-    const mine: Documents = { groups: own.groups.slice(0, 1), courses: [], rounds: [], outings: [], clubs: [] };
+    const mine: Documents = { groups: own.groups.slice(0, 1), courses: [], rounds: [], outings: [], clubs: [], marks: [] };
     await pushSnapshot(toRows(mine));
     await joinOuting(joinCode, null, 'Ben');
     const sharedRows = await pullSharedOutings();
@@ -253,7 +258,7 @@ describe('sync against a local Supabase stack', () => {
   });
 
   it("doesn't let a phone that's behind on a shared card overwrite what another phone typed", async () => {
-    const empty: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
+    const empty: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] };
     await signUp('ann');
     const season = await pushSeason('fc');
     const outing = season.outings[0];
@@ -318,7 +323,7 @@ describe('sync against a local Supabase stack', () => {
     await signUp('ben');
     await joinOuting(joinCode, null, 'Ben');
     const sharedRows = await pullSharedOutings();
-    const merged = mergeShared({ groups: [], courses: [], rounds: [], outings: [], clubs: [] }, fromRows(sharedRows));
+    const merged = mergeShared({ groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] }, fromRows(sharedRows));
     const theirs = merged.rounds.find((r) => r.outingId === outing.id)!;
     const [by, against] = theirs.playerIds;
     const press = { id: `${RUN}gx-press`, by, against, startHole: 9, endHole: 17, stake: 100 };

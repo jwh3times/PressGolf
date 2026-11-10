@@ -5,10 +5,10 @@ import type { Documents } from '../rows';
 
 function local(): Documents {
   const data = buildDemoDataset(1_700_000_000_000);
-  return { groups: data.groups, courses: data.courses, rounds: data.rounds, outings: data.outings, clubs: data.clubs };
+  return { groups: data.groups, courses: data.courses, rounds: data.rounds, outings: data.outings, clubs: data.clubs, marks: data.marks };
 }
 
-const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [] };
+const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] };
 
 describe('mergeShared', () => {
   it('leaves everything alone when nothing is shared', () => {
@@ -41,6 +41,12 @@ describe('mergeShared', () => {
     const clubs = [{ id: 'k1', name: 'Driver', carry: 240 }];
     const merged = mergeShared({ ...NOTHING, clubs }, { ...NOTHING, outings: [local().outings[0]], clubs: [{ id: 'k9', name: 'PW', carry: 1 }] });
     expect(merged.clubs).toBe(clubs);
+  });
+
+  it("keeps this phone's marks: an outing brings nobody's", () => {
+    const marks = [{ id: 'm1', roundId: 'r1', hole: 1, position: { lat: 45.5, lng: -122.6 }, accuracy: 5, at: 1, kind: 'partial' as const, clubId: null }];
+    const merged = mergeShared({ ...NOTHING, marks }, { ...NOTHING, outings: [local().outings[0]], marks: [{ ...marks[0], id: 'm9' }] });
+    expect(merged.marks).toBe(marks);
   });
 
   it('adds a joined outing this phone has never seen', () => {

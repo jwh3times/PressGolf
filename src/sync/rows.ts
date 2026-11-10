@@ -29,6 +29,7 @@ import {
   type FeatureSource,
   type GreenSource,
   type LatLng,
+  type Mark,
   type GameOptions,
   type GamesConfig,
   type Group,
@@ -148,6 +149,23 @@ export interface ClubRow {
 export interface BagSettingsRow {
   id: 'bag';
   usual_score: UsualScore;
+}
+
+/**
+ * Where the bag's owner marked their ball (#295, #296): theirs alone, like the
+ * bag. `round_id` isn't a foreign key: a guest's mark sits on the organiser's
+ * round, and stays the guest's.
+ */
+export interface MarkRow {
+  id: string;
+  round_id: string;
+  hole: number;
+  lat: number;
+  lng: number;
+  accuracy_m: number | null;
+  marked_at: number;
+  kind: Mark['kind'];
+  club_id: string | null;
 }
 
 export interface RoundRow {
@@ -305,6 +323,7 @@ export interface Snapshot {
   outing_field_entrants: OutingFieldEntrantRow[];
   clubs: ClubRow[];
   bag_settings: BagSettingsRow[];
+  marks: MarkRow[];
 }
 
 /** The document-shaped data the app actually holds. */
@@ -314,6 +333,7 @@ export interface Documents {
   rounds: Round[];
   outings: Outing[];
   clubs: Club[];
+  marks: Mark[];
   /** Set once the bag's owner has said how they usually score. */
   usualScore?: UsualScore;
 }
@@ -342,9 +362,10 @@ export const TABLES: (keyof Snapshot)[] = [
   'round_options',
   'round_teams',
   'round_pairings',
-  // Nothing refers to a club, or is referred to by one, yet.
+  // A mark names its round and club by id, with no foreign key to either.
   'clubs',
   'bag_settings',
+  'marks',
 ];
 
 /**
@@ -419,6 +440,7 @@ export function emptySnapshot(): Snapshot {
     outing_field_entrants: [],
     clubs: [],
     bag_settings: [],
+    marks: [],
   };
 }
 
@@ -658,6 +680,26 @@ export function toRows(documents: Documents): Snapshot {
   });
   if (documents.usualScore) out.bag_settings.push({ id: 'bag', usual_score: documents.usualScore });
 
+  // A detached day's marks stay on the phone with it. Every other mark goes,
+  // even one whose round this phone doesn't hold yet: a shared day's rounds
+  // arrive after the marks a fresh install takes.
+  const synced = new Set(rounds.map((round) => round.id));
+  const leftOut = new Set(documents.rounds.filter((round) => !synced.has(round.id)).map((round) => round.id));
+  for (const mark of documents.marks) {
+    if (leftOut.has(mark.roundId)) continue;
+    out.marks.push({
+      id: mark.id,
+      round_id: mark.roundId,
+      hole: mark.hole,
+      lat: mark.position.lat,
+      lng: mark.position.lng,
+      accuracy_m: mark.accuracy,
+      marked_at: mark.at,
+      kind: mark.kind,
+      club_id: mark.clubId,
+    });
+  }
+
   return out;
 }
 
@@ -675,6 +717,7 @@ function groupBy<T, K extends string>(rows: T[], key: (row: T) => K): Map<K, T[]
 }
 
 const byOrder = <T extends { sort_order: number }>(a: T, b: T) => a.sort_order - b.sort_order;
+const byId = <T extends { id: string }>(a: T, b: T) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /** A course's tees in order, each with its card. A course always has one: an empty Default if the server has none. */
 function courseTees(courseId: string, rows: TeeRow[], holesByTee: Map<string, TeeHoleRow[]>): Tee[] {
@@ -756,7 +799,7 @@ export function fromRows(snapshot: Snapshot): Documents {
     // In id order, so a course reads back the same whichever order the server sent it.
     features: (featuresByCourse.get(row.id) ?? [])
       .slice()
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .sort(byId)
       .map((f) => ({
         id: f.id,
         kind: f.kind,
@@ -914,8 +957,23 @@ export function fromRows(snapshot: Snapshot): Documents {
     .sort((a, b) => a.position - b.position)
     .map((row) => ({ id: row.id, name: row.name, carry: row.carry_yards }));
 
+  // In the order they were made, which is the order shots pair up in.
+  const marks: Mark[] = snapshot.marks
+    .slice()
+    .sort((a, b) => a.marked_at - b.marked_at || byId(a, b))
+    .map((row) => ({
+      id: row.id,
+      roundId: row.round_id,
+      hole: row.hole,
+      position: { lat: row.lat, lng: row.lng },
+      accuracy: row.accuracy_m,
+      at: row.marked_at,
+      kind: row.kind,
+      clubId: row.club_id,
+    }));
+
   const settings = snapshot.bag_settings[0];
-  return { groups, courses, rounds, outings, clubs, ...(settings ? { usualScore: settings.usual_score } : {}) };
+  return { groups, courses, rounds, outings, clubs, marks, ...(settings ? { usualScore: settings.usual_score } : {}) };
 }
 
 /** Rows in a snapshot, for logs and for deciding whether a push is worth making. */

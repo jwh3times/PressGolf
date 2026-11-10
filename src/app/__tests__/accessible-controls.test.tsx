@@ -1554,7 +1554,7 @@ describe('management screen state matrices', () => {
 
   it('starts an empty bag from a full set', async () => {
     const user = userEvent.setup();
-    useStoreValue({ clubs: [] });
+    useStoreValue({ clubs: [], marks: [] });
     await render(<BagScreen />);
     expect(screen.getByText('No clubs yet')).toBeTruthy();
     await user.press(screen.getByRole('button', { name: 'Start with a full set' }));
@@ -2949,7 +2949,7 @@ describe('the hole map', () => {
 
   it('lists every hole in the course guide, and opens each one\'s map', async () => {
     // No carries, so no club to suggest: the hole strategy's aim is the advice.
-    useStoreValue({ courses: [mapped], clubs: [] });
+    useStoreValue({ courses: [mapped], clubs: [], marks: [] });
     mockParams = { course: mapped.id };
     const view = await render(<CourseGuideScreen />);
     expectEveryControlToHaveAName();
@@ -2969,7 +2969,7 @@ describe('the hole map', () => {
 
   it('says where to aim when looking a course over, but not in a counted round', async () => {
     // With no carries in the bag there is no club to suggest, so the hole strategy's aim stands.
-    const view = await open({ hole: '3' }, { clubs: [] });
+    const view = await open({ hole: '3' }, { clubs: [], marks: [] });
     expect(screen.getByLabelText('Aim: Aim at the middle of the green. Short is safer than long.')).toBeOnTheScreen();
     expect(screen.queryByRole('switch', { name: 'Practice round' })).toBeNull();
     await view.unmount();
@@ -3051,7 +3051,7 @@ describe('the hole map', () => {
 
   it('gives the course guide aiming advice outside a round, and in one only when it is practice', async () => {
     // No carries, so no club to suggest: the hole strategy's aim is the advice.
-    useStoreValue({ courses: [mapped], clubs: [] });
+    useStoreValue({ courses: [mapped], clubs: [], marks: [] });
     mockParams = { course: mapped.id };
     let view = await render(<CourseGuideScreen />);
     expect(screen.getByRole('button', { name: /^Hole 3 PAR .*Aim: Aim at the middle of the green\./ })).toBeOnTheScreen();
