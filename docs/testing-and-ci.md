@@ -444,6 +444,13 @@ Because of the extra approval, `gh pr merge` can refuse a clean PR whose require
 checks have all passed, with "the base branch policy prohibits the merge". A PR
 refused this way is merged in the GitHub web interface.
 
+The active `Protect Release Tags` ruleset applies to tags matching `v*` (#312).
+It blocks updates, deletions and force pushes, so a release tag stays on the
+commit it was made on. It leaves creation open, so **Tag the release** can
+still make the next one. With no bypass list, fixing a wrong tag means setting
+the ruleset's enforcement to Disabled, fixing the tag and setting it back to
+Active.
+
 GitHub secret scanning and push protection are enabled. Dependabot checks npm
 and GitHub Actions daily at 05:00 America/New_York. Workflow actions are pinned
 to full commit SHAs; Dependabot groups their updates so the pin can move through
