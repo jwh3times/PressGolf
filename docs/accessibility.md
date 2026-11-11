@@ -125,8 +125,8 @@ substitute for assistive-technology use on both platforms.
   typed carry, a **Use** chip follows it, named "Use 150 yards for 7 iron", and
   the line wraps with the chip at any text size. Jest covers the line, the
   chip's name, its absence when the carries match, and what **Use** types in.
-  From ten counting shots the same line ends with the club's measured spread
-  (#299), in words: "Two in three within 3 yd.", which Jest covers too.
+  From ten counting tracked shots the same line ends with the club's measured
+  spread (#299), in words: "Two in three within 3 yd.", which Jest covers too.
   The demo has no tracked shots, so the web suite's Bag baselines don't show
   the line. It hasn't been tried with VoiceOver or TalkBack or at the largest
   text size on a phone: that's step 12 of the device check in #301.
