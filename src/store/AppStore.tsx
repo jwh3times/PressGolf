@@ -11,7 +11,7 @@ import { DEMO_MODE_DEFAULT } from '../config/flags';
 import { buildDemoDataset } from '../demo/seed';
 import { RoundContext, settleOuting, settleRound } from '../domain/engine';
 import { withClub } from '../domain/bag';
-import { hitFields, inBag } from '../domain/marks';
+import { hitFields, inBag, withHit } from '../domain/marks';
 import { trackedShots } from '../domain/tracked-shots';
 import { withNote } from '../domain/course-map';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
@@ -186,6 +186,11 @@ export interface AppStore extends AppState {
   /** Changes what was hit from a mark; nothing for a club that isn't in the bag. */
   changeMark(id: string, hit: MarkHit): void;
   undoMark(id: string): void;
+  /**
+   * Takes a tracked shot out of its club's list (#298). Its mark stays, as not a
+   * full swing, so it still ends the shot hit before it on the hole.
+   */
+  deleteTrackedShot(startId: string): void;
 
   // Rounds
   startRound(round: Round): void;
@@ -911,10 +916,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       changeMark: (id, hit) =>
         commit((prev) =>
           inBag(prev.clubs, hit)
-            ? { ...prev, marks: prev.marks.map((m) => (m.id === id ? { ...m, ...hitFields(hit) } : m)) }
+            ? { ...prev, marks: withHit(prev.marks, id, hit) }
             : prev,
         ),
       undoMark: (id) => commit((prev) => ({ ...prev, marks: prev.marks.filter((m) => m.id !== id) })),
+      deleteTrackedShot: (startId) =>
+        commit((prev) => ({ ...prev, marks: withHit(prev.marks, startId, { kind: 'partial' }) })),
 
       setPractice: (roundId, on) =>
         commit((prev) => {

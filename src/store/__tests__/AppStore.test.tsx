@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { buildDemoDataset } from '../../demo/seed';
 import { makeCourse, makeOuting, makePlayer, makeRound } from '../../domain/factory';
 import { frame } from '../../domain/hole-map';
+import { trackedShots } from '../../domain/tracked-shots';
 import type { Mark, Round } from '../../domain/types';
 import { deleteAccount } from '../../sync/supabase';
 import { useDataSync } from '../../sync/useDataSync';
@@ -1240,6 +1241,39 @@ describe('AppStoreProvider', () => {
       await waitFor(() =>
         expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ clubs: expect.arrayContaining([{ ...seven, carry: 150 }]) })),
       );
+    });
+
+    it('deletes a tracked shot, keeping its mark as the end of the shot before it (#298)', async () => {
+      const data = buildDemoDataset(1_750_000_000_000);
+      const posted = data.rounds.find((r) => r.status === 'completed')!;
+      const seven = data.clubs.find((c) => c.name === '7 iron')!;
+      const driver = data.clubs.find((c) => c.name === 'Driver')!;
+      const north = frame(TEE, 0);
+      const fix = (yards: number) => north.toLatLng([0, yards * 0.9144]);
+      let at = 1;
+      const markAt = (hole: number, yards: number, kind: Mark['kind'], clubId: string | null = null): Mark => ({
+        id: `m${at}`,
+        roundId: posted.id,
+        hole,
+        position: fix(yards),
+        accuracy: 4,
+        at: at++,
+        kind,
+        clubId,
+      });
+      // Hole 1: a 250-yard drive, then a 150-yard 7 iron to the green. Four more 7 irons on hole 2 make five.
+      const drive = markAt(1, 0, 'full', driver.id);
+      const approach = markAt(1, 250, 'full', seven.id);
+      const marks = [drive, approach, markAt(1, 400, 'green')];
+      for (let i = 0; i < 4; i++) marks.push(markAt(2, 0, 'full', seven.id), markAt(2, 152.25, 'partial'));
+      await mount({ ...data, marks });
+      const tracked = () => trackedShots(store);
+      expect(tracked()[seven.id].trackedCarry).toBe(150);
+
+      await change(() => store.deleteTrackedShot(approach.id));
+      expect(tracked()[seven.id]).toMatchObject({ counting: 4, trackedCarry: null });
+      expect(tracked()[seven.id].shots.map((s) => s.start.id)).not.toContain(approach.id);
+      expect(tracked()[driver.id].shots[0]).toMatchObject({ yards: expect.closeTo(250, 0), finish: { id: approach.id, kind: 'partial', clubId: null } });
     });
 
     it('takes the marks of a deleted group\'s rounds', async () => {

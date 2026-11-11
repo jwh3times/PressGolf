@@ -6,79 +6,80 @@
   - radio /\d+[hmsp]+/ [checked]: 80S
   - radio /\d+[hmsp]+/: 90S
   - radio /\d+[hmsp]+ or more/: 100S OR MORE
-- text: /Over \d+ holes\. Club suggestions in a practice round spread your shots the way published figures say they spread for golfers who score like this\. \d+ clubs Driver/
+- text: /Over \d+ holes\. Club suggestions in a practice round spread your shots the way published figures say they spread for golfers who score like this\. \d+ clubs/
+- button "Tracked shots with Driver": Driver ›
 - textbox "Driver carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove Driver": ×
-- text: 3 wood
+- button "Tracked shots with 3 wood": 3 wood ›
 - textbox "3 wood carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 3 wood": ×
-- text: 5 wood
+- button "Tracked shots with 5 wood": 5 wood ›
 - textbox "5 wood carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 5 wood": ×
-- text: 4 hybrid
+- button "Tracked shots with 4 hybrid"
 - textbox "4 hybrid carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 4 hybrid": ×
-- text: 5 iron
+- button "Tracked shots with 5 iron": 5 iron ›
 - textbox "5 iron carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 5 iron": ×
-- text: 6 iron
+- button "Tracked shots with 6 iron": 6 iron ›
 - textbox "6 iron carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 6 iron": ×
-- text: 7 iron
+- button "Tracked shots with 7 iron": 7 iron ›
 - textbox "7 iron carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 7 iron": ×
-- text: 8 iron
+- button "Tracked shots with 8 iron": 8 iron ›
 - textbox "8 iron carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 8 iron": ×
-- text: 9 iron
+- button "Tracked shots with 9 iron": 9 iron ›
 - textbox "9 iron carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove 9 iron": ×
-- text: PW
+- button "Tracked shots with PW": PW ›
 - textbox "PW carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove PW": ×
-- text: GW
+- button "Tracked shots with GW": GW ›
 - textbox "GW carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove GW": ×
-- text: SW
+- button "Tracked shots with SW": SW ›
 - textbox "SW carry, in yards":
   - /placeholder: —
   - text: /\d+/
 - text: yd
 - button "Remove SW": ×
-- text: LW
+- button "Tracked shots with LW": LW ›
 - textbox "LW carry, in yards":
   - /placeholder: —
   - text: /\d+/

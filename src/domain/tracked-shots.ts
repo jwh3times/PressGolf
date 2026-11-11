@@ -132,6 +132,35 @@ export function trackedShots({ marks, rounds, courses, clubs: bag }: TrackedInpu
   return byClub;
 }
 
+/** Where a shot that doesn't count was hit from, in words. Water of either kind is a penalty area. */
+const LIE_REASON: Partial<Record<Surface, string>> = {
+  sand: 'from sand',
+  water: 'from a penalty area',
+  lateralWater: 'from a penalty area',
+  green: 'from the green',
+  outOfBounds: 'from out of bounds',
+};
+
+/** Why a tracked shot doesn't count, as the bag's shot list says it (#298); null for one that does. */
+export function whyNot(shot: TrackedShot): string | null {
+  switch (shot.status) {
+    case 'counts':
+      return null;
+    case 'roundOpen':
+      return 'round still open';
+    case 'noFinish':
+      return 'no finish';
+    case 'lie':
+      return LIE_REASON[shot.startLie]!;
+    case 'roughFix':
+      return 'GPS too rough';
+    case 'short':
+      return `under ${SHORTEST_SHARE * 100}% of carry`;
+    case 'older':
+      return `older than the latest ${LATEST_SHOTS}`;
+  }
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);

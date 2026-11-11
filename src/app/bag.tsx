@@ -95,6 +95,7 @@ export default function BagScreen() {
               tracked={tracked[club.id] ?? null}
               onCarry={(carry) => store.setCarry(club.id, carry)}
               onUseTracked={() => store.takeTrackedCarry(club.id)}
+              onOpen={() => router.push({ pathname: '/club-shots', params: { club: club.id } })}
               onRemove={() => remove(club)}
             />
           ))}
@@ -141,13 +142,14 @@ export default function BagScreen() {
   );
 }
 
-/** One club: its name, its carry as typed, its tracked carry once it has one, and a way out of the bag. Typed text is held here, so "1" on the way to 150 survives. */
+/** One club: its name, which opens its tracked shots (#298), its carry as typed, its tracked carry once it has one, and a way out of the bag. Typed text is held here, so "1" on the way to 150 survives. */
 function ClubRow({
   club,
   passes,
   tracked,
   onCarry,
   onUseTracked,
+  onOpen,
   onRemove,
 }: {
   club: Club;
@@ -155,6 +157,7 @@ function ClubRow({
   tracked: ClubShots | null;
   onCarry: (carry: number | null) => void;
   onUseTracked: () => void;
+  onOpen: () => void;
   onRemove: () => void;
 }) {
   const styles = useStyles();
@@ -167,7 +170,15 @@ function ClubRow({
   return (
     <View style={styles.row}>
       <View style={styles.line}>
-        <Text style={[styles.name, { flex: 1, minWidth: 0 }]}>{club.name}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Tracked shots with ${club.name}`}
+          onPress={onOpen}
+          style={({ pressed }) => [styles.open, pressed && { opacity: 0.6 }]}
+        >
+          <Text style={[styles.name, { flexShrink: 1 }]}>{club.name}</Text>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
         <View style={styles.carry}>
           <TextInput
             accessibilityLabel={`${club.name} carry, in yards`}
@@ -234,6 +245,8 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     },
     line: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     name: { fontFamily: fonts.sansSemi, fontSize: 14, color: ink.full },
+    open: { flex: 1, minWidth: 0, minHeight: MIN_TAP_TARGET, flexDirection: 'row', alignItems: 'center', gap: 6 },
+    chevron: { fontFamily: fonts.sans, fontSize: 18, color: ink.muted },
     carry: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     input: {
       width: 68,

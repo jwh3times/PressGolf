@@ -540,6 +540,12 @@ typed carry to it (`takeTrackedCarry`). Press never changes a carry on its own,
 and club suggestions use only the typed carry. The 5, 20, 40% and 10 m are
 judgement calls from the #293 design session, not published figures.
 
+A club's name in the bag opens its tracked shots (`src/app/club-shots.tsx`,
+#298), newest first, each with `whyNot`'s reason when it doesn't count.
+Deleting one (`deleteTrackedShot`) turns its start mark into *Not a full
+swing* rather than removing it, so the mark still ends the shot hit before it
+on the hole, and that tracked shot is still measured to it.
+
 A card being typed in lives in its own slot (`cardRoundId`) beside its group's
 live round. While it is open and its group is active, `store.round` is the
 card and edits land on it. The live round is untouched, and returns when the
