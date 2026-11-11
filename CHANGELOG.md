@@ -9,6 +9,10 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.4.0] - 2026-11-10
+
 ### Added
 
 - A club's name in the bag opens its **tracked shots**, newest first: the date, course and hole,
@@ -17,6 +21,14 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
   the latest 20"). **Delete** takes one marked with the wrong club out of the list, after asking,
   and the club's tracked carry follows. Its mark stays as where the tracked shot before it
   finished, so that one keeps its length. A club with none says "No tracked shots yet".
+
+### Changed
+
+- Once ten of a club's tracked shots count, the club suggestions in a practice round, or looking a
+  course over, spread that club's carries the way yours have gone, in place of the figure for your
+  usual score. The Bag screen says how far: "Two in three within 4 yd." Which way your shots go,
+  mishits, the rough and putting still follow your usual score. Only rounds that have closed
+  count, so nothing you mark in the round you're playing changes a suggestion.
 
 ## [1.3.0] - 2026-11-10
 

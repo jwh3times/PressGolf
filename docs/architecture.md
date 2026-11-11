@@ -298,7 +298,8 @@ round (Rule 4.3a), so the bag is plain information and is always on.
 
 The bag also keeps how its owner usually scores (`AppData.usualScore`: the
 70s, 80s, 90s or 100s or more), which sets how widely club suggestions spread
-their shots. Until they choose, it is about 72 plus the handicap index of their
+their shots (a club's measured spread replaces it for carry, see
+[Club suggestions](#club-suggestions)). Until they choose, it is about 72 plus the handicap index of their
 player in their first group, or a starting guess of the 90s (`usualScoreFor`).
 It syncs as `bag_settings`, one owner-only row an account, keyed by its owner
 and an `id` that is always `bag`, since the phone's rows carry no owner.
@@ -309,7 +310,8 @@ In a practice round, or looking a course over outside a round, the app
 suggests a club, where to aim and, when it is close, a second way to play the
 shot (#146). `suggestShot` (`src/domain/club-suggestion.ts`) is pure: given
 the course, the hole, where the shot is from (the tee when it isn't known),
-the lie, the bag, the usual score and a seed, it returns the suggestion.
+the lie, the bag, the usual score, any clubs' measured spreads and a seed, it
+returns the suggestion.
 
 - **The shot pattern** (`src/domain/shot-model.ts`) follows Broadie and Ko
   (WSC 2009): direction error is normal, its standard deviation by usual score
@@ -317,6 +319,20 @@ the lie, the bag, the usual score and a seed, it returns the suggestion.
   distance error is a share of the shot, fitted so the median leave from 125
   yards matches that paper's Table 2; and a share of mishits, from its awful
   shots a round (eq. 2), fly 40–80% of the carry. Rough and sand widen it.
+- **A club's own spread** (#299): from 10 counting tracked shots, a club's
+  spread of carry is its own, measured, in place of the usual score's, for
+  its draws and the length of its shot-pattern oval (`spreads` in the
+  suggestion input, by club id). It is the interquartile
+  range of the counting shots' inferred carries ÷ 1.35, the standard deviation
+  of a normal spread that one wild shot barely moves, as a share of their
+  median (`spread` from `trackedShots`). The Bag screen shows it as "two in
+  three within N yd" of the tracked carry. Direction, mishits, the rough and
+  putting stay the usual score's: a mark says where the ball went, not where
+  it was aimed. Rough and sand still widen a measured spread, since it is
+  measured from the tee, fairway and rough alike. Only closed rounds' shots
+  count, so nothing marked in the round being played changes a suggestion.
+  The 10 is a judgement call from the #293 design session, not a published
+  figure.
 - **Each finish** is read from the map (out of bounds, water, sand, the green,
   fairway; anything else rough) and scored by strokes to hole out: Broadie's
   PGA Tour table (Interfaces 42(2), 2012, Table B.1) plus what a golfer of the
@@ -537,8 +553,10 @@ with nothing mapped reads as rough. From 5 counting shots a club has a
 **tracked carry**, their median inferred carry to the yard, which the Bag
 screen shows beside the typed one with its shot count, and **Use** sets the
 typed carry to it (`takeTrackedCarry`). Press never changes a carry on its own,
-and club suggestions use only the typed carry. The 5, 20, 40% and 10 m are
-judgement calls from the #293 design session, not published figures.
+and club suggestions use only the typed carry. From 10, the club's measured
+spread goes to the suggestions on its own (see
+[Club suggestions](#club-suggestions)). The 5, 20, 40% and 10 m are judgement
+calls from the #293 design session, not published figures.
 
 A club's name in the bag opens its tracked shots (`src/app/club-shots.tsx`,
 #298), newest first, each with `whyNot`'s reason when it doesn't count.

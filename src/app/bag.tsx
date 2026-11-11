@@ -6,7 +6,7 @@ import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Chip, CHIP_ROW_GAP, EmptyState, Eyebrow, GhostButton, Mono, PrimaryButton } from '../components/primitives';
 import { clubsToAdd, MAX_CARRY, MAX_CLUB_NAME, MAX_CLUBS, outOfOrder, parseCarry, starterBag, USUAL_SCORES, usualScoreFor } from '../domain/bag';
 import { marksNaming } from '../domain/marks';
-import { SHOTS_FOR_CARRY, trackedShots, type ClubShots } from '../domain/tracked-shots';
+import { SHOTS_FOR_CARRY, SHOTS_FOR_SPREAD, trackedShots, type ClubShots } from '../domain/tracked-shots';
 import type { Club } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles, useTheme } from '../theme/theme';
@@ -18,7 +18,9 @@ import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
  * (#146). Distances you wrote down yourself before the round are allowed in a
  * counted one, so this is plain information; nothing here suggests a club.
  * Neither is a club's tracked carry (#297): it comes only from rounds that have
- * closed, and changes the bag only when the player taps Use.
+ * closed, and changes the bag only when the player taps Use. Its measured
+ * spread (#299) reaches the practice suggestions on its own: it is how the
+ * player's shots have gone, not a club to hit.
  */
 export default function BagScreen() {
   const styles = useStyles();
@@ -56,7 +58,7 @@ export default function BagScreen() {
       <ModalHeader eyebrow="Settings" title="My bag" onClose={() => router.back()} />
 
       <Body style={{ color: ink.soft, lineHeight: 19 }}>
-        {`How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before the round are allowed in a counted one. Once a club has ${SHOTS_FOR_CARRY} tracked shots from rounds that have closed, its tracked carry shows beside it.`}
+        {`How far each club carries in the air on a full swing, in yards. Distances you wrote down yourself before the round are allowed in a counted one. Once a club has ${SHOTS_FOR_CARRY} tracked shots from rounds that have closed, its tracked carry shows beside it, and from ${SHOTS_FOR_SPREAD}, how far its carries stray, which club suggestions use in place of your usual score's.`}
       </Body>
 
       <View style={{ gap: 8 }}>
@@ -165,6 +167,7 @@ function ClubRow({
   const [text, setText] = useState(club.carry == null ? '' : String(club.carry));
   const typed = text.trim() !== '' && parseCarry(text) == null;
   const carry = tracked?.trackedCarry ?? null;
+  const spread = tracked?.spread ?? null;
   const note = typed ? `A carry is 1 to ${MAX_CARRY} yards.` : passes ? `Carries further than your ${passes}.` : null;
 
   return (
@@ -214,7 +217,8 @@ function ClubRow({
       {carry != null ? (
         <View style={styles.tracked}>
           <Text style={styles.trackedNote}>
-            {`Tracked ${carry} yd, from ${tracked!.counting} tracked shots`}
+            {/* The measured spread (#299) is one standard deviation, and that either side holds about two in three. */}
+            {`Tracked ${carry} yd, from ${tracked!.counting} tracked shots${spread == null ? '' : `. Two in three within ${Math.round(spread * carry)} yd.`}`}
           </Text>
           {carry !== club.carry ? (
             <Chip

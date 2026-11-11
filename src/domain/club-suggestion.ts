@@ -42,6 +42,12 @@ export interface SuggestionInput {
   lie?: Lie;
   bag: Club[];
   usualScore: UsualScore;
+  /**
+   * A club's measured carry spread, by its id (#299): its tracked shots' own,
+   * as a share of its carry, which it simulates with in place of the usual
+   * score's. Direction, mishits, the rough and putting stay the usual score's.
+   */
+  spreads?: Record<string, number>;
   /** The same seed for the same spot gives the same answer, so it doesn't flicker. */
   seed: number;
 }
@@ -546,8 +552,10 @@ export function suggestShot(input: SuggestionInput): ClubSuggestion {
     const going = reach >= toHole - ground.greenRadius;
     const base = going ? ground.hole : ahead(ground, reach);
     const approach: Approach = going ? 'go' : driverOrLess ? (club === longest ? 'driver' : 'less') : 'layUp';
+    const measuredSd = input.spreads?.[club.id];
+    const golferWithClub = measuredSd == null ? golfer : { ...golfer, distanceSd: measuredSd };
     const aims = aimPoints(ground, base, going).map(({ at, aim }) => {
-      const result = simulate(ground, golfer, lie, { club, approach, at, aim }, luck);
+      const result = simulate(ground, golferWithClub, lie, { club, approach, at, aim }, luck);
       return { club: club.name, approach, aim, odds: oddsOf(result.finishes), ...result };
     });
     // The club's best aim, the middlemost of those level with it.

@@ -251,6 +251,32 @@ describe('a green with no outline', () => {
   });
 });
 
+describe('a measured spread', () => {
+  // One 150-yard club, between two that are no use from 150, and a 90s golfer's 8.3% spread of carry.
+  const bag = [club('Driver', 240), club('7 iron', 146), club('LW', 55)];
+  const best = (spreads?: Record<string, number>) =>
+    suggestShot(input(hole(4, 150, [], { fairway: false }), 4, { from: at(0), lie: 'fairway', bag, spreads })).best!;
+  const deep = (option: ShotOption) => {
+    const north = option.pattern.map((p) => flat.toXY(p)[1]);
+    return Math.max(...north) - Math.min(...north);
+  };
+
+  it('simulates the club it was measured for, and leaves every other club with the usual score’s', () => {
+    const usual = best();
+    expect(usual.club).toBe('7 iron');
+    expect(best({ 'k-LW': 0.3 })).toEqual(usual);
+    const tight = best({ 'k-7 iron': 0.02 });
+    expect(tight.club).toBe('7 iron');
+    expect(deep(tight)).toBeLessThan(deep(usual) / 2);
+  });
+
+  it('finds the green less often the wider the club spreads', () => {
+    const onGreen = (spread: number) => best({ 'k-7 iron': spread }).finishes.green;
+    expect(onGreen(0.02)).toBeGreaterThan(best().finishes.green);
+    expect(onGreen(0.2)).toBeLessThan(best().finishes.green);
+  });
+});
+
 describe('the shot pattern', () => {
   it('draws a ring around where the club is aimed', () => {
     const result = suggestShot(input(hole(4, 150, [], { fairway: false }), 4));

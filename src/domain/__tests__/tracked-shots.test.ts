@@ -262,3 +262,21 @@ describe('a club’s tracked carry', () => {
     expect(seven).toMatchObject({ counting: 4, trackedCarry: null });
   });
 });
+
+describe('a club’s measured spread', () => {
+  /** A 7 iron on hole 1 that went `yards` along the fairway: a carry of that ÷ 1.03, a short iron's roll. */
+  const shotOf = (yards: number) => [mark('r1', 1, 50, full(SEVEN.id)), mark('r1', 1, 50 + yards, PARTIAL)];
+  const sevenOf = (...yards: number[]) => trackedShots(input(yards.flatMap(shotOf)))[SEVEN.id];
+
+  it('waits for 10 counting shots', () => {
+    expect(sevenOf(145, 146, 147, 148, 149, 150, 151, 152, 153)).toMatchObject({ counting: 9, spread: null });
+  });
+
+  it('is the interquartile range of the carries ÷ 1.35, as a share of their median', () => {
+    // 145 to 154 yards: quartiles 147.25 and 151.75, so 4.5 ÷ 1.35 = 3.33, of a 149.5 median: 2.23%. Every
+    // carry is its yards ÷ 1.03, which leaves a share the same.
+    const seven = sevenOf(154, 145, 153, 146, 152, 147, 151, 148, 150, 149);
+    expect(seven.counting).toBe(10);
+    expect(seven.spread).toBeCloseTo(0.0223, 4);
+  });
+});
