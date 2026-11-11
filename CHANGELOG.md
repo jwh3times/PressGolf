@@ -9,7 +9,14 @@ maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- A club's name in the bag opens its **tracked shots**, newest first: the date, course and hole,
+  how far each went and carried, and for one that doesn't count, why ("round still open", "no
+  finish", "from sand", "from a penalty area", "GPS too rough", "under 40% of carry" or "older than
+  the latest 20"). **Delete** takes one marked with the wrong club out of the list, after asking,
+  and the club's tracked carry follows. Its mark stays as where the tracked shot before it
+  finished, so that one keeps its length. A club with none says "No tracked shots yet".
 
 ## [1.3.0] - 2026-11-10
 

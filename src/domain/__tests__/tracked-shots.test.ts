@@ -1,5 +1,5 @@
 import { frame } from '../hole-map';
-import { trackedShots, type TrackedInput } from '../tracked-shots';
+import { trackedShots, whyNot, type TrackedInput } from '../tracked-shots';
 import type { Club, Course, CourseFeature, FeatureKind, LatLng, Mark, MarkHit, Round, RoundStatus } from '../types';
 import { makeTestCourse, makeTestRound } from './helpers';
 
@@ -193,11 +193,48 @@ describe('which tracked shots count', () => {
     expect(statusOf(shot('r1', 150, 200), [round('r1')], [club('7 iron', null)].map((c) => ({ ...c, id: SEVEN.id })))).toEqual(['counts']);
   });
 
+  const counting = (n: number) => Array.from({ length: n }, () => shot('r1', 150, 300)).flat();
+
   it('counts only the latest 20 tracked shots that pass every other rule', () => {
-    const counting = (n: number) => Array.from({ length: n }, () => shot('r1', 150, 300)).flat();
     // Two shots, then one from sand, which takes no place in the twenty, then twenty more.
     const marks = [...counting(2), ...shot('r1', at(210, -12), 350), ...counting(20)];
     expect(statusOf(marks)).toEqual([...Array(20).fill('counts'), 'lie', 'older', 'older']);
+  });
+
+  it('says why each one doesn’t count, in words, and nothing for one that does', () => {
+    const marks = [
+      ...counting(19),
+      ...shot('r1', 150, 300, { accuracy: 30 }),
+      ...shot('r1', 150, 205),
+      ...shot('r1', 150, 215),
+      ...shot('r1', at(210, -12), 350),
+      ...shot('r1', at(250, 12), 350),
+      ...shot('r1', 400, 405),
+      ...counting(2),
+      mark('r1', 1, 150, full(SEVEN.id)),
+    ];
+    expect(trackedShots(input(marks))[SEVEN.id].shots.map(whyNot)).toEqual([
+      'no finish',
+      null,
+      null,
+      'from the green',
+      'from a penalty area',
+      'from sand',
+      null,
+      'under 40% of carry',
+      'GPS too rough',
+      ...Array(17).fill(null),
+      'older than the latest 20',
+      'older than the latest 20',
+    ]);
+    expect(trackedShots(input(shot('r1', 150, 300), [round('r1', 'active')]))[SEVEN.id].shots.map(whyNot)).toEqual(['round still open']);
+  });
+
+  it('says a shot from beyond the course’s edge was from out of bounds', () => {
+    const fenced: Course = { ...COURSE, features: [...COURSE.features, feature('courseEdge', box(-20, 420, -40, 40))] };
+    const marks = shot('r1', at(150, 60), 300);
+    const [result] = trackedShots({ ...input(marks), courses: [fenced] })[SEVEN.id].shots;
+    expect(whyNot(result)).toBe('from out of bounds');
   });
 });
 

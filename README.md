@@ -25,7 +25,9 @@ up, by simulating each club's spread of shots from where the player stands.
 In a live round, the bag's owner can mark where their ball lies and what they
 hit from it, backed up with their account and seen by nobody else. Once a
 round has closed, those tracked shots give each club a tracked carry beside
-the typed one, which **Use** copies into the bag.
+the typed one, which **Use** copies into the bag, and a list of the club's
+tracked shots, each saying why it doesn't count when it doesn't, to delete one
+marked with the wrong club.
 
 ## Quick start
 
@@ -177,10 +179,12 @@ As of October 2026:
   Supabase stack, but not yet on a phone on a course
   ([#301](https://github.com/jwh3times/PressGolf/issues/301)).
 - A club's tracked carry ([#297](https://github.com/jwh3times/PressGolf/issues/297))
-  is checked in Jest, not yet on a phone
+  and its list of tracked shots
+  ([#298](https://github.com/jwh3times/PressGolf/issues/298)) are checked in
+  Jest, not yet on a phone
   ([#301](https://github.com/jwh3times/PressGolf/issues/301)). GPS can't tell
-  roll from carry, so it takes off the shot model's estimated roll, and its
-  counting rules are judgement calls, not published figures
+  roll from carry, so the tracked carry takes off the shot model's estimated
+  roll, and the counting rules are judgement calls, not published figures
   ([architecture](docs/architecture.md#local-data-and-demo-isolation)).
 - Club suggestions ([#146](https://github.com/jwh3times/PressGolf/issues/146))
   rest on published shot patterns by usual score, the bag's typed carries and

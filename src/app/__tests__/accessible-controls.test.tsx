@@ -19,6 +19,7 @@ import HomeScreen from '../(tabs)/index';
 import ScoreScreen from '../(tabs)/score';
 import SettleScreen from '../(tabs)/settle';
 import BagScreen from '../bag';
+import ClubShotsScreen from '../club-shots';
 import CourseScreen from '../course/[id]';
 import CourseGuideScreen from '../course-guide';
 import CoursesScreen from '../courses';
@@ -203,6 +204,7 @@ const actions = {
   fillBag: jest.fn(),
   setCarry: jest.fn(),
   takeTrackedCarry: jest.fn(),
+  deleteTrackedShot: jest.fn(),
   removeClub: jest.fn(),
   markBall: jest.fn(),
   changeMark: jest.fn(),
@@ -1665,6 +1667,64 @@ describe('management screen state matrices', () => {
     await user.press(screen.getByRole('button', { name: 'Use 150 yards for 7 iron' }));
     expect(actions.takeTrackedCarry).toHaveBeenCalledWith('k7');
     expect(screen.getByLabelText('7 iron carry, in yards').props.value).toBe('150');
+  });
+
+  it('opens a club\'s tracked shots from its name (#298)', async () => {
+    const user = userEvent.setup();
+    useStoreValue({ clubs: [{ id: 'k7', name: '7 iron', carry: 150 }] });
+    await render(<BagScreen />);
+    await user.press(screen.getByRole('button', { name: 'Tracked shots with 7 iron' }));
+    expect(mockRouter.push).toHaveBeenLastCalledWith({ pathname: '/club-shots', params: { club: 'k7' } });
+  });
+
+  it('lists a club\'s tracked shots newest first, says why one doesn\'t count, and deletes one (#298)', async () => {
+    const user = userEvent.setup();
+    const alert = jest.spyOn(Alert, 'alert');
+    const courseName = dataset.courses.find((c) => c.id === round.courseId)!.name;
+    // Due north on hole 1 of a posted round, on 15 June 2025, where the demo's courses have no map: every lie reads rough.
+    const north = frame({ lat: 45.5, lng: -122.6 }, 0);
+    let at = 1_750_000_000_000;
+    const mark = (yards: number, kind: 'full' | 'partial', accuracy = 4) => ({
+      id: `m${at}`,
+      roundId: round.id,
+      hole: 1,
+      position: north.toLatLng([0, yards * 0.9144]),
+      accuracy,
+      at: (at += 60_000),
+      kind,
+      clubId: kind === 'full' ? 'k7' : null,
+    });
+    // 152.25 yards, less a short iron's roll in rough (1.5%), is a 150-yard carry.
+    const marks = [mark(0, 'full'), mark(152.25, 'partial'), mark(0, 'full', 30), mark(160, 'partial'), mark(0, 'full')];
+    useStoreValue({ clubs: [{ id: 'k7', name: '7 iron', carry: 150 }], marks, rounds: [{ ...round, status: 'completed' }] });
+    mockParams = { club: 'k7' };
+    await render(<ClubShotsScreen />);
+
+    expect(screen.getAllByText(`Jun 15, 2025 · ${courseName} · Hole 1`)).toHaveLength(3);
+    expect(screen.getByText('152 yd measured · 150 yd carry')).toBeTruthy();
+    expect(screen.getByText('160 yd measured · 158 yd carry')).toBeTruthy();
+    const reasons = screen.getAllByText(/^Doesn’t count: /).map((t) => t.props.children);
+    expect(reasons).toEqual(['Doesn’t count: no finish', 'Doesn’t count: GPS too rough']);
+
+    // Named apart, though all three are on the same hole the same day.
+    expect(screen.getByRole('button', { name: 'Delete the 7 iron tracked shot on hole 1, Jun 15, 2025, no finish' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete the 7 iron tracked shot on hole 1, Jun 15, 2025, 160 yards' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete the 7 iron tracked shot on hole 1, Jun 15, 2025, 152 yards' })).toBeTruthy();
+    await user.press(screen.getByRole('button', { name: 'Delete the 7 iron tracked shot on hole 1, Jun 15, 2025, 152 yards' }));
+    expect(alert).toHaveBeenLastCalledWith('Delete this tracked shot?', 'It won’t count for 7 iron again.', expect.any(Array));
+    const buttons = alert.mock.lastCall?.[2] as { text: string; onPress?: () => void }[];
+    expect(buttons.map((b) => b.text)).toEqual(['Cancel', 'Delete']);
+    await act(async () => buttons.find((b) => b.text === 'Delete')?.onPress?.());
+    expect(actions.deleteTrackedShot).toHaveBeenLastCalledWith(marks[0].id);
+    alert.mockRestore();
+  });
+
+  it('says plainly when a club has no tracked shots (#298)', async () => {
+    useStoreValue({ clubs: [{ id: 'k7', name: '7 iron', carry: 150 }], marks: [] });
+    mockParams = { club: 'k7' };
+    await render(<ClubShotsScreen />);
+    expect(screen.getByText('No tracked shots yet')).toBeTruthy();
+    expectEveryControlToHaveAName();
   });
 
   it('says a full bag holds no more', async () => {

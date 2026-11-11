@@ -19,6 +19,11 @@ export function hitFields(hit: MarkHit): Pick<Mark, 'kind' | 'clubId'> {
   return { kind: hit.kind, clubId: hit.kind === 'full' ? hit.clubId : null };
 }
 
+/** The marks, with what was hit from mark `id` changed. */
+export function withHit(marks: Mark[], id: string, hit: MarkHit): Mark[] {
+  return marks.map((m) => (m.id === id ? { ...m, ...hitFields(hit) } : m));
+}
+
 /** What was hit from a mark, for the club picker; null for a club no longer in the bag. */
 export function hitOf(mark: Mark): MarkHit | null {
   if (mark.kind !== 'full') return { kind: mark.kind };
