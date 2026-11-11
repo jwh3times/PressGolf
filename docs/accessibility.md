@@ -133,11 +133,12 @@ substitute for assistive-technology use on both platforms.
   and hole, its measured distance and carry, and, for one that doesn't count,
   why ("Doesn’t count: GPS too rough"), in words, not only in colour. Its
   **Delete** chip is named for the shot ("Delete the 7 iron tracked shot on
-  hole 1, Jun 15, 2025, 152 yards") and asks first in a system alert. Each row wraps its chip below the
-  text when there isn't room beside it, and a club with none says "No tracked
-  shots yet". Jest covers the names, the reasons, the alert and the empty list;
-  the web suite's Bag baselines show the name buttons. The list hasn't been
-  tried with VoiceOver or TalkBack or at the largest text size on a phone.
+  hole 1, Jun 15, 2025, 152 yards") and asks first in a system alert. Each
+  row wraps its chip below the text when there isn't room beside it, and a club
+  with none says "No tracked shots yet". Jest covers the names, the reasons,
+  the alert and the empty list; the web suite's Bag baselines show the name
+  buttons. The list hasn't been tried with VoiceOver or TalkBack or at the
+  largest text size on a phone: that's step 13 of the device check in #301.
 - How each hole plays (#136) is text: each side of each zone is read as one
   sentence ("Right: bad. Water, 260–290 off the tee."), and the grade's colour
   only backs up its name, which is always written. axe checks the grades'
