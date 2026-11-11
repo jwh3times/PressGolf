@@ -542,9 +542,9 @@ with the next mark by time on the same hole of the same round (*Not a full
 swing* and *On the green* marks only finish a shot), and gives every shot its
 measured yards, its finish lie (fairway, rough or green; green for an *On the
 green* mark), its inferred carry (the yards ÷ (1 + the shot model's roll for
-the club and the finish lie)) and a status. A shot counts unless, in this
-order: its round is still active (a reopened round's shots stop counting until
-it closes again), it has no finish, the map says it was hit from anywhere but
+the club and the finish lie)) and a status. A tracked shot counts towards its
+club unless, in this order: its round is still active (a reopened round's
+tracked shots stop counting until it closes again), it has no finish, the map says it was hit from anywhere but
 a tee, fairway or rough, either fix is worse than 10 m, it went under 40% of
 the club's typed carry (skipped with none typed), or it isn't among the club's
 latest 20 that pass the rest. Lies are read with `surfaceAt`
