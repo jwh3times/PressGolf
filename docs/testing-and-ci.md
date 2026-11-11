@@ -113,6 +113,19 @@ all passed. It uses `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and
 `supabase db push --remote` is safe to run when there are no pending migrations,
 and the function is deployed on every merge.
 
+Last on a push to `main`, **Tag the release** runs `scripts/release-tag.mjs`
+once every other job, migrations included, has passed (#311). When
+`package.json`'s version has no `v<version>` tag yet, which happens only on the
+merge of a release PR, it creates the annotated tag "Release v<version>" on that
+commit; on any other merge it does nothing. It fails, tagging nothing, when
+`app.json`'s `expo.version` differs from `package.json`'s. It is the only job
+with `contents: write`, and it isn't a required check, since it never runs on a
+pull request. `scripts/release-tag.test.mjs` checks the decision and that the
+job waits for every other job that runs on `main`. If a release's run fails, or
+a later merge cancels it while it waits, re-run it before merging anything else:
+the next run to pass tags whatever commit it is on, and a later merge still
+carries the release's version.
+
 ## Support and privacy site
 
 `site/` is a Cloudflare Worker that serves [pressgolf.cc](https://pressgolf.cc):
