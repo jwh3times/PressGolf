@@ -1669,6 +1669,31 @@ describe('management screen state matrices', () => {
     expect(screen.getByLabelText('7 iron carry, in yards').props.value).toBe('150');
   });
 
+  it('shows a club\'s measured spread from ten counting shots (#299)', async () => {
+    const clubs = [
+      { id: 'k7', name: '7 iron', carry: 150 },
+      { id: 'k8', name: '8 iron', carry: 140 },
+    ];
+    // Due north on hole 1 of a posted round, where the demo's courses have no map: every lie reads rough, a 1.5% roll.
+    const north = frame({ lat: 45.5, lng: -122.6 }, 0);
+    let at = 1;
+    const shot = (clubId: string, yards: number) => [
+      { id: `m${at}`, roundId: round.id, hole: 1, position: north.toLatLng([0, 0]), accuracy: 4, at: at++, kind: 'full' as const, clubId },
+      { id: `m${at}`, roundId: round.id, hole: 1, position: north.toLatLng([0, yards * 0.9144]), accuracy: 4, at: at++, kind: 'partial' as const, clubId: null },
+    ];
+    // The 7 iron goes 145 to 154 yards: a 2.23% spread of its 147-yard tracked carry, 3 yards. Nine 8 irons aren't enough.
+    const marks = [
+      ...[145, 146, 147, 148, 149, 150, 151, 152, 153, 154].flatMap((yards) => shot('k7', yards)),
+      ...Array.from({ length: 9 }, (_, i) => shot('k8', 135 + i)).flat(),
+    ];
+    useStoreValue({ clubs, marks, rounds: [{ ...round, status: 'completed' }] });
+    await render(<BagScreen />);
+
+    expect(screen.getByText('Tracked 147 yd, from 10 tracked shots. Two in three within 3 yd.')).toBeTruthy();
+    // 139 yards in the middle, less the roll: 137.
+    expect(screen.getByText('Tracked 137 yd, from 9 tracked shots')).toBeTruthy();
+  });
+
   it('opens a club\'s tracked shots from its name (#298)', async () => {
     const user = userEvent.setup();
     useStoreValue({ clubs: [{ id: 'k7', name: '7 iron', carry: 150 }] });

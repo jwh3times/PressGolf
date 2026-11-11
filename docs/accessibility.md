@@ -127,7 +127,9 @@ substitute for assistive-technology use on both platforms.
   chip's name, its absence when the carries match, and what **Use** types in.
   The demo has no tracked shots, so the web suite's Bag baselines don't show
   the line. It hasn't been tried with VoiceOver or TalkBack or at the largest
-  text size on a phone: that's step 12 of the device check in #301.
+  text size on a phone: that's step 12 of the device check in #301. From ten
+  counting shots the same line ends with the club's measured spread (#299),
+  in words: "Two in three within 3 yd."
 - Each club's name in the bag is a button, "Tracked shots with 7 iron", that
   opens the club's tracked shots (#298). Each shot is text: its date, course
   and hole, its measured distance and carry, and, for one that doesn't count,

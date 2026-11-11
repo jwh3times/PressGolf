@@ -12,6 +12,7 @@ import {
   type Lie,
 } from '../domain/club-suggestion';
 import { metresBetween } from '../domain/geo';
+import { trackedShots, type TrackedInput } from '../domain/tracked-shots';
 import type { Course, LatLng, TeeId, UsualScore } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
@@ -83,6 +84,27 @@ interface SuggestionFor {
   enabled?: boolean;
 }
 
+let measured: { from: TrackedInput; spreads: Record<string, number> } | null = null;
+
+/**
+ * Each club's measured carry spread (#299), by id, from its tracked shots in
+ * rounds that have closed: nothing marked in the round being played reaches the
+ * suggestions. Worked out once for the store's current marks, rounds, courses and
+ * bag, however many holes ask, as the course guide's do.
+ */
+function spreadsFor(store: TrackedInput): Record<string, number> {
+  const { marks, rounds, courses, clubs } = store;
+  const last = measured?.from;
+  if (measured && last?.marks === marks && last.rounds === rounds && last.courses === courses && last.clubs === clubs) return measured.spreads;
+  const spreads: Record<string, number> = {};
+  for (const [id, club] of Object.entries(trackedShots({ marks, rounds, courses, clubs }))) if (club.spread != null) spreads[id] = club.spread;
+  // The same figures keep the same object, so a mark that changes nothing doesn't simulate again.
+  const before = measured?.spreads;
+  const same = before != null && Object.keys(before).length === Object.keys(spreads).length && Object.entries(spreads).every(([id, s]) => before[id] === s);
+  measured = { from: { marks, rounds, courses, clubs }, spreads: same ? before : spreads };
+  return measured.spreads;
+}
+
 /** The suggestion for the shot from `from`, from this phone's bag; null when not enabled. */
 export function useClubSuggestion({ course, hole, teeId, from, enabled = true }: SuggestionFor): Suggestion | null {
   const store = useStore();
@@ -90,12 +112,13 @@ export function useClubSuggestion({ course, hole, teeId, from, enabled = true }:
   const spot = useSteady(from);
   const key = `${course?.id}:${hole}:${spot ? squareOf(spot) : 'tee'}`;
   const lie = useSyncExternalStore(subscribe, () => picked.get(key), () => picked.get(key));
+  const spreads = spreadsFor(store);
   const result = useMemo(
     () =>
       enabled && course
-        ? suggestShot({ course, hole, teeId, from: spot, lie, bag: store.clubs, usualScore, seed: hash(key) })
+        ? suggestShot({ course, hole, teeId, from: spot, lie, bag: store.clubs, usualScore, spreads, seed: hash(key) })
         : null,
-    [enabled, course, hole, teeId, spot, lie, store.clubs, usualScore, key],
+    [enabled, course, hole, teeId, spot, lie, store.clubs, usualScore, spreads, key],
   );
   return result ? { result, usualScore, setLie: (l) => pickLie(key, l) } : null;
 }
@@ -112,9 +135,10 @@ export function useTeeSuggestion({ course, hole, teeId, enabled = true }: Omit<S
   const lie = useSyncExternalStore(subscribe, () => picked.get(key), () => picked.get(key));
   // Too few carries for a suggestion, and the guide says nothing of clubs: no need to work it out.
   const enough = store.clubs.filter((c) => c.carry != null).length >= MIN_CARRIES;
+  const spreads = spreadsFor(store);
   const inputs = useMemo(
-    () => (enabled && course && enough ? { course, hole, teeId, from: null, lie, bag: store.clubs, usualScore, seed: hash(key) } : null),
-    [enabled, enough, course, hole, teeId, lie, store.clubs, usualScore, key],
+    () => (enabled && course && enough ? { course, hole, teeId, from: null, lie, bag: store.clubs, usualScore, spreads, seed: hash(key) } : null),
+    [enabled, enough, course, hole, teeId, lie, store.clubs, usualScore, spreads, key],
   );
   // The answer, and the inputs it answers: a stale one is never shown.
   const [done, setDone] = useState<{ inputs: object; result: ClubSuggestion } | null>(null);

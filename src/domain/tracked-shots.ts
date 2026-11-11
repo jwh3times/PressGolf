@@ -40,6 +40,16 @@ export const SHORTEST_SHARE = 0.4;
  */
 export const LATEST_SHOTS = 20;
 
+/**
+ * The fewest counting shots a club needs before its carry spread comes from
+ * them (#299). A judgement call from the #293 design session on 2026-11-09, not
+ * a published figure: a spread needs more shots than a middle does.
+ */
+export const SHOTS_FOR_SPREAD = 10;
+
+/** A normal distribution's interquartile range in standard deviations, so the range ÷ this is a spread robust to the odd wild shot. */
+const IQR_PER_SD = 1.35;
+
 /** Where a tracked shot stopped, for its roll. */
 export type FinishLie = 'fairway' | 'rough' | 'green';
 
@@ -80,6 +90,12 @@ export interface ClubShots {
   counting: number;
   /** The median inferred carry of the counting shots, to the yard, from {@link SHOTS_FOR_CARRY}; null before. */
   trackedCarry: number | null;
+  /**
+   * How much the counting shots' carries spread, as a share of their median: the
+   * standard deviation the club suggestions simulate with, from
+   * {@link SHOTS_FOR_SPREAD}; null before.
+   */
+  spread: number | null;
 }
 
 export interface TrackedInput {
@@ -97,7 +113,7 @@ const ROLL_SHARE: Record<FinishLie, number> = { fairway: 1, rough: ROLL_IN_ROUGH
 /** Each club in the bag, by id, with its tracked shots. */
 export function trackedShots({ marks, rounds, courses, clubs: bag }: TrackedInput): Record<string, ClubShots> {
   const byClub: Record<string, ClubShots> = Object.fromEntries(
-    bag.map((club) => [club.id, { shots: [], counting: 0, trackedCarry: null }]),
+    bag.map((club) => [club.id, { shots: [], counting: 0, trackedCarry: null, spread: null }]),
   );
   const ordered = [...marks].sort((a, b) => a.at - b.at);
   // Newest first, so each club's list comes out that way.
@@ -128,6 +144,7 @@ export function trackedShots({ marks, rounds, courses, clubs: bag }: TrackedInpu
     const carries = club.shots.filter((shot) => shot.status === 'counts').map((shot) => shot.carry!);
     club.counting = carries.length;
     club.trackedCarry = carries.length >= SHOTS_FOR_CARRY ? Math.round(median(carries)) : null;
+    club.spread = carries.length >= SHOTS_FOR_SPREAD ? (quantile(carries, 0.75) - quantile(carries, 0.25)) / IQR_PER_SD / median(carries) : null;
   }
   return byClub;
 }
@@ -161,10 +178,15 @@ export function whyNot(shot: TrackedShot): string | null {
   }
 }
 
-function median(values: number[]): number {
+const median = (values: number[]) => quantile(values, 0.5);
+
+/** The value `p` of the way through the sorted values, between the two either side of it. */
+function quantile(values: number[], p: number): number {
   const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  const at = (sorted.length - 1) * p;
+  const below = Math.floor(at);
+  const above = Math.min(below + 1, sorted.length - 1);
+  return sorted[below] + (sorted[above] - sorted[below]) * (at - below);
 }
 
 /** Where a counting shot can be hit from. */

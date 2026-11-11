@@ -317,6 +317,18 @@ the lie, the bag, the usual score and a seed, it returns the suggestion.
   distance error is a share of the shot, fitted so the median leave from 125
   yards matches that paper's Table 2; and a share of mishits, from its awful
   shots a round (eq. 2), fly 40–80% of the carry. Rough and sand widen it.
+- **A club's own spread** (#299): from 10 counting tracked shots, a club's
+  spread of carry is its own, measured, in place of the usual score's
+  (`spreads` in the suggestion input, by club id). It is the interquartile
+  range of the counting shots' inferred carries ÷ 1.35, the standard deviation
+  of a normal spread that one wild shot barely moves, as a share of their
+  median (`spread` from `trackedShots`). The Bag screen shows it as "two in
+  three within N yd" of the tracked carry. Direction, mishits, the rough and
+  putting stay the usual score's: a mark says where the ball went, not where
+  it was aimed. Rough and sand still widen a measured spread, since it is
+  measured from the tee, fairway and rough alike. Only closed rounds' shots count, so nothing marked in the round
+  being played changes a suggestion. The 10 is a judgement call from the #293
+  design session, not a published figure.
 - **Each finish** is read from the map (out of bounds, water, sand, the green,
   fairway; anything else rough) and scored by strokes to hole out: Broadie's
   PGA Tour table (Interfaces 42(2), 2012, Table B.1) plus what a golfer of the
@@ -537,8 +549,10 @@ with nothing mapped reads as rough. From 5 counting shots a club has a
 **tracked carry**, their median inferred carry to the yard, which the Bag
 screen shows beside the typed one with its shot count, and **Use** sets the
 typed carry to it (`takeTrackedCarry`). Press never changes a carry on its own,
-and club suggestions use only the typed carry. The 5, 20, 40% and 10 m are
-judgement calls from the #293 design session, not published figures.
+and club suggestions use only the typed carry. From 10, the club's measured
+spread goes to the suggestions on its own (see
+[Club suggestions](#club-suggestions)). The 5, 20, 40% and 10 m are judgement
+calls from the #293 design session, not published figures.
 
 A club's name in the bag opens its tracked shots (`src/app/club-shots.tsx`,
 #298), newest first, each with `whyNot`'s reason when it doesn't count.
