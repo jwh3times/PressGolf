@@ -25,7 +25,7 @@ Markdown under `src/` or `site/` is code.
 - **Release prep** is a release PR, committed as `chore: prepare v<version>, <headline>`: it moves
   `Unreleased` in `CHANGELOG.md` into a dated section and sets the version with
   `node scripts/set-version.mjs <version>` (`package.json`, its lockfile and `app.json`'s
-  `expo.version`); the maintainer tags `v<version>` on `main` after it merges
+  `expo.version`); CI tags `v<version>` on `main` once its merge has passed
   (`docs/agents/releases.md`). A change to the `submit` profile in `eas.json` for a store build
   is release prep too. Build numbers need no commit: `eas.json` sets
   `appVersionSource: "remote"` and `autoIncrement: true`.

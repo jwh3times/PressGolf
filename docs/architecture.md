@@ -542,14 +542,15 @@ with the next mark by time on the same hole of the same round (*Not a full
 swing* and *On the green* marks only finish a shot), and gives every shot its
 measured yards, its finish lie (fairway, rough or green; green for an *On the
 green* mark), its inferred carry (the yards ÷ (1 + the shot model's roll for
-the club and the finish lie)) and a status. A shot counts unless, in this
-order: its round is still active (a reopened round's shots stop counting until
-it closes again), it has no finish, the map says it was hit from anywhere but
-a tee, fairway or rough, either fix is worse than 10 m, it went under 40% of
-the club's typed carry (skipped with none typed), or it isn't among the club's
-latest 20 that pass the rest. Lies are read with `surfaceAt`
+the club and the finish lie)) and a status. A tracked shot counts towards its
+club unless, in this order: its round is still active (a reopened round's
+tracked shots stop counting until it closes again), it has no finish, the map
+says it was hit from anywhere but a tee, fairway or rough, either fix is worse
+than 10 m, it went under 40% of the club's typed carry (skipped with none
+typed), or it isn't among the club's latest 20 that pass the rest. Lies are
+read with `surfaceAt`
 (`src/domain/club-suggestion.ts`), the suggestions' own map reading; a hole
-with nothing mapped reads as rough. From 5 counting shots a club has a
+with nothing mapped reads as rough. From 5 counting tracked shots a club has a
 **tracked carry**, their median inferred carry to the yard, which the Bag
 screen shows beside the typed one with its shot count, and **Use** sets the
 typed carry to it (`takeTrackedCarry`). Press never changes a carry on its own,
@@ -559,10 +560,10 @@ spread goes to the suggestions on its own (see
 calls from the #293 design session, not published figures.
 
 A club's name in the bag opens its tracked shots (`src/app/club-shots.tsx`,
-#298), newest first, each with `whyNot`'s reason when it doesn't count.
-Deleting one (`deleteTrackedShot`) turns its start mark into *Not a full
-swing* rather than removing it, so the mark still ends the shot hit before it
-on the hole, and that tracked shot is still measured to it.
+#298), newest first, each with `whyNot`'s reason when it doesn't count
+towards its club. Deleting one (`deleteTrackedShot`) turns its start mark into
+*Not a full swing* rather than removing it, so the mark still ends the tracked
+shot hit before it on the hole, and that tracked shot is still measured to it.
 
 A card being typed in lives in its own slot (`cardRoundId`) beside its group's
 live round. While it is open and its group is active, `store.round` is the
@@ -952,6 +953,7 @@ scripts/
   check-changelog.mjs     checks CHANGELOG.md for the merge a branch will make (with next-version.mjs)
   next-version.mjs        reads the release line from the version file; shared with check-changelog.mjs
   set-version.mjs         sets a release's version in package.json and app.json's expo.version
+  release-tag.mjs         tags v<version> on main once a release's merge passes CI (the Tag the release job)
   test-integration.mjs    runs the sync integration tests against the local Supabase stack
   test-web.mjs            builds the web export and runs the Playwright suite in CI's container (Docker)
 .agents/skills/     authored agent skills (Claude Code and Codex)
