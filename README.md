@@ -27,8 +27,8 @@ hit from it, backed up with their account and seen by nobody else. Once a
 round has closed, those tracked shots give each club a tracked carry beside
 the typed one, which **Use** copies into the bag. From ten, they say how far
 its carries stray, which the suggestions use in place of the usual score's.
-Each club lists its tracked shots, saying why one doesn't count when it
-doesn't, so one marked with the wrong club can be deleted.
+Each club lists its tracked shots, saying why one doesn't count towards its
+club when it doesn't, so one marked with the wrong club can be deleted.
 
 ## Quick start
 
@@ -190,9 +190,10 @@ As of October 2026:
   ([architecture](docs/architecture.md#local-data-and-demo-isolation)).
 - Club suggestions ([#146](https://github.com/jwh3times/PressGolf/issues/146))
   rest on published shot patterns by usual score, the bag's typed carries and
-  the course map; from ten tracked shots, a club's carries spread as its own
-  have ([#299](https://github.com/jwh3times/PressGolf/issues/299)). Trees, wind, slope and pin positions aren't known, and roll
-  after landing is an estimate. They have been checked in Jest and on the web
+  the course map; from ten counting tracked shots, a club's carries spread as
+  its own have ([#299](https://github.com/jwh3times/PressGolf/issues/299)).
+  Trees, wind, slope and pin positions aren't known, and roll after landing is
+  an estimate. They have been checked in Jest and on the web
   build, not yet on a phone on a course.
 - How each hole plays ([#136](https://github.com/jwh3times/PressGolf/issues/136))
   is only as good as the course's map: a side is called clear only where
