@@ -4,8 +4,8 @@ Every notable change to Press is recorded here, in the form of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). A change to the app, the support site,
 the schema or the Edge Function adds its entries under `Unreleased`. A release moves them into a
-dated section and sets `package.json` and `app.json`'s `expo.version` to the new version; the
-maintainer tags `v<version>` on `main` after it merges (`docs/agents/releases.md`).
+dated section and sets `package.json` and `app.json`'s `expo.version` to the new version; once it
+has merged and passed CI on `main`, CI tags `v<version>` (`docs/agents/releases.md`).
 
 ## [Unreleased]
 

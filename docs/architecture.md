@@ -953,6 +953,7 @@ scripts/
   check-changelog.mjs     checks CHANGELOG.md for the merge a branch will make (with next-version.mjs)
   next-version.mjs        reads the release line from the version file; shared with check-changelog.mjs
   set-version.mjs         sets a release's version in package.json and app.json's expo.version
+  release-tag.mjs         tags v<version> on main once a release's merge passes CI (the Tag the release job)
   test-integration.mjs    runs the sync integration tests against the local Supabase stack
   test-web.mjs            builds the web export and runs the Playwright suite in CI's container (Docker)
 .agents/skills/     authored agent skills (Claude Code and Codex)

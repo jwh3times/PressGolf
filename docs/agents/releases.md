@@ -3,10 +3,11 @@
 ## Scheme
 
 cut-on-line — a maintainer cuts each release by hand: `Unreleased` in `CHANGELOG.md` collects every
-change's entries, a release PR moves them into a dated section and sets the new version, and the
-maintainer tags `v<version>` on `main` after it merges. Ordinary merges are not tagged. EAS assigns
-build numbers remotely (`eas.json`: `appVersionSource: "remote"`, `autoIncrement: true`), so a
-store build needs no commit of its own.
+change's entries, a release PR moves them into a dated section and sets the new version, and once
+its merge has passed every CI job on `main`, the **Tag the release** job tags it `v<version>`
+(`scripts/release-tag.mjs`, #311). Ordinary merges leave the version alone, so they get no
+tag. EAS assigns build numbers remotely (`eas.json`: `appVersionSource: "remote"`,
+`autoIncrement: true`), so a store build needs no commit of its own.
 
 ## Version file
 
@@ -40,5 +41,5 @@ request (`.github/workflows/ci.yml`, **Tests, types, lint**).
 
 `docs: update docs and changelog for <summary>` for an ordinary change, and
 `chore: prepare v<version>, <headline>` for a release, `<headline>` naming it. The development flow
-exempts the release commit (`docs/agents/dev-flow.md`), and the maintainer tags `v<version>` after
-it merges.
+exempts the release commit (`docs/agents/dev-flow.md`), and CI tags `v<version>` once it has
+merged and passed.

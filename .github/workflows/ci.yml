@@ -271,6 +271,28 @@ jobs:
             --remote="${{ secrets.SUPABASE_PROJECT_REF }}" \
             --use-api
 
+  release-tag:
+    name: Tag the release
+    # A release PR sets the version (docs/agents/releases.md); once its merge
+    # has passed everything here, production included, it gets `v<version>`.
+    # Every other merge leaves the version alone, so its tag already exists and
+    # the script does nothing (#311).
+    needs: [checks, bundle, ui, database, sync, migrate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+
+      - name: Tag v<version> unless it exists
+        run: node scripts/release-tag.mjs
+
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
