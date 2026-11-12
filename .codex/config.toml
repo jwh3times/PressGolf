@@ -1,0 +1,51 @@
+# Project MCP servers for Codex, read only while this project is trusted. Claude Code reads the
+# same servers from .mcp.json, and its ask rules in .claude/settings.json mirror the prompts below.
+# Setup: docs/development.md § MCP servers.
+
+[mcp_servers.expo]
+url = "https://mcp.expo.dev/mcp"
+
+# Tools that spend money or act in public always ask.
+[mcp_servers.expo.tools.build_run]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.build_submit]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.build_cancel]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.workflow_run]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.workflow_cancel]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.sandbox_create]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.sandbox_exec]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.sandbox_write_stdin]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.sandbox_stop]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.sandbox_artifact_create]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.simulator_start]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.simulator_stop]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.appstore_reply_review]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.appstore_delete_review_response]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.playstore_reply_review]
+approval_mode = "prompt"
+[mcp_servers.expo.tools.usage_budget_create]
+approval_mode = "prompt"
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@0.0.83", "--headless", "--isolated"]
+
+# Studio's endpoint: the API gateway's /mcp route returns 400 (docs/development.md § MCP servers).
+[mcp_servers.supabase]
+url = "http://127.0.0.1:54323/api/mcp"

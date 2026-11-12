@@ -3,9 +3,11 @@
 ## Doc map
 
 - `AGENTS.md` — the canonical operating guide for every agent: Expo version discipline, commands,
-  routing, EAS, rules, documentation rules, the development flow gate, agent skills, issue
-  tracker, triage labels, domain docs, machine handoff. **When:**
+  routing, EAS, MCP servers, rules, documentation rules, the development flow gate, agent skills,
+  issue tracker, triage labels, domain docs, machine handoff. **When:**
   - a command or `package.json` script changes: `## Commands`;
+  - a server is added to or removed from `.mcp.json` / `.codex/config.toml`, or its purpose or
+    guarded tools change: `## MCP servers`;
   - the gate, its exemptions or the phase skills change: `## Development flow` (with
     `docs/agents/dev-flow.md`);
   - a skill is added, removed or replaced (`.agents/skills/`, `skills-lock.json`),
@@ -21,7 +23,9 @@
   changes; a guide is added; validation figures are refreshed (date them).
 - `docs/development.md` — prerequisites, running the app, dependencies, environment variables,
   Supabase setup, migrations, sync integration tests, EAS build profiles, the Android Maps key,
-  Android permissions, App Store and Play submission, troubleshooting. **When:** `package.json`
+  Android permissions, App Store and Play submission, MCP servers, troubleshooting. **When:**
+  `.mcp.json`, `.codex/config.toml` or the `permissions.ask` list in `.claude/settings.json`
+  changes (§ MCP servers); `package.json`
   scripts or the Expo SDK change; `app.json`'s `android.blockedPermissions` or a plugin's
   permissions change; an env var changes (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`);
   `eas.json` build or submit profiles change; `supabase/config.toml` or the migration workflow

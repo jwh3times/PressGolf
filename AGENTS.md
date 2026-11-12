@@ -39,6 +39,21 @@ for behavior changes; use the full coverage command when the scope is broad.
 Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
 Docs: https://docs.expo.dev/eas/index.md
 
+## MCP servers
+
+Four shared servers, in `.mcp.json` for Claude Code and `.codex/config.toml` for Codex. Setup,
+sign-in and per-machine overrides: [development § MCP servers](docs/development.md#mcp-servers).
+
+- **`expo`**: EAS builds, workflows and submissions with their logs, and store crashes and reviews.
+  Reach for it when the EAS CLI can't show a result. Its tools that spend money or act in public
+  (build, submit and workflow runs, cloud sandboxes and simulators, review replies, usage
+  budgets) run when the user asks for them, and both harnesses prompt before each one.
+- **`context7`**: library docs. Expo APIs still come from the versioned Expo docs above.
+- **`playwright`**: a browser on the web build (`npm run web`) for looking at a change.
+  `npm run test:web` stays the check.
+- **`supabase`**: the local stack's Studio, once `npx supabase start` is up. The hosted project changes
+  only through CI's `migrate` job, so every server points at the local stack.
+
 ## Rules
 
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.

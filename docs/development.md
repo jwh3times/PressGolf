@@ -514,6 +514,61 @@ Build and submit in one step:
 npx eas-cli@latest build --platform android --profile production --auto-submit
 ```
 
+## MCP servers
+
+Agents share four MCP servers. Claude Code reads them from `.mcp.json`, and
+Codex from `.codex/config.toml`. Personal servers (GitHub, mail, browser
+extensions) stay in your own user config.
+
+| Server | Connects to | Sign-in |
+| --- | --- | --- |
+| `expo` | `https://mcp.expo.dev/mcp`: EAS builds, workflows, submissions, store crashes and reviews | Expo account (OAuth) |
+| `context7` | `https://mcp.context7.com/mcp`: library docs | none; an API key raises the rate limit |
+| `playwright` | a local browser through `@playwright/mcp` 0.0.83, headless, with a fresh profile each run | none |
+| `supabase` | `http://127.0.0.1:54323/api/mcp`: the local stack's Studio only | none |
+
+**Claude Code.** The first session in the repository asks you to approve the
+project servers. Then run `/mcp`, pick `expo`, and sign in with the Expo
+account. `claude mcp reset-project-choices` brings the approval prompt back.
+
+**Codex.** Codex reads `.codex/config.toml` only in a trusted project. Trust
+the project, then run `codex mcp login expo`.
+
+**Prompted tools.** Some Expo tools spend money or act in public: running or
+cancelling builds, submissions and workflows, cloud sandboxes and simulators,
+store review replies, and usage budgets. Both harnesses ask before each one:
+the `permissions.ask` list in `.claude/settings.json`, and the
+`approval_mode = "prompt"` tables in `.codex/config.toml`. Keep the two lists
+the same.
+
+**`supabase` needs the local stack, with Studio.** It shows as failed until
+`npx supabase start` is up. Reconnect it from `/mcp` in Claude Code, or start a
+new Codex session. The server lives in Studio, so a start that excludes
+`studio` (as the integration-test command above does) leaves it unreachable.
+It points at Studio's port rather than the `MCP_URL` that `supabase start`
+prints: with Supabase CLI 3.0.0, the API gateway's `/mcp` route returns
+`400 Bad Request`, because Studio rejects the gateway's
+`supabase_studio_<project>` host name (checked 2026-11-11).
+
+**Per-machine overrides.** In Claude Code, a local-scope server with the same
+name replaces the project entry on that machine only. Remove it with
+`claude mcp remove <name> -s local`.
+
+- The local stack on other ports (Studio on `SUPABASE_STUDIO_PORT`):
+  `claude mcp add -s local --transport http supabase http://127.0.0.1:<studio-port>/api/mcp`.
+- A Context7 API key:
+  `claude mcp add -s local --transport http context7 https://mcp.context7.com/mcp --header "Authorization: Bearer <key>"`.
+  Never commit the key.
+- Native Windows, if `playwright` fails to start through `npx`:
+  `claude mcp add -s local playwright -- cmd /c npx -y @playwright/mcp@0.0.83 --headless --isolated`.
+
+Codex ranks the project file above `~/.codex/config.toml`, so override a value
+for one run with `-c`, for example
+`codex -c 'mcp_servers.supabase.url="http://127.0.0.1:55323/api/mcp"'`.
+
+**Upgrading `@playwright/mcp`.** Its version is pinned in both files, and
+Dependabot does not read them. Bump both together.
+
 ## Troubleshooting
 
 - Run `npx expo-doctor` first for dependency or app-config problems.
