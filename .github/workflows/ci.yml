@@ -283,6 +283,10 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+    # Whether this commit is the release: tagged now, or by an earlier attempt
+    # of this run. The GitHub Release and the store build follow only that (#323).
+    outputs:
+      released: ${{ steps.tag.outputs.released }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -291,7 +295,50 @@ jobs:
           node-version: '22'
 
       - name: Tag v<version> unless it exists
+        id: tag
         run: node scripts/release-tag.mjs
+
+      # The version's CHANGELOG.md section is the notes. A rerun finds the
+      # Release already there and leaves it.
+      - name: Publish the GitHub Release
+        if: steps.tag.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          node scripts/prepare-release.mjs notes "${TAG#v}" > "$RUNNER_TEMP/notes.md"
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+
+  store-build:
+    name: Store build
+    # A release's production builds, submitted to TestFlight and Play's closed
+    # (alpha) track by eas.json's production submit profile. Only after the tag,
+    # so only once everything else on main has passed. Re-run failed jobs
+    # retries this alone (docs/agents/releases.md).
+    needs: [release-tag]
+    if: needs.release-tag.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    # EAS builds both platforms in its cloud; the job waits for them, so a
+    # failed build fails the run. Submissions finish on EAS, and only expo.dev
+    # shows how they went.
+    timeout-minutes: 120
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # A pinned CLI, since this job holds the Expo token. Nothing bumps it:
+      # move it by hand, to a release at least two weeks old.
+      - name: Build and submit to the testers
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli@27.1.0 build --profile production --platform all --auto-submit --non-interactive
 
   dependency-review:
     name: Dependency review

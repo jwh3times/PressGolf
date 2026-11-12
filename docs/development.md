@@ -353,6 +353,11 @@ npx eas-cli@latest submit --profile production --platform android
 The project ID and owner are already set in `app.json`; do not rerun the initial
 EAS configuration flow.
 
+A release's `production` builds and their submissions run in CI, in the **Store
+build** job after the release is tagged ([releases](agents/releases.md)). Build
+`production` by hand only to recover from something that job can't do; use
+`preview` and `development` for everything else.
+
 The app identifier is `cc.pressgolf.app` on both platforms (the iOS bundle ID
 and the Android package). `com.press.golf` was already held by another
 developer on Google Play, and Play's package name can't change once an app is
@@ -436,10 +441,13 @@ or if location, internet or vibrate stops being declared. To read that manifest
 yourself without a cloud build, run `npx expo prebuild --platform android
 --clean --no-install`, open `android/app/src/main/AndroidManifest.xml`, then
 delete `android/` and revert the `scripts` that prebuild rewrites in
-`package.json`. Neither shows what libraries merge in. So before submitting,
-check a production `.aab` with
+`package.json`. Neither shows what libraries merge in. So check a production
+`.aab`, downloaded from its build on expo.dev, with
 [bundletool](https://developer.android.com/tools/bundletool):
-`bundletool dump manifest --bundle=<file>.aab | grep uses-permission`.
+`bundletool dump manifest --bundle=<file>.aab | grep uses-permission`. A
+release's **Store build** submits its `.aab` to the closed track as soon as it
+is built, so the check comes after that, before the release goes to review or
+production.
 
 ### App Store submission (iOS)
 

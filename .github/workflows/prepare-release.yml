@@ -1,0 +1,118 @@
+name: Prepare release
+
+# Opens a release PR (docs/agents/releases.md, #323). It cuts Unreleased in
+# CHANGELOG.md into a dated section, sets the version in package.json, its
+# lockfile and app.json, and refreshes the web baselines that show the version.
+# It never merges: merging is the release decision, and once the merge passes
+# CI on main, CI tags it, publishes its GitHub Release and builds it for the
+# stores.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Release level. auto: a patch for only Fixed or Security entries, a minor for Added, Changed, Deprecated or Removed; never a major"
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+      headline:
+        description: "What the release brings, for the title \"chore: prepare vX.Y.Z, <headline>\""
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Open the release PR
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+      # To start the native smoke tests on the release branch.
+      actions: write
+    steps:
+      # A PR opened with GITHUB_TOKEN runs no workflows, so the branch is pushed
+      # and the PR opened with the release App's token, and its CI runs as on
+      # any other PR.
+      - name: Token from the release App
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      - name: One release PR at a time
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open="$(gh pr list --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("release/"))] | length')"
+          if [ "$open" != 0 ]; then
+            echo "::error::A release PR is already open: merge or close it first."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Refuses, saying why, when Unreleased is empty or auto can't size it.
+      - name: Cut the changelog and set the version
+        id: plan
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: node scripts/prepare-release.mjs prepare "$BUMP"
+
+      # Settings shows the version, so its baselines change with it. The suite
+      # runs in Playwright's container, as CI's ui job does, and rewrites only
+      # the baselines that differ.
+      - name: Refresh the web baselines that show the version
+        run: node scripts/test-web.mjs --update-snapshots
+
+      - name: Commit, push and open the PR
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          HEADLINE: ${{ inputs.headline }}
+        run: |
+          title="chore: prepare v$VERSION, $HEADLINE"
+          bot="${APP_SLUG}[bot]"
+          git config user.name "$bot"
+          git config user.email "$(gh api "/users/$bot" --jq .id)+$bot@users.noreply.github.com"
+          git switch -c "release/v$VERSION"
+          git add CHANGELOG.md package.json package-lock.json app.json tests/web/__snapshots__
+          git commit -m "$title"
+          git push origin "release/v$VERSION"
+          node scripts/prepare-release.mjs notes "$VERSION" > "$RUNNER_TEMP/notes.md"
+          {
+            echo "Release prep for v$VERSION, opened by **Prepare release** ([releases](docs/agents/releases.md))."
+            echo
+            echo "## v$VERSION"
+            echo
+            cat "$RUNNER_TEMP/notes.md"
+            echo
+            echo "Native smoke tests run on this branch. They aren't a required check: look at them before merging."
+          } > "$RUNNER_TEMP/body.md"
+          gh pr create --base main --head "release/v$VERSION" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+
+      # workflow_dispatch is the one event GITHUB_TOKEN may start.
+      - name: Start the native smoke tests on the release branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: gh workflow run native-e2e.yml --ref "release/v$VERSION"

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { releaseTagFor } from "./release-tag.mjs";
@@ -37,6 +37,19 @@ test("skips a version already tagged: every ordinary merge", () => {
   });
 });
 
+// A rerun of the release commit's run finds its own tag: the GitHub Release and the store build still
+// follow, but nothing is tagged twice (#323).
+test("resumes a release whose tag is already on this commit", () => {
+  assert.deepEqual(
+    releaseTagFor({ packageVersion: "1.5.0", appVersion: "1.5.0", tags: ["v1.4.0", "v1.5.0"], tagCommit: "abc123", head: "abc123" }),
+    { action: "resume", tag: "v1.5.0" },
+  );
+  assert.deepEqual(
+    releaseTagFor({ packageVersion: "1.5.0", appVersion: "1.5.0", tags: ["v1.5.0"], tagCommit: "abc123", head: "def456" }),
+    { action: "skip", tag: "v1.5.0" },
+  );
+});
+
 test("refuses to tag when app.json's version isn't package.json's, naming both", () => {
   assert.throws(
     () => releaseTagFor({ packageVersion: "1.5.0", appVersion: "1.4.0", tags: ["v1.4.0"] }),
@@ -51,9 +64,10 @@ test("CI tags only a push to main, once every other job that runs there has pass
   const [key, block] = tag;
   assert.equal(ifOf(block), "github.event_name == 'push' && github.ref == 'refs/heads/main'");
   assert.match(block, /node scripts\/release-tag\.mjs/);
-  // Every other job runs on a push to main, but for those that run only on pull requests.
+  // Every other job runs on a push to main, but for those that run only on pull requests and those
+  // that follow the tag.
   const onMain = Object.entries(jobs)
-    .filter(([other, b]) => other !== key && ifOf(b) !== "github.event_name == 'pull_request'")
+    .filter(([other, b]) => other !== key && ifOf(b) !== "github.event_name == 'pull_request'" && !needsOf(b).includes(key))
     .map(([other]) => other);
   assert.deepEqual([...needsOf(block)].sort(), onMain.sort());
 });
@@ -65,4 +79,45 @@ test("only the tag job can write to the repository", () => {
     writers.map(([, block]) => block.match(/^    name: (.*)$/m)[1]),
     ["Tag the release"],
   );
+});
+
+const jobNamed = (name) => Object.entries(ciJobs()).find(([, block]) => block.includes(`\n    name: ${name}\n`));
+
+// The tag job says whether this commit is a release, and publishes its GitHub Release with the
+// changelog section as the notes, once only (#323).
+test("the tag job publishes a release's GitHub Release, with its changelog section as the notes", () => {
+  const [, block] = jobNamed("Tag the release");
+  assert.match(block, /^    outputs:\n      released: \$\{\{ steps\.tag\.outputs\.released \}\}$/m);
+  assert.match(block, /^        id: tag$/m);
+  assert.match(block, /^        if: steps\.tag\.outputs\.released == 'true'$/m);
+  assert.match(block, /node scripts\/prepare-release\.mjs notes/);
+  assert.match(block, /gh release view "\$TAG" .*\|\| gh release create "\$TAG"/);
+});
+
+// Store builds follow a release (#323): only once the tag job has passed, so only after every other
+// job on main, in the production environment that holds the Expo token, waiting for the builds.
+test("Store build follows only a release, in production, and waits for both builds", () => {
+  const found = jobNamed("Store build");
+  assert.ok(found, "ci.yml has a job named \"Store build\"");
+  const [, block] = found;
+  const [tagKey] = jobNamed("Tag the release");
+  assert.deepEqual(needsOf(block), [tagKey]);
+  assert.equal(ifOf(block), `needs.${tagKey}.outputs.released == 'true'`);
+  assert.match(block, /^    environment: production$/m);
+  assert.match(block, /EXPO_TOKEN: \$\{\{ secrets\.EXPO_TOKEN \}\}/);
+  // A pinned CLI, since this job holds the token; nothing bumps it, so it moves by hand.
+  assert.match(block, /npx eas-cli@\d+\.\d+\.\d+ build --profile production --platform all --auto-submit --non-interactive/);
+  assert.doesNotMatch(block, /--no-wait/);
+});
+
+test("no job but Store build sees the Expo token", () => {
+  const dir = new URL("../.github/workflows/", import.meta.url);
+  const readers = readdirSync(dir)
+    .filter((file) => /\.ya?ml$/.test(file))
+    .flatMap((file) => {
+      const text = readFileSync(new URL(file, dir), "utf8").replace(/\r\n/g, "\n");
+      return text.includes("EXPO_TOKEN") ? text.split(/\n(?=  [a-z][a-z-]*:\n)/).filter((b) => b.includes("EXPO_TOKEN")) : [];
+    })
+    .map((block) => block.match(/^    name: (.*)$/m)?.[1]);
+  assert.deepEqual(readers, ["Store build"]);
 });
