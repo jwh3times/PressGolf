@@ -6,6 +6,7 @@ adds.
 ## Docs and agent config
 
 - `LICENSE`
+- `.mcp.json`
 
 ## Branch types
 

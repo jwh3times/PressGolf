@@ -82,8 +82,9 @@ edited by hand.
 - [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
 - [Changelog](CHANGELOG.md) — what each release changed, from `1.0.0`;
   [releases](docs/agents/releases.md) says how one is cut and tagged.
-- [Agent guide](AGENTS.md) — the rules Claude Code and Codex follow here, the
-  development flow, and the agent skills and their settings in `docs/agents/`.
+- [Agent guide](AGENTS.md) — the rules Claude Code and Codex follow here, their
+  shared MCP servers, the development flow, and the agent skills and their
+  settings in `docs/agents/`.
 - [pressgolf.cc](https://pressgolf.cc) — support, privacy policy, terms,
   account deletion, and the password-reset and email-confirmation pages the
   account emails link to, served by a Cloudflare Worker from `site/`.

@@ -1,5 +1,22 @@
 {
-  "enabledPlugins": {
-    "expo@claude-plugins-official": true
+  "permissions": {
+    "ask": [
+      "mcp__expo__build_run",
+      "mcp__expo__build_submit",
+      "mcp__expo__build_cancel",
+      "mcp__expo__workflow_run",
+      "mcp__expo__workflow_cancel",
+      "mcp__expo__sandbox_create",
+      "mcp__expo__sandbox_exec",
+      "mcp__expo__sandbox_write_stdin",
+      "mcp__expo__sandbox_stop",
+      "mcp__expo__sandbox_artifact_create",
+      "mcp__expo__simulator_start",
+      "mcp__expo__simulator_stop",
+      "mcp__expo__appstore_reply_review",
+      "mcp__expo__appstore_delete_review_response",
+      "mcp__expo__playstore_reply_review",
+      "mcp__expo__usage_budget_create"
+    ]
   }
 }

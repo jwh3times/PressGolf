@@ -192,7 +192,11 @@ tapping through the app, as a user would. On each screen it checks three things:
    and state, as a screen reader reads it. Playwright lets extra elements through,
    so a new control passes without being recorded, and plain `--update-snapshots`
    leaves that baseline alone. Record it with
-   `node scripts/test-web.mjs --update-snapshots=all -g "<test>"`.
+   `node scripts/test-web.mjs --update-snapshots=all -g "<test>"`. Expo Router
+   makes unfocused screens `inert`, which browsers leave out of the tree but
+   Playwright's snapshot reads, so `expectAriaSnapshot` hides inert subtrees
+   for the comparison. Without that, the text of the screen underneath merges
+   into the focused one's.
 3. **axe.** It finds no WCAG 2.1 A or AA violation, such as a missing name, an
    invalid role or poor colour contrast.
 
@@ -443,6 +447,13 @@ The active `Protect main` ruleset applies to the default branch. It:
 Because of the extra approval, `gh pr merge` can refuse a clean PR whose required
 checks have all passed, with "the base branch policy prohibits the merge". A PR
 refused this way is merged in the GitHub web interface.
+
+The active `Protect Release Tags` ruleset applies to tags matching `v*` (#312).
+It blocks updates, deletions and force pushes, so a release tag stays on the
+commit it was made on. It leaves creation open, so **Tag the release** can
+still make the next one. With no bypass list, fixing a wrong tag means setting
+the ruleset's enforcement to Disabled, fixing the tag and setting it back to
+Active.
 
 GitHub secret scanning and push protection are enabled. Dependabot checks npm
 and GitHub Actions daily at 05:00 America/New_York. Workflow actions are pinned
