@@ -63,6 +63,14 @@ review, and CodeQL. Force pushes and deletion are blocked. Dependabot security
 updates, secret scanning, and push protection are enabled, and workflow actions
 are pinned to full commit SHAs.
 
+Release credentials are scoped to the jobs that use them
+([releases](docs/agents/releases.md)). The Expo robot user's `EXPO_TOKEN` is in
+the `production` environment, read only by the Store build job, which pins
+`eas-cli`; the App Store Connect and Play submission keys stay on EAS. The
+release GitHub App, installed on this repository only with contents and
+pull-request access, is used only by the hand-started Prepare release workflow,
+and its private key is a repository secret.
+
 Production migration credentials are scoped to the GitHub `production`
 environment. Local `.env` files are ignored; `.env.op` contains unresolved
 1Password references only.

@@ -353,6 +353,11 @@ npx eas-cli@latest submit --profile production --platform android
 The project ID and owner are already set in `app.json`; do not rerun the initial
 EAS configuration flow.
 
+A release's `production` builds and their submissions run in CI, in the **Store
+build** job after the release is tagged ([releases](agents/releases.md)). Build
+`production` by hand only to recover from something that job can't do; use
+`preview` and `development` for everything else.
+
 The app identifier is `cc.pressgolf.app` on both platforms (the iOS bundle ID
 and the Android package). `com.press.golf` was already held by another
 developer on Google Play, and Play's package name can't change once an app is

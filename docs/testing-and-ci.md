@@ -118,13 +118,37 @@ once every other job, migrations included, has passed (#311). When
 `package.json`'s version has no `v<version>` tag yet, which happens only on the
 merge of a release PR, it creates the annotated tag "Release v<version>" on that
 commit; on any other merge it does nothing. It fails, tagging nothing, when
-`app.json`'s `expo.version` differs from `package.json`'s. It is the only job
-with `contents: write`, and it isn't a required check, since it never runs on a
-pull request. `scripts/release-tag.test.mjs` checks the decision and that the
-job waits for every other job that runs on `main`. If a release's run fails, or
-a later merge cancels it while it waits, re-run it before merging anything else:
-the next run to pass tags whatever commit it is on, and a later merge still
-carries the release's version.
+`app.json`'s `expo.version` differs from `package.json`'s. On a release it also
+publishes the GitHub Release, with the version's `CHANGELOG.md` section as the
+notes (#323), and reports `released` for the job after it; a rerun on the
+release commit finds its own tag and Release and adds neither again. It is the
+only job with `contents: write`, and it isn't a required check, since it never
+runs on a pull request. `scripts/release-tag.test.mjs` checks the decision and
+that the job waits for every other job that runs on `main`. If a release's run
+fails, or a later merge cancels it while it waits, re-run it before merging
+anything else: the next run to pass tags whatever commit it is on, and a later
+merge still carries the release's version.
+
+After a release's tag, **Store build** runs `eas build --profile production
+--platform all --auto-submit --non-interactive` in the `production` environment,
+the only job that reads `EXPO_TOKEN`. EAS builds both platforms and submits them
+to TestFlight and Play's closed (alpha) track; the job waits for the builds, so
+a failed build fails the run, and **Re-run failed jobs** retries it alone.
+Submission results show only on expo.dev. `scripts/release-tag.test.mjs` checks
+that it follows only a release, waits for the builds and pins `eas-cli`.
+
+## Prepare release
+
+`.github/workflows/prepare-release.yml` runs only by hand, from **Actions →
+Prepare release** on `main`. It opens the release PR: it cuts `Unreleased` into
+a dated section and sets the version (`scripts/prepare-release.mjs`), refreshes
+the web baselines in Playwright's container (`scripts/test-web.mjs
+--update-snapshots`), pushes `release/v<version>` and opens the PR with the
+release App's token, so pull-request CI runs on it, then starts **Native smoke
+tests** on the branch. It refuses an empty `Unreleased` or a second open release
+PR, and never merges. `scripts/prepare-release.test.mjs` checks the release
+rules and the workflow's shape. How a release is cut, and the App's secrets:
+[releases](agents/releases.md).
 
 ## Support and privacy site
 

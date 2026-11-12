@@ -81,7 +81,9 @@ edited by hand.
   device validation, and the manual regression pass.
 - [Contributing](CONTRIBUTING.md) and [security policy](SECURITY.md).
 - [Changelog](CHANGELOG.md) — what each release changed, from `1.0.0`;
-  [releases](docs/agents/releases.md) says how one is cut and tagged.
+  [releases](docs/agents/releases.md) says how one is cut with the Prepare
+  release workflow, and how CI tags it, publishes its GitHub Release and builds
+  it for TestFlight and Play's closed track.
 - [Agent guide](AGENTS.md) — the rules Claude Code and Codex follow here, their
   shared MCP servers, the development flow, and the agent skills and their
   settings in `docs/agents/`.
