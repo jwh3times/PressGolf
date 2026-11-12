@@ -441,10 +441,13 @@ or if location, internet or vibrate stops being declared. To read that manifest
 yourself without a cloud build, run `npx expo prebuild --platform android
 --clean --no-install`, open `android/app/src/main/AndroidManifest.xml`, then
 delete `android/` and revert the `scripts` that prebuild rewrites in
-`package.json`. Neither shows what libraries merge in. So before submitting,
-check a production `.aab` with
+`package.json`. Neither shows what libraries merge in. So check a production
+`.aab`, downloaded from its build on expo.dev, with
 [bundletool](https://developer.android.com/tools/bundletool):
-`bundletool dump manifest --bundle=<file>.aab | grep uses-permission`.
+`bundletool dump manifest --bundle=<file>.aab | grep uses-permission`. A
+release's **Store build** submits its `.aab` to the closed track as soon as it
+is built, so the check comes after that, before the release goes to review or
+production.
 
 ### App Store submission (iOS)
 

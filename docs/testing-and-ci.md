@@ -113,8 +113,8 @@ all passed. It uses `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and
 `supabase db push --remote` is safe to run when there are no pending migrations,
 and the function is deployed on every merge.
 
-Last on a push to `main`, **Tag the release** runs `scripts/release-tag.mjs`
-once every other job, migrations included, has passed (#311). When
+On a push to `main`, **Tag the release** runs `scripts/release-tag.mjs` once
+every other job, migrations included, has passed (#311). When
 `package.json`'s version has no `v<version>` tag yet, which happens only on the
 merge of a release PR, it creates the annotated tag "Release v<version>" on that
 commit; on any other merge it does nothing. It fails, tagging nothing, when
@@ -286,8 +286,8 @@ Limits:
 ## Native smoke workflow
 
 `.github/workflows/native-e2e.yml` runs nightly at 06:47 UTC and can be started
-manually from GitHub Actions. It is intentionally separate from the fast PR
-gate.
+manually from GitHub Actions. [Prepare release](#prepare-release) also starts it
+on each release branch. It is intentionally separate from the fast PR gate.
 
 - Android: generates the native project, builds a release APK, boots an API 34
   Pixel 6 emulator with KVM acceleration, and runs Maestro.

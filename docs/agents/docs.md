@@ -90,7 +90,8 @@ volatile service prices or quotas outside a dated research note.
   `docs/development.md`
 - Coverage floors: `coverageThreshold` in `package.json`; the patch target in the
   `check-patch-coverage.mjs` step of `.github/workflows/ci.yml`
-- CI jobs: the keys under `jobs:` in `.github/workflows/ci.yml` and `native-e2e.yml`, then each
+- CI jobs: the keys under `jobs:` in `.github/workflows/ci.yml`, `native-e2e.yml` and
+  `prepare-release.yml`, then each
   one's `name:`
 - Required checks and ruleset: `gh api repos/jwh3times/PressGolf/rules/branches/main`
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`

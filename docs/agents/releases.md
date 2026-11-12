@@ -53,7 +53,7 @@ revisit this.
 
 ### Setup
 
-Two credentials, both set up by the maintainer, each with a `ready-for-human` follow-up:
+Two credentials, both set up by the maintainer (#324, #325; the steps are in each issue):
 
 - **The release App**, a GitHub App installed on this repository only, with read and write access to
   contents and pull requests. Its client ID and private key are the repository secrets
