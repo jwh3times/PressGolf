@@ -85,5 +85,32 @@ export async function expectScreen(page: Page, name: string): Promise<void> {
   await page.waitForTimeout(400);
   await repaintBackdrops(page);
   await expect(page).toHaveScreenshot(`${name}.png`);
-  await expect(page.locator('body')).toMatchAriaSnapshot({ name: `${name}.aria.yml` });
+  await expectAriaSnapshot(page, name);
+}
+
+/**
+ * Matches the page's accessibility tree against `<name>.aria.yml`, as a screen
+ * reader would read it. Expo Router marks unfocused screens `inert` on web
+ * (58.0.31; it used `aria-hidden` before). Browsers leave inert content out of
+ * the accessibility tree, but Playwright 1.65's aria snapshot still reads it,
+ * and the last text of the screen underneath merges into the focused screen's
+ * first text. So inert subtrees are hidden for the snapshot, then restored.
+ */
+export async function expectAriaSnapshot(page: Page, name: string): Promise<void> {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('[inert]:not([aria-hidden])')) {
+      el.setAttribute('aria-hidden', 'true');
+      el.setAttribute('data-snapshot-inert', '');
+    }
+  });
+  try {
+    await expect(page.locator('body')).toMatchAriaSnapshot({ name: `${name}.aria.yml` });
+  } finally {
+    await page.evaluate(() => {
+      for (const el of document.querySelectorAll('[data-snapshot-inert]')) {
+        el.removeAttribute('aria-hidden');
+        el.removeAttribute('data-snapshot-inert');
+      }
+    });
+  }
 }

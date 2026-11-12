@@ -192,7 +192,11 @@ tapping through the app, as a user would. On each screen it checks three things:
    and state, as a screen reader reads it. Playwright lets extra elements through,
    so a new control passes without being recorded, and plain `--update-snapshots`
    leaves that baseline alone. Record it with
-   `node scripts/test-web.mjs --update-snapshots=all -g "<test>"`.
+   `node scripts/test-web.mjs --update-snapshots=all -g "<test>"`. Expo Router
+   makes unfocused screens `inert`, which browsers leave out of the tree but
+   Playwright's snapshot reads, so `expectAriaSnapshot` hides inert subtrees
+   for the comparison. Without that, the text of the screen underneath merges
+   into the focused one's.
 3. **axe.** It finds no WCAG 2.1 A or AA violation, such as a missing name, an
    invalid role or poor colour contrast.
 
