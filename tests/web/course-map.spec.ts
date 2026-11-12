@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { expectAccessible, expectScreen, openApp, openTab } from './app';
+import { expectAccessible, expectAriaSnapshot, expectScreen, openApp, openTab } from './app';
 
 /**
  * How each hole plays (#136), on a course map imported the way a player would:
@@ -79,7 +79,7 @@ test('score, a mapped hole', async ({ page }) => {
   // apart on some runs and not others. The whole page's accessibility tree is still checked.
   await expect(page.getByRole('button', { name: 'Map of hole 3, distances' })).toHaveScreenshot('score-mapped-hole-preview.png');
   await expect(page.getByText(/^Green: /)).toHaveScreenshot('score-mapped-hole-line.png');
-  await expect(page.locator('body')).toMatchAriaSnapshot({ name: 'score-mapped-hole.aria.yml' });
+  await expectAriaSnapshot(page, 'score-mapped-hole');
   await expectAccessible(page);
 });
 
