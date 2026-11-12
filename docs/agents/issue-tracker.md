@@ -69,3 +69,7 @@ jwh3times 11
   `/to-spec`) first; `Research needed`; and `Depends on another issue`, `External wait` or `Upstream`,
   which go with the `blocked` label.
 - `Track`: `Launch`, `Post-launch` or `Quality & tooling`.
+
+## Priority order
+
+- `Priority`: `P0` / `P1` / `P2` / `P3`.

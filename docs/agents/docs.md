@@ -70,9 +70,9 @@
   by `/domain-modeling`; none exist yet. An accepted ADR is `frozen`: report a contradiction instead
   of editing it.
 - `.agents/skills/*/**` — skills, mirrored to `.claude/skills/`. The `mattpocock/skills` set in
-  `skills-lock.json` and `end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` from
-  `jwh3times/skills`: `frozen` here. **When:** a skill is added, removed or replaced:
-  `AGENTS.md` § Agent skills.
+  `skills-lock.json` and `end-session`, `handoff`, `lets-go`, `ship`, `docs-updater` and
+  `what-next` from `jwh3times/skills`: `frozen` here. **When:** a skill is added, removed or
+  replaced: `AGENTS.md` § Agent skills.
 - `LICENSE` — `owner-only`.
 - `THIRD_PARTY_NOTICES.md` — the license notices of third-party files kept here. `owner-only`: report
   the change when a skill's source changes.
