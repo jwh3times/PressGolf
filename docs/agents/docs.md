@@ -41,7 +41,7 @@
   web UI and native smoke suites, repository protections, manual validation status. **When:**
   `.github/workflows/`, a test or check script in `package.json`, `coverageThreshold`,
   `scripts/check-patch-coverage.mjs`, `playwright.config.ts`, `tests/web/`, `.maestro/`,
-  `site/wrangler.jsonc`, or the `main` ruleset changes.
+  `site/wrangler.jsonc`, or a repository ruleset (`Protect main`, `Protect Release Tags`) changes.
 - `docs/accessibility.md` — automated guarantees, completed iOS and Android
   validation, the large-text pass, the native accessibility-tree lint, the regression checklist.
   **When:** accessible names, roles or layout branches change (`src/app/`, `src/components/`),
@@ -50,8 +50,9 @@
   the date they were read. `amend-only`.
 - `SECURITY.md` — reporting route, supported version, security model (RLS, demo isolation, public
   client config), repository controls. **When:** RLS policies or their assertion count
-  (`supabase/ci/rls-test.sql`), auth or secret handling, `EXPO_PUBLIC_` configuration, the
-  ruleset, or the repository's security settings change.
+  (`supabase/ci/rls-test.sql`), auth or secret handling, `EXPO_PUBLIC_` configuration, a
+  repository ruleset (`Protect main`, `Protect Release Tags`), or the repository's security
+  settings change.
 - `CONTRIBUTING.md` — the local gate, coverage gates, Expo and native rules, database rules, PR
   expectations. **When:** a gate, coverage floor, or the Expo or migration workflow changes.
 - `.github/PULL_REQUEST_TEMPLATE.md` — the issue-link slot, verification and impact checklists.
@@ -93,7 +94,9 @@ volatile service prices or quotas outside a dated research note.
 - CI jobs: the keys under `jobs:` in `.github/workflows/ci.yml`, `native-e2e.yml` and
   `prepare-release.yml`, then each
   one's `name:`
-- Required checks and ruleset: `gh api repos/jwh3times/PressGolf/rules/branches/main`
+- Required checks and rulesets: `gh api repos/jwh3times/PressGolf/rules/branches/main` for
+  `main`; `gh api repos/jwh3times/PressGolf/rulesets`, then `rulesets/<id>` for each, for every
+  ruleset (`Protect Release Tags` on `refs/tags/v*`: its rules, enforcement and bypass list)
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`
 - RLS assertion count ("109" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
   `grep -cE "select (expect|refused|refused_by_key)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`

@@ -61,7 +61,10 @@ maintain parallel release branches yet.
 The default branch requires pull requests, current CI checks, dependency
 review, and CodeQL. Force pushes and deletion are blocked. Dependabot security
 updates, secret scanning, and push protection are enabled, and workflow actions
-are pinned to full commit SHAs.
+are pinned to full commit SHAs. Release tags (`v*`) have their own ruleset,
+Protect Release Tags: while it is active, a tag can't be moved, deleted or
+force-pushed once made, so it stays on the commit it was made on
+([repository protections](docs/testing-and-ci.md#repository-protections)).
 
 Release credentials are scoped to the jobs that use them
 ([releases](docs/agents/releases.md)). The Expo robot user's `EXPO_TOKEN` is in
