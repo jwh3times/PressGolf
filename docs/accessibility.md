@@ -46,6 +46,22 @@ substitute for assistive-technology use on both platforms.
   demo (`sign-in`, `settings-demo`) at both widths and runs axe on them. The
   maintainer checked it on a phone with a screen reader and at the largest text
   size on 2026-11-06, before the change merged.
+- **Abandon round** ([#259](https://github.com/jwh3times/PressGolf/issues/259))
+  is a named button on Settle, under **Post to the season ledger**, and a choice
+  in History's prompt for a round that's still going (**Cancel**, **Abandon
+  round**, **Resume**). Either way a system alert offers **Not yet**, **Delete
+  round** and **Keep in History**, and **Delete round** asks a second time. A
+  round in an outing, or a card being typed in, has no Abandon. An abandoned
+  round's History row is one button whose name is the text it shows, so its
+  ABANDONED tag is read as part of the name, and the row shows no money. Jest
+  covers the names, each alert's choices, that the tag shows, and that outing
+  rounds and cards being typed in have no Abandon; no test checks the row's
+  name includes the tag. The web suite records Settle's accessibility tree with
+  the button at both widths and runs axe on it. The maintainer checked it in
+  November 2026, before
+  [#292](https://github.com/jwh3times/PressGolf/pull/292) merged, with
+  VoiceOver on an iPhone and TalkBack on an Android phone, and at the largest
+  text size on both.
 - A control's name contains the words it shows, in order (WCAG 2.5.3, Label
   in Name), so a voice-control user can say what they see. axe enforces this
   from 4.14 (October 2026). Chips that show initials say them after the name
