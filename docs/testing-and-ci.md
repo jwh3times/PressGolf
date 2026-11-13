@@ -490,8 +490,8 @@ changes are deliberate upgrades followed by `npx expo install --fix` and
 
 ## Manual validation status
 
-The completed iOS accessibility pass and remaining Android work are recorded in
-[accessibility.md](accessibility.md). Current product-level gaps are kept in the
+The completed iOS and Android accessibility passes, and the device checks of
+later features, are recorded in [accessibility.md](accessibility.md). Current product-level gaps are kept in the
 root README and GitHub issues rather than implied by a green automated run.
 
 When changing a user flow, update the matching flow in `.maestro/flows/` if the
