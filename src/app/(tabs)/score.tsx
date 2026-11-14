@@ -35,10 +35,13 @@ import { useStore } from '../../store/AppStore';
 import { alpha } from '../../theme/color';
 import { makeStyles, useTheme } from '../../theme/theme';
 import type { Theme } from '../../theme/themes';
-import { fonts, radius } from '../../theme/tokens';
+import { fonts, MIN_TAP_TARGET, radius } from '../../theme/tokens';
 
-/** The selection tick every score entry gives: −, + and the tap for par. */
-function tick() {
+/** The drawn size of a player's − and + on the hole-by-hole view, before the control scale. */
+const SCORE_STEPPER_SIZE = 34;
+
+/** The tick every score entry gives: −, + and the tap for par. */
+function selectionHaptic() {
   void Haptics.selectionAsync().catch(() => {});
 }
 
@@ -49,6 +52,9 @@ export default function ScoreScreen() {
   const store = useStore();
   const router = useRouter();
   const largeText = useLargeText();
+  const controlScale = useAccessibilityControlScale();
+  // The tap for par reaches up and down as far as a stepper does, to the minimum tap height.
+  const parSlop = Math.max(6, Math.ceil((MIN_TAP_TARGET - SCORE_STEPPER_SIZE * controlScale) / 2));
   const { round, course, roundGroup: group, settlement } = store;
 
   const ctx = useMemo(
@@ -253,6 +259,8 @@ export default function ScoreScreen() {
         const atMax = gross != null && max != null && gross === max;
         // A blank score offers par as its own tap, so − and + can start off it. A pick-up keeps its dash.
         const offersPar = gross == null && !pickedUp;
+        // − and + start off par whenever nothing is written, a pick-up included.
+        const startsOffPar = ctx.round.scores[player.id]?.[current] == null;
         return (
           <View
             key={player.id}
@@ -292,10 +300,10 @@ export default function ScoreScreen() {
                 <StepperButton
                   label={'−'}
                   accessibilityLabel={`Decrease score for ${player.name}`}
-                  accessibilityHint={offersPar ? 'Starts at a birdie' : undefined}
-                  size={34}
+                  accessibilityHint={startsOffPar ? 'Starts at a birdie' : undefined}
+                  size={SCORE_STEPPER_SIZE}
                   onPress={() => {
-                    tick();
+                    selectionHaptic();
                     store.bumpScore(player.id, current, -1);
                   }}
                 />
@@ -303,13 +311,17 @@ export default function ScoreScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Enter par, ${par}, for ${player.name}`}
-                    // The steppers' own slop is either side, so this reaches out only up and down.
-                    hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
+                    // As tall as the steppers, with their slop up and down. Sideways it can only
+                    // reach into what the steppers' slop leaves of the gap between them.
+                    hitSlop={{ top: parSlop, bottom: parSlop, left: 2, right: 2 }}
+                    style={({ pressed }) => [
+                      { minHeight: SCORE_STEPPER_SIZE * controlScale, justifyContent: 'center' },
+                      pressed ? { opacity: 0.6 } : null,
+                    ]}
                     onPress={() => {
-                      tick();
+                      selectionHaptic();
                       store.setScore(player.id, current, par);
                     }}
-                    style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
                   >
                     <Text
                       maxFontSizeMultiplier={MAX_CONTROL_SCALE}
@@ -341,10 +353,10 @@ export default function ScoreScreen() {
                 <StepperButton
                   label="+"
                   accessibilityLabel={`Increase score for ${player.name}`}
-                  accessibilityHint={offersPar ? 'Starts at a bogey' : undefined}
-                  size={34}
+                  accessibilityHint={startsOffPar ? 'Starts at a bogey' : undefined}
+                  size={SCORE_STEPPER_SIZE}
                   onPress={() => {
-                    tick();
+                    selectionHaptic();
                     store.bumpScore(player.id, current, 1);
                   }}
                 />

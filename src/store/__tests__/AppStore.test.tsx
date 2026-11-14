@@ -752,6 +752,8 @@ describe('AppStoreProvider', () => {
     const par = store.course!.tees[0].holes[0].par;
     await change(() => store.setScore(ann, 0, null));
     await change(() => store.setScore(bob, 0, null));
+    // The tightest max there is, double bogey, still leaves the first + its bogey.
+    await change(() => store.setOptions({ maxScore: 'double_bogey' }));
 
     await change(() => store.bumpScore(ann, 0, 1));
     await change(() => store.bumpScore(bob, 0, -1));

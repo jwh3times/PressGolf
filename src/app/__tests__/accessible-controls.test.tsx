@@ -956,7 +956,9 @@ describe('high-branch screen state matrices', () => {
     expect(setScore).toHaveBeenCalledWith(blank.id, 0, par);
     await user.press(screen.getByRole('button', { name: `Decrease score for ${blank.name}` }));
     expect(bumpScore).toHaveBeenCalledWith(blank.id, 0, -1);
-    expect(haptic).toHaveBeenCalledTimes(2);
+    await user.press(screen.getByRole('button', { name: `Increase score for ${blank.name}` }));
+    expect(bumpScore).toHaveBeenCalledWith(blank.id, 0, 1);
+    expect(haptic).toHaveBeenCalledTimes(3);
 
     // A scored player: no par to tap, and no hints.
     expect(screen.queryByRole('button', { name: `Enter par, ${par}, for ${scored.name}` })).toBeNull();
@@ -966,9 +968,14 @@ describe('high-branch screen state matrices', () => {
     );
 
     // A pick-up keeps its dash: nothing to tap for par, and only one blank line offers it.
+    // Its − and + still start off par, so they still say where.
     expect(screen.queryByRole('button', { name: `Enter par, ${par}, for ${pickedUp.name}` })).toBeNull();
     expect(screen.getAllByText(`tap ${par} for par`)).toHaveLength(1);
     expect(screen.getByText('picked up · sits out')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: `Increase score for ${pickedUp.name}` })).toHaveProp(
+      'accessibilityHint',
+      'Starts at a bogey',
+    );
   });
 
   it('covers sides without a round and with selected, unselected, and missing players', async () => {
