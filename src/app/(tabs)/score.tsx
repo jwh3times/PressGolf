@@ -37,6 +37,11 @@ import { makeStyles, useTheme } from '../../theme/theme';
 import type { Theme } from '../../theme/themes';
 import { fonts, radius } from '../../theme/tokens';
 
+/** The selection tick every score entry gives: −, + and the tap for par. */
+function tick() {
+  void Haptics.selectionAsync().catch(() => {});
+}
+
 export default function ScoreScreen() {
   const styles = useStyles();
   const theme = useTheme();
@@ -246,6 +251,8 @@ export default function ScoreScreen() {
         const pickedUp = ctx.pickedUp(player.id, current);
         const max = ctx.maxScore(player.id, current);
         const atMax = gross != null && max != null && gross === max;
+        // A blank score offers par as its own tap, so − and + can start off it. A pick-up keeps its dash.
+        const offersPar = gross == null && !pickedUp;
         return (
           <View
             key={player.id}
@@ -276,7 +283,7 @@ export default function ScoreScreen() {
                         ? 'picked up · sits out'
                         : `picked up · counts ${gross}`
                       : gross == null
-                        ? 'no score yet'
+                        ? `tap ${par} for par`
                         : `net ${net} · ${rel === 0 ? 'par' : rel! > 0 ? `+${rel}` : rel}${atMax ? ' · max' : ''}`}
                   </Text>
                 </View>
@@ -285,33 +292,59 @@ export default function ScoreScreen() {
                 <StepperButton
                   label={'−'}
                   accessibilityLabel={`Decrease score for ${player.name}`}
+                  accessibilityHint={offersPar ? 'Starts at a birdie' : undefined}
                   size={34}
-                  onPress={() => store.bumpScore(player.id, current, -1)}
+                  onPress={() => {
+                    tick();
+                    store.bumpScore(player.id, current, -1);
+                  }}
                 />
-                <Text
-                  maxFontSizeMultiplier={MAX_CONTROL_SCALE}
-                  style={[
-                    styles.scoreValue,
-                    {
-                      color:
-                        gross == null
-                          ? ink.quiet
-                          : rel! < 0
-                            ? colors.up
-                            : rel! > 1
-                              ? colors.clay
-                              : ink.full,
-                    },
-                  ]}
-                >
-                  {gross == null ? '–' : gross}
-                </Text>
+                {offersPar ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Enter par, ${par}, for ${player.name}`}
+                    // The steppers' own slop is either side, so this reaches out only up and down.
+                    hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
+                    onPress={() => {
+                      tick();
+                      store.setScore(player.id, current, par);
+                    }}
+                    style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+                  >
+                    <Text
+                      maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+                      style={[styles.scoreValue, { color: ink.quiet }]}
+                    >
+                      {par}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text
+                    maxFontSizeMultiplier={MAX_CONTROL_SCALE}
+                    style={[
+                      styles.scoreValue,
+                      {
+                        color:
+                          gross == null
+                            ? ink.quiet
+                            : rel! < 0
+                              ? colors.up
+                              : rel! > 1
+                                ? colors.clay
+                                : ink.full,
+                      },
+                    ]}
+                  >
+                    {gross == null ? '–' : gross}
+                  </Text>
+                )}
                 <StepperButton
                   label="+"
                   accessibilityLabel={`Increase score for ${player.name}`}
+                  accessibilityHint={offersPar ? 'Starts at a bogey' : undefined}
                   size={34}
                   onPress={() => {
-                    void Haptics.selectionAsync().catch(() => {});
+                    tick();
                     store.bumpScore(player.id, current, 1);
                   }}
                 />

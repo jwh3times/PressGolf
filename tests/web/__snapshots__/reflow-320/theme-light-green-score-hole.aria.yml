@@ -24,36 +24,36 @@
 - text: No green saved for this hole. Standing on it?
 - button /Mark this green, hole \d+/: MARK THIS GREEN
 - button /Mark ball, hole \d+/: MARK BALL
-- text: MB Marcus no score yet
+- text: MB Marcus tap 3 for par
 - button "Decrease score for Marcus": −
-- text: –
+- button "Enter par, 3, for Marcus"
 - button "Increase score for Marcus": +
 - button "Greenie for Marcus": GREENIE
 - button "Sandie for Marcus": SANDIE
 - button "Chip-in for Marcus": CHIP-IN
 - button "Polie for Marcus": POLIE
 - button "Pick up for Marcus": PICK UP
-- text: DP Dev no score yet
+- text: DP Dev tap 3 for par
 - button "Decrease score for Dev": −
-- text: –
+- button "Enter par, 3, for Dev"
 - button "Increase score for Dev": +
 - button "Greenie for Dev": GREENIE
 - button "Sandie for Dev": SANDIE
 - button "Chip-in for Dev": CHIP-IN
 - button "Polie for Dev": POLIE
 - button "Pick up for Dev": PICK UP
-- text: TJ T.J. no score yet
+- text: TJ T.J. tap 3 for par
 - button "Decrease score for T.J.": −
-- text: –
+- button "Enter par, 3, for T.J."
 - button "Increase score for T.J.": +
 - button "Greenie for T.J.": GREENIE
 - button "Sandie for T.J.": SANDIE
 - button "Chip-in for T.J.": CHIP-IN
 - button "Polie for T.J.": POLIE
 - button "Pick up for T.J.": PICK UP
-- text: BR Big Ray no score yet
+- text: BR Big Ray tap 3 for par
 - button "Decrease score for Big Ray": −
-- text: –
+- button "Enter par, 3, for Big Ray"
 - button "Increase score for Big Ray": +
 - button "Greenie for Big Ray": GREENIE
 - button "Sandie for Big Ray": SANDIE
