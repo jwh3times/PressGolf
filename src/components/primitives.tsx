@@ -367,12 +367,15 @@ export function Stepper({
 export function StepperButton({
   label,
   accessibilityLabel,
+  accessibilityHint,
   onPress,
   size = 32,
   disabled,
 }: {
   label: string;
   accessibilityLabel?: string;
+  /** What the press will do when the label alone doesn't say, such as where a first tap lands. */
+  accessibilityHint?: string;
   onPress: () => void;
   size?: number;
   disabled?: boolean;
@@ -385,6 +388,7 @@ export function StepperButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (label === '+' ? 'increase' : 'decrease')}
+      accessibilityHint={accessibilityHint}
       disabled={disabled}
       onPress={onPress}
       // Hit slop keeps these tappable with a glove on in February, and makes

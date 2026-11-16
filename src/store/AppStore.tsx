@@ -981,9 +981,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       bumpScore: (playerId, hole, delta) =>
         patchRound((r) => {
           const current = r.scores[playerId]?.[hole];
-          // First tap from blank lands on par, not on 1 or 13.
+          // From blank, a tap moves off par: + a bogey, − a birdie. Par itself is its own tap.
           const par = course ? new RoundContext(r, course, []).par(hole, playerId) : 4;
-          const base = current == null ? par - delta : current;
+          const base = current ?? par;
           const max = course ? new RoundContext(r, course, []).maxScore(playerId, hole) : null;
           const next = Math.max(1, Math.min(max ?? 20, base + delta));
           return withCell(r, playerId, hole, next, false);

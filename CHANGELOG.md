@@ -10,7 +10,14 @@ Prepare release workflow, moves them into a dated section and sets `package.json
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- On the Score screen's hole-by-hole view, the first tap on a blank score moves off par: **+**
+  enters a bogey and **−** a birdie, where both used to enter par. Par is its own tap: a blank
+  score shows the player's par, faded, between the buttons, and the line under their name says
+  "tap 4 for par". **−** now gives the same tick as **+**, and so does the tap for par. A screen
+  reader hears "Enter par, 4, for" the player, and **−** and **+** say where they start until a
+  score is in. A player who picked up keeps the dash. The whole card's keypad is unchanged.
 
 ## [1.4.0] - 2026-11-10
 

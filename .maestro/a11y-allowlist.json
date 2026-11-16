@@ -22,6 +22,12 @@
   },
   {
     "rule": "small-target",
+    "label": "^Enter par, \\d+, for .+$",
+    "screen": "^round/score_hole$",
+    "reason": "A blank score shows par between a player's − and +, drawn about 30 wide and as tall as the steppers. Its hitSlop brings it to 48 high like theirs; sideways it can only reach into the 2 points of the gap the steppers' own slop leaves, so the touch area is about 34×48. Each stepper beside it enters a score too."
+  },
+  {
+    "rule": "small-target",
     "label": "^(Nassau|Skins|Junk|Stableford|Four-ball|Wolf|Vegas)$",
     "screen": "^handicaps/format$",
     "reason": "A game's switch is drawn 46×27, and Switch sets its hitSlop to bring the touch area to 62×49."

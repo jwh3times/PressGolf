@@ -31,6 +31,7 @@ import { featuresFromOsm } from '../../osm/features';
 import { greensFromOsm, type OsmElement } from '../../osm/greens';
 import { frame } from '../../domain/hole-map';
 import type { CourseFeature, LatLng } from '../../domain/types';
+import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { fetchCourseFeatures, findCourses } from '../../osm/client';
 import torrey from '../../osm/__tests__/torrey-south.json';
@@ -915,6 +916,66 @@ describe('high-branch screen state matrices', () => {
     view = await render(<ScoreScreen />);
     await userEvent.setup().press(screen.getByRole('button', { name: 'Go to hole 1' }));
     expect(screen.getByText(/no pick recorded/)).toBeOnTheScreen();
+  });
+
+  it('offers par as one tap on a blank score, and says where the first − or + lands', async () => {
+    const haptic = jest.spyOn(Haptics, 'selectionAsync').mockResolvedValue(undefined);
+    const [blank, scored, pickedUp] = group.players;
+    const holes = course.tees[0].holes;
+    const par = holes[0].par;
+    const empty = () => Array(holes.length).fill(null);
+    const setScore = jest.fn();
+    const bumpScore = jest.fn();
+    useStoreValue({
+      round: {
+        ...round,
+        courseId: course.id,
+        teeId: course.tees[0].id,
+        playerTees: {},
+        scores: { ...round.scores, [blank.id]: empty(), [scored.id]: [5, ...empty().slice(1)], [pickedUp.id]: empty() },
+        pickups: { [`0:${pickedUp.id}`]: true },
+      },
+      setScore,
+      bumpScore,
+    });
+    await render(<ScoreScreen />);
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
+
+    // A blank score: par to tap, a line that says so, and hints on where − and + start.
+    expect(screen.getByText(`tap ${par} for par`)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: `Decrease score for ${blank.name}` })).toHaveProp(
+      'accessibilityHint',
+      'Starts at a birdie',
+    );
+    expect(screen.getByRole('button', { name: `Increase score for ${blank.name}` })).toHaveProp(
+      'accessibilityHint',
+      'Starts at a bogey',
+    );
+    await user.press(screen.getByRole('button', { name: `Enter par, ${par}, for ${blank.name}` }));
+    expect(setScore).toHaveBeenCalledWith(blank.id, 0, par);
+    await user.press(screen.getByRole('button', { name: `Decrease score for ${blank.name}` }));
+    expect(bumpScore).toHaveBeenCalledWith(blank.id, 0, -1);
+    await user.press(screen.getByRole('button', { name: `Increase score for ${blank.name}` }));
+    expect(bumpScore).toHaveBeenCalledWith(blank.id, 0, 1);
+    expect(haptic).toHaveBeenCalledTimes(3);
+
+    // A scored player: no par to tap, and no hints.
+    expect(screen.queryByRole('button', { name: `Enter par, ${par}, for ${scored.name}` })).toBeNull();
+    expect(screen.getByRole('button', { name: `Increase score for ${scored.name}` })).not.toHaveProp(
+      'accessibilityHint',
+      expect.anything(),
+    );
+
+    // A pick-up keeps its dash: nothing to tap for par, and only one blank line offers it.
+    // Its − and + still start off par, so they still say where.
+    expect(screen.queryByRole('button', { name: `Enter par, ${par}, for ${pickedUp.name}` })).toBeNull();
+    expect(screen.getAllByText(`tap ${par} for par`)).toHaveLength(1);
+    expect(screen.getByText('picked up · sits out')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: `Increase score for ${pickedUp.name}` })).toHaveProp(
+      'accessibilityHint',
+      'Starts at a bogey',
+    );
   });
 
   it('covers sides without a round and with selected, unselected, and missing players', async () => {

@@ -746,6 +746,47 @@ describe('AppStoreProvider', () => {
     expect(store.course).toBeNull();
   });
 
+  it('moves a blank score off par on the first tap: a bogey up, a birdie down', async () => {
+    await mount();
+    const [ann, bob] = store.round!.playerIds;
+    const par = store.course!.tees[0].holes[0].par;
+    await change(() => store.setScore(ann, 0, null));
+    await change(() => store.setScore(bob, 0, null));
+    // The tightest max there is, double bogey, still leaves the first + its bogey.
+    await change(() => store.setOptions({ maxScore: 'double_bogey' }));
+
+    await change(() => store.bumpScore(ann, 0, 1));
+    await change(() => store.bumpScore(bob, 0, -1));
+
+    expect(store.round!.scores[ann][0]).toBe(par + 1);
+    expect(store.round!.scores[bob][0]).toBe(par - 1);
+  });
+
+  it("moves off the par of a player's own tee, and never below 1", async () => {
+    await mount();
+    const course = store.course!;
+    const [ann, bob] = store.round!.playerIds;
+    expect(course.tees[0].holes[0].par).not.toBe(3);
+    let gold: ReturnType<AppStore['addTee']> = null;
+    await change(() => {
+      gold = store.addTee(course.id, course.tees[0].id, 'Gold');
+    });
+    await change(() => store.updateHole(course.id, gold!.id, 0, { par: 3 }));
+    await change(() => store.updateHole(course.id, gold!.id, 1, { par: 1 }));
+    await change(() => store.setPlayerTee(ann, gold!.id));
+    await change(() => store.setScore(ann, 0, null));
+    await change(() => store.setScore(ann, 1, null));
+    await change(() => store.setScore(bob, 0, null));
+
+    await change(() => store.bumpScore(ann, 0, 1));
+    await change(() => store.bumpScore(ann, 1, -1));
+    await change(() => store.bumpScore(bob, 0, 1));
+
+    expect(store.round!.scores[ann][0]).toBe(4);
+    expect(store.round!.scores[ann][1]).toBe(1);
+    expect(store.round!.scores[bob][0]).toBe(course.tees[0].holes[0].par + 1);
+  });
+
   it('holds the stepper at the max, records pick-ups, and keeps an outing on one rule', async () => {
     await mount();
     const round = store.round!;
@@ -764,12 +805,12 @@ describe('AppStoreProvider', () => {
     await change(() => store.setScore(playerId, 0, par));
     expect(store.round!.pickups[`0:${playerId}`]).toBeUndefined();
     await change(() => store.setPickedUp(playerId, 0, true));
-    // A tap on the stepper from a pick-up starts from par again, like a blank box.
+    // A tap on the stepper from a pick-up moves off par, like a blank box, and ends the pick-up.
     await change(() => store.bumpScore(playerId, 0, -1));
     expect(store.round!.pickups[`0:${playerId}`]).toBeUndefined();
-    expect(store.round!.scores[playerId][0]).toBe(par);
+    expect(store.round!.scores[playerId][0]).toBe(par - 1);
     await change(() => store.setPickedUp(playerId, 0, false));
-    expect(store.round!.scores[playerId][0]).toBe(par);
+    expect(store.round!.scores[playerId][0]).toBe(par - 1);
 
     await change(() => store.setActiveOuting(store.outings[0].id));
     const outing = store.outing!;
