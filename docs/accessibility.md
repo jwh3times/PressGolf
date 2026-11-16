@@ -15,6 +15,19 @@ substitute for assistive-technology use on both platforms.
   pops steppers on Format ("Increase the Skins stake"), and the buy-in steppers
   on Field pots. A birdie or eagle is a fact about the hole and not a control,
   so it is exposed as text ("Birdie for Dev") and not as a disabled button.
+- A blank score on Score's hole by hole view
+  ([#254](https://github.com/jwh3times/PressGolf/issues/254)) offers par as
+  its own tap: a button named for the par it shows ("Enter par, 4, for
+  Marcus") between "Decrease score for Marcus" and "Increase score for
+  Marcus", and the line under the name says "tap 4 for par". While nothing is
+  written for the hole, a pick-up included, − and + carry the hints "Starts at
+  a birdie" and "Starts at a bogey", since that's where their first tap lands.
+  A picked-up player keeps the dash and has no par button. Jest covers the
+  names, the hints, their absence once a score is written, and the pick-up;
+  the web suite records the par buttons in Score's accessibility tree at both
+  widths and runs axe on them. It hasn't been tried yet with VoiceOver or
+  TalkBack or at the largest text size on a phone
+  ([#334](https://github.com/jwh3times/PressGolf/issues/334)).
 - Delete account's password field and buttons are named, and its errors are
   announced: an `alert` that's also a live region, and
   `announceForAccessibility` on the phones, since iOS has no live regions and
@@ -325,7 +338,9 @@ Its limits:
   comfortable to tap. Say so in the allowlist entry's reason if you accept it.
   Steppers, game switches, the hole dots and the header text links are accepted
   this way: each sets a `hitSlop` that brings its touch area to
-  `MIN_TAP_TARGET` (48, in `src/theme/tokens.ts`). The slop is honoured where
+  `MIN_TAP_TARGET` (48, in `src/theme/tokens.ts`). The tap for par on a blank
+  score (#254) is accepted short of that: its slop makes it 48 high, but the
+  steppers either side leave it only about 34 wide. The slop is honoured where
   it reaches past the control's parent on iOS: checked by hand on an iPhone on
   2026-10-13, along with the chips, whose tap boxes overlap the space around
   their pills. Neither has been checked on an Android device.
