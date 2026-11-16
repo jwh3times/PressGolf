@@ -25,9 +25,11 @@ substitute for assistive-technology use on both platforms.
   A picked-up player keeps the dash and has no par button. Jest covers the
   names, the hints, their absence once a score is written, and the pick-up;
   the web suite records the par buttons in Score's accessibility tree at both
-  widths and runs axe on them. It hasn't been tried yet with VoiceOver or
-  TalkBack or at the largest text size on a phone
-  ([#334](https://github.com/jwh3times/PressGolf/issues/334)).
+  widths and runs axe on them. In November 2026 the maintainer checked it on
+  an iPhone with VoiceOver, its haptics and the largest text size, and with
+  TalkBack on the Android emulator, where the taps, the tap area, the
+  largest font size and the haptic (from the system's vibration log) were
+  also checked ([#334](https://github.com/jwh3times/PressGolf/issues/334)).
 - Delete account's password field and buttons are named, and its errors are
   announced: an `alert` that's also a live region, and
   `announceForAccessibility` on the phones, since iOS has no live regions and
@@ -343,7 +345,9 @@ Its limits:
   steppers either side leave it only about 34 wide. The slop is honoured where
   it reaches past the control's parent on iOS: checked by hand on an iPhone on
   2026-10-13, along with the chips, whose tap boxes overlap the space around
-  their pills. Neither has been checked on an Android device.
+  their pills. On Android, only the tap for par's slop has been checked, on
+  the emulator in November 2026 (#334): taps just above and below the number
+  entered par. The chips haven't been checked on Android.
 - **Controls cut off by the screen edge are skipped**, since their visible
   size says nothing.
 - **Only the eight checkpoint screens are covered**, in the state the flow
