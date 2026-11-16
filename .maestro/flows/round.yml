@@ -18,7 +18,8 @@ name: Complete a demo round
     visible: __checkpoint score_hole__
     timeout: 500
     optional: true
-- runFlow: { file: ../subflows/tap.yml, env: { TEXT: Increase score for Marcus, DIRECTION: DOWN } }
+# Marcus has no score on the par-3 12th. Par is its own tap; a first + would be a bogey.
+- runFlow: { file: ../subflows/tap.yml, env: { TEXT: "Enter par, 3, for Marcus", DIRECTION: DOWN } }
 - scrollUntilVisible:
     element:
       text: net 3 · par
