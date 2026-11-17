@@ -255,7 +255,7 @@ jobs:
           if [ -n "$number" ]; then
             gh issue edit "$number" --body-file "$REPORT"
           else
-            gh issue create --title "$title" --body-file "$REPORT"
+            gh issue create --title "$title" --body-file "$REPORT" --label report
           fi
 
       # GitHub Actions may not open pull requests in this repository, so the

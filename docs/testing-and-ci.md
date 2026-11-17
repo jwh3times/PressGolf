@@ -415,7 +415,8 @@ Both are **report-only**: a finding never fails the run. The report goes to
 the run's summary and a `native-report` artifact, which holds the expected,
 actual and diff image of every screen that differs. The scheduled nightly also
 writes it to one open issue titled "Native nightly report", replacing the
-previous night's.
+previous night's. When none is open, it opens one with the `report` label,
+which keeps it out of triage and the work queue.
 
 Screenshots only compare when the renders are pinned, so the workflow:
 
