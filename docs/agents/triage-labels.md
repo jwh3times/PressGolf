@@ -12,5 +12,4 @@ The labels and what they mean are in `.agents/skills/ship/settings/triage-labels
 - `report`: an issue CI keeps open and rewrites as a status report: the Native nightly report
   (#87), which `native-e2e.yml` updates after each scheduled run. It is not a task and stays off
   the board: triage gives it none of the five state labels, and a scan for what to work on counts it with
-  the parked items. If the issue is closed, the workflow opens a new one without the label; add the
-  label to the new one.
+  the parked items. If the issue is closed, the workflow opens a new one with the label.
