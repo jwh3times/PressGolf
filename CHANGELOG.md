@@ -18,6 +18,9 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   "tap 4 for par". **−** now gives the same tick as **+**, and so does the tap for par. A screen
   reader hears "Enter par, 4, for" the player, and **−** and **+** say where they start until a
   score is in. A player who picked up keeps the dash. The whole card's keypad is unchanged.
+- The tests now hold that a screen reader hears an abandoned round's ABANDONED tag in its History
+  row, right after the course name, and doesn't hear it on a live or completed round. The app
+  itself is unchanged.
 
 ## [1.4.0] - 2026-11-10
 
