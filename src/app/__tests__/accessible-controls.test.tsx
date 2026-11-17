@@ -1390,6 +1390,7 @@ describe('management screen state matrices', () => {
 
     useStoreValue({ rounds: [round], courses: [course] });
     let view = await render(<HistoryScreen />);
+    expect(screen.getByRole('button', { name: label })).not.toHaveAccessibleName(/ABANDONED/);
     await user.press(screen.getByRole('button', { name: label }));
     expect(last()[1]).toBe('This round is still going.');
     expect(last()[2]?.map((b) => b.text)).toEqual(['Cancel', 'Abandon round', 'Resume']);
@@ -1430,6 +1431,10 @@ describe('management screen state matrices', () => {
     useStoreValue({ rounds: [abandoned], courses: [course] });
     view = await render(<HistoryScreen />);
     expect(screen.getByText('ABANDONED')).toBeOnTheScreen();
+    // The row is one button named by its text, so a screen reader hears the tag with the course.
+    expect(screen.getByRole('button', { name: label })).toHaveAccessibleName(
+      new RegExp(`^${course.name}\\s+ABANDONED\\b`),
+    );
     expect(screen.queryByText(/^([+−]\$\d|even)/)).toBeNull();
     // It's the only round, and it doesn't count, so there are no season totals.
     expect(screen.queryByText(/Season totals/)).toBeNull();
@@ -1476,6 +1481,8 @@ describe('management screen state matrices', () => {
       courses: [course],
     });
     view = await render(<HistoryScreen />);
+    // Only an abandoned round carries the tag in its name.
+    expect(screen.getByRole('button', { name: new RegExp(course.name) })).not.toHaveAccessibleName(/ABANDONED/);
     await user.press(screen.getByRole('button', { name: new RegExp(course.name) }));
     const firstDialog = alert.mock.calls.at(-1)?.[2];
     firstDialog?.[2]?.onPress?.();

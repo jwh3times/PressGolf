@@ -69,11 +69,11 @@ substitute for assistive-technology use on both platforms.
   round in an outing, or a card being typed in, has no Abandon. An abandoned
   round's History row is one button whose name is the text it shows, so its
   ABANDONED tag is read as part of the name, and the row shows no money. Jest
-  covers the names, each alert's choices, that the tag shows, and that outing
-  rounds and cards being typed in have no Abandon; no test checks the row's
-  name includes the tag. The web suite records Settle's accessibility tree with
-  the button at both widths and runs axe on it. The maintainer checked it in
-  November 2026, before
+  covers the names, each alert's choices, that the row's name carries the tag
+  after the course (and a completed or live round's has none), and that outing
+  rounds and cards being typed in have no Abandon. The web suite records
+  Settle's accessibility tree with the button at both widths and runs axe on
+  it. The maintainer checked it in November 2026, before
   [#292](https://github.com/jwh3times/PressGolf/pull/292) merged, with
   VoiceOver on an iPhone and TalkBack on an Android phone, and at the largest
   text size on both.
