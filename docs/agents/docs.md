@@ -59,6 +59,10 @@
   **When:** the linking rule or the local gate changes.
 - `docs/agents/dev-flow.md` — what this repository adds to the shared development flow: paths,
   the `deps` branch type, bump and release details. **When:** one of those changes.
+- `docs/agents/merging.md`, `docs/agents/local-runs.md` — from a finished branch to a merged PR,
+  including Dependabot and store builds; checks, stacks and tools on a development machine.
+  **When:** a lesson is learned that no script or test enforces, or a command or check they quote
+  changes.
 - `docs/agents/*.md` (others) — the issue tracker, triage labels, domain-doc layout, and the
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at

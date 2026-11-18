@@ -64,6 +64,7 @@ sign-in and per-machine overrides: [development § MCP servers](docs/development
 
 - `README.md` is the durable product overview and quick start. Put detailed setup in `docs/development.md`, design and data-flow details in `docs/architecture.md`, CI behavior in `docs/testing-and-ci.md`, and accessibility evidence in `docs/accessibility.md`.
 - Update documentation in the same change whenever commands, environment variables, build profiles, CI, validation status, or known limitations change.
+- Before shipping or merging, read [`docs/agents/merging.md`](docs/agents/merging.md); before running checks, stacks or the emulator on a development machine, [`docs/agents/local-runs.md`](docs/agents/local-runs.md).
 - Treat executable configuration (`package.json`, workflows, `app.json`, `eas.json`, migrations) as authoritative. Date any point-in-time counts and avoid copying volatile service pricing or quotas when an official link is clearer.
 - [`docs/agents/docs.md`](docs/agents/docs.md) § Doc map names the document that owns each fact and the change that makes it stale; the `docs-updater` skill keeps the documents in line with the code against it.
 
