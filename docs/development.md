@@ -549,6 +549,16 @@ the `permissions.ask` list in `.claude/settings.json`, and the
 `approval_mode = "prompt"` tables in `.codex/config.toml`. Keep the two lists
 the same.
 
+**Allowed without a prompt.** The `permissions.allow` list in
+`.claude/settings.json` lets Claude Code run frequent read-only commands
+without asking: board, field and label listings (`gh project item-list`,
+`field-list`, `view`; `gh label list`), the exact `npm run lint`,
+`npm run typecheck`, `npm run lint:agents` and `npm run sync:agents:check`
+(with or without `-s`), `npx tsc --noEmit`, `nslookup`, and the two
+`context7` tools. Add a rule only for a command that changes nothing, and name
+a script exactly, never `npm run *` or another wildcard that can run arbitrary
+code. Codex has no counterpart list.
+
 **`supabase` needs the local stack, with Studio.** It shows as failed until
 `npx supabase start` is up. Reconnect it from `/mcp` in Claude Code, or start a
 new Codex session. The server lives in Studio, so a start that excludes
