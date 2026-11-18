@@ -33,11 +33,13 @@ This mirrors CI's "Migrations and row-level security" job:
 export MSYS_NO_PATHCONV=1   # Git Bash otherwise rewrites -w /work
 docker run -d --name pg-check -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=press \
   -v "$(pwd -W)/supabase:/work/supabase:ro" postgres:16
+until docker exec pg-check pg_isready -h localhost -U postgres -q; do sleep 1; done
 P="docker exec -w /work pg-check psql -U postgres -d press -v ON_ERROR_STOP=1"
+base=supabase/migrations/20260921000000_initial_schema.sql
 $P -q -f supabase/ci/stubs.sql
-for f in supabase/migrations/*.sql; do $P -q -f "$f"; done
-$P -q -f supabase/migrations/20260921000000_initial_schema.sql   # CI re-applies the baseline
-$P -f supabase/ci/rls-test.sql | grep -c "NOTICE:  ok:"
+$P -q -f "$base"; $P -q -f "$base"   # CI applies the baseline twice, before the rest
+for f in supabase/migrations/*.sql; do [ "$f" = "$base" ] || $P -q -f "$f"; done
+$P -f supabase/ci/rls-test.sql 2>&1 | grep -c "NOTICE:  ok:"   # psql prints notices on stderr
 docker rm -f pg-check
 ```
 
@@ -86,7 +88,7 @@ baselines). A run takes about an hour, so make each one count:
   Maestro could see. Read it before guessing.
 - Maestro validates enum fields (`direction`) and names output files before substituting
   `${VARS}`, so neither can come from a subflow's env.
-- Parse every flow as YAML locally first (`yaml` is in `node_modules`): a parse error fails every
+- Parse every flow as YAML locally first (`js-yaml` is in `node_modules`): a parse error fails every
   flow and leaves no artifacts.
 - When a run's captures are fine but misnamed, unprocessed, or its `report` job wasn't acquired by a
   runner, process the artifacts locally instead of spending another run:
