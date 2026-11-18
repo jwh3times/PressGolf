@@ -51,6 +51,14 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far — the **answer**, not the delivery status, and only for **closed** tickets. A map that narrates its children's status becomes a second source of truth for them and goes stale on the next merge.
 
+## Board mechanics
+
+- **Adding a parent issue to board 11 also adds its sub-issues**, closed ones included, with no
+  Priority. List the items with no Priority and archive the closed ones:
+  `gh project item-archive 11 --owner jwh3times --id <item id>` hides an item and keeps it.
+- **`gh project item-list` can return too few items right after an archive or add.** Query the
+  items one at a time, or wait and list again, before re-adding or moving anything.
+
 ## Public repository
 
 jwh3times/PressGolf
