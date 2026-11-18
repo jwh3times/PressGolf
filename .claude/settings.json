@@ -1,5 +1,21 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(gh project item-list *)",
+      "Bash(gh project field-list *)",
+      "Bash(gh project view *)",
+      "Bash(gh label list *)",
+      "Bash(npm run lint:agents)",
+      "Bash(npm run -s lint:agents)",
+      "Bash(npm run sync:agents:check)",
+      "Bash(npm run -s sync:agents:check)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(nslookup *)",
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id"
+    ],
     "ask": [
       "mcp__expo__build_run",
       "mcp__expo__build_submit",
