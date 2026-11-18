@@ -24,8 +24,8 @@
 - `docs/development.md` — prerequisites, running the app, dependencies, environment variables,
   Supabase setup, migrations, sync integration tests, EAS build profiles, the Android Maps key,
   Android permissions, App Store and Play submission, MCP servers, troubleshooting. **When:**
-  `.mcp.json`, `.codex/config.toml` or the `permissions.ask` list in `.claude/settings.json`
-  changes (§ MCP servers); `package.json`
+  `.mcp.json`, `.codex/config.toml` or the `permissions.ask` or `permissions.allow` list in
+  `.claude/settings.json` changes (§ MCP servers); `package.json`
   scripts or the Expo SDK change; `app.json`'s `android.blockedPermissions` or a plugin's
   permissions change; an env var changes (`.env.op`, `app.config.js`, `EXPO_PUBLIC_` reads in `src/`);
   `eas.json` build or submit profiles change; `supabase/config.toml` or the migration workflow
