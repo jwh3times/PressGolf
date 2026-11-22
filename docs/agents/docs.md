@@ -63,6 +63,11 @@
   including Dependabot and store builds; checks, stacks and tools on a development machine.
   **When:** a lesson is learned that no script or test enforces, or a command or check they quote
   changes.
+- `docs/agents/dependabot.md` — what reviewing a Dependabot PR takes here, for the `dependabot`
+  skill: the groups and ignores, the install, the gates, and the fixes that have worked. **When:**
+  `.github/dependabot.yml`, a workflow's toolchain pin, job or `with:` inputs, the Expo SDK, or a
+  pin that moves with a dependency (the Playwright container) changes, or a Dependabot PR needs a
+  new fix.
 - `docs/agents/*.md` (others) — the issue tracker, triage labels, domain-doc layout, and the
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
