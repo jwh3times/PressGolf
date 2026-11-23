@@ -12,8 +12,8 @@
     `docs/agents/dev-flow.md`);
   - a skill is added, removed or replaced (`.agents/skills/`, `skills-lock.json`),
     or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
-    `scripts/check-docs.mjs`, `scripts/check-skills.mjs`, `scripts/next-version.mjs`,
-    `scripts/check-changelog.mjs`):
+    `scripts/check-docs.mjs`, `scripts/check-skills.mjs`, `scripts/guard.mjs`,
+    `scripts/next-version.mjs`, `scripts/check-changelog.mjs`):
     `## Agent skills`;
   - the handoff transport or machine config changes: `### Machine handoff`.
 - `CLAUDE.md` — `@AGENTS.md` only. **When:** never for operating context.
