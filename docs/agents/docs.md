@@ -68,6 +68,9 @@
   `.github/dependabot.yml`, a workflow's toolchain pin, job or `with:` inputs, the Expo SDK, or a
   pin that moves with a dependency (the Playwright container) changes, or a Dependabot PR needs a
   new fix.
+- `docs/agents/guard.md` — the commands `scripts/guard.mjs` denies here, and the paths it
+  protects, on top of its universal rules. **When:** a **Never run** command or a never-remove path
+  in `docs/agents/workspace.md` changes, or a release script or hosted-project command changes.
 - `docs/agents/*.md` (others) — the issue tracker, triage labels, domain-doc layout, and the
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at
