@@ -4,7 +4,7 @@ From a finished branch to a merged pull request. What the `Protect main` ruleset
 [Testing and CI](../testing-and-ci.md#repository-protections); this file holds the steps around it
 and what has gone wrong.
 
-## Before `/ship`
+## Before `/open-pr`
 
 - **New or reshaped UI gets a device check before shipping.** The web suite proves names, roles and
   logic, and the native nightly runs only after a merge, on simulators, so a device is the only
