@@ -12,8 +12,8 @@
     `docs/agents/dev-flow.md`);
   - a skill is added, removed or replaced (`.agents/skills/`, `skills-lock.json`),
     or a shared script changes (`scripts/sync-agents.mjs`, `scripts/lint-agent-neutrality.mjs`,
-    `scripts/check-docs.mjs`, `scripts/check-skills.mjs`, `scripts/next-version.mjs`,
-    `scripts/check-changelog.mjs`):
+    `scripts/check-docs.mjs`, `scripts/check-skills.mjs`, `scripts/guard.mjs`,
+    `scripts/next-version.mjs`, `scripts/check-changelog.mjs`):
     `## Agent skills`;
   - the handoff transport or machine config changes: `### Machine handoff`.
 - `CLAUDE.md` — `@AGENTS.md` only. **When:** never for operating context.
@@ -68,6 +68,9 @@
   `.github/dependabot.yml`, a workflow's toolchain pin, job or `with:` inputs, the Expo SDK, or a
   pin that moves with a dependency (the Playwright container) changes, or a Dependabot PR needs a
   new fix.
+- `docs/agents/guard.md` — the commands `scripts/guard.mjs` denies here, and the paths it
+  protects, on top of its universal rules. **When:** a **Never run** command or a never-remove path
+  in `docs/agents/workspace.md` changes, or a release script or hosted-project command changes.
 - `docs/agents/*.md` (others) — the issue tracker, triage labels, domain-doc layout, and the
   skills' settings. **When:** a convention, label, route or setting changes.
 - `site/public/**/index.html` — the public support, privacy, terms and account-deletion pages at

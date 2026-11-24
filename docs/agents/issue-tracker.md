@@ -77,6 +77,8 @@ jwh3times 11
   `/to-spec`) first; `Research needed`; and `Depends on another issue`, `External wait` or `Upstream`,
   which go with the `blocked` label.
 - `Track`: `Launch`, `Post-launch` or `Quality & tooling`.
+- `Due` (date): set only when the action has a real deadline (an expiry, a renewal, an offer's end,
+  a date someone else set), never an aspirational one; empty otherwise.
 
 ## Priority order
 
