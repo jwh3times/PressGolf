@@ -22,6 +22,13 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   row, right after the course name, and doesn't hear it on a live or completed round. The app
   itself is unchanged.
 
+### Fixed
+
+- The account-deletion service now runs the same supabase-js version as the app, 2.119.2, where
+  it was still on 2.118.0. Dependabot moves only the app's copy, so a new check fails until the
+  service's pinned copy moves with it, and fails on an import of it with no version. Deleting an
+  account works as before (#363).
+
 ## [1.4.0] - 2026-11-10
 
 ### Added

@@ -26,8 +26,9 @@ npm run lint
 npx expo-doctor
 ```
 
-A change to `scripts/`, `app.json`, `supabase/config.toml`, `skills-lock.json`,
-`.agents/skills/` or `.claude/agents/` also runs the script and agent checks in
+A change to `scripts/`, `app.json`, `supabase/config.toml`, `supabase/functions/`,
+`@supabase/supabase-js`'s version, `skills-lock.json`, `.agents/skills/` or
+`.claude/agents/` also runs the script and agent checks in
 [Testing and CI § Local checks](docs/testing-and-ci.md#local-checks), and a change
 to a Markdown document runs `node scripts/check-docs.mjs`.
 
