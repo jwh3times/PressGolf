@@ -81,8 +81,11 @@ review covers a grouped PR:
 - `supabase/config.toml`, the `migrate` job in `ci.yml` and the `db:*` scripts in `package.json`,
   for a Supabase CLI bump.
 - `supabase/functions/delete-account/index.ts`, which imports
-  `npm:@supabase/supabase-js@2.118.0`: a second pin of supabase-js that Dependabot does not update
+  `npm:@supabase/supabase-js@<version>`: a second pin of supabase-js that Dependabot does not update
   (`.github/dependabot.yml` covers only the root npm manifest and the workflows).
+  `scripts/edge-function-pins.test.mjs` fails the `test:scripts` step until it matches the version
+  `package-lock.json` resolves, so every supabase-js bump, a patch included, needs the pin moved on
+  its branch (#363).
 - The `uses:` comments and `with:` inputs in `ci.yml`, `native-e2e.yml` and `prepare-release.yml`.
 
 ## Grounding facts
@@ -156,7 +159,10 @@ review covers a grouped PR:
   false positive, so read the rebased run first (`docs/agents/merging.md`).
 - **@supabase/supabase-js major:** read the migration guide, check `src/sync/` (the client and the
   sync calls), and run `npm run test:coverage`; the integration tests run in CI's sync job. The
-  Edge Function's own `npm:@supabase/supabase-js@2.118.0` pin does not move with it.
+  Edge Function's own `npm:@supabase/supabase-js@<version>` pin does not move with it, and
+  `npm run test:scripts` stays red until it does: move both imports in
+  `supabase/functions/delete-account/index.ts` to the lockfile's version, as for any supabase-js
+  bump.
 - **Supabase CLI (`supabase`) major:** read the release notes for every flag the `migrate` job
   (`db push --yes --remote=…`, `functions deploy delete-account --yes --remote=… --use-api`), the
   sync job (`supabase start -x …`) and the `db:*` scripts use, and for `supabase/config.toml` keys
