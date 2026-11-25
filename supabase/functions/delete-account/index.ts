@@ -10,9 +10,10 @@
 // can finish erasing.
 //
 // The version is pinned because every merge to main deploys this function, and a
-// floating one would change what handles passwords without a review.
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2.118.0/cors';
+// floating one would change what handles passwords without a review. It moves
+// with the app's: scripts/edge-function-pins.test.mjs fails when they differ.
+import { createClient } from 'npm:@supabase/supabase-js@2.119.2';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2.119.2/cors';
 
 type Outcome = 'deleted' | 'not-signed-in' | 'wrong-password' | 'failed';
 

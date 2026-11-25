@@ -291,7 +291,10 @@ SUPABASE_TEST_URL=http://127.0.0.1:55321 SUPABASE_TEST_ANON_KEY=<ANON_KEY from t
 `supabase/functions/delete-account/` is the one Edge Function. It runs on Deno,
 so `tsconfig.json` leaves `supabase/functions` out and `oxlint` ignores
 `supabase`. Its `supabase-js` version is pinned in the source, because every
-merge to `main` deploys it; move the pin by hand. It uses Supabase's default
+merge to `main` deploys it; move the pin by hand.
+`scripts/edge-function-pins.test.mjs` (in `npm run test:scripts`) fails until
+the pin matches the version `package-lock.json` resolves for the app, so a
+supabase-js bump, Dependabot's included, moves it on the same branch. It uses Supabase's default
 secrets (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), so
 there's nothing to set on a project. CI's `migrate` job deploys it. To deploy it
 to a personal project:
