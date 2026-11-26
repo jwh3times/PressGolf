@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { mergeShared } from '../merge-shared';
 import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
-import { emptySnapshot, fromRows, seenIn, toRows, type Documents } from '../rows';
+import { coursesUsed, emptySnapshot, fromRows, seenIn, toRows, type Documents } from '../rows';
 import {
   getSupabase,
   hostOuting,
@@ -139,6 +139,36 @@ describe('sync against a local Supabase stack', () => {
     const after = fromRows(await pullSnapshot());
     expect(after.groups.find((g) => g.id === group.id)?.name).toBe(group.name);
     expect(after.rounds.some((r) => r.id === round.id)).toBe(true);
+  });
+
+  it("lets a golfer play a course someone else created, and brings its creator's change to that phone (#378)", async () => {
+    const ann = await signUp('ann');
+    const season = await pushSeason('library');
+    const course = season.courses[0];
+
+    // Ben's own group, and a round of his own on her course. Nothing of hers is shared with him.
+    const ben = await signUp('ben');
+    const his = demoDocuments(`${RUN}library-ben`);
+    const solo = his.rounds.find((r) => r.outingId === null)!;
+    const group = his.groups.find((g) => g.id === solo.groupId)!;
+    const round = { ...solo, courseId: course.id, teeId: course.tees[0].id, playerTees: {}, handicapTees: {} };
+    const phone: Documents = { groups: [group], courses: [course], rounds: [round], outings: [], clubs: [], marks: [] };
+    const contact = await reconcile(toRows(phone));
+    if (contact.status !== 'pushed') throw new Error(contact.status);
+    expect(contact.own.courses).toEqual([]);
+    const { data: library } = await getSupabase()!.from('courses').select('owner_id').eq('id', course.id).single();
+    expect(library).toEqual({ owner_id: ann.id });
+
+    await signInAs(ann);
+    const renamed = { ...course, name: 'Renamed by its creator' };
+    await pushSnapshot(toRows({ ...season, courses: season.courses.map((c) => (c.id === course.id ? renamed : c)) }));
+
+    await signInAs(ben);
+    const shared = await pullSharedOutings(coursesUsed(toRows(phone)));
+    const merged = mergeShared(phone, fromRows(shared), new Set(contact.own.courses.map((c) => c.id)));
+    expect(merged.courses.map((c) => c.name)).toEqual(['Renamed by its creator']);
+    // And his next push leaves her course alone.
+    await expect(pushChanges(toRows(merged), contact.own, shared)).resolves.toBeDefined();
   });
 
   it("keeps a bag its owner's: a guest of her day never sees it, and her second phone takes it", async () => {

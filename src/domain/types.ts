@@ -158,8 +158,8 @@ export interface Course {
   /** The course owner's notes on its holes (#136), in hole order. Most courses have none. */
   notes: HoleNote[];
   createdAt: number;
-  /** A copy kept after its organiser's account went. Goes to the server only while something of this account's uses it. */
-  phoneOnly?: true;
+  /** Where the course is, to tell two of the same name apart in the course library (#378). Absent until someone sets it. */
+  location?: LatLng;
 }
 
 /** What the course owner wants players to know about a hole: "Blind tee shot, aim at the steeple." */

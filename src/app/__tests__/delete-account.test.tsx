@@ -33,7 +33,8 @@ describe('what the screen says', () => {
     expect(screen.getByText(/golfer@example\.com/)).toBeOnTheScreen();
     expect(screen.getByText(/can’t be undone/)).toBeOnTheScreen();
     expect(screen.getByText(/groups, rosters and rounds/)).toBeOnTheScreen();
-    expect(screen.getByText(/greens, maps and hole notes/)).toBeOnTheScreen();
+    expect(screen.getByText(/Your hole notes/)).toBeOnTheScreen();
+    expect(screen.getByText(/Courses you added stay in the course library/)).toBeOnTheScreen();
     expect(screen.getByText(/clubs and usual score/)).toBeOnTheScreen();
     expect(screen.getByText(/Outings you organised/)).toBeOnTheScreen();
     expect(screen.getByText(/Scores you typed into someone else’s card/)).toBeOnTheScreen();

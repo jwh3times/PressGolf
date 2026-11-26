@@ -121,7 +121,7 @@ As of October 2026:
   Supabase stack (real auth, API, row-level security, realtime and the
   account-deletion function) with two accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 109 row-level-security assertions against Postgres 16
+  database migration plus 122 row-level-security assertions against Postgres 16
   (November 2026).
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
@@ -144,8 +144,8 @@ As of October 2026:
 - Any account can delete itself from Settings. A guest can leave, and the
   organiser keeps the scores they typed. An organiser can leave too: the day goes
   from the server, and each guest keeps a copy on their phone that no longer syncs.
-  A guest's own rounds and outings on the organiser's group or course move to a copy
-  of their own and keep syncing, for anyone else in those outings too, though a third
+  A guest's own rounds and outings on the organiser's group move to a copy of their
+  own and keep syncing, on the same course, which stays in the course library, for anyone else in those outings too, though a third
   phone's unsent edits on that card are lost. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)). A guest's

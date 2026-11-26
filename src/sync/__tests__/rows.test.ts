@@ -1,6 +1,6 @@
 import { GAME_KEYS, type Mark } from '../../domain/types';
 import { makeTestCourse, makeTestGroup, makeTestRound, flat, withTee } from '../../domain/__tests__/helpers';
-import { countRows, emptySnapshot, fromRows, toRows, TABLES, cellValue, sawJunk, seenIn, seenValue } from '../rows';
+import { countRows, coursesUsed, emptySnapshot, fromRows, toRows, TABLES, cellValue, sawJunk, seenIn, seenValue } from '../rows';
 import { demoDocuments } from './fixtures';
 
 describe('seenIn', () => {
@@ -241,6 +241,34 @@ describe('toRows / fromRows round trip', () => {
     const twice = fromRows(toRows(once));
     expect(twice).toEqual(once);
   });
+
+  it("round-trips a course's location, and leaves it off a course with none (#378)", () => {
+    const placed = { ...makeTestCourse(), id: 'placed', location: { lat: 32.9, lng: -117.25 } };
+    const unplaced = { ...makeTestCourse(), id: 'unplaced' };
+    const rows = toRows({ ...demoDocuments(), courses: [placed, unplaced] });
+    expect(rows.courses).toEqual([
+      expect.objectContaining({ id: 'placed', lat: 32.9, lng: -117.25 }),
+      expect.objectContaining({ id: 'unplaced', lat: null, lng: null }),
+    ]);
+    const [back, none] = fromRows(rows).courses;
+    expect(back.location).toEqual({ lat: 32.9, lng: -117.25 });
+    expect(none).not.toHaveProperty('location');
+  });
+});
+
+describe('coursesUsed', () => {
+  it('names every course a snapshot holds or points at, once (#378)', () => {
+    const rows = toRows(demoDocuments());
+    rows.rounds.push({ ...rows.rounds[0], id: 'elsewhere', course_id: 'theirs' });
+    rows.groups.push({ ...rows.groups[0], id: 'g-other', default_course_id: 'their-default' });
+    rows.groups.push({ ...rows.groups[0], id: 'g-none', default_course_id: null });
+    const other = emptySnapshot();
+    other.outings.push({ ...rows.outings[0], course_id: 'outing-course' });
+    const used = coursesUsed(rows, other);
+    expect(used).toEqual(expect.arrayContaining([...rows.courses.map((c) => c.id), 'theirs', 'their-default', 'outing-course']));
+    expect(new Set(used).size).toBe(used.length);
+    expect(used).not.toContain(null);
+  });
 });
 
 describe('snapshot helpers', () => {
@@ -266,7 +294,7 @@ describe('snapshot helpers', () => {
       subtitle: '',
       created_at: 1,
     });
-    rows.courses.push({ id: 'course', name: 'Bare', created_at: 1 });
+    rows.courses.push({ id: 'course', name: 'Bare', created_at: 1, lat: null, lng: null });
     rows.rounds.push({
       id: 'round',
       group_id: 'group',

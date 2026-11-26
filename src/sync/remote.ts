@@ -12,7 +12,7 @@
  */
 import { changedRows, conflictTarget, countDeletions, deletions, GUEST_WRITES, identify, isEmpty, splitByOwner, type Deletions } from './diff';
 import type { MoveNotice } from './move-notices';
-import { cellValue, countRows, emptySnapshot, sawJunk, seenValue, TABLES, type JunkRow, type ScoreRow, type SeenCells, type Snapshot } from './rows';
+import { cellValue, countRows, coursesUsed, emptySnapshot, sawJunk, seenValue, TABLES, type JunkRow, type ScoreRow, type SeenCells, type Snapshot } from './rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, requireUserId } from './supabase';
 
@@ -74,27 +74,22 @@ export async function pullSnapshot(): Promise<Snapshot> {
 }
 
 /**
- * The days other people are sharing with this phone, and the days this phone
- * is sharing with them.
+ * The days other people are sharing with this phone, the days this phone is
+ * sharing with them, and the courses it holds, as the course library has them.
  *
  * Everything here is read-only as far as the local data is concerned: it is
  * what the other phones have written. The server is authoritative for a shared
  * card, which is only safe because this always runs after a push — anything
  * typed on this phone is already up there before any of it comes back down.
+ * A course comes back whoever created it (#378), each row with its creator, so
+ * the push can tell this account's own from the rest.
  */
-export async function pullSharedOutings(): Promise<Snapshot> {
+export async function pullSharedOutings(heldCourses: readonly string[] = []): Promise<Snapshot> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('This build has no server configured.');
   await requireUserId();
 
   const snapshot = emptySnapshot();
-
-  const { data: memberships, error: memberError } = await supabase
-    .from('outing_members')
-    .select('outing_id');
-  if (memberError) throw new Error(`outing_members: ${memberError.message}`);
-  const outingIds = (memberships ?? []).map((m) => m.outing_id as string);
-  if (outingIds.length === 0) return snapshot;
 
   // The table name is the snapshot key in every case, so one argument does.
   const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
@@ -103,6 +98,32 @@ export async function pullSharedOutings(): Promise<Snapshot> {
     (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
   };
 
+  const { data: memberships, error: memberError } = await supabase
+    .from('outing_members')
+    .select('outing_id');
+  if (memberError) throw new Error(`outing_members: ${memberError.message}`);
+  const outingIds = (memberships ?? []).map((m) => m.outing_id as string);
+  if (outingIds.length > 0) await addOutings(snapshot, add, outingIds);
+
+  // The courses, from the library. A hole note is still its author's, and comes only
+  // with a shared day's course.
+  const courseIds = [...new Set([...snapshot.outings.map((o) => o.course_id), ...heldCourses])];
+  await add('courses', 'id', courseIds);
+  await add('tees', 'course_id', courseIds);
+  await add('tee_holes', 'course_id', courseIds);
+  await add('course_greens', 'course_id', courseIds);
+  await add('course_features', 'course_id', courseIds);
+  await add('course_hole_notes', 'course_id', [...new Set(snapshot.outings.map((o) => o.course_id))]);
+
+  return snapshot;
+}
+
+/** The shared days themselves, and everything on them, into `snapshot`. */
+async function addOutings(
+  snapshot: Snapshot,
+  add: (table: keyof Snapshot, column: string, values: string[]) => Promise<void>,
+  outingIds: string[],
+): Promise<void> {
   await add('outings', 'id', outingIds);
   // The group has to come too: fromRows hangs players off it, and a player
   // with no group would be dropped on the way back into the app.
@@ -129,15 +150,6 @@ export async function pullSharedOutings(): Promise<Snapshot> {
   // The names to put against the scores, and a card to play them on.
   await add('players', 'id', [...new Set(snapshot.outing_field.map((f) => f.player_id))]);
   await add('groups', 'id', [...new Set(snapshot.outings.map((o) => o.group_id))]);
-  const courseIds = [...new Set(snapshot.outings.map((o) => o.course_id))];
-  await add('courses', 'id', courseIds);
-  await add('tees', 'course_id', courseIds);
-  await add('tee_holes', 'course_id', courseIds);
-  await add('course_greens', 'course_id', courseIds);
-  await add('course_features', 'course_id', courseIds);
-  await add('course_hole_notes', 'course_id', courseIds);
-
-  return snapshot;
 }
 
 /** What an organiser's deletion left for this account, for `applyMoveNotices`. Only its own, by policy. */
@@ -319,8 +331,9 @@ type OnTheirOwn = (typeof ON_THEIR_OWN)[number];
 export async function reconcile(local: Snapshot, seen: SeenCells | null = null): Promise<SyncOutcome> {
   const remote = await pullSnapshot();
   // Before pushing, so a phone that already holds someone else's day, saved
-  // from an earlier session, knows which of its rows are theirs.
-  const shared = await pullSharedOutings();
+  // from an earlier session, or a course someone else created, knows which of
+  // its rows are theirs.
+  const shared = await pullSharedOutings(coursesUsed(local, remote));
 
   // Each of these that the phone has none of and the account has some of.
   const takes: Partial<Pick<Snapshot, OnTheirOwn>> = Object.fromEntries(

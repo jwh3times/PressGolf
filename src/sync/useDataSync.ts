@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from './remote';
 import { changesAnything, mergeShared } from './merge-shared';
 import { applyFollowed, applyMoveNotices, followMoveNotices, keepingPhoneOnly, type MoveNotice } from './move-notices';
-import { emptySnapshot, fromRows, seenIn, toRows, type Documents, type SeenCells, type Snapshot } from './rows';
+import { coursesUsed, emptySnapshot, fromRows, seenIn, toRows, type Documents, type SeenCells, type Snapshot } from './rows';
 
 export interface SyncState {
   /**
@@ -29,6 +29,12 @@ export interface DataSync extends SyncState {
 const OFF: SyncState = { status: 'off', at: null, message: null };
 
 const NOTHING_TAKEN = fromRows(emptySnapshot());
+
+/** The courses the phone holds or uses, for the shared pull to fetch from the course library. */
+const heldCourses = (held: Documents): string[] => coursesUsed(toRows(held));
+
+/** The courses this account created: the ones it last pushed, which the shared merge leaves as the phone has them. */
+const createdCourses = (own: Snapshot | null): ReadonlySet<string> => new Set((own?.courses ?? []).map((course) => course.id));
 
 /** Long enough that a hole's worth of taps goes up as one write. */
 const PUSH_DELAY_MS = 2500;
@@ -101,7 +107,7 @@ export function useDataSync(options: {
     if (!stillOn()) return null;
     const nothing = { held, notices: [] as MoveNotice[], taken: NOTHING_TAKEN };
     if (applyMoveNotices(held, notices) === held) return nothing;
-    const incoming = fromRows(await pullSharedOutings());
+    const incoming = fromRows(await pullSharedOutings(heldCourses(held)));
     if (!stillOn()) return null;
     const followed = followMoveNotices(held, notices, incoming);
     if (followed.held !== held) moved.current(followed.notices, followed.taken);
@@ -116,7 +122,9 @@ export function useDataSync(options: {
     sharedHas.current = outcome.shared;
     if (outcome.status === 'adopted-remote') {
       serverHas.current = outcome.snapshot;
-      adopt.current(keepingPhoneOnly(held, fromRows(outcome.snapshot)));
+      // The account's season, with the library's courses its rounds are on.
+      const season = mergeShared(fromRows(outcome.snapshot), fromRows(outcome.shared), createdCourses(outcome.snapshot));
+      adopt.current(keepingPhoneOnly(held, season));
     } else {
       serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
       if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings || outcome.marks)) {
@@ -208,12 +216,12 @@ export function useDataSync(options: {
           }
           // Only now, with this phone's edits safely up, is it safe to let the
           // server's copy of a shared day win.
-          sharedHas.current = await pullSharedOutings();
+          sharedHas.current = await pullSharedOutings(heldCourses(latest.current));
           if (session.current !== started) return;
           const incoming = fromRows(sharedHas.current);
           // The store may not have rendered the notices yet.
           const current = applyFollowed(latest.current, notices, taken);
-          const merged = mergeShared(current, incoming);
+          const merged = mergeShared(current, incoming, createdCourses(serverHas.current));
           if (changesAnything(current, merged)) shared.current(merged);
           caughtUp.current(seenIn(sharedHas.current));
           setState({ status: 'synced', at: Date.now(), message: null });

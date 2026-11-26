@@ -46,7 +46,7 @@ import type {
 } from '../domain/types';
 import { useAuth } from '../auth/AuthProvider';
 import { applyFollowed, type MoveNotice } from '../sync/move-notices';
-import { deleteAccount as deleteAccountRemote } from '../sync/supabase';
+import { deleteAccount as deleteAccountRemote, isSupabaseConfigured } from '../sync/supabase';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
 import type { Documents, SeenCells } from '../sync/rows';
 import { clearDataset, loadDataset, loadSettings, saveDataset, saveSettings } from './persistence';
@@ -1078,7 +1078,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
  * real group, and inventing players for them would poison their ledger.
  */
 async function hydrate(demoMode: boolean): Promise<Dataset> {
-  const stored = await loadDataset(demoMode);
+  // The live dataset syncs on a build with a server, and starts afresh with the course library (#378).
+  const stored = await loadDataset(demoMode, { syncs: !demoMode && isSupabaseConfigured() });
   if (demoMode && stored.groups.length === 0) {
     const seeded = buildDemoDataset();
     await saveDataset(true, seeded);

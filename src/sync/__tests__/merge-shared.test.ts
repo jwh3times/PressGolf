@@ -104,6 +104,40 @@ describe('mergeShared', () => {
   });
 });
 
+describe('mergeShared, for the course library (#378)', () => {
+  const library = makeTestCourse();
+
+  it("takes the library's copy of a course someone else created, with no shared day at all", () => {
+    const mine = { ...local(), courses: [...local().courses, library] };
+    const renamed = { ...library, name: 'Renamed by its creator' };
+    const merged = mergeShared(mine, { ...NOTHING, courses: [renamed] });
+    expect(merged.courses.find((c) => c.id === library.id)).toBe(renamed);
+    expect(merged.courses).toHaveLength(mine.courses.length);
+    expect(merged.rounds).toBe(mine.rounds);
+    expect(changesAnything(mine, merged)).toBe(true);
+  });
+
+  it('adds a course the phone holds from the library, with no shared day', () => {
+    const mine = local();
+    const merged = mergeShared(mine, { ...NOTHING, courses: [library] });
+    expect(merged.courses).toEqual([...mine.courses, library]);
+  });
+
+  it('leaves the courses this account created as the phone has them', () => {
+    const mine = local();
+    const own = mine.courses[0];
+    const merged = mergeShared(mine, { ...NOTHING, courses: [{ ...own, name: 'Older, on the server' }] }, new Set([own.id]));
+    expect(merged).toBe(mine);
+  });
+
+  it('changes nothing when the library has the course as the phone does, so nothing renders', () => {
+    const mine = { ...local(), courses: [...local().courses, library] };
+    const merged = mergeShared(mine, { ...NOTHING, courses: [JSON.parse(JSON.stringify(library))] });
+    expect(merged).toBe(mine);
+    expect(changesAnything(mine, merged)).toBe(false);
+  });
+});
+
 describe('changesAnything', () => {
   it('is false when the merge was a no-op', () => {
     const mine = local();

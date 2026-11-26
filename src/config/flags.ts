@@ -20,5 +20,7 @@ export function storageNamespace(demoMode: boolean): string {
 /**
  * 1 — rounds only.
  * 2 — outings: a round can belong to a bigger day with field-wide pots.
+ * 3 — the course library (#378): a phone that syncs clears its courses and the
+ *     days on them once, as the server did.
  */
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 3;

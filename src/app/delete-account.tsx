@@ -75,7 +75,7 @@ export default function DeleteAccountScreen() {
         <View style={styles.section}>
           <Eyebrow>What goes</Eyebrow>
           <Body style={styles.item}>Your groups, rosters and rounds.</Body>
-          <Body style={styles.item}>Your courses, with their greens, maps and hole notes.</Body>
+          <Body style={styles.item}>Your hole notes.</Body>
           <Body style={styles.item}>Your clubs and usual score.</Body>
           <Body style={styles.item}>
             Outings you organised, for everyone, including scores guests typed. Guests keep what’s
@@ -87,8 +87,12 @@ export default function DeleteAccountScreen() {
           <Eyebrow>What stays</Eyebrow>
           <Body style={styles.item}>Scores you typed into someone else’s card stay with them.</Body>
           <Body style={styles.item}>
-            Anyone with a round or outing of their own on your group or course keeps it, with their own
-            copy of that course and of the players they could already see.
+            Courses you added stay in the course library for everyone, with their tees, greens and maps,
+            no longer marked as yours.
+          </Body>
+          <Body style={styles.item}>
+            Anyone with a round or outing of their own on your group keeps it, with their own copy of the
+            players they could already see.
           </Body>
         </View>
 
