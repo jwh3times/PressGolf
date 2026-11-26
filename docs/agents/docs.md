@@ -79,9 +79,9 @@
   "Effective" date at its top (the support and account-deletion pages carry no date).
 - `CHANGELOG.md` — release notes, Keep a Changelog and SemVer: `Unreleased` collects each change,
   and a release PR cuts a dated section (`docs/agents/releases.md`). `ship-owned`.
-- `CONTEXT.md` — the domain glossary, kept by `/domain-modeling`. `docs/adr/*.md` — created lazily
-  by `/domain-modeling`; none exist yet. An accepted ADR is `frozen`: report a contradiction instead
-  of editing it.
+- `CONTEXT.md` — the domain glossary, kept by `/domain-modeling`.
+- `docs/adr/*.md` — architecture decision records, created by `/domain-modeling`. An accepted ADR is
+  `frozen`: report a contradiction instead of editing it.
 - `.agents/skills/*/**` — skills, mirrored to `.claude/skills/`. The `mattpocock/skills` set in
   `skills-lock.json` and the skills from `jwh3times/skills` that the `shared-skills` block in
   `AGENTS.md` installs: `frozen` here. **When:** a skill is added, removed or replaced: `AGENTS.md`

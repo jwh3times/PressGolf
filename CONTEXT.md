@@ -52,8 +52,24 @@ _Avoid_: dispersion, consistency, distance spread
 How a player usually scores over 18 holes, in bands from the 70s to 100s or more, which sets how widely the club suggestions spread their shots.
 _Avoid_: handicap (the index it may start from), skill level
 
+**Course**:
+One real golf course: a single record in Press that every account playing it uses, owned by no account.
+_Avoid_: my course, a copy of a course
+
+**Course library**:
+Every course in Press, which any golfer can search to find the one they are playing.
+_Avoid_: shared course database, catalogue, directory, published courses
+
+**Course version**:
+A course as it stood between two changes to it. A round is played on one course version and keeps it when the course changes; older versions are kept in an archive.
+_Avoid_: snapshot, copy, revision
+
+**Tee card**:
+One tee's hole-by-hole par, stroke index and yards. Slope and rating belong to the tee, not to its tee card.
+_Avoid_: card (a round's scorecard), scorecard
+
 **Organiser**:
-The account that created an outing and shares it by its code; owns the outing's group, course and rounds.
+The account that created an outing and shares it by its code; owns the outing's group and rounds, but not its course.
 _Avoid_: host, owner (owner is any row's account)
 
 **Guest**:
@@ -65,4 +81,4 @@ Of an outing on a guest's phone: its organiser deleted their account, so it's go
 _Avoid_: orphaned, archived
 
 **Move notice**:
-What an account's deletion leaves anyone holding its day, group or course: an outing that has gone, or a new id for a group, player, course or tee they hold. Where the guest's own rows stay on that group or course, the server has a copy under the same new id.
+What an account's deletion leaves anyone holding its day or group: an outing that has gone, or a new id for a group or player they hold. Where the guest's own rows stay on that group, the server has a copy under the same new id. Courses never move: no account owns one.
