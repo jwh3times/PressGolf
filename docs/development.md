@@ -328,8 +328,10 @@ Supabase refuses to delete a user who still has rows. Run step 1 again.
 For an organiser, step 1 also takes every outing they organised off the server,
 with everyone's rounds and scores in it, and leaves the guests their
 [move notices](architecture.md#move-notices). Anyone with a round or outing of
-their own on the account's group or course keeps it, on
-[a copy of their own](architecture.md#a-guests-own-rows). It can't be undone.
+their own on the account's group keeps it, on
+[a copy of their own](architecture.md#a-guests-own-rows). The account's courses
+stay in the [course library](architecture.md#the-course-library), no longer
+marked as its own. It can't be undone.
 
 ## EAS build profiles
 

@@ -16,8 +16,11 @@ bunker and penalty area in play. Each mapped hole also says how it plays:
 which misses run into out of bounds, water or bunkers, around the green, off
 the tee and on a par 5's lay-up, hole by hole or in a course guide. Where to
 aim is shown when looking a course over, or in a round its scorer marks as
-practice, since the Rules of Golf don't allow it in a counted one. A course's
-owner can leave a note on each hole and draw its out-of-bounds lines. A
+practice, since the Rules of Golf don't allow it in a counted one. Courses
+belong to one [course library](docs/architecture.md#the-course-library) that
+every signed-in account reads, and a round can be played on any of them. The
+account that added a course changes it, and can leave a note on each hole and
+draw its out-of-bounds lines. A
 player's bag keeps how far they carry each club and how they usually score,
 typed in once and backed up with their account. In a practice round, or
 looking a course over, the app suggests a club, where to aim and when to lay
@@ -145,8 +148,9 @@ As of October 2026:
   organiser keeps the scores they typed. An organiser can leave too: the day goes
   from the server, and each guest keeps a copy on their phone that no longer syncs.
   A guest's own rounds and outings on the organiser's group move to a copy of their
-  own and keep syncing, on the same course, which stays in the course library, for anyone else in those outings too, though a third
-  phone's unsent edits on that card are lost. Deletion
+  own and keep syncing, on the same course, which stays in the course library, for
+  anyone else in those outings too, though a third phone's unsent edits on that
+  card are lost. Deletion
   has been checked in Jest, against a local stack and on the web build, not on a
   phone ([#215](https://github.com/jwh3times/PressGolf/issues/215)). A guest's
   phone on an older build doesn't know to keep that copy to itself, and can be left
@@ -158,6 +162,13 @@ As of October 2026:
   one, and a score or junk claim cleared there while the app was closed comes back.
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
+- A phone holds only the library courses it uses or was shared an outing on:
+  there is no search of the library yet
+  ([#383](https://github.com/jwh3times/PressGolf/issues/383)). The course editor
+  still opens on a course someone else added, but that edit isn't synced and the
+  next pull replaces it ([#381](https://github.com/jwh3times/PressGolf/issues/381)).
+  The course library has been checked in Jest and against a local stack, not on a
+  phone.
 - Web is a preview target. Native `Alert` confirmations do not provide the full
   workflow in a browser, and the native date picker for a card's Played-on
   date does not render there, so a card entered on web is dated today.
