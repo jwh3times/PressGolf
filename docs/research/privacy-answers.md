@@ -107,20 +107,24 @@ today. No screen sends it, so the `mutations` table is empty in practice. Fonts 
 >   and Anthropic can hold the photos up to 30 days ([App Privacy
 >   Details](https://developer.apple.com/app-store/app-privacy-details/), read 2026-11-27). The
 >   optional-disclosure exemption doesn't apply: it needs the user's name shown in the submission
->   form, which the scan doesn't. **JC**: Linked or Not Linked. Neither Press nor Anthropic keeps
->   the photos with the account, and Anthropic receives no account details, but the request
->   carries the account's token and is counted against it. Not Linked is defensible; Linked is
->   the conservative answer.
+>   form, which the scan doesn't. **Not Linked**, settled by the maintainer on 2026-11-27
+>   ([#405](https://github.com/jwh3times/PressGolf/issues/405)). Neither Press nor Anthropic keeps
+>   the photos with the account, and Anthropic receives no account details. The request carries
+>   the account's token, which is counted against the account, but the server drops it before the
+>   photos leave.
 > - **Google Play.** Declare **Photos and videos → Photos: collected**, not shared (Anthropic
 >   processes them on Press's behalf, a service provider), optional, purpose App functionality,
->   and **processed ephemerally: Yes** for Press's own handling. Play counts anything transmitted
->   off the phone, ephemeral or not, and "irrespective of whether data is transmitted to you or a
->   third-party server" ([Data safety](https://support.google.com/googleplay/android-developer/answer/10787469),
->   read 2026-11-27). **JC**: whether Anthropic's up-to-30-day retention rules out "ephemeral";
->   answering No is the conservative reading.
-> - **The scan count** is a number of scans per account and day, kept with the account. **JC**:
->   whether it is Usage Data → Product Interaction (Apple) or App activity → App interactions
->   (Play), linked, App Functionality, or too slight to declare. It is used only for the limit.
+>   and **processed ephemerally: No**, settled by the maintainer on 2026-11-27 (#405). Play
+>   counts anything transmitted off the phone, ephemeral or not, and "irrespective of whether data
+>   is transmitted to you or a third-party server" ([Data safety](https://support.google.com/googleplay/android-developer/answer/10787469),
+>   read 2026-11-27). Press's own handling is in memory only, but Anthropic's retention of up to
+>   30 days doesn't meet Play's "ephemeral".
+> - **The scan count** is a number of scans per account and day, kept with the account and used
+>   only for the limit. **Declared**, settled by the maintainer on 2026-11-27 (#405). On Apple
+>   it's **Usage Data → Product Interaction: collected**, Linked, App Functionality, which changes
+>   the "Usage Data: No" in the Apple table below. On Play it adds App functionality to the
+>   **App activity → App interactions** row already there for the Maps SDK; Press's count isn't
+>   shared.
 > - **The camera** is not a data type on either form. On iOS the purpose string is
 >   `cameraPermission` on the `expo-camera` plugin in `app.json`, and there is no microphone
 >   string; on Android `CAMERA` is declared and `RECORD_AUDIO` blocked
