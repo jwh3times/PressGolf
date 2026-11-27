@@ -406,6 +406,23 @@ describe("someone else's course (#381)", () => {
     expect(store.courseDraft(course.id)).toBeNull();
   });
 
+  it('puts a green placed on it in the draft, and sends nothing for a draft that changes nothing', async () => {
+    await mount();
+    const course = theirs();
+    await change(() => store.createCourse(course));
+    const green = { number: 1, middle: { lat: 1, lng: 2 }, front: null, back: null, source: 'map' as const };
+    await change(() => store.setGreen(course.id, green));
+    await change(() => store.setGreens(course.id, [green]));
+    expect(store.courseDraft(course.id)?.greens).toEqual([green]);
+    expect(store.courses.find((c) => c.id === course.id)?.greens).toEqual([]);
+
+    await change(() => store.discardCourseDraft(course.id));
+    await act(async () => {
+      await expect(store.sendCourseDraft(course.id)).resolves.toEqual({ applied: 0, suggestion: null });
+    });
+    expect(editCourse).not.toHaveBeenCalled();
+  });
+
   it('keeps the draft when it can’t be sent', async () => {
     await mount();
     const course = theirs();

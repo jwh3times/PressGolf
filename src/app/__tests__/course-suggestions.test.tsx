@@ -119,6 +119,20 @@ describe("the course editor on someone else's course (#381)", () => {
     expect(await screen.findByText('Couldn’t send: Network request failed. Your changes are kept.')).toBeOnTheScreen();
   });
 
+  it('says when everything sent waits for the admin, and lists nothing when suggestions can’t be read', async () => {
+    storeWith({
+      courseDraft: jest.fn(() => ({ ...course, name: 'Renamed' })),
+      sendCourseDraft: jest.fn().mockResolvedValue({ applied: 0, suggestion: 's1' }),
+    });
+    (mySuggestions as jest.Mock).mockRejectedValue(new Error('offline'));
+    const user = userEvent.setup();
+    await render(<CourseEditorScreen />);
+    expect(screen.getByText('1 unsent change')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Send changes' }));
+    expect(await screen.findByText('1 wait for the admin.')).toBeOnTheScreen();
+    expect(screen.queryByText('Your suggestions')).toBeNull();
+  });
+
   it('discards the draft', async () => {
     const store = storeWith({ courseDraft: jest.fn(() => ({ ...course, name: 'Renamed' })) });
     const user = userEvent.setup();
@@ -173,6 +187,22 @@ describe('the admin’s review (#381)', () => {
     await render(<SuggestionsScreen />);
     await user.press(await screen.findByRole('button', { name: 'Approve' }));
     expect(await screen.findByText('A value it replaces has changed since. It keeps waiting.')).toBeOnTheScreen();
+  });
+
+  it("says when the list can't be read, or an approval fails, and names a course this phone doesn't hold", async () => {
+    storeWith({ isAdmin: true, courses: [] });
+    (waitingSuggestions as jest.Mock).mockRejectedValueOnce(new Error('offline')).mockResolvedValue([suggestion({})]);
+    const user = userEvent.setup();
+    const view = await render(<SuggestionsScreen />);
+    expect(await screen.findByText('Couldn’t load them: offline')).toBeOnTheScreen();
+
+    await view.unmount();
+    (approveSuggestion as jest.Mock).mockRejectedValue(new Error('no waiting suggestion s1'));
+    await render(<SuggestionsScreen />);
+    expect(await screen.findByText('A course not on this phone')).toBeOnTheScreen();
+    expect(screen.getByText('white tee, hole 1 par: 4 → 5')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Approve' }));
+    expect(await screen.findByText('no waiting suggestion s1')).toBeOnTheScreen();
   });
 
   it('declines only with a reason', async () => {
