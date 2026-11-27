@@ -94,6 +94,7 @@ function Root({ ready }: { ready: boolean }) {
                   <Stack.Screen name="join" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="sides" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="history" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="suggestions" options={{ animation: 'slide_from_right' }} />
                 </Stack>
               </AppStoreProvider>
             </AuthGate>

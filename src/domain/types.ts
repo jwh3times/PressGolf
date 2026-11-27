@@ -167,6 +167,12 @@ export interface Course {
   version?: number;
   /** The tees as they stood at each earlier version, oldest first, so a round keeps the course it was played on. */
   versions?: CourseVersion[];
+  /**
+   * The account that created it, as the server has it (#381). Absent on a course only
+   * this phone has, which is its own; null once that account has gone. Only its creator
+   * changes it directly: anyone else sends changes, which may wait for the admin.
+   */
+  createdBy?: string | null;
 }
 
 /** A course's scoring state as it stood at one version: its tees, with their slope, rating and tee cards. */

@@ -130,6 +130,16 @@ describe('mergeShared, for the course library (#378)', () => {
     expect(merged).toBe(mine);
   });
 
+  it("takes the library's copy of a course this account created when it's on a newer version, as after an approval (#381)", () => {
+    const mine = local();
+    const own = mine.courses[0];
+    const approved = { ...own, name: 'Approved name', version: (own.version ?? 1) + 1 };
+    const merged = mergeShared(mine, { ...NOTHING, courses: [approved] }, new Set([own.id]));
+    expect(merged.courses[0]).toBe(approved);
+    // The same version or older stays as the phone has it.
+    expect(mergeShared(mine, { ...NOTHING, courses: [{ ...approved, version: own.version }] }, new Set([own.id]))).toBe(mine);
+  });
+
   it('changes nothing when the library has the course as the phone does, so nothing renders', () => {
     const mine = { ...local(), courses: [...local().courses, library] };
     const merged = mergeShared(mine, { ...NOTHING, courses: [JSON.parse(JSON.stringify(library))] });

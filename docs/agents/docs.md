@@ -110,7 +110,7 @@ volatile service prices or quotas outside a dated research note.
   `main`; `gh api repos/jwh3times/PressGolf/rulesets`, then `rulesets/<id>` for each, for every
   ruleset (`Protect Release Tags` on `refs/tags/v*`: its rules, enforcement and bypass list)
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`
-- RLS assertion count ("126" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
+- RLS assertion count ("151" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
   `grep -cE "select (expect|refused|refused_by_key)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
 - Migrations: `supabase/migrations/*.sql`
 - EAS profiles: the `build` and `submit` keys in `eas.json`

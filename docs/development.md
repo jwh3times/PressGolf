@@ -306,6 +306,21 @@ npx supabase functions deploy delete-account --remote=<project-ref> --use-api
 `supabase/config.toml` turns off the platform's token check for it
 (`verify_jwt = false`), because the function checks the token itself.
 
+### The admin
+
+The admin approves or declines golfers' suggested changes to courses (#381) on the
+**Course suggestions** screen, which Settings shows only to them. The role is a row in
+`admins`, which no client can write. Grant it in the Supabase dashboard's SQL editor,
+which runs as the service role, with the account's id from **Authentication → Users**:
+
+```sql
+insert into admins (account) values ('<the account''s uuid>');
+```
+
+Take it away with `delete from admins where account = '<uuid>';`. Deleting the
+account removes the role with it. The app reads the role when a session starts, so
+it shows after the next sign-in or app start.
+
 ### Deleting an account by hand
 
 The deletion page offers an email request to anyone without the app or who can't

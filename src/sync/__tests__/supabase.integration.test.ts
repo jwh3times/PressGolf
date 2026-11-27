@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withScoringChange } from '../../domain/course-version';
 import { mergeShared } from '../merge-shared';
+import { approveSuggestion, editCourse, isAdmin, mySuggestions, waitingSuggestions } from '../suggestions';
 import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 import { coursesUsed, emptySnapshot, fromRows, seenIn, toRows, type Documents } from '../rows';
 import {
@@ -140,6 +141,48 @@ describe('sync against a local Supabase stack', () => {
     const after = fromRows(await pullSnapshot());
     expect(after.groups.find((g) => g.id === group.id)?.name).toBe(group.name);
     expect(after.rounds.some((r) => r.id === round.id)).toBe(true);
+  });
+
+  it("puts a golfer's gap straight in, keeps the rest for the admin, and brings the approval to the creator's phone (#381)", async () => {
+    const ann = await signUp('ann');
+    const season = demoDocuments(`${RUN}suggest`);
+    const course = { ...season.courses[0], tees: season.courses[0].tees.map((t) => ({ ...t, slope: null })) };
+    const phone: Documents = { ...season, courses: season.courses.map((c) => (c.id === course.id ? course : c)) };
+    const first = await reconcile(toRows(phone));
+    if (first.status !== 'pushed') throw new Error(first.status);
+
+    // Ben fills an empty slope, which goes straight in, and changes a par, which waits.
+    await signUp('ben');
+    const tee = course.tees[0];
+    const result = await editCourse(course.id, [
+      { kind: 'tee', tee: tee.id, field: 'slope', from: null, to: 128 },
+      { kind: 'hole', tee: tee.id, number: 1, field: 'par', from: tee.holes[0].par, to: tee.holes[0].par + 1 },
+    ]);
+    expect(result.applied).toBe(1);
+    expect(await mySuggestions(course.id)).toEqual([expect.objectContaining({ id: result.suggestion, status: 'waiting' })]);
+    expect(await isAdmin()).toBe(false);
+    await expect(approveSuggestion(result.suggestion!)).rejects.toThrow('only the admin approves a suggestion');
+
+    // Cal holds the admin role, granted as the service role grants it, and approves.
+    const cal = await signUp('cal');
+    const service = createClient(process.env.SUPABASE_TEST_URL!, process.env.SUPABASE_TEST_SERVICE_ROLE_KEY!, {
+      auth: { persistSession: false },
+    });
+    const { error: grantError } = await service.from('admins').insert({ account: cal.id });
+    expect(grantError).toBeNull();
+    expect(await isAdmin()).toBe(true);
+    expect((await waitingSuggestions()).map((s) => s.id)).toContain(result.suggestion);
+    expect(await approveSuggestion(result.suggestion!)).toBe('approved');
+
+    // Ann's phone still has the old card. Her next first contact takes the newer version.
+    await signInAs(ann);
+    const contact = await reconcile(toRows(phone));
+    if (contact.status !== 'pushed') throw new Error(contact.status);
+    expect(contact.newerCourses).toEqual([course.id]);
+    const kept = fromRows(await pullSnapshot()).courses.find((c) => c.id === course.id)!;
+    expect(kept.tees[0].slope).toBe(128);
+    expect(kept.tees[0].holes[0].par).toBe(tee.holes[0].par + 1);
+    expect(kept.version).toBe(3);
   });
 
   it("keeps a course's earlier versions, and the version each round is on, through the server (#377)", async () => {

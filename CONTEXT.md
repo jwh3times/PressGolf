@@ -64,6 +64,14 @@ _Avoid_: shared course database, catalogue, directory, published courses
 A course as it stood between two changes to it. A round is played on one course version and keeps it when the course changes; older versions are kept in an archive.
 _Avoid_: snapshot, copy, revision
 
+**Suggestion**:
+A set of changes to a course someone else created, from one golfer, that waits for the admin to approve or decline. A gap filled or a tee added isn't one: it goes straight in.
+_Avoid_: edit request, proposal, pending change
+
+**Admin**:
+The account that approves or declines suggestions. There is one, the maintainer's.
+_Avoid_: moderator, keeper
+
 **Tee card**:
 One tee's hole-by-hole par, stroke index and yards. Slope and rating belong to the tee, not to its tee card.
 _Avoid_: card (a round's scorecard), scorecard

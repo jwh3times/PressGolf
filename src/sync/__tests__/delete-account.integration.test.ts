@@ -1036,7 +1036,11 @@ describe('an organiser deleting their account', () => {
       const pull = await pullFor(moved);
       const again = applyMoveNotices(mergeShared(moved, fromRows(pull), createdCourses(own)), await pullMoveNotices());
       // Her hole notes went with her, and the library's copy of the course says so (#378).
-      const lessNotes = (documents: Documents) => ({ ...documents, courses: documents.courses.map((course) => ({ ...course, notes: [] })) });
+      // And its creator is gone, so the course has none (#381).
+      const lessNotes = (documents: Documents) => ({
+        ...documents,
+        courses: documents.courses.map(({ createdBy: _creator, ...course }) => ({ ...course, notes: [] })),
+      });
       expect(lessNotes(again)).toEqual(lessNotes(moved));
       expect(again.courses.find((course) => course.id === outing.courseId)?.notes).toEqual([]);
       await pushChanges(toRows(again), own, pull);

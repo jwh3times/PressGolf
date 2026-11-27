@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { CourseSuggestions } from '../../components/CourseSuggestions';
 import { Field } from '../../components/Field';
 import { ModalHeader, Screen } from '../../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
@@ -17,10 +18,13 @@ export default function CourseEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const router = useRouter();
-  const course = store.courses.find((c) => c.id === id);
+  const saved = store.courses.find((c) => c.id === id);
+  // Someone else's course shows its unsent draft (#381); the course itself when there's none.
+  const course = saved ? (store.courseDraft(saved.id) ?? saved) : undefined;
+  const owned = saved ? store.ownsCourse(saved.id) : true;
   const [selectedTeeId, setSelectedTeeId] = useState<string | null>(null);
 
-  if (!course) {
+  if (!course || !saved) {
     return (
       <Screen floatingTabBar={false}>
         <ModalHeader title="Course not found" onClose={() => router.back()} closeLabel="Back" />
@@ -67,6 +71,8 @@ export default function CourseEditorScreen() {
         closeLabel="Back"
       />
 
+      {owned ? null : <CourseSuggestions course={saved} />}
+
       <Field
         label="Course name"
         value={course.name}
@@ -91,7 +97,7 @@ export default function CourseEditorScreen() {
         <TeeDetails key={tee.id} courseId={course.id} tee={tee} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <GhostButton label={`New tee from ${tee.name}`} onPress={addTee} />
-          {course.tees.length > 1 ? (
+          {owned && course.tees.length > 1 ? (
             <GhostButton label={`Delete the ${tee.name} tee`} onPress={deleteTee} />
           ) : null}
         </View>

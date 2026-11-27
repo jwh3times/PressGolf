@@ -127,6 +127,14 @@ export function useDataSync(options: {
       adopt.current(keepingPhoneOnly(held, season));
     } else {
       serverHas.current = outcome.status === 'pushed' ? outcome.own : local;
+      if (outcome.status === 'pushed' && outcome.newerCourses?.length) {
+        // Its own courses the server has on a newer version, as approved (#381), merged into
+        // what the store holds now, not what it held when this began.
+        const ids = new Set(outcome.newerCourses);
+        const newer = { ...NOTHING_TAKEN, courses: fromRows(outcome.own).courses.filter((course) => ids.has(course.id)) };
+        const merged = mergeShared(latest.current, newer);
+        if (changesAnything(latest.current, merged)) shared.current(merged);
+      }
       if (outcome.status === 'pushed' && (outcome.clubs || outcome.bag_settings || outcome.marks)) {
         const taken = fromRows({
           ...emptySnapshot(),

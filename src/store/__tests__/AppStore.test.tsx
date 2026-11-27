@@ -8,6 +8,7 @@ import { frame } from '../../domain/hole-map';
 import { trackedShots } from '../../domain/tracked-shots';
 import type { Mark, Round } from '../../domain/types';
 import { deleteAccount, isSupabaseConfigured } from '../../sync/supabase';
+import { editCourse, isAdmin as readIsAdmin } from '../../sync/suggestions';
 import { useDataSync } from '../../sync/useDataSync';
 import {
   clearDataset,
@@ -29,6 +30,7 @@ jest.mock('../persistence', () => ({
   saveDataset: jest.fn(),
   saveSettings: jest.fn(),
 }));
+jest.mock('../../sync/suggestions', () => ({ editCourse: jest.fn(), isAdmin: jest.fn(() => Promise.resolve(false)) }));
 // A build with a server, so the live dataset is the one that syncs.
 jest.mock('../../sync/supabase', () => ({ deleteAccount: jest.fn(), isSupabaseConfigured: jest.fn(() => true) }));
 
@@ -365,6 +367,105 @@ describe('deleting the account', () => {
     expect(mockDeleteAccount).toHaveBeenCalledTimes(2);
     expect(mockClearDataset).toHaveBeenCalledWith(false);
     expect(store.groups).toEqual([]);
+  });
+});
+
+describe("someone else's course (#381)", () => {
+  // Two tees, so the last-tee rule can't be what refuses a delete.
+  const theirs = () => {
+    const course = makeCourse('Their Links');
+    return { ...course, tees: [...course.tees, { ...course.tees[0], id: 't-red', name: 'Red' }], createdBy: 'someone-else' };
+  };
+
+  it('takes edits into a draft, leaves the course as it is, and sends them together', async () => {
+    await mount();
+    const course = theirs();
+    await change(() => store.createCourse(course));
+    expect(store.ownsCourse(course.id)).toBe(false);
+
+    await change(() => store.updateHole(course.id, course.tees[0].id, 0, { par: 3 }));
+    await change(() => store.updateTee(course.id, course.tees[0].id, { slope: 125 }));
+    expect(store.courses.find((c) => c.id === course.id)).toEqual(course);
+    expect(store.courseDraft(course.id)?.tees[0]).toMatchObject({ slope: 125 });
+    expect(store.courseDraft(course.id)?.tees[0].holes[0].par).toBe(3);
+    // Not a change anyone can send.
+    let deleted = true;
+    await change(() => {
+      deleted = store.deleteTee(course.id, course.tees[0].id);
+    });
+    expect(deleted).toBe(false);
+
+    (editCourse as jest.Mock).mockResolvedValue({ applied: 1, suggestion: 's1' });
+    await act(async () => {
+      await store.sendCourseDraft(course.id);
+    });
+    expect(editCourse).toHaveBeenCalledWith(course.id, [
+      { kind: 'tee', tee: course.tees[0].id, field: 'slope', from: null, to: 125 },
+      { kind: 'hole', tee: course.tees[0].id, number: 1, field: 'par', from: course.tees[0].holes[0].par, to: 3 },
+    ]);
+    expect(store.courseDraft(course.id)).toBeNull();
+  });
+
+  it('puts a green placed on it in the draft, and sends nothing for a draft that changes nothing', async () => {
+    await mount();
+    const course = theirs();
+    await change(() => store.createCourse(course));
+    const green = { number: 1, middle: { lat: 1, lng: 2 }, front: null, back: null, source: 'map' as const };
+    await change(() => store.setGreen(course.id, green));
+    await change(() => store.setGreens(course.id, [green]));
+    expect(store.courseDraft(course.id)?.greens).toEqual([green]);
+    expect(store.courses.find((c) => c.id === course.id)?.greens).toEqual([]);
+
+    await change(() => store.discardCourseDraft(course.id));
+    await act(async () => {
+      await expect(store.sendCourseDraft(course.id)).resolves.toEqual({ applied: 0, suggestion: null });
+    });
+    expect(editCourse).not.toHaveBeenCalled();
+  });
+
+  it('keeps the draft when it can’t be sent', async () => {
+    await mount();
+    const course = theirs();
+    await change(() => store.createCourse(course));
+    await change(() => store.updateCourse(course.id, { name: 'Renamed' }));
+    (editCourse as jest.Mock).mockRejectedValue(new Error('offline'));
+    await act(async () => {
+      await expect(store.sendCourseDraft(course.id)).rejects.toThrow('offline');
+    });
+    expect(store.courseDraft(course.id)?.name).toBe('Renamed');
+    await change(() => store.discardCourseDraft(course.id));
+    expect(store.courseDraft(course.id)).toBeNull();
+  });
+
+  it("edits the golfer's own course directly, one only on this phone included", async () => {
+    await mount();
+    const own = makeCourse('Own Links');
+    await change(() => store.createCourse(own));
+    expect(store.ownsCourse(own.id)).toBe(true);
+    await change(() => store.updateCourse(own.id, { name: 'Renamed' }));
+    expect(store.courses.find((c) => c.id === own.id)?.name).toBe('Renamed');
+    expect(store.courseDraft(own.id)).toBeNull();
+  });
+
+  it('says whether the account is the admin, once signed in with sync, and stops saying so once signed out', async () => {
+    (readIsAdmin as jest.Mock).mockResolvedValue(true);
+    const view = await mount(buildDemoDataset(1_750_000_000_000), false);
+    await waitFor(() => expect(store.isAdmin).toBe(true));
+
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), status: 'signed-out', userId: null });
+    await view.rerender(
+      <AppStoreProvider>
+        <Probe />
+      </AppStoreProvider>,
+    );
+    expect(store.isAdmin).toBe(false);
+    (readIsAdmin as jest.Mock).mockResolvedValue(false);
+  });
+
+  it('is never the admin in the demo', async () => {
+    (readIsAdmin as jest.Mock).mockResolvedValue(true);
+    await mount();
+    expect(store.isAdmin).toBe(false);
   });
 });
 
