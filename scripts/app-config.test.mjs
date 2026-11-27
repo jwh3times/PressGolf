@@ -38,6 +38,18 @@ test("Info.plist asks for location only while in use", () => {
   assert.equal(infoPlist.NSLocationAlwaysAndWhenInUseUsageDescription, undefined);
 });
 
+// The camera is for scanning a scorecard (#385), and nothing records sound: the
+// privacy policy and the store forms say so, so the microphone string stays out.
+test("Info.plist explains the camera and asks for no microphone", () => {
+  assert.match(infoPlist.NSCameraUsageDescription ?? "", /scan a scorecard/);
+  assert.equal(infoPlist.NSMicrophoneUsageDescription, undefined);
+});
+
+test("Android manifest declares the camera and removes the microphone", () => {
+  assert.equal(manifestPermissions["android.permission.CAMERA"], "declared");
+  assert.equal(manifestPermissions["android.permission.RECORD_AUDIO"], "remove");
+});
+
 // A store build that declares a permission has to explain it on the Play listing
 // and in the Data safety form (#278). Expo's Android template declares these three,
 // and Press uses none of them. The advertising ID isn't declared by anything today;

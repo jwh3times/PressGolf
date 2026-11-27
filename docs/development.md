@@ -103,7 +103,7 @@ document scanner from Google Play services on Android). The `expo-camera` plugin
 in `app.json` sets the iOS camera purpose string, and `microphonePermission:
 false` leaves out the microphone string, since Press never records sound.
 `recordAudioAndroid: false` keeps the plugin from adding `RECORD_AUDIO`, and
-Android gets `CAMERA` from the library's manifest. `expo-camera` is a native
+the plugin declares `CAMERA` in the app's manifest. `expo-camera` is a native
 module: a development build made before it was added doesn't have it and has to
 be rebuilt. The SDK 58 reference lists `expo-camera` as included in Expo Go but
 doesn't say whether `scanDocumentAsync` runs there, so try the scan on a
@@ -497,9 +497,10 @@ manifest, which marks each one `tools:node="remove"`:
   as well, in case another path adds it.
 
 `scripts/app-config.test.mjs` reads the manifest prebuild would write
-(`expo config --type introspect`). It fails if one of the first four stops being
-removed, or if location, internet or vibrate stops being declared; it doesn't
-check `RECORD_AUDIO` or the camera. To read that manifest
+(`expo config --type introspect`). It fails if one of these stops being
+removed, or if location, internet, vibrate or the camera stops being declared;
+for iOS, if the camera purpose string goes or a microphone string appears. To
+read that manifest
 yourself without a cloud build, run `npx expo prebuild --platform android
 --clean --no-install`, open `android/app/src/main/AndroidManifest.xml`, then
 delete `android/` and revert the `scripts` that prebuild rewrites in
