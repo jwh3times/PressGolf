@@ -261,15 +261,19 @@ jobs:
             --remote="${{ secrets.SUPABASE_PROJECT_REF }}" \
             --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
 
-      # After the migrations, because the function calls what they create. Every
-      # merge deploys it, so production never has one without the other.
-      - name: Deploy the Edge Function
+      # After the migrations, because the functions call what they create. Every
+      # merge deploys them, so production never has one without the other.
+      # read-scorecard reads with Claude only once its ANTHROPIC_API_KEY secret is
+      # set; until then it answers "unavailable" (#384).
+      - name: Deploy the Edge Functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          npx supabase functions deploy delete-account --yes \
-            --remote="${{ secrets.SUPABASE_PROJECT_REF }}" \
-            --use-api
+          for function in delete-account read-scorecard; do
+            npx supabase functions deploy "$function" --yes \
+              --remote="${{ secrets.SUPABASE_PROJECT_REF }}" \
+              --use-api
+          done
 
   release-tag:
     name: Tag the release

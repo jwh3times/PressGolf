@@ -520,3 +520,23 @@ grant execute on function search_courses(text, double precision, double precisio
 set role anon;
 select expect('signed out, the search finds nothing', (select count(*) from search_courses('pine holl')), 0);
 reset role;
+
+-- ── Scorecard scans (#384) ───────────────────────────────────────────────────
+-- Only the read-scorecard function counts them, with the service role.
+select take_scorecard_scan(:'bob') from generate_series(1, 9);
+select expect('the 10th scan of the day leaves none', take_scorecard_scan(:'bob'), 0);
+select expect('and the 11th is refused', take_scorecard_scan(:'bob'), null);
+select expect('without counting it', (select scans from scorecard_scans where account = :'bob'), 10);
+select give_back_scorecard_scan(:'bob');
+select expect('a scan given back can be taken again', take_scorecard_scan(:'bob'), 0);
+select expect('another account has its own 10', take_scorecard_scan(:'alice'), 9);
+-- This script grants every table and function to `authenticated` at the top, which
+-- undoes the migration's revokes; the integration suite proves those on a real stack.
+-- Here, with no policy on the table, row-level security alone still keeps it shut.
+set role authenticated;
+set request.jwt.claim.sub = :'bob';
+select expect('a golfer reads no count, his own included', (select count(*) from scorecard_scans), 0);
+update scorecard_scans set scans = 0;
+delete from scorecard_scans;
+reset role;
+select expect('nor resets or deletes one', (select scans from scorecard_scans where account = :'bob'), 10);
