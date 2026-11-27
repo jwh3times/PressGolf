@@ -53,7 +53,7 @@ import { applyFollowed, type MoveNotice } from '../sync/move-notices';
 import { deleteAccount as deleteAccountRemote, isSupabaseConfigured } from '../sync/supabase';
 import { useDataSync, type SyncState } from '../sync/useDataSync';
 import type { Documents, SeenCells } from '../sync/rows';
-import { clearDataset, loadDataset, loadSettings, saveDataset, saveSettings } from './persistence';
+import { clearDataset, loadDataset, loadScanNoticeSeen, loadSettings, saveDataset, saveScanNoticeSeen, saveSettings } from './persistence';
 
 interface Dataset {
   groups: Group[];
@@ -201,9 +201,16 @@ export interface AppStore extends AppState {
   startNewCourse(course: Course, marks?: SourceMarks): void;
   /** Says every value the draft was given is right. */
   confirmNewCourse(): void;
-  /** Saves the draft to the golfer's courses, and so the library. False, and nothing saved, without a name and a location. */
+  /** Saves the draft to the golfer's courses, and so the library. False, and nothing saved, while it still needs anything (`stillNeeded`). */
   saveNewCourse(): boolean;
   discardNewCourse(): void;
+  /** Whether this phone has shown the notice before a first scorecard scan (#385). */
+  scanNoticeSeen: boolean;
+  /** Records that the notice was shown and the golfer went ahead. */
+  noteScanNotice(): void;
+  /** Scans left today, as the server last said; null until a scan this session. Memory only. */
+  scansLeft: number | null;
+  noteScansLeft(left: number): void;
 
   // The bag
   /** Adds a club where it belongs in the bag; nothing for a name already there. */
@@ -459,6 +466,18 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   );
   // A new course before it's saved (#383). In memory too: leaving without saving makes nothing.
   const [newCourse, setNewCourse] = useState<CourseDraft | null>(null);
+  // Phone-wide and read once, like the theme: not part of either dataset (#385).
+  const [scanNoticeSeen, setScanNoticeSeen] = useState(false);
+  const [scansLeft, setScansLeft] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadScanNoticeSeen().then((seen) => {
+      if (live && seen) setScanNoticeSeen(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   /** A course as the editor shows it: the new course's draft, or one on the phone. */
   const heldCourse = useCallback(
     (courseId: string) => (newCourse?.course.id === courseId ? newCourse.course : state.courses.find((c) => c.id === courseId)),
@@ -997,6 +1016,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         return true;
       },
       discardNewCourse: () => setNewCourse(null),
+      scanNoticeSeen,
+      noteScanNotice: () => {
+        setScanNoticeSeen(true);
+        void saveScanNoticeSeen().catch(() => {});
+      },
+      scansLeft,
+      noteScansLeft: setScansLeft,
 
       addClub: (name) => commit((prev) => ({ ...prev, clubs: withClub(prev.clubs, name) })),
       fillBag: (clubs) => commit((prev) => (prev.clubs.length ? prev : { ...prev, clubs })),
@@ -1171,7 +1197,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setRoundPlayers: (playerIds) =>
         patchRound((r) => reconcileRound({ ...r, playerIds }, course?.tees[0]?.holes.length ?? 18)),
     };
-  }, [state, sync, commit, changeCourse, owns, admin, syncEnabled, drafts, newCourse, heldCourse, setDemoMode, signOut]);
+  }, [state, sync, commit, changeCourse, owns, admin, syncEnabled, drafts, newCourse, heldCourse, scanNoticeSeen, scansLeft, setDemoMode, signOut]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
   const { activeRoundId } = store;

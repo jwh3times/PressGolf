@@ -4,9 +4,11 @@ import {
   EMPTY_DATA,
   clearDataset,
   loadDataset,
+  loadScanNoticeSeen,
   loadSettings,
   loadThemeChoice,
   saveDataset,
+  saveScanNoticeSeen,
   saveSettings,
   saveThemeChoice,
 } from '../persistence';
@@ -351,5 +353,18 @@ describe('theme choice persistence', () => {
   it('writes the choice under its own key', async () => {
     await saveThemeChoice({ base: 'light', accent: 'blue' });
     expect(storage.setItem).toHaveBeenCalledWith('press:theme', JSON.stringify({ base: 'light', accent: 'blue' }));
+  });
+});
+
+describe('the notice before a first scan (#385)', () => {
+  it('is seen once it is saved, and not before, or when storage can’t say', async () => {
+    storage.getItem.mockResolvedValueOnce(null);
+    await expect(loadScanNoticeSeen()).resolves.toBe(false);
+    await saveScanNoticeSeen();
+    expect(storage.setItem).toHaveBeenCalledWith('press:scan-notice', 'seen');
+    storage.getItem.mockResolvedValueOnce('seen');
+    await expect(loadScanNoticeSeen()).resolves.toBe(true);
+    storage.getItem.mockRejectedValueOnce(new Error('storage is unavailable'));
+    await expect(loadScanNoticeSeen()).resolves.toBe(false);
   });
 });

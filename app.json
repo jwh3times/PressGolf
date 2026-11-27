@@ -28,7 +28,8 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "com.google.android.gms.permission.AD_ID"
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -65,6 +66,14 @@
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
           "motionUsagePermission": "Press doesn't use motion or fitness activity. A location library it includes contains motion code, which Press never turns on."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Press uses the camera only when you scan a scorecard to set up a course. The photos are sent to be read, and Press keeps no copy.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [

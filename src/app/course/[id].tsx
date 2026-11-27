@@ -39,7 +39,8 @@ export default function CourseEditorScreen() {
 
   const tee = course.tees.find((t) => t.id === selectedTeeId) ?? course.tees[0];
   const totalPar = tee.holes.reduce((sum, h) => sum + h.par, 0);
-  const indexes = tee.holes.map((h) => h.strokeIndex);
+  // A draft's blank (0) isn't an index yet, so two blanks aren't a clash.
+  const indexes = tee.holes.map((h) => h.strokeIndex).filter((index) => index > 0);
   const duplicateIndexes = indexes.length !== new Set(indexes).size;
   const setHole = (index: number, patch: Partial<Hole>) => store.updateHole(course.id, tee.id, index, patch);
 
@@ -96,8 +97,8 @@ export default function CourseEditorScreen() {
           {course.tees.map((t) => (
             <Chip
               key={t.id}
-              label={t.name}
-              accessibilityLabel={`${t.name} tee`}
+              label={t.name || 'Unnamed'}
+              accessibilityLabel={`${t.name || 'Unnamed'} tee`}
               active={t.id === tee.id}
               color={colors.accent}
               onPress={() => setSelectedTeeId(t.id)}
@@ -197,20 +198,23 @@ export default function CourseEditorScreen() {
                   label={'−'}
                   accessibilityLabel={`Lower par on hole ${hole.number}`}
                   size={28}
-                  onPress={() => setHole(index, { par: Math.max(3, hole.par - 1) })}
+                  // A blank par, from a scan, starts at 4 whichever way it's pressed.
+                  onPress={() => setHole(index, { par: hole.par ? Math.max(3, hole.par - 1) : 4 })}
                 />
-                <Text style={styles.parValue}>{hole.par}</Text>
+                <Text style={styles.parValue}>{hole.par || '—'}</Text>
                 <StepperButton
                   label="+"
                   accessibilityLabel={`Raise par on hole ${hole.number}`}
                   size={28}
-                  onPress={() => setHole(index, { par: Math.min(6, hole.par + 1) })}
+                  onPress={() => setHole(index, { par: hole.par ? Math.min(6, hole.par + 1) : 4 })}
                 />
               </View>
 
               <TextInput
                 accessibilityLabel={`Stroke index for hole ${hole.number}`}
-                value={String(hole.strokeIndex)}
+                value={hole.strokeIndex ? String(hole.strokeIndex) : ''}
+                placeholder="—"
+                placeholderTextColor={ink.quiet}
                 keyboardType="number-pad"
                 selectTextOnFocus
                 selectionColor={colors.accent}

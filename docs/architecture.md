@@ -718,14 +718,42 @@ hand-typed **Create course**, on the phone only.
 **Type it in**, offered after a search and after a failed one, opens a draft course
 in the course editor (`newCourse` in `AppStore`), kept in memory only: **Cancel**
 discards it, and nothing of it reaches the library until **Save the course**. Saving
-needs a name and a location, either where the golfer is standing (`positionHere`) or a
-pick on a map (`src/app/course-location.tsx` with `src/components/PlaceMap.tsx`, which
-opens on the course OpenStreetMap finds by that name; the web build has no map). Only
-the phone checks for the location; the server doesn't. A value a source filled (a
-scorecard scan, OpenStreetMap or an online lookup) carries a source mark, by field
-(`SourceMarks`), until the golfer changes it (`edited`) or says they're all right, and
-saving counts as checking them. No source fills a draft yet. Greens and the course map
-come once the course is saved.
+needs a name, a name on every tee, a par and a stroke index on every hole, no stroke
+index twice on one tee, and a location, either where the golfer is standing
+(`positionHere`) or a pick on a map (`src/app/course-location.tsx` with
+`src/components/PlaceMap.tsx`, which opens on the course OpenStreetMap finds by that
+name; the web build has no map). `stillNeeded` lists what's missing, in the order to do
+it, and the hint under **Save the course** says it; `canSave` is that list being empty.
+In a draft a par, stroke index or yards of 0, or an empty tee name, is a blank: the
+editor shows a blank par and stroke index as `—` and an unnamed tee's chip as
+`Unnamed`, and either par button turns a blank par into 4. Only the phone checks these;
+the server doesn't. A value a source filled (a scorecard scan, OpenStreetMap or an
+online lookup) carries a source mark, by field (`SourceMarks`), until the golfer
+changes it (`edited`) or says they're all right, and saving counts as checking them.
+Only the scan fills a draft so far. Greens and the course map come once the course is
+saved.
+
+<a id="scanning-a-scorecard"></a>**Scanning a scorecard** (#385). On a phone, the
+card offered after a search also has **Scan the scorecard**
+(`src/components/ScanScorecard.tsx`); the web build has none and offers only **Type it
+in**. Before the first scan on a phone, an alert says where the photos go (Press's
+server, read by Claude from Anthropic, no copy kept, not used for training, 10 scans a
+day); going ahead sets `press:scan-notice`, an AsyncStorage key of its own like
+`press:theme`, outside either dataset, so it's asked once per phone. The phone's own
+document scanner (`scanScorecard`, `src/hooks/scanner.ts`: expo-camera's
+`CameraView.scanDocumentAsync`, VisionKit on iOS and the Google Play services (ML Kit)
+scanner on Android) takes up to 4 photos of one card (`MAX_PHOTOS`); more are refused
+with a prompt to scan again with fewer. Each page is read as base64 and every page is
+deleted from the app's cache straight after, whatever happens next.
+`readScorecard` (`src/sync/scorecard.ts`) sends them to
+[`read-scorecard`](#reading-a-scorecard) in `teeCard` mode and never throws: `read`,
+`unreadable` and `limit` come back as they are, a bad request's reason is kept, no
+signal says so, and anything else is a failure worth typing the course in for.
+`draftFromScan` turns a reading into a draft course named by the search term, with its
+hole count from the card, marking every value the photos gave as from the scan and
+leaving every null blank, never filled in; it opens in the course editor like **Type it
+in**. The server's `scansLeft` is kept in memory (`scansLeft` in `AppStore`) and shown
+at 3 or fewer (`SCANS_LOW`).
 
 The switch started from a clean server: the migration that made the library wiped
 courses, outings, rounds and everything on them, keeping accounts, groups, rosters
@@ -991,8 +1019,8 @@ A maintainer handles an emailed request with the same clean-up function; see
 ## Reading a scorecard
 
 The `read-scorecard` Edge Function (`supabase/functions/read-scorecard/`, #384)
-reads photos of a course's scorecard into a draft of its tees. It is server-side
-only so far: no screen calls it yet, and no source fills
+reads photos of a course's scorecard into a draft of its tees. The app calls it when
+a golfer [scans a scorecard](#scanning-a-scorecard), and its reading fills
 [a new course](#a-new-course).
 
 - **The request.** A `POST` with the golfer's bearer token and
@@ -1078,7 +1106,7 @@ src/
   demo/             deterministic sample data
   domain/           types, constructors, formats, and settlement engine
   hooks/            hooks screens share: large text, live location, one-off
-                    positions, and the abandon-round prompt
+                    positions, the abandon-round prompt, and the document scanner
   osm/              OpenStreetMap course search, greens and course-map import
   store/            application state and AsyncStorage persistence
   sync/             row translation, snapshot sync, and staged mutation sync

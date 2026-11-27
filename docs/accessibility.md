@@ -212,6 +212,21 @@ substitute for assistive-technology use on both platforms.
   messages (`src/app/__tests__/course-library.test.tsx`). The web suite doesn't
   show the search, since the demo types its courses in, and none of it has been
   tried with VoiceOver or TalkBack or at the largest text size.
+- Scanning a scorecard (#385) is a named button, **Scan the scorecard**, which
+  is renamed **Reading the card…** and reads as disabled (`GhostButton`'s
+  `disabled`, faded) while the photos are read. The notice before a first scan
+  is a system alert with **Not now** and **Scan**. What went wrong (too many
+  photos, an unreadable card, the day's limit, no signal, a scanner that won't
+  open) is shown and announced with `announceForAccessibility`, since iOS has no
+  live regions, and polite on Android; the scans left, at 3 or fewer, are text.
+  In the draft it opens, a blank par is shown as `—` and a blank stroke index
+  or yards field has `—` as its placeholder, each field still named by its hole,
+  and an unnamed tee's chip says "Unnamed" and is named "Unnamed tee". The hint under **Save the course**
+  says in words what's left. Jest covers the names, the disabled state, the
+  announcement and the messages (`src/app/__tests__/course-library.test.tsx`).
+  The scanner itself is the phone's own (VisionKit, or Google's on Android).
+  The web build offers no scan, and none of it has been tried with VoiceOver or
+  TalkBack or at the largest text size.
 
 Relevant tests and helpers:
 

@@ -257,17 +257,22 @@ export function GhostButton({
   onPress,
   dashed,
   style,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
   dashed?: boolean;
   style?: ViewStyle;
+  /** Shown faded, said as dimmed, and does nothing, as while the work it starts is running. */
+  disabled?: boolean;
 }) {
   const { ink, line } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
+      accessibilityState={disabled ? { disabled: true } : undefined}
+      disabled={!!disabled}
+      onPress={disabled ? undefined : onPress}
       style={({ pressed }) => [
         {
           borderWidth: 1,
@@ -279,7 +284,7 @@ export function GhostButton({
           paddingHorizontal: 16,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: pressed ? 0.6 : 1,
+          opacity: disabled ? 0.45 : pressed ? 0.6 : 1,
         },
         style,
       ]}

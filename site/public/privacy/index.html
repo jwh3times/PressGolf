@@ -24,6 +24,7 @@
   <li>Your account and what you enter are stored on Press's server, so they back up, move to a new phone, and sync to the outings you share.</li>
   <li>No ads, no analytics, no tracking. Press doesn't sell or share your personal information.</li>
   <li>Your location is used on your phone to give distances. It's saved when you mark a green or a new course by standing on it, or mark your ball, and synced with your account. A rough position goes with a course search, to list the nearest courses first, and isn't kept.</li>
+  <li>When you scan a scorecard, the photos are sent to be read by Claude, an AI model from Anthropic. Press keeps no copy of them.</li>
   <li>You can delete your account, and everything it owns, at any time: <a href="../delete-account/">here's how</a>.</li>
 </ul>
 
@@ -50,11 +51,16 @@
 <p>When you <strong>mark your ball</strong> during a round, your position at that moment, how accurate the phone says it is, the time and what you're about to hit are saved with the round and synced with your account, so they back up and reach your other phones. Nobody else sees them, not even the people in a shared outing. Deleting the round deletes them, and removing a club deletes the marks that name it.</p>
 <p>The blue dot on the map is drawn by the phone's map service (see <a href="#others">Who else receives data</a>). You can turn location off in your phone's settings: distances then stop working, and everything else still works.</p>
 
+<h3 id="scorecards">Scorecard photos</h3>
+<p>Signed in, you can set up a course by <strong>scanning its scorecard</strong> with the phone's camera. Press uses the camera only then, and never the microphone. The photos are taken by the phone's own document scanner: on iPhone, Apple's, for which Press asks to use the camera; on Android, the one in Google Play services, which uses the camera itself and hands Press only the photos you keep. It takes up to 4 photos of the card. Press sends them to its server, which passes them to Anthropic to be read by its AI model, Claude, and sends back the tees and holes it read for you to check before you save the course.</p>
+<p>Press keeps no copy of the photos: the app deletes them from the phone as soon as it has read them to send, and the server reads and discards them. What's kept is what you save, as any course you type in, and a count of the scans your account made that day, which limits each account to 10 a day. The count names your account and the day, and nothing of the photos.</p>
+<p>Point the camera at the card only. A photo that shows a person, or anything else, goes to be read the same way.</p>
+
 <h3>Service logs</h3>
 <p>When the app talks to the server, the hosting provider records technical details: your IP address, the app and device type, and sign-in times. They're used to run the service and keep it secure, and are deleted automatically after 7 days at most.</p>
 
 <h3>What Press doesn't collect</h3>
-<p>Contacts, photos, payment details, advertising identifiers, usage analytics or crash reports. Press has no ads and no analytics service in it.</p>
+<p>Contacts, your photo library, recordings, payment details, advertising identifiers, usage analytics or crash reports. The only photos Press handles are the scorecards you scan, which it doesn't keep (see <a href="#scorecards">Scorecard photos</a>). Press has no ads and no analytics service in it.</p>
 
 <h3>Without an account</h3>
 <p>The demo data stays on your phone and is never uploaded.</p>
@@ -74,9 +80,10 @@
   <li><strong>Supabase</strong> hosts Press's accounts and database, in the United States (Oregon). It handles the data on Press's behalf.</li>
   <li><strong>Resend</strong> sends account emails. It receives your email address and the message.</li>
   <li><strong>Cloudflare</strong> runs pressgolf.cc. When you reset your password or confirm your address on its pages, the new password and the link's code pass through it to Supabase, and it sees your IP address. The pages store none of it.</li>
+  <li><strong>Anthropic</strong> receives the photos of a scorecard you scan, from Press's server, and reads them with its AI model, Claude, on Press's behalf. It receives no account details. Under its commercial terms it doesn't use them to train its models, and its <a href="https://www.anthropic.com/legal/privacy">privacy policy</a> applies to how long it holds them.</li>
   <li><strong>The OpenStreetMap Foundation</strong> receives the course name when you search for a course, and sees your IP address. Its <a href="https://osmfoundation.org/wiki/Privacy_Policy">privacy policy</a> applies.</li>
   <li><strong>Overpass map servers</strong> receive a request for the course's map when you import it, and see your IP address. Press tries <a href="https://overpass-api.de/">overpass-api.de</a> (FOSSGIS e.V.), then maps.mail.ru and overpass.private.coffee. No account details are sent.</li>
-  <li><strong>Google</strong> provides the maps on Android. The Google Maps SDK receives the map's position, your IP address, and device and crash details, and Google uses them under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</li>
+  <li><strong>Google</strong> provides the maps on Android. The Google Maps SDK receives the map's position, your IP address, and device and crash details, and Google uses them under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>. On Android, the document scanner a scorecard scan uses is Google's too, part of Google Play services on the phone, under the same policy.</li>
   <li><strong>Apple</strong> provides the maps on iPhone, under <a href="https://www.apple.com/legal/privacy/data/en/apple-maps/">Apple's Maps privacy terms</a>. Apple doesn't link map use to your Apple Account.</li>
 </ul>
 <p>Press also discloses information if the law requires it.</p>
@@ -84,6 +91,7 @@
 <h2>How long it's kept</h2>
 <ul>
   <li>Your data is kept for as long as your account exists. There's no automatic expiry.</li>
+  <li>Scorecard photos aren't kept at all. The day's scan count is kept with your account, and goes when it does.</li>
   <li>Something you delete in the app (a round, course, player or club) is removed from the server the next time the app syncs.</li>
   <li>When your account is deleted, everything it owns is removed from the server at once, apart from the courses you added: those stay in the course library for everyone, no longer marked as yours. Server backups age out within 7 days.</li>
   <li>Data on the phone stays until you remove the app, unless you delete your account from that phone. Signing out leaves your rounds on the phone.</li>
@@ -95,6 +103,7 @@
   <li>See and correct what you've entered in the app.</li>
   <li>Delete single items, or <a href="../delete-account/">your whole account</a>.</li>
   <li>Turn off location for Press in your phone's settings.</li>
+  <li>Don't scan: every course can be found in the library or typed in instead. On iPhone you can also turn off the camera for Press in Settings.</li>
   <li>Ask for a copy of your data, or ask a question, at <a href="mailto:privacy@pressgolf.cc">privacy@pressgolf.cc</a>. Press replies within 30 days.</li>
 </ul>
 <p>Some US states, such as California, give residents rights to know, correct and delete personal information. Press honours those requests from everyone. It doesn't sell or share personal information, or use it for targeted advertising, as those laws define them.</p>

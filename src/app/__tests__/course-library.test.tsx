@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
+import { AccessibilityInfo, Alert } from 'react-native';
 import { act, fireEvent, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { STORAGE_VERSION } from '../../config/flags';
@@ -9,7 +9,9 @@ import type { Course } from '../../domain/types';
 import { positionHere, roughPosition } from '../../hooks/position';
 import { findCourses } from '../../osm/client';
 import { AppStoreProvider, useStore, type AppStore } from '../../store/AppStore';
-import { loadDataset, loadSettings } from '../../store/persistence';
+import { loadDataset, loadScanNoticeSeen, loadSettings, saveScanNoticeSeen } from '../../store/persistence';
+import { scanScorecard } from '../../hooks/scanner';
+import { readScorecard } from '../../sync/scorecard';
 import { fetchLibraryCourse, searchLibrary, type LibraryMatch } from '../../sync/library';
 import { isSupabaseConfigured } from '../../sync/supabase';
 import { useDataSync } from '../../sync/useDataSync';
@@ -63,7 +65,12 @@ jest.mock('../../store/persistence', () => ({
   loadSettings: jest.fn(),
   saveDataset: jest.fn(() => Promise.resolve()),
   saveSettings: jest.fn(() => Promise.resolve()),
+  loadScanNoticeSeen: jest.fn(),
+  saveScanNoticeSeen: jest.fn(() => Promise.resolve()),
 }));
+// The phone's document scanner and the server's reading of the photos (#385).
+jest.mock('../../hooks/scanner', () => ({ MAX_PHOTOS: 4, scanScorecard: jest.fn() }));
+jest.mock('../../sync/scorecard', () => ({ readScorecard: jest.fn() }));
 jest.mock('../../sync/suggestions', () => ({ editCourse: jest.fn(), isAdmin: jest.fn(() => Promise.resolve(false)) }));
 jest.mock('../../sync/supabase', () => ({ deleteAccount: jest.fn(), isSupabaseConfigured: jest.fn(() => true) }));
 jest.mock('../../sync/library', () => ({ ...jest.requireActual('../../sync/library'), searchLibrary: jest.fn(), fetchLibraryCourse: jest.fn() }));
@@ -148,6 +155,7 @@ beforeEach(() => {
   mockFetch.mockResolvedValue(theirs);
   mockHere.mockResolvedValue({ lat: 45.52, lng: -122.68 });
   mockFindCourses.mockResolvedValue([]);
+  (loadScanNoticeSeen as jest.Mock).mockResolvedValue(true);
 });
 
 describe('finding a course in the library (#383)', () => {
@@ -159,7 +167,7 @@ describe('finding a course in the library (#383)', () => {
     expect(mockSearch).toHaveBeenLastCalledWith('Pine', { lat: 47.6, lng: -122.3 });
     // Nearest first, as the server ordered them.
     expect(screen.getAllByText(/mi · /).map((node) => node.props.children)).toEqual(['1.0 mi · White, Blue', '174 mi · Red']);
-    expect(screen.getByText('Not one of these? Type it in.')).toBeOnTheScreen();
+    expect(screen.getByText('Not one of these? Scan its scorecard or type it in.')).toBeOnTheScreen();
   });
 
   it('drops the matches for a name the golfer has since changed, until the new search answers', async () => {
@@ -171,7 +179,7 @@ describe('finding a course in the library (#383)', () => {
     await user().clear(screen.getByLabelText('Course name'));
     await user().type(screen.getByLabelText('Course name'), 'Oak');
     expect(screen.queryByText('1.0 mi · White, Blue')).toBeNull();
-    expect(screen.queryByText('Not one of these? Type it in.')).toBeNull();
+    expect(screen.queryByText('Not one of these? Scan its scorecard or type it in.')).toBeNull();
     expect(screen.getByText('Looking…')).toBeOnTheScreen();
     await waitFor(() => expect(mockSearch).toHaveBeenLastCalledWith('Oak', { lat: 47.6, lng: -122.3 }));
     await act(async () => answer([]));
@@ -233,7 +241,7 @@ describe('typing a course in, as a draft (#383)', () => {
     mockSearch.mockResolvedValue([]);
     await open();
     await user().type(screen.getByLabelText('Course name'), name);
-    expect(await screen.findByText(`No course called “${name}” in Press yet. Type it in, and it’s there for the next golfer.`)).toBeOnTheScreen();
+    expect(await screen.findByText(`No course called “${name}” in Press yet. Scan its scorecard or type it in, and it’s there for the next golfer.`)).toBeOnTheScreen();
     await user().press(screen.getByRole('button', { name: '9 holes' }));
     await user().press(screen.getByRole('button', { name: 'Type it in' }));
     expect(await screen.findByText(/Not saved yet/)).toBeOnTheScreen();
@@ -253,7 +261,7 @@ describe('typing a course in, as a draft (#383)', () => {
     await typeItIn();
     const save = screen.getByRole('button', { name: 'Save the course' });
     expect(save).toBeDisabled();
-    expect(screen.getByText('Say where it is to save it.')).toBeOnTheScreen();
+    expect(screen.getByText('To save it, say where it is.')).toBeOnTheScreen();
 
     await user().press(screen.getByRole('button', { name: 'Use where I’m standing' }));
     expect(await screen.findByText(/At 45\.5200, -122\.6800\./)).toBeOnTheScreen();
@@ -337,7 +345,7 @@ describe('when things go wrong (#383)', () => {
     await user().press(await screen.findByRole('button', { name: 'Use where I’m standing' }));
     expect(await screen.findByText(/Couldn’t tell where you are/)).toBeOnTheScreen();
     await user().clear(screen.getByLabelText('Course name'));
-    expect(screen.getByText('Give it a name and say where it is to save it.')).toBeOnTheScreen();
+    expect(screen.getByText('To save it, give it a name and say where it is.')).toBeOnTheScreen();
     expect(screen.getByText('New course')).toBeOnTheScreen();
   });
 
@@ -362,6 +370,183 @@ describe('when things go wrong (#383)', () => {
     expect(screen.getByText('Course not found')).toBeOnTheScreen();
     await user().press(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByText('Courses')).toBeOnTheScreen();
+  });
+});
+
+describe('scanning the scorecard (#385)', () => {
+  const mockScan = scanScorecard as jest.Mock;
+  const mockRead = readScorecard as jest.Mock;
+  const photo = { mediaType: 'image/jpeg', data: 'aGVsbG8=' };
+  /** A nine-hole card with two tees, as the server checked it: blank where it couldn't read. */
+  const card = {
+    holeCount: 9,
+    tees: [
+      {
+        name: 'Blue',
+        slope: 128,
+        rating: 35.4,
+        holes: Array.from({ length: 9 }, (_, i) => ({ number: i + 1, par: i === 0 ? null : 4, strokeIndex: i + 1, yards: 350 })),
+      },
+      { name: null, slope: null, rating: null, holes: Array.from({ length: 9 }, (_, i) => ({ number: i + 1, par: 4, strokeIndex: i + 1, yards: null })) },
+    ],
+  };
+
+  /** The Courses screen, searched to nothing, with Scan the scorecard offered. */
+  async function searchedToNothing() {
+    mockSearch.mockResolvedValue([]);
+    await open();
+    await user().type(screen.getByLabelText('Course name'), 'Pine Hollow');
+    expect(await screen.findByText(/No course called “Pine Hollow” in Press yet\. Scan its scorecard/)).toBeOnTheScreen();
+  }
+
+  it('tells the golfer where the photos go before the first scan, and goes ahead only on their word', async () => {
+    (loadScanNoticeSeen as jest.Mock).mockResolvedValue(false);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === 'Not now')?.onPress?.());
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(alert).toHaveBeenCalledWith('Before you scan', expect.stringContaining('Press keeps no copy'), expect.any(Array));
+    expect(mockScan).not.toHaveBeenCalled();
+    expect(saveScanNoticeSeen).not.toHaveBeenCalled();
+
+    alert.mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === 'Scan')?.onPress?.());
+    mockScan.mockResolvedValue({ kind: 'cancelled' });
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    await waitFor(() => expect(mockScan).toHaveBeenCalledTimes(1));
+    expect(saveScanNoticeSeen).toHaveBeenCalled();
+    // A cancelled scan reads nothing and costs nothing.
+    expect(mockRead).not.toHaveBeenCalled();
+    alert.mockRestore();
+  });
+
+  it('fills a draft course with what the card gave, marked as read from the photo, and blanks left blank', async () => {
+    mockScan.mockResolvedValue({ kind: 'photos', photos: [photo, photo] });
+    mockRead.mockResolvedValue({ outcome: 'read', card, scansLeft: 9 });
+    const alert = jest.spyOn(Alert, 'alert');
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText(/Not saved yet/)).toBeOnTheScreen();
+    // The notice was taken before; not asked again.
+    expect(alert).not.toHaveBeenCalled();
+    alert.mockRestore();
+    expect(mockRead).toHaveBeenCalledWith([photo, photo]);
+
+    const draft = store.newCourse!;
+    expect(draft.course.name).toBe('Pine Hollow');
+    expect(draft.course.tees.map((t) => t.name)).toEqual(['Blue', '']);
+    expect(draft.course.tees[0]).toMatchObject({ slope: 128, rating: 35.4 });
+    expect(draft.course.tees[0].holes[0]).toEqual({ number: 1, par: 0, strokeIndex: 1, yards: 350 });
+    // Nothing is saved before the golfer saves it.
+    expect(store.courses.map((c) => c.id)).toEqual([mine.id]);
+
+    // Blue's name, slope and rating and 26 of its hole values, and 18 of the other tee's: what the photos gave.
+    expect(screen.getByText(/47 values came from the scorecard photo/)).toBeOnTheScreen();
+    expect(screen.getByLabelText('Hole 2 came from the scorecard photo: check it')).toBeOnTheScreen();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    expect(screen.getByText('To save it, name every tee, fill in every hole’s par and stroke index and say where it is.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Save the course' })).toBeDisabled();
+
+    // A blank par takes 4 on the first press.
+    await user().press(screen.getByRole('button', { name: 'Raise par on hole 1' }));
+    expect(store.newCourse!.course.tees[0].holes[0].par).toBe(4);
+  });
+
+  it('fills a blank par with 4 either way, and doesn’t call two blank stroke indexes a clash', async () => {
+    await open();
+    const blank = makeCourse('Blank Links', 9);
+    const tee = blank.tees[0];
+    const holes = tee.holes.map((h, i) => (i < 2 ? { ...h, par: 0, strokeIndex: 0 } : h));
+    await act(async () => store.startNewCourse({ ...blank, tees: [{ ...tee, holes }] }));
+    await act(async () => mockRouter.push(`/course/${blank.id}`));
+    expect(screen.queryByText(/share a stroke index/)).toBeNull();
+    await user().press(screen.getByRole('button', { name: 'Lower par on hole 1' }));
+    await user().press(screen.getByRole('button', { name: 'Raise par on hole 2' }));
+    expect(store.newCourse!.course.tees[0].holes.slice(0, 2).map((h) => h.par)).toEqual([4, 4]);
+  });
+
+  it('says how many scans are left near the limit, and why a reading failed', async () => {
+    mockScan.mockResolvedValue({ kind: 'photos', photos: [photo] });
+    mockRead.mockResolvedValue({ outcome: 'unreadable', reason: 'Couldn’t read a scorecard in those photos.', scansLeft: 2 });
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText(/Couldn’t read a scorecard in those photos\. Try again with the card flat/)).toBeOnTheScreen();
+    expect(screen.getByText('2 scans left today.')).toBeOnTheScreen();
+    expect(store.newCourse).toBeNull();
+
+    mockRead.mockResolvedValue({ outcome: 'unreadable', reason: 'Couldn’t read a scorecard in those photos.', scansLeft: 1 });
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText('1 scan left today.')).toBeOnTheScreen();
+  });
+
+  it('keeps the count through a new search, asks the notice once, and greys the button while it reads', async () => {
+    (loadScanNoticeSeen as jest.Mock).mockResolvedValue(false);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === 'Scan')?.onPress?.());
+    mockScan.mockResolvedValue({ kind: 'photos', photos: [photo] });
+    let answer!: (outcome: unknown) => void;
+    mockRead.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    const reading = await screen.findByRole('button', { name: 'Reading the card…' });
+    expect(reading).toBeDisabled();
+    await act(async () => answer({ outcome: 'read', card, scansLeft: 3 }));
+    expect(await screen.findByText(/Not saved yet/)).toBeOnTheScreen();
+
+    // Back out, and search again: the count is still known, and the notice isn't asked again.
+    await user().press(screen.getByRole('button', { name: 'Cancel' }));
+    await user().type(screen.getByLabelText('Course name'), 'Oak Ridge');
+    expect(await screen.findByText('3 scans left today.')).toBeOnTheScreen();
+    mockRead.mockResolvedValue({ outcome: 'unreadable', reason: 'Couldn’t read a scorecard in those photos.', scansLeft: 2 });
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText('2 scans left today.')).toBeOnTheScreen();
+    expect(alert).toHaveBeenCalledTimes(1);
+    alert.mockRestore();
+  });
+
+  it('says what went wrong aloud, for VoiceOver, which has no live regions', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    mockScan.mockResolvedValue({ kind: 'too-many', count: 5 });
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('That’s 5 photos. A scan takes up to 4 of one card: scan it again with fewer.'));
+    announce.mockRestore();
+  });
+
+  it('says there are none left on the next search, once today’s are used up', async () => {
+    mockScan.mockResolvedValue({ kind: 'photos', photos: [photo] });
+    mockRead.mockResolvedValue({ outcome: 'limit', reason: 'That’s today’s 10 scans used. Type the course in, or scan again tomorrow.' });
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText('That’s today’s 10 scans used. Type the course in, or scan again tomorrow.')).toBeOnTheScreen();
+    await user().clear(screen.getByLabelText('Course name'));
+    await user().type(screen.getByLabelText('Course name'), 'Oak Ridge');
+    expect(await screen.findByText('No scans left today. Type the course in, or scan again tomorrow.')).toBeOnTheScreen();
+  });
+
+  it('explains when today’s scans are used up, and leaves Type it in to hand', async () => {
+    mockScan.mockResolvedValue({ kind: 'photos', photos: [photo] });
+    mockRead.mockResolvedValue({ outcome: 'limit', reason: 'That’s today’s 10 scans used. Type the course in, or scan again tomorrow.' });
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText('That’s today’s 10 scans used. Type the course in, or scan again tomorrow.')).toBeOnTheScreen();
+    expect(screen.queryByText(/scans? left today/)).toBeNull();
+    await user().press(screen.getByRole('button', { name: 'Type it in' }));
+    expect(await screen.findByText(/Not saved yet/)).toBeOnTheScreen();
+  });
+
+  it('refuses more than 4 photos, and says so when the card can’t be read or the scanner won’t open', async () => {
+    mockScan.mockResolvedValue({ kind: 'too-many', count: 6 });
+    await searchedToNothing();
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText('That’s 6 photos. A scan takes up to 4 of one card: scan it again with fewer.')).toBeOnTheScreen();
+    expect(mockRead).not.toHaveBeenCalled();
+
+    mockScan.mockResolvedValue({ kind: 'photos', photos: [photo] });
+    mockRead.mockResolvedValue({ outcome: 'failed', reason: 'Couldn’t reach Press to read the card. Check your signal, or type the course in.' });
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText(/Couldn’t reach Press to read the card/)).toBeOnTheScreen();
+
+    mockScan.mockRejectedValue(new Error('no scanner'));
+    await user().press(screen.getByRole('button', { name: 'Scan the scorecard' }));
+    expect(await screen.findByText('The scanner didn’t open. Type the course in instead.')).toBeOnTheScreen();
   });
 });
 

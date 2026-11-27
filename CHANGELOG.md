@@ -51,6 +51,19 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   index used twice on a tee, a slope of 160), comes back blank for the golfer to fill in, never
   guessed. Each account gets 10 scans a day. The photos are read and discarded, never kept
   (#384).
+- A course the library doesn't have can be set up by scanning its scorecard. After a search,
+  **Scan the scorecard** opens the phone's own document scanner for up to 4 photos of one card.
+  What Press reads opens as a new course in the course editor, not saved yet, with every value
+  it read marked until you check it and anything it couldn't read left blank. The course can't
+  be saved with a tee unnamed, a par or stroke index blank, or one stroke index on two holes of a
+  tee, and the hint under **Save the course** says what's left. Before the first scan on a phone, a notice
+  says the photos go to Press's server and are read by Claude, from Anthropic, and that Press
+  keeps no copy. Scans left today show once 3 or fewer remain. Over the limit, with no signal,
+  or when the scanner won't open, Press says why, and **Type it in** is right below. Press
+  deletes the photos from the phone as soon as it has them ready to send. The web app has no scan. On iPhone, Press now
+  asks to use the camera when you first scan; on Android the scanner in Google Play services
+  uses it. Press never uses the microphone. The privacy policy covers scorecard photos,
+  Anthropic, and the scanner Android uses (#385).
 
 ### Changed
 

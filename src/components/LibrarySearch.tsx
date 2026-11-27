@@ -10,9 +10,13 @@ import { makeStyles, useTheme } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
 import { Field } from './Field';
 import { Body, Card, Chip, Eyebrow, Mono, PrimaryButton } from './primitives';
+import { CAN_SCAN, ScanScorecard } from './ScanScorecard';
 
 /** Long enough that a name typed at speed is one search. */
 export const SEARCH_DELAY_MS = 400;
+
+/** What the golfer can do when the library hasn't the course: scan it on a phone, type it in anywhere. */
+const OFFER = CAN_SCAN ? 'Scan its scorecard or type it in' : 'Type it in';
 
 /** How far away a library match is, in miles; empty when nobody knows. */
 export function describeDistance(km: number | null): string {
@@ -146,9 +150,10 @@ export function LibrarySearch() {
             {!shown
               ? 'Or type it in.'
               : shown.matches.length === 0
-                ? `No course called “${term}” in Press yet. Type it in, and it’s there for the next golfer.`
-                : 'Not one of these? Type it in.'}
+                ? `No course called “${term}” in Press yet. ${OFFER}, and it’s there for the next golfer.`
+                : `Not one of these? ${OFFER}.`}
           </Body>
+          <ScanScorecard name={term} />
           <HoleCountPicker value={holeCount} onChange={setHoleCount} />
           <PrimaryButton label="Type it in" onPress={typeItIn} />
         </Card>

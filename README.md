@@ -20,7 +20,8 @@ practice, since the Rules of Golf don't allow it in a counted one. Courses
 belong to one [course library](docs/architecture.md#the-course-library) that
 every signed-in account reads, and a round can be played on any of them.
 Adding a course starts with a search of the library, nearest first, and one
-that isn't there is typed in, with where it is. The
+that isn't there is typed in, or on a phone read from a scan of its scorecard
+for the golfer to check, with where it is. The
 account that added a course changes it, and can leave a note on each hole and
 draw its out-of-bounds lines. Anyone else can fill a value nobody set or add a
 tee, which goes straight in, and suggest any other change, which waits for the
@@ -177,7 +178,14 @@ As of October 2026:
   works on phones only. A course deleted from the library after a phone added it,
   and before that phone next syncs, goes back up as that phone's account's own.
   The search, adding and typing in a course have been checked in Jest and against
-  a local stack, not on a phone. Changes to a course
+  a local stack, not on a phone. Scanning a scorecard
+  ([#385](https://github.com/jwh3times/PressGolf/issues/385)) needs signal, an
+  account and a phone (the web build has none), allows each account 10 scans a
+  day, and takes up to 4 photos of one card; the photos are read by Claude, from
+  Anthropic, and not kept. It uses `expo-camera`, a native module, so an older
+  development build has to be rebuilt for it
+  ([development](docs/development.md#adding-or-updating-dependencies)). It has
+  been checked in Jest, not with a phone's scanner. Changes to a course
   someone else added ([#381](https://github.com/jwh3times/PressGolf/issues/381))
   are held on the phone only until the app closes, need signal to send, and can't
   take a tee off it. Suggestions and the admin's review have been checked in Jest

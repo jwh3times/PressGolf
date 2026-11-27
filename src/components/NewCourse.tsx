@@ -1,12 +1,18 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { canSave, describePlace, SOURCE_NAMES, type CourseDraft, type CourseSource } from '../domain/course-draft';
+import { canSave, describePlace, SOURCE_NAMES, stillNeeded, type CourseDraft, type CourseSource } from '../domain/course-draft';
 import { positionHere } from '../hooks/position';
 import { useStore } from '../store/AppStore';
 import { alpha } from '../theme/color';
 import { useTheme } from '../theme/theme';
 import { Body, Card, Eyebrow, GhostButton, PrimaryButton } from './primitives';
+
+/** "To save it, give it a name, name every tee and say where it is." */
+function saveHint(needs: string[]): string {
+  const list = needs.length > 1 ? `${needs.slice(0, -1).join(', ')} and ${needs[needs.length - 1]}` : needs[0];
+  return `To save it, ${list}.`;
+}
 
 /** The sources a draft's marks name, in the order they first appear. */
 const sourcesOf = (draft: CourseDraft): CourseSource[] => [...new Set(Object.values(draft.marks))];
@@ -77,11 +83,7 @@ export function NewCourseSave({ draft }: { draft: CourseDraft }) {
       <GhostButton label="Pick it on a map" onPress={() => router.push({ pathname: '/course-location', params: { id: course.id } })} />
       {message ? <Body style={{ color: ink.soft, lineHeight: 19 }} accessibilityLiveRegion="polite">{message}</Body> : null}
       <PrimaryButton label="Save the course" disabled={!canSave(draft)} onPress={save} />
-      {canSave(draft) ? null : (
-        <Body style={{ color: ink.quiet, lineHeight: 18 }}>
-          {course.name.trim() ? 'Say where it is to save it.' : 'Give it a name and say where it is to save it.'}
-        </Body>
-      )}
+      {canSave(draft) ? null : <Body style={{ color: ink.quiet, lineHeight: 18 }}>{saveHint(stillNeeded(draft))}</Body>}
     </View>
   );
 }

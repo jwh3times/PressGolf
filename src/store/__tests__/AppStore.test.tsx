@@ -13,8 +13,10 @@ import { useDataSync } from '../../sync/useDataSync';
 import {
   clearDataset,
   loadDataset,
+  loadScanNoticeSeen,
   loadSettings,
   saveDataset,
+  saveScanNoticeSeen,
   saveSettings,
 } from '../persistence';
 import { AppStoreProvider, useStore, type AppStore } from '../AppStore';
@@ -29,6 +31,8 @@ jest.mock('../persistence', () => ({
   loadSettings: jest.fn(),
   saveDataset: jest.fn(),
   saveSettings: jest.fn(),
+  loadScanNoticeSeen: jest.fn(() => Promise.resolve(false)),
+  saveScanNoticeSeen: jest.fn(() => Promise.resolve()),
 }));
 jest.mock('../../sync/suggestions', () => ({ editCourse: jest.fn(), isAdmin: jest.fn(() => Promise.resolve(false)) }));
 // A build with a server, so the live dataset is the one that syncs.
@@ -557,6 +561,19 @@ describe('the course library (#383)', () => {
     expect(saved).toBe(true);
     expect(store.newCourse).toBeNull();
     expect(store.courses.find((c) => c.id === draft.id)).toMatchObject({ name: 'Draft Links', location: { lat: 45.5, lng: -122.6 } });
+  });
+
+  it('remembers the notice before a first scan, once the golfer goes ahead (#385)', async () => {
+    await mount();
+    expect(store.scanNoticeSeen).toBe(false);
+    await change(() => store.noteScanNotice());
+    expect(store.scanNoticeSeen).toBe(true);
+    expect(saveScanNoticeSeen).toHaveBeenCalled();
+
+    // The next start reads it back.
+    (loadScanNoticeSeen as jest.Mock).mockResolvedValueOnce(true);
+    await mount();
+    await waitFor(() => expect(store.scanNoticeSeen).toBe(true));
   });
 
   it('makes nothing for a draft that is discarded, or saved with none', async () => {
