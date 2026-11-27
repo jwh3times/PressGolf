@@ -83,6 +83,50 @@ today. No screen sends it, so the `mutations` table is empty in practice. Fonts 
 > Functionality, linked to the account and optional, but the search's position is processed and
 > not kept, and the iOS prompt now names both uses (`app.json`).
 
+> **Amended 2026-11-27, again:** [#385](https://github.com/jwh3times/PressGolf/issues/385) sends
+> **photos** off the phone, so the "Not collected: photos" line above and the "Photos" entry in
+> the Apple table's last row no longer hold, and both store answers change. A signed-in golfer
+> can scan a course's scorecard: the phone's own document scanner (VisionKit on iOS, the ML Kit
+> scanner in Google Play services on Android, through `expo-camera`, `src/hooks/scanner.ts`)
+> takes up to 4 photos of one card. The app reads them as base64, deletes them from the phone
+> straight away, and sends them with the account's bearer token to Press's `read-scorecard` Edge
+> Function (`src/sync/scorecard.ts`). The function passes them to Anthropic's API to be read by
+> Claude, with no account details, and never stores or logs them; what it writes is a per-account
+> count of the day's scans (`scorecard_scans`, which goes with the account), for the 10-a-day
+> limit (`docs/architecture.md` § Reading a scorecard). What the golfer saves from the reading is
+> an ordinary course, already declared. Anthropic deletes API inputs and outputs within 30 days by
+> default ([data retention](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data),
+> updated 2026-07-01, read 2026-11-27) and "may not train models on Customer Content"
+> ([Commercial Terms](https://www.anthropic.com/legal/commercial-terms) § B, read 2026-11-27). The
+> app shows a notice saying where the photos go before the first scan on a phone, and the
+> privacy policy says it (`site/public/privacy/`, `#scorecards`).
+>
+> - **Apple.** Declare **User Content → Photos or Videos: collected**, purpose App
+>   Functionality, not used for tracking. Apple's "collect" counts data "you and/or your
+>   third-party partners" can access for longer than it takes to serve the request in real time,
+>   and Anthropic can hold the photos up to 30 days ([App Privacy
+>   Details](https://developer.apple.com/app-store/app-privacy-details/), read 2026-11-27). The
+>   optional-disclosure exemption doesn't apply: it needs the user's name shown in the submission
+>   form, which the scan doesn't. **JC**: Linked or Not Linked. Neither Press nor Anthropic keeps
+>   the photos with the account, and Anthropic receives no account details, but the request
+>   carries the account's token and is counted against it. Not Linked is defensible; Linked is
+>   the conservative answer.
+> - **Google Play.** Declare **Photos and videos → Photos: collected**, not shared (Anthropic
+>   processes them on Press's behalf, a service provider), optional, purpose App functionality,
+>   and **processed ephemerally: Yes** for Press's own handling. Play counts anything transmitted
+>   off the phone, ephemeral or not, and "irrespective of whether data is transmitted to you or a
+>   third-party server" ([Data safety](https://support.google.com/googleplay/android-developer/answer/10787469),
+>   read 2026-11-27). **JC**: whether Anthropic's up-to-30-day retention rules out "ephemeral";
+>   answering No is the conservative reading.
+> - **The scan count** is a number of scans per account and day, kept with the account. **JC**:
+>   whether it is Usage Data → Product Interaction (Apple) or App activity → App interactions
+>   (Play), linked, App Functionality, or too slight to declare. It is used only for the limit.
+> - **The camera** is not a data type on either form. On iOS the purpose string is
+>   `cameraPermission` on the `expo-camera` plugin in `app.json`, and there is no microphone
+>   string; on Android `CAMERA` is declared and `RECORD_AUDIO` blocked
+>   (`docs/development.md` § Android permissions). The privacy policy's "Not collected" line now
+>   says "your photo library" rather than "photos".
+
 ## 2. What the third-party SDKs and services collect themselves
 
 | Party | What it says it collects | Role | Source |
