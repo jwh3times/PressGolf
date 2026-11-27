@@ -136,6 +136,8 @@ export function buildFieldContext(
     junk,
     pickups,
     teeId: null,
+    // The course version the day's groups started on (#377), so a posted outing's pots keep it.
+    ...(rounds[0]?.courseVersion != null ? { courseVersion: rounds[0].courseVersion } : {}),
     playerTees,
     entry: 'live',
     presses: [],

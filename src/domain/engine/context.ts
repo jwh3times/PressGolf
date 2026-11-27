@@ -1,3 +1,4 @@
+import { asPlayed } from '../course-version';
 import type { Cents, Course, Hole, Player, PlayerId, Round, Tee } from '../types';
 
 /**
@@ -19,8 +20,9 @@ export class RoundContext {
 
   constructor(round: Round, course: Course, roster: Player[]) {
     this.round = round;
-    this.course = course;
-    this.tee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
+    // The course as this round played it (#377): its tees at the round's version.
+    this.course = asPlayed(course, round);
+    this.tee = this.course.tees.find((t) => t.id === round.teeId) ?? this.course.tees[0];
     this.holes = this.tee?.holes ?? [];
     // Only players actually in the round, ordered as the round recorded them.
     const byId = new Map(roster.map((p) => [p.id, p]));
@@ -174,11 +176,12 @@ export class RoundContext {
   }
 }
 
-/** The tee a player is on: their own, else the round's, else the course's first. */
+/** The tee a player is on: their own, else the round's, else the course's first, at the round's course version. */
 export function playerTee(round: Round, course: Course, id: PlayerId): Tee {
+  const { tees } = asPlayed(course, round);
   const own = round.playerTees?.[id];
-  const roundTee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
-  return (own && course.tees.find((t) => t.id === own)) || roundTee;
+  const roundTee = tees.find((t) => t.id === round.teeId) ?? tees[0];
+  return (own && tees.find((t) => t.id === own)) || roundTee;
 }
 
 /**

@@ -60,6 +60,27 @@ A round records its tee (`teeId`), and a player can play a different one
 one plays the course's first tee. New rounds and outings start on the tee the
 group last played at that course.
 
+<a id="course-versions"></a>**Course versions** (#377, `src/domain/course-version.ts`).
+A course is one record everyone plays, so a round also records the version of its
+course current when it started (`Round.courseVersion`). A change to anything that
+scores a round (adding or removing a tee, or changing a tee's name, slope, rating or
+tee card) archives the tees it replaces under the course's version and moves the course
+to the next (`withScoringChange`, which every course edit in `AppStore` goes
+through). The course keeps its archive in `Course.versions`, synced as
+`course_versions` (one row a version, its tees in one jsonb column). `RoundContext`
+and `playerTee` read a round's course through `asPlayed`, the course with its tees
+at the round's version, so settlement, the season ledger and course handicaps see
+the tees a round was played on, and a posted round never changes when its course
+does, and an outing's field pots play the version its groups started on. Nothing
+copies a course into a round. A round saved before versions, or one whose version
+isn't on the phone, plays the course as it is. The course's own name, location,
+greens, map and notes change in place. Choosing a tee added since a round started
+moves that round, if it hasn't been posted, to the course's current version
+(`forTee`), with every change made since. The server stores the versions the phone
+makes, as it stores every id; it doesn't make them itself. Every change makes a
+version, however small, since the phone can't know whether another account has a
+round on the one it replaces.
+
 `RoundContext.par(hole, playerId)` and `strokeIndex(hole, playerId)` read the
 player's own tee. Pops allocation, the max score, Stableford, birdie detection,
 Vegas's birdie flip and field pots all go through them, so players on different
@@ -606,7 +627,7 @@ When the two Supabase public variables are present and a user is signed in,
 0. Before every push, on first contact and on the debounced path, it reads the
    account's move notices and applies them ([below](#deleting-an-account)). If
    that read fails, sync reports an error like any other, and the phone carries on.
-1. On first contact, it pulls the signed-in account's 25 snapshot tables (its
+1. On first contact, it pulls the signed-in account's 26 snapshot tables (its
    own rows only), the outings shared with it, and every course the phone holds or
    points at (`coursesUsed`), from the [course library](#the-course-library).
 2. A fresh local dataset adopts existing remote data; otherwise the local
@@ -682,7 +703,7 @@ the phone's. `toRows` leaves a detached day's marks on the phone with the day, a
 mark whose round the phone doesn't hold yet still goes up, since a fresh install
 takes the account's marks before the shared outings' rounds arrive.
 
-The schema has 28 application tables: 25 snapshot tables plus
+The schema has 29 application tables: 26 snapshot tables plus
 `outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need, apart from the course library, which every signed-in account reads.
@@ -811,7 +832,8 @@ doesn't stop it, and the outing no longer lists them. A round or outing of their
 own on someone else's group goes with them, and that group stays its owner's.
 
 **Courses stay.** A deleted account's courses stay in the course library for
-everyone, with their `owner_id` cleared before anything else runs, and its hole
+everyone, with their earlier [versions](#course-versions), their `owner_id` cleared
+before anything else runs, and its hole
 notes go with it. No notice names a course or tee, and none is copied.
 
 **An organiser can delete their account.** The whole day leaves the server, under

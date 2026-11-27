@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { withScoringChange } from '../../domain/course-version';
 import { mergeShared } from '../merge-shared';
 import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
 import { coursesUsed, emptySnapshot, fromRows, seenIn, toRows, type Documents } from '../rows';
@@ -139,6 +140,31 @@ describe('sync against a local Supabase stack', () => {
     const after = fromRows(await pullSnapshot());
     expect(after.groups.find((g) => g.id === group.id)?.name).toBe(group.name);
     expect(after.rounds.some((r) => r.id === round.id)).toBe(true);
+  });
+
+  it("keeps a course's earlier versions, and the version each round is on, through the server (#377)", async () => {
+    await signUp('ann');
+    const season = demoDocuments(`${RUN}versions`);
+    const course = season.courses[0];
+    const changed = withScoringChange(course, { ...course, tees: course.tees.map((tee) => ({ ...tee, slope: 140 })) });
+    const round = { ...season.rounds.find((r) => r.courseId === course.id)!, courseVersion: 1 };
+    const phone: Documents = {
+      ...season,
+      courses: season.courses.map((c) => (c.id === course.id ? changed : c)),
+      rounds: season.rounds.map((r) => (r.id === round.id ? round : r)),
+    };
+    await pushSnapshot(toRows(phone));
+
+    const back = fromRows(await pullSnapshot());
+    const kept = back.courses.find((c) => c.id === course.id)!;
+    expect(kept.version).toBe(2);
+    expect(kept.versions).toEqual([{ version: 1, tees: course.tees }]);
+    expect(back.rounds.find((r) => r.id === round.id)?.courseVersion).toBe(1);
+
+    // Another account reads the archive with the course, from the library.
+    await signUp('ben');
+    const library = fromRows(await pullSharedOutings([course.id]));
+    expect(library.courses[0].versions).toEqual(kept.versions);
   });
 
   it("lets a golfer play a course someone else created, and brings its creator's change to that phone (#378)", async () => {

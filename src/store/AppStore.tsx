@@ -14,6 +14,7 @@ import { withClub } from '../domain/bag';
 import { hitFields, inBag, withHit } from '../domain/marks';
 import { trackedShots } from '../domain/tracked-shots';
 import { withNote } from '../domain/course-map';
+import { asPlayed, forTee, withScoringChange } from '../domain/course-version';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
 import { withGreen } from '../domain/geo';
@@ -404,6 +405,19 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       });
     },
     [persist],
+  );
+
+  /**
+   * Every edit to a course goes through here, so a change that scores a round
+   * archives the version it replaces (#377) and no round already on it moves.
+   */
+  const changeCourse = useCallback(
+    (courseId: string, change: (course: Course) => Course) =>
+      commit((prev) => ({
+        ...prev,
+        courses: prev.courses.map((c) => (c.id === courseId ? withScoringChange(c, change(c)) : c)),
+      })),
+    [commit],
   );
 
   const auth = useAuth();
@@ -799,57 +813,33 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
       createCourse: (created) =>
         commit((prev) => ({ ...prev, courses: [...prev.courses, created] })),
-      updateCourse: (id, patch) =>
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-        })),
+      updateCourse: (id, patch) => changeCourse(id, (c) => ({ ...c, ...patch })),
       updateHole: (courseId, teeId, holeIndex, patch) =>
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) =>
-            c.id !== courseId
-              ? c
-              : {
-                  ...c,
-                  tees: c.tees.map((t) => {
-                    if (t.id !== teeId) return t;
-                    const holes = t.holes.slice();
-                    holes[holeIndex] = { ...holes[holeIndex], ...patch };
-                    return { ...t, holes };
-                  }),
-                },
-          ),
+        changeCourse(courseId, (c) => ({
+          ...c,
+          tees: c.tees.map((t) => {
+            if (t.id !== teeId) return t;
+            const holes = t.holes.slice();
+            holes[holeIndex] = { ...holes[holeIndex], ...patch };
+            return { ...t, holes };
+          }),
         })),
       addTee: (courseId, fromTeeId, name) => {
         const from = state.courses.find((c) => c.id === courseId)?.tees.find((t) => t.id === fromTeeId);
         if (!from) return null;
         const created: Tee = { ...from, id: makeId('t'), name, holes: from.holes.map((h) => ({ ...h })) };
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, tees: [...c.tees, created] } : c)),
-        }));
+        changeCourse(courseId, (c) => ({ ...c, tees: [...c.tees, created] }));
         return created;
       },
       updateTee: (courseId, teeId, patch) =>
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) =>
-            c.id === courseId ? { ...c, tees: c.tees.map((t) => (t.id === teeId ? { ...t, ...patch } : t)) } : c,
-          ),
-        })),
+        changeCourse(courseId, (c) => ({ ...c, tees: c.tees.map((t) => (t.id === teeId ? { ...t, ...patch } : t)) })),
       deleteTee: (courseId, teeId) => {
         const target = state.courses.find((c) => c.id === courseId);
         const inUse = state.rounds.some(
           (r) => r.teeId === teeId || Object.values(r.playerTees).includes(teeId),
         );
         if (!target || target.tees.length < 2 || inUse) return false;
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) =>
-            c.id === courseId ? { ...c, tees: c.tees.filter((t) => t.id !== teeId) } : c,
-          ),
-        }));
+        changeCourse(courseId, (c) => ({ ...c, tees: c.tees.filter((t) => t.id !== teeId) }));
         return true;
       },
       setGreen: (courseId, green) =>
@@ -1040,11 +1030,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         }),
       clearWolfPick: (hole) =>
         patchRound((r) => ({ ...r, wolfPicks: r.wolfPicks.filter((p) => p.hole !== hole) })),
-      setRoundTee: (teeId) => patchRound((r) => ({ ...r, teeId })),
+      // A tee added since the round started puts it on the course as it is now (#377).
+      setRoundTee: (teeId) => patchRound((r) => ({ ...(course ? forTee(r, course, teeId) : r), teeId })),
       setPlayerTee: (playerId, teeId) =>
-        patchRound((r) => {
+        patchRound((playing) => {
+          const r = course ? forTee(playing, course, teeId) : playing;
           const playerTees = { ...r.playerTees };
-          const roundTee = r.teeId ?? course?.tees[0]?.id ?? null;
+          const roundTee = r.teeId ?? (course ? asPlayed(course, r).tees[0]?.id : null) ?? null;
           if (teeId === roundTee) delete playerTees[playerId];
           else playerTees[playerId] = teeId;
           return { ...r, playerTees };
@@ -1052,7 +1044,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setRoundPlayers: (playerIds) =>
         patchRound((r) => reconcileRound({ ...r, playerIds }, course?.tees[0]?.holes.length ?? 18)),
     };
-  }, [state, sync, commit, setDemoMode, signOut]);
+  }, [state, sync, commit, changeCourse, setDemoMode, signOut]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
   const { activeRoundId } = store;

@@ -1,4 +1,5 @@
-import { GAME_KEYS, type Mark } from '../../domain/types';
+import { withScoringChange } from '../../domain/course-version';
+import { GAME_KEYS, type Course, type Mark } from '../../domain/types';
 import { makeTestCourse, makeTestGroup, makeTestRound, flat, withTee } from '../../domain/__tests__/helpers';
 import { countRows, coursesUsed, emptySnapshot, fromRows, toRows, TABLES, cellValue, sawJunk, seenIn, seenValue } from '../rows';
 import { demoDocuments } from './fixtures';
@@ -34,7 +35,9 @@ describe('toRows / fromRows round trip', () => {
   });
 
   it('covers every table the schema has', () => {
-    const rows = toRows(demoDocuments());
+    const documents = demoDocuments();
+    documents.courses[0] = rerated(documents.courses[0]);
+    const rows = toRows(documents);
     // Nothing should be silently unmapped; each table gets exercised.
     for (const table of TABLES) {
       expect({ table, rows: rows[table].length > 0 }).toEqual({ table, rows: true });
@@ -253,6 +256,35 @@ describe('toRows / fromRows round trip', () => {
     const [back, none] = fromRows(rows).courses;
     expect(back.location).toEqual({ lat: 32.9, lng: -117.25 });
     expect(none).not.toHaveProperty('location');
+  });
+});
+
+/** The course after a change to its slope, which moves it to its next version (#377). */
+function rerated(course: Course): Course {
+  return withScoringChange(course, { ...course, tees: course.tees.map((tee) => ({ ...tee, slope: 120 })) });
+}
+
+describe('course versions in rows (#377)', () => {
+  it("round-trips a course's version and every earlier one, in order, and a round's version", () => {
+    const documents = demoDocuments();
+    const twice = rerated({ ...rerated(documents.courses[0]), tees: documents.courses[0].tees });
+    const round = { ...documents.rounds[0], courseId: twice.id, courseVersion: 2 };
+    const rows = toRows({ ...documents, courses: [twice], rounds: [round] });
+    expect(rows.courses[0].version).toBe(3);
+    expect(rows.course_versions.map((v) => v.version)).toEqual([1, 2]);
+    expect(rows.rounds[0].course_version).toBe(2);
+
+    const back = fromRows({ ...rows, course_versions: rows.course_versions.slice().reverse() });
+    expect(back.courses[0]).toEqual(twice);
+    expect(back.rounds[0].courseVersion).toBe(2);
+  });
+
+  it('leaves a course on its first version, and a round saved before versions, as the phone keeps them', () => {
+    const documents = demoDocuments();
+    const back = fromRows(toRows(documents));
+    expect(back.courses[0]).not.toHaveProperty('version');
+    expect(back.courses[0]).not.toHaveProperty('versions');
+    expect(back.rounds[0]).not.toHaveProperty('courseVersion');
   });
 });
 

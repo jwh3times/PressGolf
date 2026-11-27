@@ -113,6 +113,8 @@ export async function pullSharedOutings(heldCourses: readonly string[] = []): Pr
   await add('tee_holes', 'course_id', courseIds);
   await add('course_greens', 'course_id', courseIds);
   await add('course_features', 'course_id', courseIds);
+  // The versions a round may be on (#377).
+  await add('course_versions', 'course_id', courseIds);
   await add('course_hole_notes', 'course_id', [...new Set(snapshot.outings.map((o) => o.course_id))]);
 
   return snapshot;

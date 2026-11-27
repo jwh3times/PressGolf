@@ -16,6 +16,7 @@
  * what preserves the shape of the card — how many holes it has — when it comes
  * back down.
  */
+import { currentVersion } from '../domain/course-version';
 import { houseRulesOrDefault } from '../domain/formats';
 import {
   FIELD_GAME_KEYS,
@@ -79,6 +80,8 @@ export interface CourseRow {
   /** Where the course is: both or neither. */
   lat: number | null;
   lng: number | null;
+  /** The course version it is on now (#377). Absent on a server that predates versions; read as 1. */
+  version?: number;
 }
 
 export interface TeeRow {
@@ -136,6 +139,13 @@ export interface CourseHoleNoteRow {
   text: string;
 }
 
+/** A course's tees as they stood at one earlier version (#377), in one jsonb column: only ever read whole. */
+export interface CourseVersionRow {
+  course_id: string;
+  version: number;
+  tees: Tee[];
+}
+
 /** One club in the bag (#125). The bag's order is the clubs' `position`, longest first. */
 export interface ClubRow {
   id: string;
@@ -183,6 +193,8 @@ export interface RoundRow {
   entry?: RoundEntry;
   /** The round's tee. Null means the course's first. */
   tee_id: string | null;
+  /** The course version it was started on (#377). Null on a round saved before versions. */
+  course_version?: number | null;
   started_at: number;
   completed_at: number | null;
 }
@@ -310,6 +322,7 @@ export interface Snapshot {
   course_greens: CourseGreenRow[];
   course_features: CourseFeatureRow[];
   course_hole_notes: CourseHoleNoteRow[];
+  course_versions: CourseVersionRow[];
   rounds: RoundRow[];
   round_players: RoundPlayerRow[];
   scores: ScoreRow[];
@@ -351,6 +364,7 @@ export const TABLES: (keyof Snapshot)[] = [
   'course_greens',
   'course_features',
   'course_hole_notes',
+  'course_versions',
   'outings',
   'outing_field',
   'outing_field_games',
@@ -427,6 +441,7 @@ export function emptySnapshot(): Snapshot {
     course_greens: [],
     course_features: [],
     course_hole_notes: [],
+    course_versions: [],
     rounds: [],
     round_players: [],
     scores: [],
@@ -509,7 +524,11 @@ export function toRows(documents: Documents): Snapshot {
       created_at: course.createdAt,
       lat: course.location?.lat ?? null,
       lng: course.location?.lng ?? null,
+      version: currentVersion(course),
     });
+    for (const archived of course.versions ?? []) {
+      out.course_versions.push({ course_id: course.id, version: archived.version, tees: archived.tees });
+    }
     course.tees.forEach((tee, index) => {
       out.tees.push({
         id: tee.id,
@@ -570,6 +589,7 @@ export function toRows(documents: Documents): Snapshot {
       status: round.status,
       entry: round.entry,
       tee_id: round.teeId,
+      course_version: round.courseVersion ?? null,
       started_at: round.startedAt,
       completed_at: round.completedAt,
     });
@@ -773,6 +793,19 @@ function locationOf(row: CourseRow): Pick<Course, 'location'> {
   return location ? { location } : {};
 }
 
+/**
+ * A course's version and its archive, left off on a course still on its first with
+ * nothing archived, as the phone keeps one (#377). Archived versions in order.
+ */
+function versionsOf(row: CourseRow, archived: CourseVersionRow[]): Pick<Course, 'version' | 'versions'> {
+  const version = row.version ?? 1;
+  const versions = archived
+    .slice()
+    .sort((a, b) => a.version - b.version)
+    .map((v) => ({ version: v.version, tees: v.tees }));
+  return { ...(version > 1 ? { version } : {}), ...(versions.length > 0 ? { versions } : {}) };
+}
+
 export function fromRows(snapshot: Snapshot): Documents {
   const playersByGroup = groupBy(snapshot.players, (r) => r.group_id);
   const teesByCourse = groupBy(snapshot.tees, (r) => r.course_id);
@@ -780,6 +813,7 @@ export function fromRows(snapshot: Snapshot): Documents {
   const greensByCourse = groupBy(snapshot.course_greens, (r) => r.course_id);
   const featuresByCourse = groupBy(snapshot.course_features, (r) => r.course_id);
   const notesByCourse = groupBy(snapshot.course_hole_notes, (r) => r.course_id);
+  const versionsByCourse = groupBy(snapshot.course_versions ?? [], (r) => r.course_id);
   const roundPlayers = groupBy(snapshot.round_players, (r) => r.round_id);
   const scores = groupBy(snapshot.scores, (r) => r.round_id);
   const junk = groupBy(snapshot.junk, (r) => r.round_id);
@@ -843,6 +877,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       .map((n) => ({ number: n.number, text: n.text })),
     createdAt: row.created_at,
     ...locationOf(row),
+    ...versionsOf(row, versionsByCourse.get(row.id) ?? []),
   }));
 
   const rounds: Round[] = snapshot.rounds.map((row) => {
@@ -935,6 +970,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       status: row.status,
       entry: row.entry ?? 'live',
       teeId: row.tee_id ?? null,
+      ...(row.course_version != null ? { courseVersion: row.course_version } : {}),
       playerTees,
       startedAt: row.started_at,
       completedAt: row.completed_at,
