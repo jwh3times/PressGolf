@@ -82,6 +82,8 @@ export interface CourseRow {
   lng: number | null;
   /** The course version it is on now (#377). Absent on a server that predates versions; read as 1. */
   version?: number;
+  /** Who created it, on a row read from the server (#381). The phone never sends one: a push sets it. */
+  owner_id?: string | null;
 }
 
 export interface TeeRow {
@@ -878,6 +880,7 @@ export function fromRows(snapshot: Snapshot): Documents {
     createdAt: row.created_at,
     ...locationOf(row),
     ...versionsOf(row, versionsByCourse.get(row.id) ?? []),
+    ...(row.owner_id !== undefined ? { createdBy: row.owner_id } : {}),
   }));
 
   const rounds: Round[] = snapshot.rounds.map((row) => {

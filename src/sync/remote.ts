@@ -68,7 +68,10 @@ export async function pullSnapshot(): Promise<Snapshot> {
     // against, and a guest's scores are owned by the guest — pulling them here
     // would let one phone delete another's card the moment it fell behind.
     const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.eq('owner_id', ownerId));
-    (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
+    // Its own, every one: the phone keeps no creator on a course of its own (#381). Copies,
+    // so the rows as read are left as they were.
+    const kept = table === 'courses' ? rows.map(({ owner_id: _own, ...row }) => row) : rows;
+    (snapshot[table] as unknown as Record<string, unknown>[]).push(...kept);
   }
   return snapshot;
 }
@@ -295,6 +298,27 @@ function sendable(rows: Snapshot, held: Held): Snapshot {
   };
 }
 
+/** The tables that hang from a course, by the column naming it. */
+const COURSE_CHILDREN = ['tees', 'tee_holes', 'course_greens', 'course_features', 'course_hole_notes', 'course_versions'] as const;
+
+/**
+ * `local` with the server's rows for each of this account's courses the server has on
+ * a newer version, as after an approved suggestion or a gap someone filled (#381): the
+ * highest version wins, so the push can't put the old values back. Hands back the ids.
+ */
+function takeNewerCourses(local: Snapshot, remote: Snapshot): { snapshot: Snapshot; ids: string[] } {
+  const held = new Map(local.courses.map((c) => [c.id, c.version ?? 1]));
+  const ids = remote.courses.filter((c) => held.has(c.id) && (c.version ?? 1) > held.get(c.id)!).map((c) => c.id);
+  if (ids.length === 0) return { snapshot: local, ids };
+  const newer = new Set(ids);
+  const snapshot = { ...local, courses: [...local.courses.filter((c) => !newer.has(c.id)), ...remote.courses.filter((c) => newer.has(c.id))] };
+  for (const table of COURSE_CHILDREN) {
+    const rows = snapshotRows(remote, table).filter((row) => newer.has(row.course_id as string));
+    (snapshot as Record<string, unknown>)[table] = [...snapshotRows(local, table).filter((row) => !newer.has(row.course_id as string)), ...rows];
+  }
+  return { snapshot, ids };
+}
+
 /** Every outcome carries the shared outings for the next push to split by, reading a cell held back as unchanged. */
 export type SyncOutcome = { shared: Snapshot } & (
   | { status: 'adopted-remote'; rows: number; snapshot: Snapshot }
@@ -303,7 +327,14 @@ export type SyncOutcome = { shared: Snapshot } & (
    * phone had no bag and took the account's, for the app to take too, and
    * `bag_settings` and `marks` likewise.
    */
-  | ({ status: 'pushed'; upserted: number; deleted: number; own: Snapshot } & Partial<Pick<Snapshot, OnTheirOwn>>)
+  | ({
+      status: 'pushed';
+      upserted: number;
+      deleted: number;
+      own: Snapshot;
+      /** This account's courses the server had on a newer version, now in `own`, for the phone to take. */
+      newerCourses?: string[];
+    } & Partial<Pick<Snapshot, OnTheirOwn>>)
   | { status: 'nothing-to-do' }
 );
 
@@ -357,7 +388,8 @@ export async function reconcile(local: Snapshot, seen: SeenCells | null = null):
     return { status: 'nothing-to-do', shared };
   }
 
-  const mine = { ...local, ...takes };
+  const { snapshot: current, ids: newerCourses } = takeNewerCourses(local, remote);
+  const mine = { ...current, ...takes };
   const ownerId = await requireUserId();
   const { own, guest } = splitByOwner(mine, shared, ownerId);
   const prune = keepUnseenCells(deletions(remote, own), shared, ownerId, seen);
@@ -371,6 +403,7 @@ export async function reconcile(local: Snapshot, seen: SeenCells | null = null):
     upserted: result.upserted,
     deleted: countDeletions(prune),
     own,
+    ...(newerCourses.length > 0 ? { newerCourses } : {}),
     shared: {
       ...shared,
       scores: shared.scores.map((cell) => ({ ...cell, ...heldCells.get(identify('scores', { ...cell })) })),

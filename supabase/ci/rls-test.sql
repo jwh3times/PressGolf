@@ -446,3 +446,67 @@ select expect('a client can''t change or remove one', (
 
 select refused_by_key('an account that only holds a notice can''t be deleted', $q$
   delete from auth.users where id = '22222222-2222-2222-2222-222222222222' $q$);
+
+-- ── Changes from any golfer, and suggestions (#381) ─────────────────────────
+-- Carol holds the admin role, granted as the service role grants it. Bob created none
+-- of these courses: he goes through edit_course, never the course tables.
+
+insert into admins (account) values (:'carol');
+
+set role authenticated;
+set request.jwt.claim.sub = :'bob';
+select expect('a golfer isn''t the admin', is_admin()::int, 0);
+select expect('and reads no one''s role', (select count(*) from admins), 0);
+
+-- Filling a gap goes straight in, with a new version; changing a set value is a suggestion.
+select edit_course('c9', '[{"kind": "course", "field": "location", "from": null, "to": {"lat": 44.1, "lng": -121.3}}]');
+select expect('a gap he fills goes straight in', (select count(*) from courses where id = 'c9' and lat = 44.1), 1);
+select expect('and moves the course to a new version', (select version from courses where id = 'c9'), 2);
+select expect('archiving the tees as they stood', (select count(*) from course_versions where course_id = 'c9' and version = 1), 1);
+select edit_course('c1', '[{"kind": "hole", "tee": "t1", "number": 1, "field": "par", "from": 4, "to": 5}, {"kind": "tee", "tee": "t1", "field": "name", "from": "Blue", "to": "Navy"}]');
+select expect('a set value he changes waits as one suggestion', (select count(*) from course_suggestions where course_id = 'c1' and status = 'waiting' and jsonb_array_length(changes) = 2), 1);
+select expect('and the course is unchanged', (select par from tee_holes where tee_id = 't1' and number = 1), 4);
+select refused('he can''t make himself the admin', $q$
+  insert into admins (account) values ('22222222-2222-2222-2222-222222222222') $q$);
+-- A claimed gap over a set value isn't one: the server checks what's there.
+select edit_course('c1', '[{"kind": "tee", "tee": "t1", "field": "slope", "from": null, "to": 99}]');
+select expect('a forged gap over a set value waits as a suggestion', (select slope from tees where id = 't1'), 131);
+select expect('replacing what is there', (select count(*) from course_suggestions where changes @> '[{"field": "slope", "from": 131, "to": 99}]'), 1);
+-- An added tee goes straight in, owned with the course.
+select edit_course('c9', '[{"kind": "newTee", "tee": {"id": "t-bob-new", "name": "Gold", "slope": null, "rating": null, "holes": [{"number": 1, "par": 3, "strokeIndex": 1, "yards": 150}]}}]');
+select expect('a tee he adds goes straight in, the course''s', (select count(*) from tees where id = 't-bob-new' and owner_id = :'alice'), 1);
+select expect('with its card', (select count(*) from tee_holes where tee_id = 't-bob-new'), 1);
+select refused('he can''t write a suggestion directly', $q$
+  insert into course_suggestions (id, course_id, changes) values ('s-forged', 'c1', '[{"kind": "course"}]') $q$);
+select refused('nor approve one', $q$ select approve_suggestion((select id from course_suggestions limit 1)) $q$);
+select refused('nor decline one', $q$ select decline_suggestion((select id from course_suggestions limit 1), 'No.') $q$);
+update course_suggestions set status = 'approved';
+select expect('nor mark one approved', (select count(*) from course_suggestions where status = 'approved'), 0);
+
+set request.jwt.claim.sub = :'alice';
+select expect('another golfer doesn''t see his suggestion', (select count(*) from course_suggestions), 0);
+
+-- The admin approves it whole, with a new version, and declines another with a reason.
+set request.jwt.claim.sub = :'carol';
+select expect('the admin reads every waiting suggestion', (select count(*) from course_suggestions where status = 'waiting'), 2);
+select approve_suggestion((select id from course_suggestions where course_id = 'c1' and changes @> '[{"field": "name"}]'));
+select expect('approving applies every change', (select count(*) from tee_holes h join tees t on t.id = h.tee_id where t.name = 'Navy' and h.number = 1 and h.par = 5), 1);
+select expect('as a new version', (select version from courses where id = 'c1'), 3);
+select expect('and marks it approved', (select count(*) from course_suggestions where status = 'approved'), 1);
+
+set request.jwt.claim.sub = :'bob';
+select edit_course('c1', '[{"kind": "hole", "tee": "t1", "number": 1, "field": "par", "from": 4, "to": 3}]');
+select edit_course('c1', '[{"kind": "tee", "tee": "t1", "field": "slope", "from": 131, "to": 120}]');
+set request.jwt.claim.sub = :'carol';
+select approve_suggestion((select id from course_suggestions where status = 'waiting' and changes @> '[{"field": "par"}]'));
+select expect('a suggestion whose old value changed is refused, and keeps waiting with the conflict',
+  (select count(*) from course_suggestions where status = 'waiting' and conflict like 'par changed since%'), 1);
+select expect('and changes nothing', (select par from tee_holes where tee_id = 't1' and number = 1), 5);
+select decline_suggestion((select id from course_suggestions where status = 'waiting' and changes @> '[{"field": "slope", "to": 120}]'), 'The card says 131.');
+-- The admin's own change goes straight in, a set value included.
+select edit_course('c9', '[{"kind": "course", "field": "name", "from": "Somewhere else", "to": "Renamed by the admin"}]');
+select expect('the admin changes a set value directly', (select count(*) from courses where id = 'c9' and name = 'Renamed by the admin'), 1);
+
+set request.jwt.claim.sub = :'bob';
+select expect('he sees it declined, with the reason', (select count(*) from course_suggestions where status = 'declined' and reason = 'The card says 131.'), 1);
+reset role;

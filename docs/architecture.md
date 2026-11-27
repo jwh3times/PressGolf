@@ -76,7 +76,26 @@ copies a course into a round. A round saved before versions, or one whose versio
 isn't on the phone, plays the course as it is. The course's own name, location,
 greens, map and notes change in place. Choosing a tee added since a round started
 moves that round, if it hasn't been posted, to the course's current version
-(`forTee`), with every change made since. The server stores the versions the phone
+(`forTee`), with every change made since.
+
+<a id="suggestions"></a>**Changes to someone else's course** (#381). Only a course's
+creator writes its rows. On anyone else's phone the course editor collects edits in
+a draft (`courseDraft` in `AppStore`), not kept between launches, and sends it
+whole: `courseChanges` (`src/domain/course-changes.ts`) turns the draft into the
+change list the server's `edit_course` takes, each change with the value it
+replaces. The server puts a filled gap (an empty slope, rating, location or green)
+and an added tee straight in, and keeps the rest as one **suggestion** in
+`course_suggestions`, for the admin (a row in `admins`) to approve whole with
+`approve_suggestion` or decline with a reason. An approval whose old value no longer
+holds is refused and keeps waiting, with the conflict. Suggestions are online only
+(`src/sync/suggestions.ts`): they need signal to send, and the phone reads their
+status back. They aren't in the snapshot. Anything the server changes moves the course
+to a new version first, a rename included, and **the highest version wins**:
+`mergeShared` takes the library's copy of a course whose version is newer, the
+account's own included, and first contact takes the server's rows for its own courses
+on a newer version before it pushes (`newerCourses`). On a tie, the phone keeps its
+own. A green placed on someone else's course goes in the draft too, and so does a tee
+added there, while a tee can't be removed from one. The server stores the versions the phone
 makes, as it stores every id; it doesn't make them itself. Every change makes a
 version, however small, since the phone can't know whether another account has a
 round on the one it replaces.

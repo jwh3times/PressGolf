@@ -15,6 +15,7 @@
  * reaches every phone that holds it. The courses this account created stay as the
  * phone has them.
  */
+import { currentVersion } from '../domain/course-version';
 import type { Course, Group, Outing, Round } from '../domain/types';
 import type { Documents } from './rows';
 
@@ -28,8 +29,9 @@ function mergeById<T extends { id: string }>(local: T[], incoming: T[]): T[] {
 
 /**
  * The phone's courses with the library's copies of the ones in `incoming`. One in
- * `keep`, such as a course this account created, is only added when missing. The
- * rest replace the phone's copy when they differ. Hands back `local` itself if
+ * `keep`, such as a course this account created, stays as the phone has it, unless
+ * the library's is on a newer version: an approved suggestion or a filled gap (#381).
+ * The rest replace the phone's copy when they differ. Hands back `local` itself if
  * nothing changes.
  */
 function mergeCourses(local: Course[], incoming: Course[], keep: ReadonlySet<string>): Course[] {
@@ -37,7 +39,8 @@ function mergeCourses(local: Course[], incoming: Course[], keep: ReadonlySet<str
   let changed = false;
   const merged = local.map((course) => {
     const there = theirs.get(course.id);
-    if (!there || keep.has(course.id) || JSON.stringify(there) === JSON.stringify(course)) return course;
+    if (!there || JSON.stringify(there) === JSON.stringify(course)) return course;
+    if (keep.has(course.id) && currentVersion(there) <= currentVersion(course)) return course;
     changed = true;
     return there;
   });

@@ -206,6 +206,8 @@ export default function SettingsScreen() {
           { label: 'Round history', href: '/history' as const },
           { label: 'Set up an outing', href: '/new-outing' as const },
           { label: 'Join an outing by code', href: '/join' as const },
+          // The admin's alone (#381).
+          ...(store.isAdmin ? [{ label: 'Course suggestions', href: '/suggestions' as const }] : []),
         ].map((item) => (
           <ChevronRow
             key={item.href}

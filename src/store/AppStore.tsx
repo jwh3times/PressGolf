@@ -15,6 +15,8 @@ import { hitFields, inBag, withHit } from '../domain/marks';
 import { trackedShots } from '../domain/tracked-shots';
 import { withNote } from '../domain/course-map';
 import { asPlayed, forTee, withScoringChange } from '../domain/course-version';
+import { courseChanges } from '../domain/course-changes';
+import { editCourse, isAdmin as readIsAdmin, type EditResult } from '../sync/suggestions';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
 import { withGreen } from '../domain/geo';
@@ -165,6 +167,18 @@ export interface AppStore extends AppState {
   /** Sets the owner's note on a hole, trimmed to fit (#136). A blank note takes it away. */
   setNote(courseId: string, hole: number, text: string): void;
   deleteCourse(id: string): void;
+  /**
+   * Whether this account changes a course directly: one it created, or one only on this
+   * phone (#381). Someone else's course is edited as a draft and sent.
+   */
+  ownsCourse(courseId: string): boolean;
+  /** Whether the signed-in account holds the admin role. False until the server says so. */
+  isAdmin: boolean;
+  /** Someone else's course as this phone's unsent edits would leave it; null with none. */
+  courseDraft(courseId: string): Course | null;
+  /** Sends a draft: a filled gap or an added tee goes straight in, the rest waits for the admin. Keeps the draft if it fails. */
+  sendCourseDraft(courseId: string): Promise<EditResult>;
+  discardCourseDraft(courseId: string): void;
 
   // The bag
   /** Adds a club where it belongs in the bag; nothing for a name already there. */
@@ -407,20 +421,35 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [persist],
   );
 
+  const auth = useAuth();
+
+  // Someone else's courses, as this phone's unsent edits leave them (#381). Kept in memory:
+  // a draft is a few taps, and an app restart starts it again.
+  const [drafts, setDrafts] = useState<Record<string, Course>>({});
+  const owns = useCallback(
+    (course: Course | undefined) => !course || course.createdBy === undefined || course.createdBy === auth.userId,
+    [auth.userId],
+  );
+
   /**
-   * Every edit to a course goes through here, so a change that scores a round
-   * archives the version it replaces (#377) and no round already on it moves.
+   * Every edit to a course goes through here. On a course of this account's, a change
+   * that scores a round archives the version it replaces (#377), so no round already on
+   * it moves. Someone else's course takes it in its draft, to send.
    */
   const changeCourse = useCallback(
-    (courseId: string, change: (course: Course) => Course) =>
+    (courseId: string, change: (course: Course) => Course) => {
+      const course = state.courses.find((c) => c.id === courseId);
+      if (course && !owns(course)) {
+        setDrafts((prev) => ({ ...prev, [courseId]: change(prev[courseId] ?? course) }));
+        return;
+      }
       commit((prev) => ({
         ...prev,
         courses: prev.courses.map((c) => (c.id === courseId ? withScoringChange(c, change(c)) : c)),
-      })),
-    [commit],
+      }));
+    },
+    [commit, owns, state.courses],
   );
-
-  const auth = useAuth();
   const { signOut, stopDemo } = auth;
   // Someone trying the demo has no account, so only the demo dataset opens (#275).
   const tryingDemo = auth.status === 'demo';
@@ -481,6 +510,21 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   // account's season looking exactly like a real Saturday.
   const [deleting, setDeleting] = useState(false);
   const syncEnabled = state.ready && !state.demoMode && auth.status === 'signed-in' && !deleting;
+
+  // Whether this account holds the admin role (#381), read once a session can ask.
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    if (!syncEnabled) return;
+    let current = true;
+    // Asked inside a promise, so a failure of any kind reads as not the admin.
+    Promise.resolve()
+      .then(readIsAdmin)
+      .then((yes) => current && setAdmin(yes === true))
+      .catch(() => current && setAdmin(false));
+    return () => {
+      current = false;
+    };
+  }, [syncEnabled]);
 
   const documents = useMemo<Documents>(
     () => ({
@@ -835,6 +879,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         changeCourse(courseId, (c) => ({ ...c, tees: c.tees.map((t) => (t.id === teeId ? { ...t, ...patch } : t)) })),
       deleteTee: (courseId, teeId) => {
         const target = state.courses.find((c) => c.id === courseId);
+        // Taking a tee off someone else's course isn't a change anyone can send (#381).
+        if (!owns(target)) return false;
         const inUse = state.rounds.some(
           (r) => r.teeId === teeId || Object.values(r.playerTees).includes(teeId),
         );
@@ -842,16 +888,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         changeCourse(courseId, (c) => ({ ...c, tees: c.tees.filter((t) => t.id !== teeId) }));
         return true;
       },
-      setGreen: (courseId, green) =>
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, greens: withGreen(c.greens, green) } : c)),
-        })),
-      setGreens: (courseId, greens) =>
-        commit((prev) => ({
-          ...prev,
-          courses: prev.courses.map((c) => (c.id === courseId ? { ...c, greens } : c)),
-        })),
+      // Through changeCourse, so a green on someone else's course goes in the draft (#381).
+      setGreen: (courseId, green) => changeCourse(courseId, (c) => ({ ...c, greens: withGreen(c.greens, green) })),
+      setGreens: (courseId, greens) => changeCourse(courseId, (c) => ({ ...c, greens })),
       setFeatures: (courseId, features) =>
         commit((prev) => ({
           ...prev,
@@ -870,6 +909,22 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             g.defaultCourseId === id ? { ...g, defaultCourseId: null } : g,
           ),
         })),
+      ownsCourse: (courseId) => owns(state.courses.find((c) => c.id === courseId)),
+      // Only while a session can ask: signing out drops it.
+      isAdmin: syncEnabled && admin,
+      courseDraft: (courseId) => drafts[courseId] ?? null,
+      sendCourseDraft: async (courseId) => {
+        const held = state.courses.find((c) => c.id === courseId);
+        const draft = drafts[courseId];
+        const changes = held && draft ? courseChanges(held, draft) : [];
+        const result = changes.length > 0 ? await editCourse(courseId, changes) : { applied: 0, suggestion: null };
+        setDrafts(({ [courseId]: _sent, ...rest }) => rest);
+        // A gap that went straight in is on the server's copy, a newer version. A new list
+        // is a change, so sync pushes nothing and then pulls the library's copy.
+        if (result.applied > 0) commit((prev) => ({ ...prev, courses: [...prev.courses] }));
+        return result;
+      },
+      discardCourseDraft: (courseId) => setDrafts(({ [courseId]: _discarded, ...rest }) => rest),
 
       addClub: (name) => commit((prev) => ({ ...prev, clubs: withClub(prev.clubs, name) })),
       fillBag: (clubs) => commit((prev) => (prev.clubs.length ? prev : { ...prev, clubs })),
@@ -1044,7 +1099,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setRoundPlayers: (playerIds) =>
         patchRound((r) => reconcileRound({ ...r, playerIds }, course?.tees[0]?.holes.length ?? 18)),
     };
-  }, [state, sync, commit, changeCourse, setDemoMode, signOut]);
+  }, [state, sync, commit, changeCourse, owns, admin, syncEnabled, drafts, setDemoMode, signOut]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
   const { activeRoundId } = store;

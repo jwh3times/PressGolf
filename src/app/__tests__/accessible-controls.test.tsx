@@ -174,6 +174,10 @@ const mockIsSupabaseConfigured =
   isSupabaseConfigured as jest.MockedFunction<typeof isSupabaseConfigured>;
 
 const actions = {
+  // Every course here is this phone's own (#381): edited directly, with no draft.
+  ownsCourse: jest.fn(() => true),
+  courseDraft: jest.fn(() => null),
+  isAdmin: false,
   startOuting: jest.fn(),
   setActiveOuting: jest.fn(),
   updateOuting: jest.fn(),
