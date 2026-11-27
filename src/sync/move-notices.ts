@@ -5,23 +5,24 @@
  * stop being anyone else's. Left alone, it would treat them as its own and upload
  * them, re-creating deleted data, and the next guest's upload would then be
  * refused for good. So the clean-up leaves each guest move notices, and this
- * applies them: the day is kept here and marked detached, and the group and
- * course it was on move to ids of this guest's own, marked as only on this phone.
- * `toRows` leaves out whatever those marks say the server shouldn't have. A round
- * or outing of the guest's own stays, and the server has already moved it to the
- * same new ids, on a copy of the group and course.
+ * applies them: the day is kept here and marked detached, and the group it was
+ * on moves to an id of this guest's own, marked as only on this phone. `toRows`
+ * leaves out whatever those marks say the server shouldn't have. A round or outing
+ * of the guest's own stays, and the server has already moved it to the same new
+ * ids, on a copy of the group. A course never moves: it stays in the course
+ * library for everyone (#378).
  *
  * Kept pure, like `merge-shared`, and safe to apply again: notices stay on the
  * server, and once applied they match nothing this phone holds. A notice never
  * touches what the phone still shares: `followMoveNotices` takes the server's word
  * for that, so a group someone holds again through a later outing stays put.
  */
-import type { Course, Group, Outing, PlayerId, Round } from '../domain/types';
+import type { Group, Outing, PlayerId, Round } from '../domain/types';
 import { mergeShared } from './merge-shared';
 import type { Documents } from './rows';
 
 export interface MoveNotice {
-  kind: 'group' | 'player' | 'course' | 'tee' | 'outing';
+  kind: 'group' | 'player' | 'outing';
   from_id: string;
   /** The id to use from now on. Null for an outing: gone from the server, and the phone keeps its copy. */
   to_id: string | null;
@@ -48,18 +49,12 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
 
   const groups = movesOf(notices, 'group');
   const players = movesOf(notices, 'player');
-  const courses = movesOf(notices, 'course');
-  const tees = movesOf(notices, 'tee');
-  // A phone only ever adds a group or course it doesn't have, so it can still hold
-  // a player or tee the organiser removed, which no notice names. Those ids are
-  // global on the server, so each takes one built from this guest's new parent.
+  // A phone only ever adds a group it doesn't have, so it can still hold a player
+  // the organiser removed, which no notice names. Those ids are global on the
+  // server, so each takes one built from this guest's new group.
   for (const group of held.groups) {
     const to = groups.get(group.id);
     if (to) for (const { id } of group.players) if (!players.has(id)) players.set(id, `${to}:${id}`);
-  }
-  for (const course of held.courses) {
-    const to = courses.get(course.id);
-    if (to) for (const { id } of course.tees) if (!tees.has(id)) tees.set(id, `${to}:${id}`);
   }
   const gone = new Set(notices.filter((n) => n.kind === 'outing').map((n) => n.from_id));
 
@@ -73,12 +68,9 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
   };
   const toGroup = moving(groups);
   const toPlayer = moving(players);
-  const toCourse = moving(courses);
-  const toTee = moving(tees);
 
-  /** Tees by player, where both ends may have moved. */
-  const withTees = (record: Record<PlayerId, string>) =>
-    Object.fromEntries(Object.entries(record).map(([player, tee]) => [toPlayer(player), toTee(tee)]));
+  /** Tees by player, where the player may have moved. */
+  const withTees = (record: Record<PlayerId, string>) => withKeys(record, toPlayer);
   const toPair = ([a, b]: [PlayerId, PlayerId]): [PlayerId, PlayerId] => [toPlayer(a), toPlayer(b)];
   // `${hole}:${playerId}`, and a player id may itself contain a colon, as in `toRows`.
   const toPickup = (key: string) => {
@@ -97,23 +89,13 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
     id: toGroup(group.id),
     players: group.players.map((player) => ({ ...player, id: toPlayer(player.id) })),
     youId: group.youId && toPlayer(group.youId),
-    defaultCourseId: group.defaultCourseId && toCourse(group.defaultCourseId),
     ...(groups.has(group.id) ? { phoneOnly: true as const } : {}),
-  });
-
-  const moveCourse = (course: Course): Course => ({
-    ...course,
-    id: toCourse(course.id),
-    tees: course.tees.map((tee) => ({ ...tee, id: toTee(tee.id) })),
-    ...(courses.has(course.id) ? { phoneOnly: true as const } : {}),
   });
 
   const moveRound = (round: Round): Round => ({
     ...round,
     groupId: toGroup(round.groupId),
-    courseId: toCourse(round.courseId),
     playerIds: round.playerIds.map(toPlayer),
-    teeId: round.teeId && toTee(round.teeId),
     playerTees: withTees(round.playerTees),
     pops: withKeys(round.pops, toPlayer),
     handicapTees: withTees(round.handicapTees),
@@ -138,7 +120,6 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
     return {
       ...outing,
       groupId: toGroup(outing.groupId),
-      courseId: toCourse(outing.courseId),
       field: outing.field.map(toPlayer),
       fieldGames: {
         fieldSkins: { ...outing.fieldGames.fieldSkins, entrants: outing.fieldGames.fieldSkins.entrants.map(toPlayer) },
@@ -161,7 +142,6 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
   const next = {
     ...held,
     groups: each(held.groups, moveGroup),
-    courses: each(held.courses, moveCourse),
     rounds: each(held.rounds, moveRound),
     outings: each(held.outings, moveOuting),
   };
@@ -176,15 +156,17 @@ export function applyMoveNotices<T extends Held>(held: T, notices: MoveNotice[])
 export function applyFollowed<T extends HeldWithBag>(held: T, notices: MoveNotice[], taken: Documents): T {
   const moved = applyMoveNotices(held, notices);
   const { groups, courses, rounds, outings, clubs, marks } = moved;
-  return taken.outings.length === 0 ? moved : { ...moved, ...mergeShared({ groups, courses, rounds, outings, clubs, marks }, taken) };
+  // Only the days: a course the phone holds is left for the shared merge to settle.
+  const onPhone = new Set(courses.map((course) => course.id));
+  return taken.outings.length === 0 ? moved : { ...moved, ...mergeShared({ groups, courses, rounds, outings, clubs, marks }, taken, onPhone) };
 }
 
 /**
  * The phone's documents, once it knows what the server still shares with it.
  *
- * A notice leaves anything the shared pull still shows, with its players and tees,
- * since that's still someone else's. A day it shares can also be on a group or course
- * that moved under it, as when the owner of the group a guest's outing was on deletes
+ * A notice leaves anything the shared pull still shows, with its players, since
+ * that's still someone else's. A day it shares can also be on a group that moved
+ * under it, as when the owner of the group a guest's outing was on deletes
  * their account. The guest has moved that outing to their own copy, and this phone's
  * notices name ids of its own that have nothing to do with it. Where the two disagree,
  * the server's copy of that day replaces this phone's, so an edit here that hadn't
@@ -200,26 +182,21 @@ export function followMoveNotices<T extends HeldWithBag>(
   shared: Documents,
 ): { held: T; notices: MoveNotice[]; taken: Documents } {
   const shownGroups = new Set(shared.groups.map((group) => group.id));
-  const shownCourses = new Set(shared.courses.map((course) => course.id));
   const shown: Record<MoveNotice['kind'], Set<string>> = {
     outing: new Set(shared.outings.map((outing) => outing.id)),
     group: shownGroups,
-    course: shownCourses,
     player: new Set([
       ...[...shared.groups, ...held.groups.filter((group) => shownGroups.has(group.id))].flatMap((group) => group.players.map((player) => player.id)),
       ...shared.outings.flatMap((outing) => outing.field),
       ...shared.rounds.flatMap((round) => round.playerIds),
     ]),
-    tee: new Set(
-      [...shared.courses, ...held.courses.filter((course) => shownCourses.has(course.id))].flatMap((course) => course.tees.map((tee) => tee.id)),
-    ),
   };
   const toApply = notices.filter((notice) => !shown[notice.kind].has(notice.from_id));
 
   const moved = applyMoveNotices(held, toApply);
   const days = shared.outings.filter((outing) => {
     const mine = moved.outings.find((day) => day.id === outing.id);
-    return mine !== undefined && (mine.groupId !== outing.groupId || mine.courseId !== outing.courseId);
+    return mine !== undefined && mine.groupId !== outing.groupId;
   });
   const taken: Documents = {
     groups: shared.groups.filter((group) => days.some((day) => day.groupId === group.id)),
@@ -244,14 +221,10 @@ export function keepingPhoneOnly(local: Held & Pick<Documents, 'marks'>, remote:
   const detachedIds = new Set(detached.map((outing) => outing.id));
   const keptRounds = local.rounds.filter((round) => round.outingId !== null && detachedIds.has(round.outingId));
   const keptRoundIds = new Set(keptRounds.map((round) => round.id));
-  const missingFrom = <I extends { id: string; phoneOnly?: true }>(there: I[], here: I[]) => {
-    const ids = new Set(there.map((item) => item.id));
-    return here.filter((item) => item.phoneOnly && !ids.has(item.id));
-  };
+  const ids = new Set(remote.groups.map((group) => group.id));
   return {
     ...remote,
-    groups: [...remote.groups, ...missingFrom(remote.groups, local.groups)],
-    courses: [...remote.courses, ...missingFrom(remote.courses, local.courses)],
+    groups: [...remote.groups, ...local.groups.filter((group) => group.phoneOnly && !ids.has(group.id))],
     rounds: [...remote.rounds, ...keptRounds],
     outings: [...remote.outings, ...detached],
     marks: [...remote.marks, ...local.marks.filter((mark) => keptRoundIds.has(mark.roundId))],

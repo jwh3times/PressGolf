@@ -10,7 +10,24 @@ Prepare release workflow, moves them into a dated section and sets `package.json
 
 ## [Unreleased]
 
+### Added
+
+- Courses are shared in a course library. Every signed-in golfer can read every course: its
+  tees, cards, ratings, greens and hole map. A round or outing can be played on a course someone
+  else added. For now only whoever added a course can change it, and their change reaches every
+  phone that holds the course the next time it syncs. Hole notes are still their writer's
+  (#378).
+
 ### Changed
+
+- This version starts the course library afresh. The server's courses, outings, rounds, scores
+  and ball marks have been cleared once. A phone that syncs clears its own copy the first time
+  it opens on this version, so the old ones aren't sent back. The account, groups, rosters and
+  bag all stay. The demo, and a build with no server, keep their courses and rounds (#378).
+- Deleting an account no longer deletes the courses it added. They stay in the course library
+  for everyone, no longer marked as that account's, and its hole notes go with the account. A
+  guest's own rounds on its group still move to a copy of the group, on the same course. The
+  privacy policy and the account-deletion page say so (#378).
 
 - On the Score screen's hole-by-hole view, the first tap on a blank score moves off par: **+**
   enters a bogey and **−** a birdie, where both used to enter par. Par is its own tap: a blank

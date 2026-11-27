@@ -6,7 +6,7 @@ import { makeCourse, makeOuting, makePlayer, makeRound } from '../../domain/fact
 import { frame } from '../../domain/hole-map';
 import { trackedShots } from '../../domain/tracked-shots';
 import type { Mark, Round } from '../../domain/types';
-import { deleteAccount } from '../../sync/supabase';
+import { deleteAccount, isSupabaseConfigured } from '../../sync/supabase';
 import { useDataSync } from '../../sync/useDataSync';
 import {
   clearDataset,
@@ -28,9 +28,11 @@ jest.mock('../persistence', () => ({
   saveDataset: jest.fn(),
   saveSettings: jest.fn(),
 }));
-jest.mock('../../sync/supabase', () => ({ deleteAccount: jest.fn() }));
+// A build with a server, so the live dataset is the one that syncs.
+jest.mock('../../sync/supabase', () => ({ deleteAccount: jest.fn(), isSupabaseConfigured: jest.fn(() => true) }));
 
 const mockDeleteAccount = deleteAccount as jest.MockedFunction<typeof deleteAccount>;
+const mockIsConfigured = isSupabaseConfigured as jest.MockedFunction<typeof isSupabaseConfigured>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseDataSync = useDataSync as jest.MockedFunction<typeof useDataSync>;
 const mockLoadDataset = loadDataset as jest.MockedFunction<typeof loadDataset>;
@@ -163,8 +165,8 @@ describe('trying the demo without an account', () => {
     authAs('demo');
     await mount(buildDemoDataset(1_750_000_000_000), false);
     expect(store.demoMode).toBe(true);
-    expect(mockLoadDataset).toHaveBeenCalledWith(true);
-    expect(mockLoadDataset).not.toHaveBeenCalledWith(false);
+    expect(mockLoadDataset).toHaveBeenCalledWith(true, { syncs: false });
+    expect(mockLoadDataset.mock.calls.map(([demoMode]) => demoMode)).not.toContain(false);
     expect(syncEnabled()).toBe(false);
   });
 
@@ -174,7 +176,14 @@ describe('trying the demo without an account', () => {
     await change(() => store.setDemoMode(false));
     expect(stopDemo).toHaveBeenCalledWith('ownData');
     expect(store.demoMode).toBe(true);
-    expect(mockLoadDataset).not.toHaveBeenCalledWith(false);
+    expect(mockLoadDataset.mock.calls.map(([demoMode]) => demoMode)).not.toContain(false);
+  });
+
+  it('keeps the live data of a build with no server as it is: only a dataset that syncs starts afresh (#378)', async () => {
+    authAs('signed-in');
+    mockIsConfigured.mockReturnValueOnce(false);
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    expect(mockLoadDataset).toHaveBeenLastCalledWith(false, { syncs: false });
   });
 
   it('opens their own data once they sign in, and leaves the demo data where it is', async () => {
@@ -197,7 +206,7 @@ describe('trying the demo without an account', () => {
     );
     await waitFor(() => expect(store.ready).toBe(true));
     expect(store.demoMode).toBe(false);
-    expect(mockLoadDataset).toHaveBeenLastCalledWith(false);
+    expect(mockLoadDataset).toHaveBeenLastCalledWith(false, { syncs: true });
     expect(store.groups).toEqual([]);
     expect(mockClearDataset).not.toHaveBeenCalled();
   });
@@ -214,7 +223,7 @@ describe('trying the demo without an account', () => {
       </AppStoreProvider>,
     );
     await waitFor(() => expect(store.demoMode).toBe(false));
-    expect(mockLoadDataset).toHaveBeenLastCalledWith(false);
+    expect(mockLoadDataset).toHaveBeenLastCalledWith(false, { syncs: true });
   });
 });
 

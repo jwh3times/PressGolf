@@ -245,7 +245,7 @@ describe('isEmpty', () => {
 
   it('is false for a phone holding only a course', () => {
     const snapshot = emptySnapshot();
-    snapshot.courses.push({ id: 'c', name: 'Pine Hollow', created_at: 1 });
+    snapshot.courses.push({ id: 'c', name: 'Pine Hollow', created_at: 1, lat: null, lng: null });
     expect(isEmpty(snapshot)).toBe(false);
   });
 });

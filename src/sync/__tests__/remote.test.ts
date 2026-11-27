@@ -188,6 +188,42 @@ describe('pullSharedOutings', () => {
     expect(from).not.toHaveBeenCalledWith('courses');
   });
 
+  it('pulls the courses the phone holds from the course library, with no shared day, and no hole notes with them (#378)', async () => {
+    const asked: Record<string, ReturnType<typeof query>> = {};
+    const from = jest.fn((table: string) => {
+      asked[table] = query({ data: table === 'outing_members' ? [] : [{ id: 'c9', course_id: 'c9', tee_id: 't9' }], error: null });
+      return asked[table];
+    });
+    mockGetSupabase.mockReturnValue({ from } as never);
+
+    const result = await pullSharedOutings(['c9', 'c9']);
+
+    for (const table of ['courses', 'tees', 'tee_holes', 'course_greens', 'course_features']) {
+      expect(asked[table]?.in).toHaveBeenCalledWith(table === 'courses' ? 'id' : 'course_id', ['c9']);
+    }
+    expect(result.courses).toEqual([expect.objectContaining({ id: 'c9' })]);
+    expect(from).not.toHaveBeenCalledWith('course_hole_notes');
+    expect(from).not.toHaveBeenCalledWith('outings');
+  });
+
+  it("adds a shared day's course to the ones the phone holds, and its hole notes", async () => {
+    const asked: Record<string, ReturnType<typeof query>> = {};
+    const rows: Record<string, unknown[]> = {
+      outing_members: [{ outing_id: 'o1' }],
+      outings: [{ id: 'o1', group_id: 'g1', course_id: 'c1' }],
+    };
+    const from = jest.fn((table: string) => {
+      asked[table] = query({ data: rows[table] ?? [], error: null });
+      return asked[table];
+    });
+    mockGetSupabase.mockReturnValue({ from } as never);
+
+    await pullSharedOutings(['c9']);
+
+    expect(asked.courses.in).toHaveBeenCalledWith('id', ['c1', 'c9']);
+    expect(asked.course_hole_notes.in).toHaveBeenCalledWith('course_id', ['c1']);
+  });
+
   it('names the shared table that failed', async () => {
     const from = jest.fn((table: string) =>
       query({

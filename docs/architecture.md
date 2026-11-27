@@ -89,8 +89,8 @@ would be honest.
 A hole with no green offers to mark it. Marking takes one fix at the best
 accuracy available and refuses one worse than 15 m (`MARK_ACCURACY_M`), which
 would put the middle on the fringe. Marking again replaces the hole's green and
-keeps only the middle. The course owner's marks sync; outing guests read them,
-as they read the card.
+keeps only the middle. The course owner's marks sync, and every signed-in account
+reads them from the [course library](#the-course-library), as it reads the card.
 
 The course editor's **Import from OpenStreetMap** (`src/app/greens.tsx`)
 fills in the greens and the course map from OpenStreetMap. About half of US courses are mapped well enough
@@ -607,7 +607,8 @@ When the two Supabase public variables are present and a user is signed in,
    account's move notices and applies them ([below](#deleting-an-account)). If
    that read fails, sync reports an error like any other, and the phone carries on.
 1. On first contact, it pulls the signed-in account's 25 snapshot tables (its
-   own rows only) and the outings shared with it.
+   own rows only), the outings shared with it, and every course the phone holds or
+   points at (`coursesUsed`), from the [course library](#the-course-library).
 2. A fresh local dataset adopts existing remote data; otherwise the local
    dataset is pushed. The bag is settled on its own: a phone with no clubs takes
    the account's, rather than pruning it, and a fresh install keeps clubs typed
@@ -631,13 +632,33 @@ When the two Supabase public variables are present and a user is signed in,
    score, not the season.
 4. Rows deleted locally are pruned child-first after comparison with the last
    known remote snapshot.
-5. After a successful push, shared outings are pulled and merged into local
-   data, and `seenCells` is saved. First contact's own pull doesn't count, since
+5. After a successful push, shared outings and the phone's library courses are
+   pulled and merged into local data, and `seenCells` is saved. First contact's own pull doesn't count, since
    nothing merges it. A timer that fires while another sync is in flight tries again
    rather than being dropped.
 
-A guest's phone holds the organiser's group, course and rounds once it has
-merged a shared outing, and the server refuses to let it write them. Every
+<a id="the-course-library"></a>**The course library** (#378, ADR 0001). A course
+belongs to no account: every signed-in account reads every course, with its tees,
+cards, greens and map, and a round or outing may be played on any of them. Writing a
+course stays with the account that created it, which each row records as its
+`owner_id` for the history (null once that account has gone), until changes open to
+every golfer (#381). Hole notes are still their author's, read only by their outings.
+The phone never mirrors the library: the shared pull fetches the courses it holds or
+its rounds, outings and groups point at (`coursesUsed`), and `mergeShared` takes the
+server's copy of each one someone else created, so its creator's change reaches every
+phone that holds it. The courses this account created stay as the phone has them. A phone's
+edit to someone else's course isn't pushed, and the next pull replaces it. Courses
+carry an optional location (`Course.location`; `lat` and `lng`, both or neither).
+
+The switch started from a clean server: the migration that made the library wiped
+courses, outings, rounds and everything on them, keeping accounts, groups, rosters
+and the bag. The live dataset on a build with a server clears its courses, outings,
+rounds and marks once, the first time it opens on storage version 3
+(`loadDataset(…, { syncs: true })`), so they aren't pushed back. The demo and a
+build with no server keep theirs.
+
+A guest's phone holds the organiser's group and rounds once it has merged a shared
+outing, and the server refuses to let it write them. Every
 push therefore splits the phone's rows by owner first (`splitByOwner`), using
 the last pull of the shared outings, which carries each row's `owner_id`.
 Rows the account owns, or is adding, go up as its own. Of someone else's
@@ -648,7 +669,7 @@ column's default and is the guest's. The rest of the organiser's day isn't
 pushed, nor is what the phone added under it beyond cells and junk: a player
 on her roster, a tee on her course, a press in her round, a round in her
 outing. Those stay on the phone. A round or outing of the guest's own may
-still be on her group and course. Before this (#127), a guest's every push
+still be on her group, and on any course. Before this (#127), a guest's every push
 after joining failed on the organiser's group.
 
 Marks are their owner's alone, like the bag. The `marks` table has owner
@@ -664,10 +685,11 @@ takes the account's marks before the shared outings' rounds arrive.
 The schema has 28 application tables: 25 snapshot tables plus
 `outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
-they need. Every owner write also checks the row it hangs from (`owns_group`,
+they need, apart from the course library, which every signed-in account reads.
+Every owner write also checks the row it hangs from (`owns_group`,
 `owns_course`, `owns_outing`, `owns_round`): a player goes on the writer's own
 roster, a green on their own course, a press in their own round. A round or
-outing may be on a group or course shared with the writer. An organiser adds
+outing may be on a group shared with the writer, and on any course. An organiser adds
 their own membership directly when sharing; a guest joins only through
 `join_outing`, with the code.
 
@@ -786,8 +808,11 @@ with the column; `rls-test.sql` reads the catalog and fails until it has both.
 
 **A guest can delete their account.** A membership in someone else's outing
 doesn't stop it, and the outing no longer lists them. A round or outing of their
-own on someone else's group or course goes with them, and that group or course stays
-its owner's.
+own on someone else's group goes with them, and that group stays its owner's.
+
+**Courses stay.** A deleted account's courses stay in the course library for
+everyone, with their `owner_id` cleared before anything else runs, and its hole
+notes go with it. No notice names a course or tee, and none is copied.
 
 **An organiser can delete their account.** The whole day leaves the server, under
 every account, and each guest keeps the copy on their phone.
@@ -797,46 +822,47 @@ them it would read those rows as its own, once the shared pull stopped showing
 them, and upload them. That re-creates deleted data, and the next guest's upload
 is refused for good. The `move_notices` table holds, per guest (and anyone else
 with a round in the outing), one row for the outing, with no `to_id`, and one each
-for the group, its players, the course and its tees, with a new id minted for that
-guest, so two guests' copies can never collide. Someone whose only tie is
-[rows of their own](#a-guests-own-rows) on the group or course gets the notices for
-what those are on, with none for an outing. A guest reads only their own, nothing can
+for the group and its players, with a new id minted for that guest, so two guests'
+copies can never collide. Someone whose only tie is
+[rows of their own](#a-guests-own-rows) on the group gets the notices for it, with
+none for an outing. A guest reads only their own, nothing can
 write one from the client, and they stay until that guest's account goes.
 
 `applyMoveNotices` in `src/sync/move-notices.ts` applies them to the phone's
 documents. It rewrites every moved id, including those in score and junk keys and
-the active group, marks the outing `detached` and the group and course `phoneOnly`,
-and changes nothing the second time. Both marks are optional fields that persist
-with the documents. `toRows` then leaves out a detached outing and its rounds, and
-a phone-only group or course unless a round or outing still syncing uses it, in
-which case it goes up as the guest's own under its new id. A phone holding only a
+the active group, marks the outing `detached` and the group `phoneOnly`, and
+changes nothing the second time. Both marks are optional fields that persist with
+the documents. `toRows` then leaves out a detached outing and its rounds, and a
+phone-only group unless a round or outing still syncing uses it, in which case it
+goes up as the guest's own under its new id. A phone holding only a
 detached day looks like a fresh install, so adopting the account's season keeps
 what only the phone has (`keepingPhoneOnly`). The Outing screen shows a notice on a
 detached outing and hides sharing. A guest's phone on an older build ignores notices
 and can hit the upload problem above.
 
 <a id="a-guests-own-rows"></a>**A guest's own rows stay.** A round or outing of
-theirs on the departed account's group or course moves to a copy of that group or
-course, under the ids in their notices, and carries on syncing to their other devices
-and to a reinstall. Only someone with such rows gets a copy, and each gets their
-own. A group's copy holds only the players they could already read or that their
-rows name, so the rest of the roster goes with the account. A course's has its tees,
-tee holes, greens, features and hole notes. The clean-up then rewrites every column
+theirs on the departed account's group moves to a copy of that group, under the ids
+in their notices, and carries on syncing to their other devices and to a reinstall.
+Its course stays where it is, in the library. Only someone with such rows gets a
+copy, and each gets their own. A group's copy holds only the players they could
+already read or that their rows name, so the rest of the roster goes with the
+account. The clean-up then rewrites every column
 naming a moved id, as `applyMoveNotices` does on the phone, so the two agree. Each
 copied row is the original with its ids and owner swapped, so a column added later
 comes too.
 
-A phone can hold a player or tee the organiser removed before leaving, since a merge
-only adds a group or course it doesn't have, and no notice names those. Their ids are
-global on the server, so `applyMoveNotices` builds each a new one from that guest's
-new group or course. A course with no tees on the server has a stand-in on the phone;
-that does have a notice, because a round can name it.
+A phone can hold a player the organiser removed before leaving, since a merge only
+adds a group it doesn't have, and no notice names one. Player ids are global on the
+server, so `applyMoveNotices` builds each a new one from that guest's new group. A
+tee she removed is gone from the library's copy of the course, which replaces the
+phone's; a round that named it still does, until course versions (#377) keep a
+round's tees.
 
 A phone that applied the notices may hold a copy the server doesn't have, or the
-other way round. `toRows` settles it either way: a phone-only group or course goes
-up once a real round uses it, and the push prunes it again when that round goes. A
-copy a fresh install adopted carries no such mark, so it's an ordinary group or course
-of theirs from then on, and stays.
+other way round. `toRows` settles it either way: a phone-only group goes up once a
+real round uses it, and the push prunes it again when that round goes. A copy a fresh
+install adopted carries no such mark, so it's an ordinary group of theirs from then
+on, and stays.
 
 **A third account in a guest's outing keeps playing.** That outing moves to the
 guest's copy, and a round in it follows, whoever owns the round. The third account
@@ -844,28 +870,29 @@ gets notices of its own, which have nothing to do with the guest's ids, and a co
 only if rows of its own stay. Its phone can't work out the guest's ids from those, so
 when notices would change anything it pulls the shared outings first
 (`followMoveNotices`). It applies the notices, and then, for a day where it and the
-server now disagree about the group or course, the server's copy replaces its own. An
+server now disagree about the group, the server's copy replaces its own. An
 edit to that card that hadn't gone up is lost, which needs an organiser deleting while
 a third phone holds unsent cells on that one card. Every other day keeps what's on the
 phone, and the guest's own card keeps its unsent scores. Since every id it last pushed
 has moved, that push goes through first contact, which won't send a blank over a score
 the phone hasn't seen.
 
-**An organiser's outing on someone else's group or course goes with them.** Its guests
-keep a detached copy, and notices move that group and course on their phones as well,
-apart from for whoever owns them. Those notices stay, and the guest may hold the same
-group again through a later outing, so `followMoveNotices` leaves anything the shared
-pull still shows, with its players and tees. A guest's own round on that group stays
+**An organiser's outing on someone else's group goes with them.** Its guests keep a
+detached copy, and notices move that group on their phones as well, apart from for
+whoever owns it. Those notices stay, and the guest may hold the same group again
+through a later outing, so `followMoveNotices` leaves anything the shared pull still
+shows, with its players. A guest's own round on that group stays
 on the server under the old id until their phone next pushes it under the new one. A
 fresh install before that adopts a round it can't push: nothing can read that group,
 so its sync stays in error until the phone holding it pushes first.
 
 **Rows from older builds.** The policies refuse these now. A row of the departing
-account's under someone else's round, outing, group or course becomes theirs, like a
-score on their card (a mark excepted), so a press or a hole note outlives it, until their phone, which
-never held it, prunes it at first contact. Its own round in someone else's outing goes
-with it. A row of someone else's under the departing account's
-group or course goes in their copy if they get one, and with the parent if they don't.
+account's under someone else's round, outing or group becomes theirs, like a score on
+their card (a mark or a hole note excepted), so a press outlives it, until their phone,
+which never held it, prunes it at first contact. Its own round in someone else's outing
+goes with it. A row of someone else's under the departing account's group goes in their
+copy if they get one, and with the parent if they don't; one on its course stays theirs,
+with the course.
 
 On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
 push in flight (`settle` from `useDataSync`), then calls the server. On failure

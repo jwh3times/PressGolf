@@ -123,15 +123,29 @@ select expect('stranger sees no groups',   (select count(*) from groups), 0);
 select expect('stranger sees no players',  (select count(*) from players), 0);
 select expect('stranger sees no rounds',   (select count(*) from rounds), 0);
 select expect('stranger sees no scores',   (select count(*) from scores), 0);
-select expect('stranger sees no courses',  (select count(*) from courses), 0);
-select expect('stranger sees no tees',     (select count(*) from tees), 0);
-select expect('stranger sees no card',     (select count(*) from tee_holes), 0);
-select expect('stranger sees no greens',   (select count(*) from course_greens), 0);
-select expect('stranger sees no map',      (select count(*) from course_features), 0);
+-- The course library is everyone's to read (#378); a hole note is still its author's.
+select expect('stranger reads every course',    (select count(*) from courses), 2);
+select expect('stranger reads every tee',       (select count(*) from tees), 1);
+select expect('stranger reads every card',      (select count(*) from tee_holes), 1);
+select expect('stranger reads every green',     (select count(*) from course_greens), 2);
+select expect('stranger reads every map',       (select count(*) from course_features), 3);
+select expect('stranger reads who made a course', (select count(*) from courses where owner_id = :'alice'), 2);
 select expect('stranger sees no notes',    (select count(*) from course_hole_notes), 0);
 select expect('stranger sees no bag',      (select count(*) from clubs), 0);
 select expect('stranger sees no usual score', (select count(*) from bag_settings), 0);
 select expect('stranger sees no marks',    (select count(*) from marks), 0);
+
+-- Signed out, nothing: the library is for accounts. Granted here as Supabase grants it.
+reset role;
+grant usage on schema public to anon;
+grant select on courses, tees, tee_holes, course_greens, course_features to anon;
+set role anon;
+select expect('signed out reads no course', (select count(*) from courses), 0);
+select expect('signed out reads no tee',    (select count(*) from tees), 0);
+select expect('signed out reads no card',   (select count(*) from tee_holes), 0);
+select expect('signed out reads no green',  (select count(*) from course_greens), 0);
+select expect('signed out reads no map',    (select count(*) from course_features), 0);
+set role authenticated;
 
 -- ── The same stranger, now holding the code ─────────────────────────────────
 
@@ -153,9 +167,9 @@ select expect('guest sees the organiser group',(select count(*) from groups wher
 select expect('guest sees no private group',  (select count(*) from groups where id = 'g9'), 0);
 select expect('guest sees no private round',  (select count(*) from rounds where id = 'r9'), 0);
 select expect('guest sees no private scores', (select count(*) from scores where round_id = 'r9'), 0);
-select expect('guest sees no private course', (select count(*) from courses where id = 'c9'), 0);
-select expect('guest sees no private greens', (select count(*) from course_greens where course_id = 'c9'), 0);
-select expect('guest sees no private map',    (select count(*) from course_features where course_id = 'c9'), 0);
+select expect('guest reads her other course from the library', (select count(*) from courses where id = 'c9'), 1);
+select expect('guest reads its greens from the library',       (select count(*) from course_greens where course_id = 'c9'), 1);
+select expect('guest reads its map from the library',          (select count(*) from course_features where course_id = 'c9'), 1);
 select expect('guest sees no private notes',  (select count(*) from course_hole_notes where course_id = 'c9'), 0);
 select expect('guest sees no organiser bag',  (select count(*) from clubs), 0);
 select expect('guest sees no organiser usual score', (select count(*) from bag_settings), 0);
@@ -250,6 +264,22 @@ insert into round_games (round_id, key, enabled, stake) values ('r-bob', 'skins'
 insert into outings (id, group_id, course_id, name, date, started_at) values ('o-bob', 'g1', 'c1', 'Rematch day', 1, 1);
 insert into outing_field (outing_id, player_id) values ('o-bob', 'p2');
 select expect('guest plays the shared group and course again', (select count(*) from rounds where id = 'r-bob'), 1);
+-- Any course in the library, on a group of his own; but writing it stays with its creator.
+insert into groups (id, name, created_at) values ('g-bob', 'His fourball', 1);
+insert into rounds (id, group_id, course_id, name, started_at) values ('r-bob-c9', 'g-bob', 'c9', 'Her other course', 1);
+insert into outings (id, group_id, course_id, name, date, started_at) values ('o-bob-c9', 'g-bob', 'c9', 'Away day', 1, 1);
+select expect('a golfer plays any course in the library', (select count(*) from rounds where id = 'r-bob-c9'), 1);
+select expect('and sets a day up on it', (select count(*) from outings where id = 'o-bob-c9'), 1);
+update rounds set course_id = 'c1' where id = 'r-bob-c9';
+update outings set course_id = 'c1' where id = 'o-bob-c9';
+select expect('and moves his round to another course in the library', (select count(*) from rounds where id = 'r-bob-c9' and course_id = 'c1'), 1);
+select expect('and his day', (select count(*) from outings where id = 'o-bob-c9' and course_id = 'c1'), 1);
+update courses set name = 'Renamed by a stranger' where id = 'c9';
+delete from course_greens where course_id = 'c9';
+select refused('a golfer can''t add a tee to a course he didn''t create', $q$
+  insert into tees (id, course_id, name) values ('t-bob-c9', 'c9', 'Bob') $q$);
+select refused('nor take a course for his own', $q$
+  insert into courses (id, owner_id, name, created_at) values ('c-forged', '11111111-1111-1111-1111-111111111111', 'Forged', 1) $q$);
 select refused('guest can''t field a private player', $q$
   insert into outing_field (outing_id, player_id) values ('o-bob', 'p9') $q$);
 -- Nor take a row of his own somewhere he couldn't put it.
@@ -276,6 +306,7 @@ select expect('shared course untouched',(select count(*) from tees where course_
 select expect('no press of his',        (select count(*) from presses where round_id = 'r1'), 0);
 select expect('no round of his in her outing', (select count(*) from rounds where outing_id = 'o1'), 1);
 select expect('private green untouched',(select count(*) from course_greens where course_id = 'c9'), 1);
+select expect('her other course keeps its name', (select count(*) from courses where id = 'c9' and name = 'Somewhere else'), 1);
 select expect('stake untouched',        (select stake from round_games where round_id = 'r1'), 500);
 select expect('private score untouched',(select strokes from scores where round_id = 'r9'), 3);
 select expect('private round survived', (select count(*) from rounds where id = 'r9'), 1);

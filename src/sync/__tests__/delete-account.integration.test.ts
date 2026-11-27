@@ -4,7 +4,7 @@ import type { Mark, Outing, Round } from '../../domain/types';
 import { mergeShared } from '../merge-shared';
 import { applyMoveNotices, followMoveNotices, keepingPhoneOnly } from '../move-notices';
 import { pullMoveNotices, pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
-import { TABLES, fromRows, toRows, type Documents, type Snapshot } from '../rows';
+import { TABLES, coursesUsed, fromRows, toRows, type Documents, type Snapshot } from '../rows';
 import {
   currentUserId,
   deleteAccount,
@@ -134,6 +134,12 @@ async function guestOnTheCard(prefix: string) {
 
 const NOTHING: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] };
 
+/** The shared pull, with the courses this phone holds from the library, as `useDataSync` asks for it (#378). */
+const pullFor = (held: Documents) => pullSharedOutings(coursesUsed(toRows(held)));
+
+/** The courses this account created, which the shared merge leaves as the phone has them. */
+const createdCourses = (own: Snapshot) => new Set(own.courses.map((course) => course.id));
+
 /** A guest's phone after first contact: what it holds, and what it would next push against. */
 async function joinedPhone(holding: Documents = NOTHING) {
   const lastPull = await pullSharedOutings();
@@ -151,7 +157,7 @@ async function syncOnce(side: Side): Promise<Side> {
   const notices = await pullMoveNotices();
   let held = side.phone;
   if (applyMoveNotices(held, notices) !== held) {
-    ({ held } = followMoveNotices(held, notices, fromRows(await pullSharedOutings())));
+    ({ held } = followMoveNotices(held, notices, fromRows(await pullFor(held))));
   }
   let own: Snapshot;
   if (held === side.phone) {
@@ -161,14 +167,14 @@ async function syncOnce(side: Side): Promise<Side> {
     const local = toRows(held);
     const contact = await reconcile(local);
     if (contact.status === 'adopted-remote') {
-      held = keepingPhoneOnly(held, fromRows(contact.snapshot));
+      held = keepingPhoneOnly(held, mergeShared(fromRows(contact.snapshot), fromRows(contact.shared), createdCourses(contact.snapshot)));
       own = contact.snapshot;
     } else {
       own = contact.status === 'pushed' ? contact.own : local;
     }
   }
-  const lastPull = await pullSharedOutings();
-  return { phone: mergeShared(held, fromRows(lastPull)), own, lastPull };
+  const lastPull = await pullFor(held);
+  return { phone: mergeShared(held, fromRows(lastPull), createdCourses(own)), own, lastPull };
 }
 
 /**
@@ -275,8 +281,11 @@ async function rematchWithoutJoining(prefix: string) {
   return { ann, ben, outing, id, player };
 }
 
-/** Rows of her day left on the server, whoever holds them. Read with the service role. */
-async function dayLeft({ groupId, courseId, roundIds, outingId }: { groupId: string; courseId: string; roundIds: string[]; outingId: string }) {
+/**
+ * Rows of her day left on the server, whoever holds them. Read with the service role.
+ * Its course isn't counted: that stays in the library for everyone (#378).
+ */
+async function dayLeft({ groupId, roundIds, outingId }: { groupId: string; courseId: string; roundIds: string[]; outingId: string }) {
   const count = async (table: string, column: string, values: string[]) => {
     const { count: rows, error } = await admin.from(table).select('*', { count: 'exact', head: true }).in(column, values);
     if (error) throw new Error(`${table}: ${error.message}`);
@@ -285,8 +294,6 @@ async function dayLeft({ groupId, courseId, roundIds, outingId }: { groupId: str
   const counts = await Promise.all([
     count('groups', 'id', [groupId]),
     count('players', 'group_id', [groupId]),
-    count('courses', 'id', [courseId]),
-    count('tees', 'course_id', [courseId]),
     count('outings', 'id', [outingId]),
     count('outing_field', 'outing_id', [outingId]),
     count('outing_members', 'outing_id', [outingId]),
@@ -729,8 +736,10 @@ describe('rows older builds could write under someone else', () => {
 
     expect(await rowsHeldBy(ben)).toBe(0);
     expect(await cells()).toEqual(typedCells(ann));
+    // A hole note is its author's, and goes with them: a course is nobody's now (#378).
+    const { data: note } = await admin.from('course_hole_notes').select('owner_id').match({ course_id: day.courseId, number: 17 });
+    expect(note).toEqual([]);
     for (const [table, match] of [
-      ['course_hole_notes', { course_id: day.courseId, number: 17 }],
       ['presses', { id: `${RUN}older-press` }],
       ['players', { id: `${RUN}older-player` }],
     ] as const) {
@@ -741,7 +750,7 @@ describe('rows older builds could write under someone else', () => {
     expect(round).toEqual([]);
   });
 
-  it("copies a guest's own row on her course and roster when their rows stay, and lets it go when none do", async () => {
+  it("copies a guest's own player on her roster when their rows stay, and lets it go when none do; a hole note stays theirs on the course", async () => {
     const stays = await guestWithRematch('older-stays');
     const leaves = await sharedDay('older-leaves');
     const rows = (who: Account, day: { groupId: string; courseId: string }, id: string): [string, Record<string, unknown>][] => [
@@ -764,7 +773,10 @@ describe('rows older builds could write under someone else', () => {
     expect(note!.length).toBeGreaterThanOrEqual(1);
     const { data: gone } = await admin.from('players').select('id').eq('name', `Added ${leaving}`);
     expect(gone).toEqual([]);
-    expect(await rowsHeldBy(leaves.ben)).toBe(0);
+    // The course stays in the library (#378), and his note on it stays his.
+    const { data: kept } = await admin.from('course_hole_notes').select('owner_id').eq('course_id', leaves.outing.courseId).eq('owner_id', leaves.ben.id);
+    expect(kept).toHaveLength(1);
+    expect(await rowsHeldBy(leaves.ben)).toBe(1);
   });
 });
 
@@ -1021,9 +1033,12 @@ describe('an organiser deleting their account', () => {
       // The next push in a running session, still holding the pull from before she left.
       const moved = applyMoveNotices(side.phone, await pullMoveNotices());
       const own = await pushChanges(toRows(moved), side.own, side.lastPull);
-      const pull = await pullSharedOutings();
-      const again = applyMoveNotices(mergeShared(moved, fromRows(pull)), await pullMoveNotices());
-      expect(again).toEqual(moved);
+      const pull = await pullFor(moved);
+      const again = applyMoveNotices(mergeShared(moved, fromRows(pull), createdCourses(own)), await pullMoveNotices());
+      // Her hole notes went with her, and the library's copy of the course says so (#378).
+      const lessNotes = (documents: Documents) => ({ ...documents, courses: documents.courses.map((course) => ({ ...course, notes: [] })) });
+      expect(lessNotes(again)).toEqual(lessNotes(moved));
+      expect(again.courses.find((course) => course.id === outing.courseId)?.notes).toEqual([]);
       await pushChanges(toRows(again), own, pull);
       // And first contact, as after the app restarts.
       const restarted = applyMoveNotices(moved, await pullMoveNotices());
@@ -1035,7 +1050,8 @@ describe('an organiser deleting their account', () => {
       expect(kept.detached).toBe(true);
       expect(Object.values(moved.rounds.find((r) => r.id === day.id)!.scores)).toEqual(Object.values(card.scores));
       expect(moved.groups.find((g) => g.id === kept.groupId)!.phoneOnly).toBe(true);
-      expect(moved.courses.find((c) => c.id === kept.courseId)!.phoneOnly).toBe(true);
+      // The course stays in the library, under its own id (#378).
+      expect(moved.courses.find((c) => c.id === kept.courseId)).toBeDefined();
       // None of it went back.
       expect(await rowsHeldBy(account)).toBe(holds);
     }
@@ -1083,23 +1099,24 @@ describe('an organiser deleting their account', () => {
 
     const moved = applyMoveNotices(offline, await pullMoveNotices());
     const own = await pushChanges(toRows(moved), side.own, side.lastPull);
-    await pushChanges(toRows(moved), own, await pullSharedOutings());
+    await pushChanges(toRows(moved), own, await pullFor(moved));
 
     // The card as he left it, under his ids.
     const newScorer = moved.rounds.find((r) => r.id === card.id)!.playerIds[1];
     expect(moved.rounds.find((r) => r.id === card.id)!.scores[newScorer][0]).toBe(9);
 
-    // His own round went up on his own copy, and nothing of her day came back.
+    // His own round went up on his own copy of the group, on the course she left in the
+    // library (#378), and nothing of her day came back.
     const kept = moved.rounds.find((r) => r.id === rematch.id)!;
-    expect(kept.courseId).not.toBe(card.courseId);
+    expect(kept.courseId).toBe(card.courseId);
     const { data } = await admin.from('rounds').select('owner_id, group_id, course_id').eq('id', rematch.id).single();
     expect(data).toEqual({ owner_id: ben.id, group_id: kept.groupId, course_id: kept.courseId });
-    const { data: copy } = await admin.from('courses').select('owner_id').eq('id', kept.courseId).single();
-    expect(copy).toEqual({ owner_id: ben.id });
+    const { data: library } = await admin.from('courses').select('owner_id').eq('id', kept.courseId).single();
+    expect(library).toEqual({ owner_id: null });
     expect(await dayLeft(dayOf(outing, benPhone.rounds))).toBe(0);
   });
 
-  it("leaves nothing of a moved group and course on the server while nothing of the guest's uses them", async () => {
+  it("leaves nothing of a moved group on the server while nothing of the guest's uses it, and the course in the library", async () => {
     const { ann, ben, outing, benPhone } = await guestOnTheCard('quiet');
     const side = await joinedPhone(benPhone);
     await deleteFromAnotherPhone(ann);
@@ -1111,7 +1128,7 @@ describe('an organiser deleting their account', () => {
     const { data: groups } = await admin.from('groups').select('id').eq('id', kept.groupId);
     const { data: courses } = await admin.from('courses').select('id').eq('id', kept.courseId);
     expect(groups).toEqual([]);
-    expect(courses).toEqual([]);
+    expect(courses).toEqual([{ id: kept.courseId }]);
     expect(await rowsHeldBy(ben)).toBe(0);
   });
 
@@ -1149,23 +1166,22 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
 
       const round = now.phone.rounds.find((r) => r.id === side.rematch.id)!;
       expect(round.groupId).not.toBe(outing.groupId);
-      expect(round.courseId).not.toBe(outing.courseId);
+      // The course stays the library's, on its own id, for both of them (#378).
+      expect(round.courseId).toBe(outing.courseId);
       const { data } = await admin.from('rounds').select('owner_id, group_id, course_id').eq('id', round.id).single();
       expect(data).toEqual({ owner_id: account.id, group_id: round.groupId, course_id: round.courseId });
-      for (const [table, id] of [['groups', round.groupId], ['courses', round.courseId]] as const) {
-        const { data: copy } = await admin.from(table).select('owner_id').eq('id', id).single();
-        expect(copy).toEqual({ owner_id: account.id });
-      }
+      const { data: copy } = await admin.from('groups').select('owner_id').eq('id', round.groupId).single();
+      expect(copy).toEqual({ owner_id: account.id });
       synced.push(round);
     }
 
     expect(synced[0].groupId).not.toBe(synced[1].groupId);
-    expect(synced[0].courseId).not.toBe(synced[1].courseId);
+    expect(synced[0].courseId).toBe(synced[1].courseId);
     expect(synced[0].playerIds).not.toEqual(synced[1].playerIds);
 
     // Cal is signed in. Nothing of Ben's is there to read.
     const client = getSupabase()!;
-    for (const [table, id] of [['rounds', synced[0].id], ['groups', synced[0].groupId], ['courses', synced[0].courseId]] as const) {
+    for (const [table, id] of [['rounds', synced[0].id], ['groups', synced[0].groupId]] as const) {
       const { data } = await client.from(table).select('id').eq('id', id);
       expect(data).toEqual([]);
     }
@@ -1176,7 +1192,7 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     await expect(signInWithPassword(ann.email, PASSWORD)).rejects.toThrow('do not match an account');
   });
 
-  it("keeps two guests apart on a player and tee she removed, which their phones still hold and no notice names", async () => {
+  it("keeps two guests apart on a player she removed, which their phones still hold and no notice names, and takes the library's word on a tee she removed", async () => {
     const { ann, ben, outing, day, joinCode, benSide } = await guestWithRematch('removed');
     const cal = await signUp('cal');
     await joinOuting(joinCode, null, 'Cal');
@@ -1200,21 +1216,21 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
 
       const round = now.phone.rounds.find((r) => r.id === side.rematch.id)!;
       const group = now.phone.groups.find((g) => g.id === round.groupId)!;
+      // The course is the library's (#378): its copy, without the tee she removed,
+      // replaces the phone's. The round still names the tee it was played from.
       const course = now.phone.courses.find((c) => c.id === round.courseId)!;
       const tee = round.playerTees[round.playerIds[2]];
-      expect(course.tees.map((t) => t.id)).toContain(tee);
+      expect(tee).toBe(removedTee);
+      expect(course.tees.map((t) => t.id)).not.toContain(tee);
       const { data: rows } = await admin.from('round_players').select('tee_id').match({ round_id: round.id, player_id: round.playerIds[2] }).single();
       expect(rows).toEqual({ tee_id: tee });
       const player = group.players[outing.field.indexOf(removedPlayer)].id;
-      for (const [table, id] of [['players', player], ['tees', tee]] as const) {
-        const { data } = await admin.from(table).select('owner_id').eq('id', id).single();
-        expect(data).toEqual({ owner_id: account.id });
-      }
+      const { data } = await admin.from('players').select('owner_id').eq('id', player).single();
+      expect(data).toEqual({ owner_id: account.id });
       held.push({ player, tee });
     }
 
     expect(held[0].player).not.toBe(held[1].player);
-    expect(held[0].tee).not.toBe(held[1].tee);
     const { data: oldPlayer } = await admin.from('players').select('id').eq('id', removedPlayer);
     expect(oldPlayer).toEqual([]);
     const { data: oldTee } = await admin.from('tees').select('id').eq('id', removedTee);
@@ -1242,11 +1258,14 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     expect(server.rounds).toEqual([round]);
     const { phoneOnly: _group, ...group } = moved.groups.find((g) => g.id === round.groupId)!;
     expect({ ...server.groups[0], players: [] }).toEqual({ ...group, players: [] });
-    const { phoneOnly: _course, ...course } = moved.courses.find((c) => c.id === round.courseId)!;
-    expect(server.courses).toEqual([course]);
+    // The course stays in the library under its own id, with nobody as its creator (#378).
+    expect(round.courseId).toBe(benSide.rematch.courseId);
+    expect(server.courses).toEqual([]);
+    const { data: course } = await admin.from('courses').select('id, owner_id').eq('id', round.courseId).single();
+    expect(course).toEqual({ id: round.courseId, owner_id: null });
   });
 
-  it('copies the players they could read or their rows name, and the whole course', async () => {
+  it('copies the players they could read or their rows name, and leaves the course in the library, less its hole notes', async () => {
     const { ann, ben, outing, unseen, benSide } = await guestWithRematch('copy');
     const { data: field } = await admin.from('outing_field').select('player_id').eq('outing_id', outing.id);
     const held = async (table: string) =>
@@ -1273,15 +1292,18 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     const { data: named } = await admin.from('players').select('id').eq('name', 'Not In It').eq('owner_id', ben.id);
     expect(named).toEqual([]);
 
+    // The course is the library's, on the same id, and nobody's now (#378). A hole note was
+    // its author's, and went with her.
+    expect(round.courseId).toBe(outing.courseId);
     for (const [table, count] of Object.entries(counts)) {
       const { data: rows } = await admin.from(table).select('owner_id').eq('course_id', round.courseId);
-      expect(rows).toHaveLength(count!);
-      expect(rows!.every((row) => row.owner_id === ben.id)).toBe(true);
+      expect(rows).toHaveLength(table === 'course_hole_notes' ? 0 : count!);
+      expect(rows!.every((row) => row.owner_id === null)).toBe(true);
     }
   });
 
   it('keeps a round for someone in no outing of hers, with the one player it names', async () => {
-    const { ann, ben, outing, id, player } = await rematchWithoutJoining('left');
+    const { ann, ben, outing, id, player } = await rematchWithoutJoining('left-alone');
     await deleteFromAnotherPhone(ann);
 
     const notices = await pullMoveNotices();
@@ -1318,7 +1340,8 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
 
     const contact = await reconcile(toRows(NOTHING));
     if (contact.status !== 'adopted-remote') throw new Error(contact.status);
-    const phone = fromRows(contact.snapshot);
+    // As `useDataSync` adopts it: the season, with the library's courses its rounds are on (#378).
+    const phone = mergeShared(fromRows(contact.snapshot), fromRows(contact.shared), createdCourses(contact.snapshot));
 
     const round = phone.rounds.find((r) => r.id === benSide.rematch.id)!;
     expect(phone.groups.map((g) => g.id)).toEqual([round.groupId]);
@@ -1400,7 +1423,7 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     expect(members).toEqual([{ user_id: ben.id }]);
   });
 
-  it('moves the stand-in tee of a course with none on the server, to an id of each guest\'s own', async () => {
+  it('leaves the stand-in tee of a course with none on the server where it is, with the course (#378)', async () => {
     const { ann, ben, day, joinCode } = await guestOnTheCard('standin');
     const { error: teeError } = await admin.from('tees').delete().eq('course_id', day.courseId);
     expect(teeError).toBeNull();
@@ -1410,14 +1433,14 @@ describe("a guest with rows of their own on a deleted organiser's group or cours
     await signUp('cal');
     await joinOuting(joinCode, null, 'Cal');
     await deleteFromAnotherPhone(ann);
-    const cals = (await pullMoveNotices()).find((n) => n.kind === 'tee' && n.from_id === standIn)!;
+    expect((await pullMoveNotices()).map((n) => n.kind as string)).not.toContain('tee');
 
     await signInAs(ben);
     const moved = applyMoveNotices(side.phone, await pullMoveNotices());
     const kept = moved.rounds.find((r) => r.id === side.rematch.id)!;
-    expect(kept.teeId).not.toBe(standIn);
-    expect(kept.teeId).not.toBe(cals.to_id);
-    expect(moved.courses.find((c) => c.id === kept.courseId)!.tees.map((t) => t.id)).toEqual([kept.teeId]);
+    expect(kept.teeId).toBe(standIn);
+    expect(kept.courseId).toBe(day.courseId);
+    expect(moved.courses.find((c) => c.id === kept.courseId)!.tees.map((t) => t.id)).toEqual([standIn]);
     const { data } = await admin.from('rounds').select('tee_id').eq('id', kept.id).single();
     expect(data).toEqual({ tee_id: kept.teeId });
     await expect(syncOnce(side)).resolves.toBeDefined();

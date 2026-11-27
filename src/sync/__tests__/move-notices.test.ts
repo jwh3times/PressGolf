@@ -77,9 +77,6 @@ const notices: MoveNotice[] = [
   { kind: 'group', from_id: 'g1', to_id: 'G1' },
   { kind: 'player', from_id: 'p1', to_id: 'P1' },
   { kind: 'player', from_id: 'p:2', to_id: 'P:2' },
-  { kind: 'course', from_id: 'c1', to_id: 'C1' },
-  { kind: 'tee', from_id: 't1', to_id: 'T1' },
-  { kind: 'tee', from_id: 't2', to_id: 'T2' },
 ];
 
 describe('applying move notices', () => {
@@ -94,33 +91,25 @@ describe('applying move notices', () => {
         { ...group.players[1], id: 'P:2' },
       ],
       youId: 'P1',
-      defaultCourseId: 'C1',
+      defaultCourseId: 'c1',
       phoneOnly: true,
     });
   });
 
-  it("rewrites a course's ids, and marks it as only on this phone", () => {
-    expect(moved.courses[0]).toEqual({
-      ...course,
-      id: 'C1',
-      tees: [
-        { ...course.tees[0], id: 'T1' },
-        { ...course.tees[1], id: 'T2' },
-      ],
-      phoneOnly: true,
-    });
+  it('leaves every course where it is, since the course library keeps it (#378)', () => {
+    expect(moved.courses).toBe(held.courses);
   });
 
   it('rewrites every id in a round, including those held in keys', () => {
     expect(moved.rounds[0]).toEqual({
       ...round,
       groupId: 'G1',
-      courseId: 'C1',
+      courseId: 'c1',
       playerIds: ['P1', 'P:2'],
-      teeId: 'T1',
-      playerTees: { 'P:2': 'T2' },
+      teeId: 't1',
+      playerTees: { 'P:2': 't2' },
       pops: { P1: 3, 'P:2': -1 },
-      handicapTees: { P1: 'T1', 'P:2': 'T2' },
+      handicapTees: { P1: 't1', 'P:2': 't2' },
       scores: { P1: [4, null], 'P:2': [5, 6] },
       junk: { '0:P1:sandie': true, '1:P:2:greenie': true },
       pickups: { '1:P:2': true },
@@ -137,7 +126,7 @@ describe('applying move notices', () => {
     expect(moved.outings[0]).toEqual({
       ...outing,
       groupId: 'G1',
-      courseId: 'C1',
+      courseId: 'c1',
       field: ['P1', 'P:2'],
       fieldGames: {
         fieldSkins: { ...outing.fieldGames.fieldSkins, entrants: ['P1'] },
@@ -180,7 +169,7 @@ describe('applying move notices', () => {
     expect(after.courses[0].id).toBe('g1');
   });
 
-  it("gives a player or tee the phone holds on a moved group or course an id of this guest's own, with no notice for it", () => {
+  it("gives a player the phone holds on a moved group an id of this guest's own, with no notice for it, and leaves the tee", () => {
     const after = applyMoveNotices(
       {
         ...held,
@@ -191,11 +180,10 @@ describe('applying move notices', () => {
       notices,
     );
     const player = after.groups[0].players[after.groups[0].players.length - 1].id;
-    const tee = after.courses[0].tees[after.courses[0].tees.length - 1].id;
     expect(player).toBe('G1:removed');
-    expect(tee).toBe('C1:c1_default');
     expect(after.rounds[0].playerIds).toContain(player);
-    expect(after.rounds[0].teeId).toBe(tee);
+    expect(after.rounds[0].teeId).toBe('c1_default');
+    expect(after.courses[0].tees.map((tee) => tee.id)).toEqual(['t1', 't2', 'c1_default']);
     expect(applyMoveNotices(after, notices)).toBe(after);
   });
 
@@ -216,7 +204,7 @@ describe('applying move notices', () => {
 describe('what goes to the server', () => {
   const moved: Documents = applyMoveNotices(held, notices);
 
-  it('leaves out a detached outing, its rounds, and a moved group and course nothing else uses', () => {
+  it('leaves out a detached outing, its rounds, and a moved group nothing else uses, and sends the course as it is', () => {
     const rows = toRows(moved);
     expect(rows.outings).toEqual([]);
     expect(rows.outing_field).toEqual([]);
@@ -226,30 +214,27 @@ describe('what goes to the server', () => {
     expect(rows.scores.every((s) => s.round_id === mine.id)).toBe(true);
     expect(rows.groups.map((g) => g.id)).not.toContain('G1');
     expect(rows.players.map((p) => p.id)).not.toContain('P1');
-    expect(rows.courses.map((c) => c.id)).not.toContain('C1');
-    expect(rows.tees.map((t) => t.id)).not.toContain('T1');
-    expect(rows.tee_holes.map((h) => h.tee_id)).not.toContain('T1');
+    expect(rows.courses.map((c) => c.id)).toContain('c1');
+    expect(rows.tees.map((t) => t.id)).toEqual(expect.arrayContaining(['t1', 't2']));
   });
 
-  it('sends a moved group and course up, under their new ids, once a round of its own uses them', () => {
-    const rematch: Round = { ...moved.rounds[1], id: 'rematch', groupId: 'G1', courseId: 'C1', outingId: null };
+  it('sends a moved group up, under its new ids, once a round of its own uses it', () => {
+    const rematch: Round = { ...moved.rounds[1], id: 'rematch', groupId: 'G1', courseId: 'c1', outingId: null };
     const rows = toRows({ ...moved, rounds: [...moved.rounds, rematch] });
     expect(rows.groups.map((g) => g.id)).toContain('G1');
     expect(rows.players.map((p) => p.id)).toEqual(expect.arrayContaining(['P1', 'P:2']));
-    expect(rows.courses.map((c) => c.id)).toContain('C1');
-    expect(rows.tees.map((t) => t.id)).toEqual(expect.arrayContaining(['T1', 'T2']));
     expect(rows.rounds.map((r) => r.id)).toContain('rematch');
     // The day itself still stays.
     expect(rows.rounds.map((r) => r.id)).not.toContain('r1');
     expect(rows.outings).toEqual([]);
   });
 
-  it('keeps an outing of its own syncing, on the moved group and course', () => {
+  it('keeps an outing of its own syncing, on the moved group', () => {
     const own: Outing = { ...held.outings[0], id: 'own', roundIds: [] };
     const after = applyMoveNotices({ ...held, outings: [...held.outings, own] }, notices);
     const kept = after.outings.find((o) => o.id === 'own')!;
     expect(kept.detached).toBeUndefined();
-    expect(kept).toMatchObject({ groupId: 'G1', courseId: 'C1' });
+    expect(kept).toMatchObject({ groupId: 'G1', courseId: 'c1' });
     expect(toRows(after).outings.map((o) => o.id)).toEqual(['own']);
   });
 
@@ -258,7 +243,6 @@ describe('what goes to the server', () => {
     const rows = toRows({ ...moved, outings: [...moved.outings, own] });
     expect(rows.outings.map((o) => o.id)).toEqual(['own']);
     expect(rows.groups.map((g) => g.id)).toContain('G1');
-    expect(rows.courses.map((c) => c.id)).toContain('C1');
   });
 });
 
@@ -266,12 +250,13 @@ describe('adopting what the server has', () => {
   const moved = applyMoveNotices(held, notices);
   const remote: Documents = { groups: [demo.groups[1]], courses: [], rounds: [mine], outings: [], clubs: demo.clubs, marks: [] };
 
-  it('keeps the detached day and the moved group and course, which the server never had', () => {
+  it('keeps the detached day and the moved group, which the server never had', () => {
     const adopted = keepingPhoneOnly(moved, remote);
     expect(adopted.outings).toEqual([moved.outings[0]]);
     expect(adopted.rounds).toEqual([mine, moved.rounds[0]]);
     expect(adopted.groups).toEqual([demo.groups[1], moved.groups[0]]);
-    expect(adopted.courses).toEqual([moved.courses[0]]);
+    // A course comes from the library, with the shared pull: the server's word stands here.
+    expect(adopted.courses).toEqual(remote.courses);
     expect(adopted.clubs).toBe(demo.clubs);
   });
 
@@ -299,10 +284,9 @@ describe('adopting what the server has', () => {
 describe('following notices, with the shared pull in hand', () => {
   /** What the guest's outing looks like from the server now: on the guest's copy, under the guest's ids. */
   const copy: Group = { ...group, id: 'GB', players: group.players.map((player) => ({ ...player, id: `${player.id}B` })) };
-  const copiedCourse: Course = { ...course, id: 'CB', tees: course.tees.map((tee) => ({ ...tee, id: `${tee.id}B` })) };
-  const sharedOuting: Outing = { ...held.outings[0], id: 'theirs', groupId: 'GB', courseId: 'CB', field: copy.players.map((p) => p.id), fieldGames: { fieldSkins: { ...held.outings[0].fieldGames.fieldSkins, entrants: [] }, scats: { ...held.outings[0].fieldGames.scats, entrants: [] } }, roundIds: ['r-theirs'] };
-  const sharedRound: Round = { ...round, id: 'r-theirs', outingId: 'theirs', groupId: 'GB', courseId: 'CB', playerIds: copy.players.map((p) => p.id), options: { ...round.options, teams: [], matchPairings: [] }, presses: [], wolfPicks: [], scores: {}, junk: {}, pickups: {}, pops: {}, playerTees: {}, handicapTees: {}, teeId: 'CB_default' };
-  const shared: Documents = { groups: [copy], courses: [copiedCourse], rounds: [sharedRound], outings: [sharedOuting], clubs: [], marks: [] };
+  const sharedOuting: Outing = { ...held.outings[0], id: 'theirs', groupId: 'GB', courseId: 'c1', field: copy.players.map((p) => p.id), fieldGames: { fieldSkins: { ...held.outings[0].fieldGames.fieldSkins, entrants: [] }, scats: { ...held.outings[0].fieldGames.scats, entrants: [] } }, roundIds: ['r-theirs'] };
+  const sharedRound: Round = { ...round, id: 'r-theirs', outingId: 'theirs', groupId: 'GB', courseId: 'c1', playerIds: copy.players.map((p) => p.id), options: { ...round.options, teams: [], matchPairings: [] }, presses: [], wolfPicks: [], scores: {}, junk: {}, pickups: {}, pops: {}, playerTees: {}, handicapTees: {}, teeId: 't1' };
+  const shared: Documents = { groups: [copy], courses: [course], rounds: [sharedRound], outings: [sharedOuting], clubs: [], marks: [] };
   const noticesLessOuting = notices.filter((n) => n.kind !== 'outing');
   const phone = {
     ...held,
@@ -311,17 +295,16 @@ describe('following notices, with the shared pull in hand', () => {
   };
 
   it("keeps its own day when the server has it on the same ids, with one copy of the group and any unsent score", () => {
-    const own: Outing = { ...sharedOuting, groupId: 'G1', courseId: 'C1' };
+    const own: Outing = { ...sharedOuting, groupId: 'G1' };
     const onCopy: Documents = {
       ...shared,
       groups: [{ ...group, id: 'G1', players: [] }],
-      courses: [{ ...course, id: 'C1', tees: [] }],
       outings: [own],
-      rounds: [{ ...sharedRound, groupId: 'G1', courseId: 'C1' }],
+      rounds: [{ ...sharedRound, groupId: 'G1' }],
     };
     const { held: after } = followMoveNotices(phone, noticesLessOuting, onCopy);
     expect(after.groups.filter((g) => g.id === 'G1')).toHaveLength(1);
-    expect(after.courses.filter((c) => c.id === 'C1')).toHaveLength(1);
+    expect(after.courses.filter((c) => c.id === 'c1')).toHaveLength(1);
     expect(after.rounds.find((r) => r.id === 'r-theirs')?.scores).toEqual({ P1: [99] });
   });
 
@@ -350,7 +333,7 @@ describe('following notices, with the shared pull in hand', () => {
     expect(followed).toEqual(noticesLessOuting);
   });
 
-  it('leaves a group and course the shared pull still shows, with their players and tees', () => {
+  it('leaves a group the shared pull still shows, with its players', () => {
     const shown: Documents = {
       groups: [{ ...group, players: [group.players[0]] }],
       courses: [{ ...course, tees: [course.tees[0]] }],

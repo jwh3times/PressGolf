@@ -184,6 +184,82 @@ describe('dataset persistence', () => {
     expect((await loadDataset(true)).rounds[0].entry).toBe('live');
   });
 
+  describe('the fresh start for the course library (#378)', () => {
+    const before = () => {
+      const dataset = buildDemoDataset(123);
+      return {
+        dataset,
+        blob: JSON.stringify({
+          version: 2,
+          ...dataset,
+          groups: dataset.groups.map((group) => ({ ...group, defaultCourseId: dataset.courses[0].id })),
+          activeGroupId: dataset.groups[0].id,
+          openRoundIds: [dataset.rounds[0].id],
+          activeOutingId: 'o1',
+          cardRoundId: dataset.rounds[0].id,
+          practice: { [dataset.rounds[0].id]: { on: true, ever: true } },
+          seenCells: { scores: {}, junk: {} },
+        }),
+      };
+    };
+
+    it('clears the courses and the days on them from a dataset that syncs, once, and keeps the groups and the bag', async () => {
+      const { dataset, blob } = before();
+      storage.getItem.mockResolvedValueOnce(blob);
+
+      const loaded = await loadDataset(false, { syncs: true });
+
+      expect(loaded).toMatchObject({
+        courses: [],
+        rounds: [],
+        outings: [],
+        marks: [],
+        practice: {},
+        openRoundIds: [],
+        activeOutingId: null,
+        cardRoundId: null,
+        seenCells: null,
+        activeGroupId: dataset.groups[0].id,
+        clubs: dataset.clubs,
+        usualScore: dataset.usualScore,
+      });
+      expect(dataset.courses.length).toBeGreaterThan(0);
+      expect(loaded.groups.map((group) => group.id)).toEqual(dataset.groups.map((group) => group.id));
+      expect(loaded.groups.map((group) => group.players)).toEqual(dataset.groups.map((group) => group.players));
+      expect(loaded.groups.every((group) => group.defaultCourseId === null)).toBe(true);
+
+      // Saved as the current version, it opens as it was the next time.
+      await saveDataset(false, loaded);
+      const saved = storage.setItem.mock.calls.at(-1)![1];
+      storage.getItem.mockResolvedValueOnce(saved);
+      const again = await loadDataset(false, { syncs: true });
+      expect(again.groups).toEqual(loaded.groups);
+      storage.getItem.mockResolvedValueOnce(JSON.stringify({ ...JSON.parse(saved), courses: dataset.courses }));
+      expect((await loadDataset(false, { syncs: true })).courses).toEqual(dataset.courses);
+    });
+
+    it('starts afresh from a blob old enough to carry no version', async () => {
+      const { blob } = before();
+      const { version: _old, ...unversioned } = JSON.parse(blob);
+      storage.getItem.mockResolvedValueOnce(JSON.stringify(unversioned));
+      expect((await loadDataset(false, { syncs: true })).courses).toEqual([]);
+    });
+
+    it.each([
+      ['the demo', true],
+      ['a build with no server', false],
+    ])('leaves %s as it was', async (_name, demoMode) => {
+      const { dataset, blob } = before();
+      storage.getItem.mockResolvedValueOnce(blob);
+
+      const loaded = await loadDataset(demoMode, { syncs: false });
+
+      expect(loaded.courses).toEqual(dataset.courses);
+      expect(loaded.rounds.map((round) => round.id)).toEqual(dataset.rounds.map((round) => round.id));
+      expect(loaded.groups[0].defaultCourseId).toBe(dataset.courses[0].id);
+    });
+  });
+
   it.each(['null', '42', '{broken'])('treats corrupt payload %s as empty', async (raw) => {
     storage.getItem.mockResolvedValueOnce(raw);
     await expect(loadDataset(false)).resolves.toEqual(expect.objectContaining(EMPTY_DATA));

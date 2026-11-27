@@ -26,8 +26,10 @@ maintain parallel release branches yet.
 - The phone is the source of truth for active scoring. Live data is stored in
   AsyncStorage and optionally copied to Supabase.
 - Supabase row-level security separates owners and grants outing members only
-  the shared access required to join and score. CI exercises 109 isolation and
-  write-boundary assertions against Postgres 16 (November 2026).
+  the shared access required to join and score. Courses are the exception: every
+  signed-in account reads the course library (tees, cards, greens and maps, but
+  not hole notes), and only a course's creator writes it. CI exercises 122
+  isolation and write-boundary assertions against Postgres 16 (November 2026).
 - Demo and live data use different storage namespaces, and demo data is never
   uploaded.
 - `EXPO_PUBLIC_SUPABASE_URL` and the Supabase publishable/legacy anon key are

@@ -125,14 +125,46 @@ function withTees(course: Course & { holes?: Hole[] }): Course {
   return { ...rest, tees: [{ id: `${course.id}_default`, name: 'Default', slope: null, rating: null, holes }] };
 }
 
-/** Reads the dataset for the given mode. A corrupt blob is treated as empty, not fatal. */
-export async function loadDataset(demoMode: boolean): Promise<StoredPayload> {
+/** The first version whose courses are the course library's (#378). */
+const LIBRARY_VERSION = 3;
+
+/**
+ * A blob from before the course library, once its server started afresh: its
+ * courses, and the outings, rounds and marks on them, go, as they went on the
+ * server, so the next push doesn't send them back. The account, its groups and
+ * rosters, and the bag stay. A group's default course went with the courses.
+ */
+function startAfresh(payload: StoredPayload): StoredPayload {
+  return {
+    ...payload,
+    groups: payload.groups.map((group) => ({ ...group, defaultCourseId: null })),
+    courses: [],
+    rounds: [],
+    outings: [],
+    practice: {},
+    marks: [],
+    openRoundIds: [],
+    activeOutingId: null,
+    cardRoundId: null,
+    seenCells: null,
+  };
+}
+
+/**
+ * Reads the dataset for the given mode. A corrupt blob is treated as empty, not fatal.
+ *
+ * `syncs` says this dataset goes to a server: the live one, on a build with one. Only
+ * then does a blob from before the course library start afresh; the demo and a build
+ * with no server keep their courses.
+ */
+export async function loadDataset(demoMode: boolean, { syncs = false }: { syncs?: boolean } = {}): Promise<StoredPayload> {
   try {
     const raw = await AsyncStorage.getItem(dataKey(demoMode));
     if (!raw) return { version: STORAGE_VERSION, ...EMPTY_DATA };
     const parsed = JSON.parse(raw) as Partial<StoredPayload>;
     if (typeof parsed !== 'object' || parsed == null) throw new Error('not an object');
-    return migrate(parsed);
+    const migrated = migrate(parsed);
+    return syncs && (parsed.version ?? 1) < LIBRARY_VERSION ? startAfresh(migrated) : migrated;
   } catch {
     // Losing a round hurts, but refusing to open at all hurts more.
     return { version: STORAGE_VERSION, ...EMPTY_DATA };

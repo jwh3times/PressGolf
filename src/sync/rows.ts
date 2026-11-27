@@ -76,6 +76,9 @@ export interface CourseRow {
   id: string;
   name: string;
   created_at: number;
+  /** Where the course is: both or neither. */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface TeeRow {
@@ -444,20 +447,34 @@ export function emptySnapshot(): Snapshot {
   };
 }
 
+/**
+ * Every course these snapshots hold or point at: their courses, and the course
+ * of each round, outing and group. What the shared pull fetches from the course
+ * library, so a round on a course someone else created always has its course.
+ */
+export function coursesUsed(...snapshots: Snapshot[]): string[] {
+  const ids = new Set<string>();
+  for (const snapshot of snapshots) {
+    for (const course of snapshot.courses) ids.add(course.id);
+    for (const day of [...snapshot.rounds, ...snapshot.outings]) ids.add(day.course_id);
+    for (const group of snapshot.groups) if (group.default_course_id) ids.add(group.default_course_id);
+  }
+  return [...ids];
+}
+
 // ─── Down: documents to rows ────────────────────────────────────────────────
 
 export function toRows(documents: Documents): Snapshot {
   const out = emptySnapshot();
 
   // What `move-notices` marked stays on the phone: a detached day, and a moved
-  // group or course unless a round or outing still syncing uses it.
+  // group unless a round or outing still syncing uses it. A course never moves:
+  // it stays in the course library for everyone (#378).
   const outings = documents.outings.filter((outing) => !outing.detached);
   const detached = new Set(documents.outings.filter((outing) => outing.detached).map((outing) => outing.id));
   const rounds = documents.rounds.filter((round) => round.outingId === null || !detached.has(round.outingId));
   const usedGroups = new Set([...rounds, ...outings].map((day) => day.groupId));
-  const usedCourses = new Set([...rounds, ...outings].map((day) => day.courseId));
   const groups = documents.groups.filter((group) => !group.phoneOnly || usedGroups.has(group.id));
-  const courses = documents.courses.filter((course) => !course.phoneOnly || usedCourses.has(course.id));
 
   for (const group of groups) {
     out.groups.push({
@@ -485,8 +502,14 @@ export function toRows(documents: Documents): Snapshot {
     });
   }
 
-  for (const course of courses) {
-    out.courses.push({ id: course.id, name: course.name, created_at: course.createdAt });
+  for (const course of documents.courses) {
+    out.courses.push({
+      id: course.id,
+      name: course.name,
+      created_at: course.createdAt,
+      lat: course.location?.lat ?? null,
+      lng: course.location?.lng ?? null,
+    });
     course.tees.forEach((tee, index) => {
       out.tees.push({
         id: tee.id,
@@ -744,6 +767,12 @@ function point(lat: number | null, lng: number | null): LatLng | null {
   return lat == null || lng == null ? null : { lat, lng };
 }
 
+/** A course's location, left off when it has none, as the phone keeps it. Older rows have no columns for it. */
+function locationOf(row: CourseRow): Pick<Course, 'location'> {
+  const location = point(row.lat ?? null, row.lng ?? null);
+  return location ? { location } : {};
+}
+
 export function fromRows(snapshot: Snapshot): Documents {
   const playersByGroup = groupBy(snapshot.players, (r) => r.group_id);
   const teesByCourse = groupBy(snapshot.tees, (r) => r.course_id);
@@ -813,6 +842,7 @@ export function fromRows(snapshot: Snapshot): Documents {
       .sort((a, b) => a.number - b.number)
       .map((n) => ({ number: n.number, text: n.text })),
     createdAt: row.created_at,
+    ...locationOf(row),
   }));
 
   const rounds: Round[] = snapshot.rounds.map((row) => {
