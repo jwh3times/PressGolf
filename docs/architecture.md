@@ -692,6 +692,41 @@ unless the server's copy is on a newer version. A phone's edit to someone else's
 course is never pushed as rows. Courses
 carry an optional location (`Course.location`; `lat` and `lng`, both or neither).
 
+<a id="searching-the-library"></a>**Searching the library** (#383). Signed in on a
+build with a server (`libraryOpen`), the Courses screen adds a course from the library
+(`src/components/LibrarySearch.tsx`). The name being typed, from two letters and after
+a 400 ms pause, goes to the server's `search_courses` (`src/sync/library.ts`) with the
+phone's rough position when location is allowed (`roughPosition`,
+`src/hooks/position.ts`). Up to 25 courses whose names contain it come back, a typed
+`%` or `_` matching only itself: nearest first by great-circle distance when both ends
+have a location, otherwise by name, each with its tee names. The function runs as the
+caller (`security invoker`), so the library's read policy decides what it returns, and
+only a signed-in account may run it. **Add** reads that course's rows onto the phone
+with their creator (`pullLibraryCourses`, the course half of the shared pull). The
+golfer's courses (`myCourses`, which the Courses screen and the new round and outing
+pickers list) are every course on the phone but those taken off the list: a long press
+adds the course to `hiddenCourses`, saved in the dataset's one blob, and clears it as
+any group's default course. It stays on the phone for the rounds on it, and in the
+library, since dropping one of the account's own would delete it from the library with
+the next push. The list is the phone's alone (#398). Before a push, a course on the
+phone that neither the last server snapshot nor the last shared pull has seen, as one
+just added, sets off a shared pull first, so `splitByOwner` knows whose it is and it
+isn't pushed as this account's own. The demo and a build with no server keep the
+hand-typed **Create course**, on the phone only.
+
+<a id="a-new-course"></a>**A new course** (#383, `src/domain/course-draft.ts`).
+**Type it in**, offered after a search and after a failed one, opens a draft course
+in the course editor (`newCourse` in `AppStore`), kept in memory only: **Cancel**
+discards it, and nothing of it reaches the library until **Save the course**. Saving
+needs a name and a location, either where the golfer is standing (`positionHere`) or a
+pick on a map (`src/app/course-location.tsx` with `src/components/PlaceMap.tsx`, which
+opens on the course OpenStreetMap finds by that name; the web build has no map). Only
+the phone checks for the location; the server doesn't. A value a source filled (a
+scorecard scan, OpenStreetMap or an online lookup) carries a source mark, by field
+(`SourceMarks`), until the golfer changes it (`edited`) or says they're all right, and
+saving counts as checking them. No source fills a draft yet. Greens and the course map
+come once the course is saved.
+
 The switch started from a clean server: the migration that made the library wiped
 courses, outings, rounds and everything on them, keeping accounts, groups, rosters
 and the bag. The live dataset on a build with a server clears its courses, outings,
@@ -993,8 +1028,8 @@ src/
   config/           build-time feature flags
   demo/             deterministic sample data
   domain/           types, constructors, formats, and settlement engine
-  hooks/            hooks screens share: large text, live location, and the
-                    abandon-round prompt
+  hooks/            hooks screens share: large text, live location, one-off
+                    positions, and the abandon-round prompt
   osm/              OpenStreetMap course search, greens and course-map import
   store/            application state and AsyncStorage persistence
   sync/             row translation, snapshot sync, and staged mutation sync

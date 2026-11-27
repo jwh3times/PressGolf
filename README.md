@@ -18,7 +18,9 @@ the tee and on a par 5's lay-up, hole by hole or in a course guide. Where to
 aim is shown when looking a course over, or in a round its scorer marks as
 practice, since the Rules of Golf don't allow it in a counted one. Courses
 belong to one [course library](docs/architecture.md#the-course-library) that
-every signed-in account reads, and a round can be played on any of them. The
+every signed-in account reads, and a round can be played on any of them.
+Adding a course starts with a search of the library, nearest first, and one
+that isn't there is typed in, with where it is. The
 account that added a course changes it, and can leave a note on each hole and
 draw its out-of-bounds lines. Anyone else can fill a value nobody set or add a
 tee, which goes straight in, and suggest any other change, which waits for the
@@ -126,7 +128,7 @@ As of October 2026:
   Supabase stack (real auth, API, row-level security, realtime and the
   account-deletion function) with two accounts that must stay apart.
 - CI exports production Metro bundles for Android and iOS and verifies every
-  database migration plus 151 row-level-security assertions against Postgres 16
+  database migration plus 156 row-level-security assertions against Postgres 16
   (November 2026).
 - A scheduled and manually runnable Maestro workflow builds release apps for
   both platforms and completes a demo round through scoring, settlement, and
@@ -164,9 +166,18 @@ As of October 2026:
   one, and a score or junk claim cleared there while the app was closed comes back.
 - Remote pruning after local deletion and adopting an existing season on a
   fresh physical device are covered by tests, not by a live-device pass.
-- A phone holds only the library courses it uses or was shared an outing on:
-  there is no search of the library yet
-  ([#383](https://github.com/jwh3times/PressGolf/issues/383)). Changes to a course
+- Searching the course library
+  ([#383](https://github.com/jwh3times/PressGolf/issues/383)) needs signal and
+  an account; the demo and a build with no server type their courses in, on the
+  phone only. The list of the golfer's courses is kept on the phone, not with the
+  account: a course added and not yet played isn't on it on another phone or
+  after a reinstall, and one taken off it still shows on another phone
+  ([#398](https://github.com/jwh3times/PressGolf/issues/398)). That a new course
+  has a location is checked by the phone, not the server, and picking it on a map
+  works on phones only. A course deleted from the library after a phone added it,
+  and before that phone next syncs, goes back up as that phone's account's own.
+  The search, adding and typing in a course have been checked in Jest and against
+  a local stack, not on a phone. Changes to a course
   someone else added ([#381](https://github.com/jwh3times/PressGolf/issues/381))
   are held on the phone only until the app closes, need signal to send, and can't
   take a tee off it. Suggestions and the admin's review have been checked in Jest

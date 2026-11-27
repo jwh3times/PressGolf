@@ -198,6 +198,20 @@ substitute for assistive-technology use on both platforms.
   suite doesn't show either, since the demo has no one else's course and no
   admin, and neither has been tried with VoiceOver or TalkBack or at the largest
   text size.
+- Adding a course from the course library (#383) is text and named buttons.
+  Each match's **Add** is named with its distance and tees ("Add Pine Hollow,
+  1.0 mi, White, Blue"), so two courses with one name are told apart by ear, and
+  one already on the list says so in words. A failed search, a refused location
+  and a map pick OpenStreetMap can't place are announced (polite live regions).
+  A course in the list says in its hint that a long press takes it off. In a new
+  course, a value a source filled is marked in words, not only in gold: a
+  field's hint names the source ("From the scorecard photo. Check it against the
+  card."), and a hole with a gold dot and border is named for it ("Hole 1 came
+  from the scorecard photo: check it"). The map pick is pointer-only, and **Use where I’m
+  standing** is the other way to give a location. Jest covers the names and the
+  messages (`src/app/__tests__/course-library.test.tsx`). The web suite doesn't
+  show the search, since the demo types its courses in, and none of it has been
+  tried with VoiceOver or TalkBack or at the largest text size.
 
 Relevant tests and helpers:
 

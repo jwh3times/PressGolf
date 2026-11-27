@@ -27,6 +27,16 @@ describe('where the phone is, for courses (#383)', () => {
     expect(location.getCurrentPositionAsync).toHaveBeenCalledWith({ accuracy: Location.Accuracy.Balanced });
   });
 
+  it('rounds the position a search sends to about a kilometre', async () => {
+    location.getLastKnownPositionAsync.mockResolvedValueOnce(at(47.60621, -122.33207));
+    await expect(roughPosition()).resolves.toEqual({ lat: 47.61, lng: -122.33 });
+  });
+
+  it("keeps a new course's location as the phone gives it", async () => {
+    location.getCurrentPositionAsync.mockResolvedValueOnce(at(47.60621, -122.33207));
+    await expect(positionHere()).resolves.toEqual({ lat: 47.60621, lng: -122.33207 });
+  });
+
   it('searches by name alone when location is refused or fails', async () => {
     location.requestForegroundPermissionsAsync.mockResolvedValueOnce({ granted: false } as never);
     await expect(roughPosition()).resolves.toBeNull();
