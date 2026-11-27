@@ -71,6 +71,18 @@ today. No screen sends it, so the `mutations` table is empty in practice. Fonts 
 > marking a green and marking the ball (`app.json`, from #295), which answers the prompt question
 > in the Maps terms row.
 
+> **Amended 2026-11-27:** [#383](https://github.com/jwh3times/PressGolf/issues/383) adds two
+> more ways a position leaves the phone. A signed-in course search sends the phone's position
+> with the name to the server's `search_courses` (`src/sync/library.ts`), to sort the matches
+> nearest first; the function stores nothing. The position is the phone's last known fix, or a
+> balanced-accuracy one, rounded to two decimal places (about a kilometre) before it goes
+> (`roughPosition`, `src/hooks/position.ts`). And a new course saved with **Use where I’m
+> standing** stores the phone's fix, not rounded, as the course's location (`courses.lat`, `courses.lng`), which every signed-in account
+> reads in the course library; a location picked on a map isn't the user's. Not rechecked against
+> the store answers below: Precise Location is already declared as collected for App
+> Functionality, linked to the account and optional, but the search's position is processed and
+> not kept, and the iOS prompt now names both uses (`app.json`).
+
 ## 2. What the third-party SDKs and services collect themselves
 
 | Party | What it says it collects | Role | Source |

@@ -469,6 +469,114 @@ describe("someone else's course (#381)", () => {
   });
 });
 
+describe('the course library (#383)', () => {
+  const library = () => ({ ...makeCourse('Library Links'), createdBy: 'someone-else', location: { lat: 45.5, lng: -122.6 } });
+
+  it('is open signed in with sync, and closed in the demo', async () => {
+    await mount(buildDemoDataset(1_750_000_000_000), false);
+    expect(store.libraryOpen).toBe(true);
+  });
+
+  it('puts a library course on the list and the phone, takes it off the list only, and puts it back', async () => {
+    await mount();
+    expect(store.libraryOpen).toBe(false);
+    const course = library();
+    const group = store.groups[0];
+    await change(() => store.addLibraryCourse(course));
+    expect(store.myCourses.map((c) => c.id)).toContain(course.id);
+    await change(() => store.updateGroup(group.id, { defaultCourseId: course.id }));
+
+    await change(() => store.removeFromMyCourses(course.id));
+    expect(store.myCourses.map((c) => c.id)).not.toContain(course.id);
+    expect(store.courses.find((c) => c.id === course.id)).toEqual(course);
+    // A group that started there starts nowhere now.
+    expect(store.groups.find((g) => g.id === group.id)?.defaultCourseId).toBeNull();
+    await waitFor(() => expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ hiddenCourses: [course.id] })));
+    const before = store.groups;
+    await change(() => store.removeFromMyCourses(course.id));
+    expect(store.groups).toBe(before);
+
+    await change(() => store.addLibraryCourse(course));
+    expect(store.myCourses.filter((c) => c.id === course.id)).toHaveLength(1);
+    expect(store.courses.filter((c) => c.id === course.id)).toHaveLength(1);
+  });
+
+  it('keeps a course off the list through a restart', async () => {
+    const data = buildDemoDataset(1_750_000_000_000);
+    mockLoadSettings.mockResolvedValueOnce({ demoMode: true, activeGroupId: data.activeGroupId, activeRoundId: null, activeOutingId: null });
+    mockLoadDataset.mockResolvedValueOnce({ ...stored(data), hiddenCourses: [data.courses[0].id] });
+    await render(
+      <AppStoreProvider>
+        <Probe />
+      </AppStoreProvider>,
+    );
+    await waitFor(() => expect(store.ready).toBe(true));
+    expect(store.myCourses.map((c) => c.id)).not.toContain(data.courses[0].id);
+    expect(store.courses.map((c) => c.id)).toContain(data.courses[0].id);
+  });
+
+  it('holds a new course as a draft, edits it there, and saves it only with a location', async () => {
+    await mount();
+    const draft = makeCourse('Draft Links');
+    const tee = draft.tees[0];
+    await change(() => store.startNewCourse(draft, { [`hole:${tee.id}:1:par`]: 'scan', [`tee:${tee.id}:slope`]: 'scan' }));
+    expect(store.newCourse?.course).toEqual(draft);
+    expect(store.courses.map((c) => c.id)).not.toContain(draft.id);
+
+    // Edits go to the draft, and a value the golfer changes is no longer marked.
+    await change(() => store.updateHole(draft.id, tee.id, 0, { par: 5 }));
+    let copy: ReturnType<AppStore['addTee']> = null;
+    await change(() => {
+      copy = store.addTee(draft.id, tee.id, 'Red');
+    });
+    expect(copy).not.toBeNull();
+    let removed = false;
+    await change(() => {
+      removed = store.deleteTee(draft.id, copy!.id);
+    });
+    expect(removed).toBe(true);
+    expect(store.newCourse?.course.tees[0].holes[0].par).toBe(5);
+    expect(store.newCourse?.course.tees).toHaveLength(1);
+    expect(store.newCourse?.marks).toEqual({ [`tee:${tee.id}:slope`]: 'scan' });
+    // No version for a course nobody has played.
+    expect(store.newCourse?.course.versions).toBeUndefined();
+
+    let saved = true;
+    await change(() => {
+      saved = store.saveNewCourse();
+    });
+    expect(saved).toBe(false);
+    expect(store.courses.map((c) => c.id)).not.toContain(draft.id);
+
+    await change(() => store.confirmNewCourse());
+    expect(store.newCourse?.marks).toEqual({});
+    await change(() => store.updateCourse(draft.id, { name: '  Draft Links  ', location: { lat: 45.5, lng: -122.6 } }));
+    await change(() => {
+      saved = store.saveNewCourse();
+    });
+    expect(saved).toBe(true);
+    expect(store.newCourse).toBeNull();
+    expect(store.courses.find((c) => c.id === draft.id)).toMatchObject({ name: 'Draft Links', location: { lat: 45.5, lng: -122.6 } });
+  });
+
+  it('makes nothing for a draft that is discarded, or saved with none', async () => {
+    await mount();
+    const count = store.courses.length;
+    let saved = true;
+    await change(() => {
+      saved = store.saveNewCourse();
+    });
+    expect(saved).toBe(false);
+    await change(() => store.startNewCourse(makeCourse('Gone Links')));
+    await change(() => store.confirmNewCourse());
+    await change(() => store.discardNewCourse());
+    expect(store.newCourse).toBeNull();
+    await change(() => store.confirmNewCourse());
+    expect(store.newCourse).toBeNull();
+    expect(store.courses).toHaveLength(count);
+  });
+});
+
 describe('AppStoreProvider', () => {
   it('requires consumers to be inside the provider', async () => {
     await expect(render(<Probe />)).rejects.toThrow('useStore must be used inside AppStoreProvider');

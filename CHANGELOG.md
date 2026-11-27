@@ -32,6 +32,18 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   refused if a value it changes has changed since. The course's creator still edits it directly.
   A course the server has changed, for example by an approval, reaches every phone on its newer
   version, the creator's included (#381).
+- Adding a course starts with the course library, so nobody types in a course Press already has.
+  Signed in, type part of its name on the Courses screen and Press lists the courses golfers
+  have already set up: nearest first when location is allowed, by name when it isn't, each with
+  its distance and tee names. **Add** puts one on your courses. A long press takes a course off
+  your list, which leaves it in the library and on any round played there; for now the list is
+  kept on the phone. Not there, or no signal? **Type it in** opens a new course in the course
+  editor, marked as not saved: nothing of it reaches the library until you save it, and leaving
+  saves nothing. A new course needs a location, from where you're standing or a pin on a map.
+  Values a later source fills, such as a scorecard scan, will be marked until you check them.
+  The demo, and a build with no server, add courses by hand as before. The privacy policy now
+  says a course search sends a rough position, which isn't kept, and that a new course's
+  location is shared in the library (#383).
 
 ### Changed
 

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Field } from '../components/Field';
+import { HoleCountPicker, LibrarySearch } from '../components/LibrarySearch';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, Eyebrow, Mono, PrimaryButton } from '../components/primitives';
 import { makeCourse } from '../domain/factory';
@@ -11,22 +12,19 @@ import { fonts, radius } from '../theme/tokens';
 
 export default function CoursesScreen() {
   const styles = useStyles();
-  const { colors, ink } = useTheme();
+  const { ink } = useTheme();
   const store = useStore();
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [holeCount, setHoleCount] = useState<9 | 18>(18);
 
-  const create = () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    const course = makeCourse(trimmed, holeCount);
-    store.createCourse(course);
-    setName('');
-    router.push(`/course/${course.id}`);
-  };
-
+  // A course in the library stays there for everyone: the golfer only takes it off their list (#383).
   const remove = (id: string, courseName: string) => {
+    if (store.libraryOpen) {
+      Alert.alert(`Take ${courseName} off your courses?`, 'It stays in Press for everyone, and on any round played there.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take it off', style: 'destructive', onPress: () => store.removeFromMyCourses(id) },
+      ]);
+      return;
+    }
     const inUse = store.rounds.some((r) => r.courseId === id);
     Alert.alert(
       `Delete ${courseName}?`,
@@ -45,8 +43,8 @@ export default function CoursesScreen() {
       <ModalHeader eyebrow="Where you play" title="Courses" onClose={() => router.back()} />
 
       <View style={{ gap: 10 }}>
-        <Eyebrow>Saved courses</Eyebrow>
-        {store.courses.length === 0 ? (
+        <Eyebrow>{store.libraryOpen ? 'Your courses' : 'Saved courses'}</Eyebrow>
+        {store.myCourses.length === 0 ? (
           <Card style={{ padding: 16 }}>
             <Body style={{ color: ink.soft, lineHeight: 19 }}>
               None yet. A course needs a par and a stroke index for every hole — the stroke index is
@@ -54,7 +52,7 @@ export default function CoursesScreen() {
             </Body>
           </Card>
         ) : (
-          store.courses.map((course) => {
+          store.myCourses.map((course) => {
             const holes = course.tees[0].holes;
             const par = holes.reduce((sum, h) => sum + h.par, 0);
             const needsIndex = course.tees.some((t) => hasDefaultIndexes(t.holes));
@@ -62,6 +60,7 @@ export default function CoursesScreen() {
               <Pressable
                 key={course.id}
                 accessibilityRole="button"
+                accessibilityHint={store.libraryOpen ? 'Long press to take it off your courses.' : 'Long press to delete it.'}
                 onPress={() => router.push(`/course/${course.id}`)}
                 onLongPress={() => remove(course.id, course.name)}
                 style={styles.row}
@@ -83,39 +82,39 @@ export default function CoursesScreen() {
         )}
       </View>
 
-      <View style={{ gap: 12 }}>
-        <Eyebrow>Add a course</Eyebrow>
-        <Field label="Name" placeholder="Pine Hollow" value={name} onChangeText={setName} />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {([18, 9] as const).map((count) => (
-            <Pressable
-              key={count}
-              accessibilityRole="button"
-              accessibilityState={{ selected: holeCount === count }}
-              onPress={() => setHoleCount(count)}
-              style={[
-                styles.toggle,
-                holeCount === count ? styles.toggleOn : null,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.toggleText,
-                  holeCount === count ? { color: colors.screen } : null,
-                ]}
-              >
-                {count} holes
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <PrimaryButton label="Create course" disabled={name.trim().length === 0} onPress={create} />
-        <Text style={styles.note}>
-          New courses start as par 4 everywhere with stroke indexes in hole order. Set the real card
-          before you play for money.
-        </Text>
-      </View>
+      {store.libraryOpen ? <LibrarySearch /> : <TypeACourse />}
     </Screen>
+  );
+}
+
+/** The demo, and a build with no server: courses typed in by hand and kept on the phone. */
+function TypeACourse() {
+  const styles = useStyles();
+  const store = useStore();
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [holeCount, setHoleCount] = useState<9 | 18>(18);
+
+  const create = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const course = makeCourse(trimmed, holeCount);
+    store.createCourse(course);
+    setName('');
+    router.push(`/course/${course.id}`);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Eyebrow>Add a course</Eyebrow>
+      <Field label="Name" placeholder="Pine Hollow" value={name} onChangeText={setName} />
+      <HoleCountPicker value={holeCount} onChange={setHoleCount} />
+      <PrimaryButton label="Create course" disabled={name.trim().length === 0} onPress={create} />
+      <Text style={styles.note}>
+        New courses start as par 4 everywhere with stroke indexes in hole order. Set the real card
+        before you play for money.
+      </Text>
+    </View>
   );
 }
 
@@ -139,16 +138,6 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
     },
     name: { fontFamily: fonts.sansSemi, fontSize: 14.5, color: ink.full },
     meta: { fontFamily: fonts.sans, fontSize: 11.5, color: ink.soft, marginTop: 2 },
-    toggle: {
-      flex: 1,
-      borderWidth: 1,
-      borderColor: line.control,
-      borderRadius: radius.md,
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    toggleOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-    toggleText: { fontFamily: fonts.sansSemi, fontSize: 13, color: ink.body },
     note: { fontFamily: fonts.sans, fontSize: 11, color: ink.quiet, lineHeight: 16 },
   }),
 );

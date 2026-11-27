@@ -178,6 +178,9 @@ const actions = {
   ownsCourse: jest.fn(() => true),
   courseDraft: jest.fn(() => null),
   isAdmin: false,
+  // The demo: courses typed in by hand, with no new course in progress (#383).
+  libraryOpen: false,
+  newCourse: null,
   startOuting: jest.fn(),
   setActiveOuting: jest.fn(),
   updateOuting: jest.fn(),
@@ -257,6 +260,7 @@ const outingRounds = outing.roundIds.map(
 
 const roundStore = {
   ...dataset,
+  myCourses: dataset.courses,
   ...actions,
   ready: true,
   demoMode: true,
@@ -334,7 +338,9 @@ beforeEach(() => {
  */
 function useStoreValue(overrides: Partial<AppStore>) {
   const roundGroup = 'group' in overrides ? overrides.group : roundStore.roundGroup;
-  mockUseStore.mockReturnValue({ ...roundStore, roundGroup, ...overrides } as AppStore);
+  // Every course on the phone is on the golfer's list unless a test says otherwise (#383).
+  const myCourses = overrides.courses ?? roundStore.courses;
+  mockUseStore.mockReturnValue({ ...roundStore, roundGroup, myCourses, ...overrides } as AppStore);
 }
 
 describe('screen accessibility', () => {

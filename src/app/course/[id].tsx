@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CourseSuggestions } from '../../components/CourseSuggestions';
 import { Field } from '../../components/Field';
+import { NewCourseBanner, NewCourseSave } from '../../components/NewCourse';
 import { ModalHeader, Screen } from '../../components/Screen';
-import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, Mono, StepperButton } from '../../components/primitives';
+import { Body, Card, CHIP_ROW_GAP, Chip, Eyebrow, GhostButton, StepperButton } from '../../components/primitives';
+import { courseField, holeField, markOn, SOURCE_NAMES, teeField, type CourseSource, type SourceMarks } from '../../domain/course-draft';
 import { describeFeatures } from '../../domain/course-map';
 import type { Hole, Tee } from '../../domain/types';
 import { useStore } from '../../store/AppStore';
@@ -18,13 +20,16 @@ export default function CourseEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const router = useRouter();
+  // A new course, not saved yet, is its draft (#383).
+  const draft = store.newCourse?.course.id === id ? store.newCourse : null;
   const saved = store.courses.find((c) => c.id === id);
   // Someone else's course shows its unsent draft (#381); the course itself when there's none.
-  const course = saved ? (store.courseDraft(saved.id) ?? saved) : undefined;
+  const course = draft ? draft.course : saved ? (store.courseDraft(saved.id) ?? saved) : undefined;
   const owned = saved ? store.ownsCourse(saved.id) : true;
+  const marks: SourceMarks = draft?.marks ?? {};
   const [selectedTeeId, setSelectedTeeId] = useState<string | null>(null);
 
-  if (!course || !saved) {
+  if (!course) {
     return (
       <Screen floatingTabBar={false}>
         <ModalHeader title="Course not found" onClose={() => router.back()} closeLabel="Back" />
@@ -65,17 +70,23 @@ export default function CourseEditorScreen() {
   return (
     <Screen floatingTabBar={false}>
       <ModalHeader
-        eyebrow={`${tee.holes.length} holes · par ${totalPar}`}
-        title={course.name}
-        onClose={() => router.back()}
-        closeLabel="Back"
+        eyebrow={`${draft ? 'New course · ' : ''}${tee.holes.length} holes · par ${totalPar}`}
+        title={course.name || 'New course'}
+        // Leaving a new course without saving it makes nothing.
+        onClose={() => {
+          if (draft) store.discardNewCourse();
+          router.back();
+        }}
+        closeLabel={draft ? 'Cancel' : 'Back'}
       />
 
-      {owned ? null : <CourseSuggestions course={saved} />}
+      {draft ? <NewCourseBanner draft={draft} /> : null}
+      {owned || !saved ? null : <CourseSuggestions course={saved} />}
 
       <Field
         label="Course name"
         value={course.name}
+        hint={checkHint(markOn(marks, courseField('name')))}
         onChangeText={(text) => store.updateCourse(course.id, { name: text })}
       />
 
@@ -94,7 +105,7 @@ export default function CourseEditorScreen() {
           ))}
         </View>
         {/* Keyed by tee, so switching tees resets the half-typed rating. */}
-        <TeeDetails key={tee.id} courseId={course.id} tee={tee} />
+        <TeeDetails key={tee.id} courseId={course.id} tee={tee} marks={marks} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <GhostButton label={`New tee from ${tee.name}`} onPress={addTee} />
           {owned && course.tees.length > 1 ? (
@@ -103,39 +114,48 @@ export default function CourseEditorScreen() {
         </View>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Eyebrow>Greens and course map</Eyebrow>
-        <Body style={{ color: ink.soft, lineHeight: 19 }}>
-          {course.greens.length
-            ? `${course.greens.length} of ${tee.holes.length} greens saved, for yardage on the Score screen.`
-            : 'No greens saved yet. With them, the Score screen gives the yardage to the green.'}
-          {course.features.length ? ` The map has ${describeFeatures(course.features)}.` : ''}
-        </Body>
-        <GhostButton
-          label="Import from OpenStreetMap"
-          onPress={() => router.push({ pathname: '/greens', params: { id: course.id } })}
-        />
-        <GhostButton
-          label="Place greens on a map"
-          onPress={() => router.push({ pathname: '/green-map', params: { id: course.id } })}
-        />
-        <GhostButton
-          label="Draw out of bounds"
-          onPress={() => router.push({ pathname: '/green-map', params: { id: course.id, mode: 'bounds' } })}
-        />
-        {course.features.length || course.greens.length ? (
+      {draft ? (
+        <View style={{ gap: 8 }}>
+          <Eyebrow>Greens and course map</Eyebrow>
+          <Body style={{ color: ink.soft, lineHeight: 19 }}>
+            Greens and the course map come once the course is saved.
+          </Body>
+        </View>
+      ) : (
+        <View style={{ gap: 8 }}>
+          <Eyebrow>Greens and course map</Eyebrow>
+          <Body style={{ color: ink.soft, lineHeight: 19 }}>
+            {course.greens.length
+              ? `${course.greens.length} of ${tee.holes.length} greens saved, for yardage on the Score screen.`
+              : 'No greens saved yet. With them, the Score screen gives the yardage to the green.'}
+            {course.features.length ? ` The map has ${describeFeatures(course.features)}.` : ''}
+          </Body>
           <GhostButton
-            label="View the hole map"
-            onPress={() => router.push({ pathname: '/hole-map', params: { course: course.id, hole: '1' } })}
+            label="Import from OpenStreetMap"
+            onPress={() => router.push({ pathname: '/greens', params: { id: course.id } })}
           />
-        ) : null}
-        {course.features.length ? (
           <GhostButton
-            label="Course guide"
-            onPress={() => router.push({ pathname: '/course-guide', params: { course: course.id } })}
+            label="Place greens on a map"
+            onPress={() => router.push({ pathname: '/green-map', params: { id: course.id } })}
           />
-        ) : null}
-      </View>
+          <GhostButton
+            label="Draw out of bounds"
+            onPress={() => router.push({ pathname: '/green-map', params: { id: course.id, mode: 'bounds' } })}
+          />
+          {course.features.length || course.greens.length ? (
+            <GhostButton
+              label="View the hole map"
+              onPress={() => router.push({ pathname: '/hole-map', params: { course: course.id, hole: '1' } })}
+            />
+          ) : null}
+          {course.features.length ? (
+            <GhostButton
+              label="Course guide"
+              onPress={() => router.push({ pathname: '/course-guide', params: { course: course.id } })}
+            />
+          ) : null}
+        </View>
+      )}
 
       {duplicateIndexes ? (
         <Card style={styles.warning}>
@@ -154,63 +174,83 @@ export default function CourseEditorScreen() {
           <Text style={[styles.legendText, { width: 62 }]}>YARDS</Text>
         </View>
 
-        {tee.holes.map((hole, index) => (
-          <View key={hole.number} style={styles.holeRow}>
-            <Mono size={13} weight="bold" style={{ width: 24, color: ink.full }}>
-              {hole.number}
-            </Mono>
+        {tee.holes.map((hole, index) => {
+          const source = markOn(
+            marks,
+            holeField(tee.id, hole.number, 'par'),
+            holeField(tee.id, hole.number, 'strokeIndex'),
+            holeField(tee.id, hole.number, 'yards'),
+          );
+          return (
+            <View key={hole.number} style={[styles.holeRow, source ? styles.marked : null]}>
+              {/* A value a source filled: a gold dot, until the golfer confirms it (#383). */}
+              <Text
+                style={[styles.number, source ? { color: colors.gold } : null]}
+                accessibilityLabel={source ? `Hole ${hole.number} came from ${SOURCE_NAMES[source]}: check it` : undefined}
+              >
+                {hole.number}
+                {source ? '•' : ''}
+              </Text>
 
-            <View style={styles.parGroup}>
-              <StepperButton
-                label={'−'}
-                accessibilityLabel={`Lower par on hole ${hole.number}`}
-                size={28}
-                onPress={() => setHole(index, { par: Math.max(3, hole.par - 1) })}
+              <View style={styles.parGroup}>
+                <StepperButton
+                  label={'−'}
+                  accessibilityLabel={`Lower par on hole ${hole.number}`}
+                  size={28}
+                  onPress={() => setHole(index, { par: Math.max(3, hole.par - 1) })}
+                />
+                <Text style={styles.parValue}>{hole.par}</Text>
+                <StepperButton
+                  label="+"
+                  accessibilityLabel={`Raise par on hole ${hole.number}`}
+                  size={28}
+                  onPress={() => setHole(index, { par: Math.min(6, hole.par + 1) })}
+                />
+              </View>
+
+              <TextInput
+                accessibilityLabel={`Stroke index for hole ${hole.number}`}
+                value={String(hole.strokeIndex)}
+                keyboardType="number-pad"
+                selectTextOnFocus
+                selectionColor={colors.accent}
+                keyboardAppearance={scheme}
+                onChangeText={(text) => {
+                  const value = Number(text.replace(/[^0-9]/g, ''));
+                  if (!Number.isFinite(value)) return;
+                  setHole(index, { strokeIndex: Math.max(1, Math.min(tee.holes.length, value || 1)) });
+                }}
+                style={[styles.input, { width: 46 }]}
               />
-              <Text style={styles.parValue}>{hole.par}</Text>
-              <StepperButton
-                label="+"
-                accessibilityLabel={`Raise par on hole ${hole.number}`}
-                size={28}
-                onPress={() => setHole(index, { par: Math.min(6, hole.par + 1) })}
+
+              <TextInput
+                accessibilityLabel={`Yards for hole ${hole.number}`}
+                value={hole.yards ? String(hole.yards) : ''}
+                placeholder="—"
+                placeholderTextColor={ink.quiet}
+                keyboardType="number-pad"
+                selectTextOnFocus
+                selectionColor={colors.accent}
+                keyboardAppearance={scheme}
+                onChangeText={(text) => {
+                  const value = Number(text.replace(/[^0-9]/g, ''));
+                  setHole(index, { yards: Number.isFinite(value) ? value : 0 });
+                }}
+                style={[styles.input, { width: 62 }]}
               />
             </View>
-
-            <TextInput
-              accessibilityLabel={`Stroke index for hole ${hole.number}`}
-              value={String(hole.strokeIndex)}
-              keyboardType="number-pad"
-              selectTextOnFocus
-              selectionColor={colors.accent}
-              keyboardAppearance={scheme}
-              onChangeText={(text) => {
-                const value = Number(text.replace(/[^0-9]/g, ''));
-                if (!Number.isFinite(value)) return;
-                setHole(index, { strokeIndex: Math.max(1, Math.min(tee.holes.length, value || 1)) });
-              }}
-              style={[styles.input, { width: 46 }]}
-            />
-
-            <TextInput
-              accessibilityLabel={`Yards for hole ${hole.number}`}
-              value={hole.yards ? String(hole.yards) : ''}
-              placeholder="—"
-              placeholderTextColor={ink.quiet}
-              keyboardType="number-pad"
-              selectTextOnFocus
-              selectionColor={colors.accent}
-              keyboardAppearance={scheme}
-              onChangeText={(text) => {
-                const value = Number(text.replace(/[^0-9]/g, ''));
-                setHole(index, { yards: Number.isFinite(value) ? value : 0 });
-              }}
-              style={[styles.input, { width: 62 }]}
-            />
-          </View>
-        ))}
+          );
+        })}
       </View>
+
+      {draft ? <NewCourseSave draft={draft} /> : null}
     </Screen>
   );
+}
+
+/** What a field a source filled says under it, until the golfer confirms it (#383). */
+function checkHint(source: CourseSource | null, otherwise?: string): string | undefined {
+  return source ? `From ${SOURCE_NAMES[source]}. Check it against the card.` : otherwise;
 }
 
 /** Slope runs 55–155 (the database holds it to that); anything else is not a slope yet. */
@@ -228,7 +268,7 @@ function parseRating(text: string): number | null {
 }
 
 /** A tee's name, slope and rating. Typed text is held here so a half-typed "69." survives. */
-function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
+function TeeDetails({ courseId, tee, marks }: { courseId: string; tee: Tee; marks: SourceMarks }) {
   const store = useStore();
   const [slopeText, setSlopeText] = useState(tee.slope == null ? '' : String(tee.slope));
   const [ratingText, setRatingText] = useState(tee.rating == null ? '' : String(tee.rating));
@@ -239,6 +279,7 @@ function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
         label="Tee name"
         accessibilityLabel="Tee name"
         value={tee.name}
+        hint={checkHint(markOn(marks, teeField(tee.id, 'name')))}
         onChangeText={(text) => store.updateTee(courseId, tee.id, { name: text })}
       />
       <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -249,7 +290,7 @@ function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
             placeholder="113"
             keyboardType="number-pad"
             value={slopeText}
-            hint="55–155, from the scorecard."
+            hint={checkHint(markOn(marks, teeField(tee.id, 'slope')), '55–155, from the scorecard.')}
             onChangeText={(text) => {
               setSlopeText(text);
               store.updateTee(courseId, tee.id, { slope: parseSlope(text) });
@@ -263,7 +304,7 @@ function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
             placeholder="72.0"
             keyboardType="decimal-pad"
             value={ratingText}
-            hint="Strokes, e.g. 71.2."
+            hint={checkHint(markOn(marks, teeField(tee.id, 'rating')), 'Strokes, e.g. 71.2.')}
             onChangeText={(text) => {
               setRatingText(text);
               store.updateTee(courseId, tee.id, { rating: parseRating(text) });
@@ -278,6 +319,8 @@ function TeeDetails({ courseId, tee }: { courseId: string; tee: Tee }) {
 const useStyles = makeStyles(({ colors, ink, line }) =>
   StyleSheet.create({
     warning: { padding: 14, borderColor: alpha(colors.clay, 0.35) },
+    marked: { borderColor: alpha(colors.gold, 0.6) },
+    number: { width: 24, fontFamily: fonts.monoBold, fontSize: 13, color: ink.full },
     legend: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 },
     legendText: {
       fontFamily: fonts.mono,

@@ -31,7 +31,7 @@ maintain parallel release branches yet.
   not hole notes), and only a course's creator writes it. Anyone else changes a
   course only through the `edit_course` function, which fills gaps and keeps the
   rest as a suggestion that only the admin (a row in `admins`, written by the
-  service role alone) approves or declines. CI exercises 151 isolation and
+  service role alone) approves or declines. CI exercises 156 isolation and
   write-boundary assertions against Postgres 16 (November 2026).
 - Demo and live data use different storage namespaces, and demo data is never
   uploaded.
