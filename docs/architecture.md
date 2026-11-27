@@ -627,7 +627,7 @@ When the two Supabase public variables are present and a user is signed in,
 0. Before every push, on first contact and on the debounced path, it reads the
    account's move notices and applies them ([below](#deleting-an-account)). If
    that read fails, sync reports an error like any other, and the phone carries on.
-1. On first contact, it pulls the signed-in account's 25 snapshot tables (its
+1. On first contact, it pulls the signed-in account's 26 snapshot tables (its
    own rows only), the outings shared with it, and every course the phone holds or
    points at (`coursesUsed`), from the [course library](#the-course-library).
 2. A fresh local dataset adopts existing remote data; otherwise the local
@@ -703,7 +703,7 @@ the phone's. `toRows` leaves a detached day's marks on the phone with the day, a
 mark whose round the phone doesn't hold yet still goes up, since a fresh install
 takes the account's marks before the shared outings' rounds arrive.
 
-The schema has 28 application tables: 25 snapshot tables plus
+The schema has 29 application tables: 26 snapshot tables plus
 `outing_members`, `mutations` and `move_notices`. Row-level security limits private data to its
 owner and grants outing members only the shared reads and score/junk writes
 they need, apart from the course library, which every signed-in account reads.
@@ -832,7 +832,8 @@ doesn't stop it, and the outing no longer lists them. A round or outing of their
 own on someone else's group goes with them, and that group stays its owner's.
 
 **Courses stay.** A deleted account's courses stay in the course library for
-everyone, with their `owner_id` cleared before anything else runs, and its hole
+everyone, with their earlier [versions](#course-versions), their `owner_id` cleared
+before anything else runs, and its hole
 notes go with it. No notice names a course or tee, and none is copied.
 
 **An organiser can delete their account.** The whole day leaves the server, under

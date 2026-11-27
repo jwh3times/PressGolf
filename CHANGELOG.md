@@ -17,6 +17,12 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   else added. For now only whoever added a course can change it, and their change reaches every
   phone that holds the course the next time it syncs. Hole notes are still their writer's
   (#378).
+- A round keeps the course it was played on. Correcting a par, stroke index, yards, slope or
+  rating, or adding or removing a tee, makes a new version of the course. Rounds already
+  started stay on the version they began with, so a posted round's result, its field pots and
+  the season standings never change when its course does. Rounds started later play the new
+  card. Picking a tee added after a round started moves that round, if it isn't posted yet, to
+  the course as it is now (#377).
 
 ### Changed
 

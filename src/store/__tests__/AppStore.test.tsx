@@ -1015,13 +1015,39 @@ describe('AppStoreProvider', () => {
     await change(() => store.updateCourse(course.id, { name: 'Renamed Links' }));
     expect(store.course!.version).toBe(startedOn + 1);
 
-    // A tee added since the round started puts the round on the course as it is now.
+    // A tee added since the round started puts the round on the course as it is now,
+    // whether it's a player's tee or the round's.
     let red!: ReturnType<AppStore['addTee']>;
     await change(() => {
       red = store.addTee(course.id, course.tees[0].id, 'Red');
     });
-    await change(() => store.setRoundTee(red!.id));
+    await change(() => store.setPlayerTee(store.round!.playerIds[0], red!.id));
     expect(store.round!.courseVersion).toBe(store.course!.version);
+    let gold!: ReturnType<AppStore['addTee']>;
+    await change(() => {
+      gold = store.addTee(course.id, course.tees[0].id, 'Gold');
+    });
+    await change(() => store.setRoundTee(gold!.id));
+    expect(store.round!.courseVersion).toBe(store.course!.version);
+  });
+
+  it("takes a player's own tee as the round's, at the round's version, even after the course's first tee has gone (#377)", async () => {
+    const [ann] = await startIndexedRound();
+    const course = store.course!;
+    const first = course.tees[0];
+    expect(store.round!.teeId).toBeNull();
+    // A second tee, then the first one deleted: the course's first tee is now another one,
+    // while the round still plays its own version, whose first tee is the old one.
+    await change(() => {
+      store.addTee(course.id, first.id, 'Red');
+    });
+    await change(() => {
+      expect(store.deleteTee(course.id, first.id)).toBe(true);
+    });
+    expect(store.course!.tees[0].id).not.toBe(first.id);
+
+    await change(() => store.setPlayerTee(ann, first.id));
+    expect(store.round!.playerTees[ann]).toBeUndefined();
   });
 
   it('flags a tee change instead of recalculating, until recalculated', async () => {

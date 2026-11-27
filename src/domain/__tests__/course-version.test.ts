@@ -42,6 +42,10 @@ describe('course versions (#377)', () => {
     expect(added.versions?.[0].tees.map((t) => t.id)).toEqual(['white']);
   });
 
+  it('makes a version for a rating alone, which a course handicap reads', () => {
+    expect(withScoringChange(course, { ...course, tees: [{ ...course.tees[0], rating: 70.1 }] }).version).toBe(2);
+  });
+
   it('makes a version for a card change made with a rename, in one edit', () => {
     const both = withScoringChange(course, { ...course, name: 'Renamed', tees: [{ ...course.tees[0], slope: 125 }] });
     expect(both.version).toBe(2);

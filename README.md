@@ -167,7 +167,11 @@ As of October 2026:
   ([#383](https://github.com/jwh3times/PressGolf/issues/383)). The course editor
   still opens on a course someone else added, but that edit isn't synced and the
   next pull replaces it ([#381](https://github.com/jwh3times/PressGolf/issues/381)).
-  The course library has been checked in Jest and against a local stack, not on a
+  A round keeps the course version it started on, so a par or slope corrected
+  mid-round reaches only rounds started afterwards; only choosing a tee added since
+  moves it to the newest
+  ([#379](https://github.com/jwh3times/PressGolf/issues/379)). The course library
+  and its versions have been checked in Jest and against a local stack, not on a
   phone.
 - Web is a preview target. Native `Alert` confirmations do not provide the full
   workflow in a browser, and the native date picker for a card's Played-on
