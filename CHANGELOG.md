@@ -10,6 +10,10 @@ Prepare release workflow, moves them into a dated section and sets `package.json
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.5.0] - 2026-11-27
+
 ### Added
 
 - Courses are shared in a course library. Every signed-in golfer can read every course: its
