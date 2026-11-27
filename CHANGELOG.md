@@ -44,6 +44,13 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   The demo, and a build with no server, add courses by hand as before. The privacy policy now
   says a course search sends a rough position, which isn't kept, and that a new course's
   location is shared in the library (#383).
+- The server can read a photographed scorecard, ready for scanning one when creating a course
+  (the app's side comes next). A new `read-scorecard` function takes one to 4 photos of one card
+  and returns its tees: the hole count, and each tee's name, slope, rating, and yards, par and
+  stroke index for every hole. Anything the card doesn't show, or that can't be right (a stroke
+  index used twice on a tee, a slope of 160), comes back blank for the golfer to fill in, never
+  guessed. Each account gets 10 scans a day. The photos are read and discarded, never kept
+  (#384).
 
 ### Changed
 

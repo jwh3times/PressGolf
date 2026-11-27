@@ -90,7 +90,7 @@ edit nothing until it is confirmed. The maintainer cuts it by running Prepare re
 
 `node scripts/check-changelog.mjs --source src --source site --source supabase/migrations --source supabase/functions`
 
-A change to the app, the support site, the schema or the Edge Function needs `Unreleased` to
+A change to the app, the support site, the schema or an Edge Function needs `Unreleased` to
 change; a release PR that changes the version needs its dated section. CI runs it on every pull
 request (`.github/workflows/ci.yml`, **Tests, types, lint**).
 

@@ -10,8 +10,9 @@ An Expo SDK 58 React Native app (`expo` ~58.0.26, `"main": "expo-router/entry"`,
 react-native-web for the web export), installed with npm from the root `package-lock.json`.
 AsyncStorage is the authoritative local store, and `src/sync/` syncs it to Supabase snapshot tables
 under row-level security through @supabase/supabase-js (`docs/architecture.md`). `src/domain/` is
-the plain-TypeScript settlement engine. The schema is in `supabase/migrations/`, and there is one
-Edge Function, `supabase/functions/delete-account/`. The support site is a Cloudflare Worker in
+the plain-TypeScript settlement engine. The schema is in `supabase/migrations/`, and there are two
+Edge Functions, `supabase/functions/delete-account/` and `supabase/functions/read-scorecard/`. The
+support site is a Cloudflare Worker in
 `site/`, deployed by Cloudflare's Workers Builds, not by this repository's workflows. Types are
 checked with TypeScript 7 (`tsc --noEmit`), lint is oxlint (`.oxlintrc.json`), and tests are Jest
 with the jest-expo preset, plus a Playwright web suite for screenshots and accessibility.
@@ -80,12 +81,14 @@ review covers a grouped PR:
   `tests/web/`, `.oxlintrc.json` and `tsconfig.json`.
 - `supabase/config.toml`, the `migrate` job in `ci.yml` and the `db:*` scripts in `package.json`,
   for a Supabase CLI bump.
-- `supabase/functions/delete-account/index.ts`, which imports
-  `npm:@supabase/supabase-js@<version>`: a second pin of supabase-js that Dependabot does not update
-  (`.github/dependabot.yml` covers only the root npm manifest and the workflows).
-  `scripts/edge-function-pins.test.mjs` fails the `test:scripts` step until it matches the version
-  `package-lock.json` resolves, so every supabase-js bump, a patch included, needs the pin moved on
-  its branch (#363).
+- `supabase/functions/delete-account/index.ts` and `supabase/functions/read-scorecard/index.ts`,
+  which import `npm:@supabase/supabase-js@<version>`: more pins of supabase-js that Dependabot does
+  not update (`.github/dependabot.yml` covers only the root npm manifest and the workflows).
+  `scripts/edge-function-pins.test.mjs` fails the `test:scripts` step until every one matches the
+  version `package-lock.json` resolves, so every supabase-js bump, a patch included, needs the pins
+  moved on its branch (#363). `supabase/functions/read-scorecard/model.ts` pins
+  `npm:@anthropic-ai/sdk@<version>`, which nothing checks or moves: no Dependabot PR touches it, and
+  it moves by hand (#384).
 - The `uses:` comments and `with:` inputs in `ci.yml`, `native-e2e.yml` and `prepare-release.yml`.
 
 ## Grounding facts
@@ -159,12 +162,13 @@ review covers a grouped PR:
   false positive, so read the rebased run first (`docs/agents/merging.md`).
 - **@supabase/supabase-js major:** read the migration guide, check `src/sync/` (the client and the
   sync calls), and run `npm run test:coverage`; the integration tests run in CI's sync job. The
-  Edge Function's own `npm:@supabase/supabase-js@<version>` pin does not move with it, and
-  `npm run test:scripts` stays red until it does: move both imports in
-  `supabase/functions/delete-account/index.ts` to the lockfile's version, as for any supabase-js
-  bump.
+  Edge Functions' own `npm:@supabase/supabase-js@<version>` pins do not move with it, and
+  `npm run test:scripts` stays red until they do: move both imports in each of
+  `supabase/functions/delete-account/index.ts` and `supabase/functions/read-scorecard/index.ts` to
+  the lockfile's version, as for any supabase-js bump.
 - **Supabase CLI (`supabase`) major:** read the release notes for every flag the `migrate` job
-  (`db push --yes --remote=…`, `functions deploy delete-account --yes --remote=… --use-api`), the
+  (`db push --yes --remote=…`, `functions deploy "$function" --yes --remote=… --use-api` for each
+  function), the
   sync job (`supabase start -x …`) and the `db:*` scripts use, and for `supabase/config.toml` keys
   and local environment variables in `docs/development.md`. CI green does not cover the `migrate`
   job (Grounding facts), so name the first `migrate` run after the merge as the real check (#276).

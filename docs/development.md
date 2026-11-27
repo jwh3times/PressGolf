@@ -205,7 +205,8 @@ To configure a project:
    npm run db:push
    ```
 
-9. Deploy the Edge Function, or **Delete account** can't reach a server; see
+9. Deploy the Edge Functions, or **Delete account** can't reach a server, and
+   set `read-scorecard`'s `ANTHROPIC_API_KEY` secret; see
    [Edge Functions](#edge-functions).
 
 How the reset and confirmation links work is in
@@ -255,7 +256,9 @@ GitHub `production` environment.
 Supabase stack (Docker required): the sync suites in `src/sync/` and the site's
 reset and confirmation pages (`site/__tests__/link-pages.integration.test.ts`),
 through real auth, PostgREST, row-level security, realtime and the Edge
-Function, with every migration applied. Start the stack first, with only the
+Functions, with every migration applied. `read-scorecard` reads with its fake
+model there (`READ_SCORECARD_FAKE_MODEL` under `[edge_runtime.secrets]` in
+`supabase/config.toml`), so the suite needs no Anthropic key and spends nothing. Start the stack first, with only the
 services the app uses:
 
 ```bash
@@ -267,7 +270,8 @@ npx supabase stop            # when you're done
 The runner reads the stack's URL, anon key and service-role key from
 `supabase status`. The account-deletion tests use the service role to read what
 a deleted account has left behind, and to try deleting an auth user who still
-has rows. The link-page tests use it to make the token a reset or confirmation
+has rows. The scorecard tests use it to read an account's daily scan count.
+The link-page tests use it to make the token a reset or confirmation
 email would carry (`generateLink`), so no mail service is needed and Mailpit
 can stay off. Every run signs up fresh accounts and prefixes every id, so it can be
 repeated against a stack that stays up. It refuses any host but `localhost` or
@@ -276,7 +280,8 @@ repeated against a stack that stays up. It refuses any host but `localhost` or
 `supabase stop` keeps the database, so a later `start` restores it as it was and
 doesn't apply migrations added since. A missing table in the tests usually means
 this: run `npx supabase migration up --local --include-all`. The edge runtime
-lists functions as it starts, so restart the stack after adding one.
+lists functions and loads `[edge_runtime.secrets]` as it starts, so restart the
+stack after adding a function or changing those secrets.
 
 If another project's local Supabase already holds the default ports (54321 and
 up), start this one on others and point the runner at it:
@@ -288,23 +293,43 @@ SUPABASE_TEST_URL=http://127.0.0.1:55321 SUPABASE_TEST_ANON_KEY=<ANON_KEY from t
 
 ### Edge Functions
 
-`supabase/functions/delete-account/` is the one Edge Function. It runs on Deno,
-so `tsconfig.json` leaves `supabase/functions` out and `oxlint` ignores
-`supabase`. Its `supabase-js` version is pinned in the source, because every
-merge to `main` deploys it; move the pin by hand.
-`scripts/edge-function-pins.test.mjs` (in `npm run test:scripts`) fails until
-the pin matches the version `package-lock.json` resolves for the app, so a
-supabase-js bump, Dependabot's included, moves it on the same branch. It uses Supabase's default
-secrets (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), so
-there's nothing to set on a project. CI's `migrate` job deploys it. To deploy it
-to a personal project:
+There are two Edge Functions in `supabase/functions/`:
+`delete-account` ([Deleting an account](architecture.md#deleting-an-account))
+and `read-scorecard` ([Reading a scorecard](architecture.md#reading-a-scorecard)).
+They run on Deno, so `tsconfig.json` leaves `supabase/functions` out and
+`oxlint` ignores `supabase`; `read-scorecard/card.ts` is plain TypeScript that
+Jest tests too. Their imports are pinned in the source, because every merge to
+`main` deploys them; move the pins by hand. `scripts/edge-function-pins.test.mjs`
+(in `npm run test:scripts`) fails until every `supabase-js` pin matches the
+version `package-lock.json` resolves for the app, so a supabase-js bump,
+Dependabot's included, moves them on the same branch. Nothing checks or moves
+`read-scorecard`'s `npm:@anthropic-ai/sdk` pin: Dependabot reads only the root
+`package.json`.
+
+They use Supabase's default secrets (`SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`). `read-scorecard` also needs one of its own,
+`ANTHROPIC_API_KEY`, the Anthropic API key it reads with; without it the function
+answers `unavailable`. Set it as a function secret on the project, never in the
+app or an `EXPO_PUBLIC_` variable:
+
+```bash
+npx supabase secrets set ANTHROPIC_API_KEY=<key> --project-ref <project-ref>
+```
+
+or on the dashboard's Edge Function Secrets page. The local stack needs no
+key: `READ_SCORECARD_FAKE_MODEL = "on"` under `[edge_runtime.secrets]` in
+`supabase/config.toml` gives it the fake model, which the function uses only when
+served over plain http, so a hosted project never gets it.
+
+CI's `migrate` job deploys both. To deploy them to a personal project:
 
 ```bash
 npx supabase functions deploy delete-account --remote=<project-ref> --use-api
+npx supabase functions deploy read-scorecard --remote=<project-ref> --use-api
 ```
 
-`supabase/config.toml` turns off the platform's token check for it
-(`verify_jwt = false`), because the function checks the token itself.
+`supabase/config.toml` turns off the platform's token check for each
+(`verify_jwt = false`), because each function checks the token itself.
 
 ### The admin
 
