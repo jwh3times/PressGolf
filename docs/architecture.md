@@ -988,6 +988,55 @@ it's like any other phone on a deleted account.
 A maintainer handles an emailed request with the same clean-up function; see
 [Deleting an account by hand](development.md#deleting-an-account-by-hand).
 
+## Reading a scorecard
+
+The `read-scorecard` Edge Function (`supabase/functions/read-scorecard/`, #384)
+reads photos of a course's scorecard into a draft of its tees. It is server-side
+only so far: no screen calls it yet, and no source fills
+[a new course](#a-new-course).
+
+- **The request.** A `POST` with the golfer's bearer token and
+  `{ mode: 'teeCard', images: [{ mediaType, data }] }`: 1 to 4 photos of one
+  card, JPEG, PNG or WebP, as base64, each under 5 MB. The body is capped while
+  it's read, so an oversized one is refused (`413`) however it's sent. The
+  function verifies the token itself (`verify_jwt = false`), like
+  `delete-account`.
+- **The reply.** An `outcome`: `read` (`200`, with `card` and `scansLeft`),
+  `unreadable` (`422`, with `scansLeft`), `limit` (`429`, with a reason),
+  `bad-request` (`400` or `413`), `not-signed-in` (`401`), `unavailable` (`503`,
+  no reader configured) or `failed` (`502` or `500`). `card` is
+  `{ holeCount: 9 | 18, tees: [{ name, slope, rating, holes: [{ number, par, strokeIndex, yards }] }] }`.
+- **The model.** Claude Haiku 5.5 (`claude-haiku-5-5`), through the Anthropic SDK
+  with the function's `ANTHROPIC_API_KEY`, asked for a JSON-schema structured
+  output (`model.ts` is the port). Structured output can't hold a value to a
+  range, so `card.ts` checks every one itself and leaves a value null rather than
+  guessing: par 3–6, slope 55–155, rating 55–85 for 18 holes and 27–43 for 9,
+  yards 40–750, and a stroke index from 1 to the hole count. An index repeated on
+  a tee is nulled on both holes, and a nine-hole card's indexes printed on the
+  18-hole scale are ranked into 1–9. A missing hole count is inferred from the
+  hole rows; at most 12 tees are kept. A reading with no tee, or no way to tell 9
+  holes from 18, is `unreadable`.
+- **The daily limit.** Each account gets 10 scans a UTC day, one scan however
+  many photos, counted in `scorecard_scans (account, day, scans)` and shared with
+  the later scores mode (#255). The table has row-level security on and no
+  policy, and is revoked from every client role; only the service role executes
+  its two `security definer` functions. `take_scorecard_scan(target)` takes one
+  atomically before the call and returns the scans left, or null when they're used
+  up. `give_back_scorecard_scan(target)` returns the latest day's one, only when
+  the model was never reached (no connection, or Anthropic turned the request away
+  with 400, 401, 403, 404, 413, 429 or 529). A timeout or a server error may have
+  been billed, so that scan stands, and so does a reading that holds no card.
+  `account` cascades when the account is deleted, like `admins`: no client writes
+  a row, and a count has nothing to hand on.
+- **Nothing of a photo is kept.** The photos go to the model and nowhere else;
+  the function never stores or logs them. The count is the only thing written.
+- **The fake model.** On the local stack (`SUPABASE_URL` over plain http) with
+  `READ_SCORECARD_FAKE_MODEL = "on"`, the function reads with a fake that needs no
+  key: each "photo" is the reading itself, as JSON, and `{"readerDown": true}`
+  stands for a model that can't be reached. A hosted project is served over https,
+  so it never gets the fake; with neither the fake nor a key, the function answers
+  `unavailable`. Setup is in [Edge Functions](development.md#edge-functions).
+
 ## Staged mutation transport
 
 `src/sync/engine.ts` and `SupabaseTransport` implement and test a more granular

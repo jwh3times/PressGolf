@@ -18,8 +18,8 @@ Each `##` heading is one setting, defined in `.agents/skills/open-pr/settings/gu
 - `^(npx (-y |--yes )?)?supabase db push\b.*\s--(remote|linked|project-ref|db-url)\b` — it pushes
   migrations to a hosted project, the linked production one by default; only CI's `migrate` job
   does. A bare `npx supabase db push` applies them to the local stack.
-- `^(npx (-y |--yes )?)?supabase functions deploy\b` — it deploys the Edge Function to a hosted
-  project; CI's `migrate` job deploys it on every merge, and a personal project is the owner's to
+- `^(npx (-y |--yes )?)?supabase functions deploy\b` — it deploys an Edge Function to a hosted
+  project; CI's `migrate` job deploys them on every merge, and a personal project is the owner's to
   deploy.
 - `^node (\.[\\/])?scripts[\\/]release-tag\.mjs\b` — it tags a release and pushes the tag. Test it only
   through `node --test scripts/release-tag.test.mjs`; the **Tag the release** job runs it.

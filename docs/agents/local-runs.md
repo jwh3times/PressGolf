@@ -63,7 +63,7 @@ explicit `owner_id`, then apply it.
   ```
 
   Add `auto_explain` with `log_nested_statements` and `log_level = notice` to see each statement's
-  plan. PostgREST's `authenticator` role carries the 8-second timeout the Edge Function runs under.
+  plan. PostgREST's `authenticator` role carries the 8-second timeout `delete-account` runs under.
 
 ## Linting workflows and scripts
 

@@ -31,7 +31,7 @@ maintain parallel release branches yet.
   not hole notes), and only a course's creator writes it. Anyone else changes a
   course only through the `edit_course` function, which fills gaps and keeps the
   rest as a suggestion that only the admin (a row in `admins`, written by the
-  service role alone) approves or declines. CI exercises 156 isolation and
+  service role alone) approves or declines. CI exercises 163 isolation and
   write-boundary assertions against Postgres 16 (November 2026).
 - Demo and live data use different storage namespaces, and demo data is never
   uploaded.
@@ -40,15 +40,25 @@ maintain parallel release branches yet.
   those values.
 - A Supabase service-role/secret key, database password, GitHub token, or
   1Password token must never be included in a client build or committed file.
-- Deleting an account goes through the `delete-account` Edge Function, the one
-  place the service role is used at run time. It deletes only the account in the
-  verified token, with what that account organised, and re-checks the password
-  itself. The SQL function it calls can be executed only by the service role, and
-  the integration suite checks that a signed-in or anonymous call is refused.
+- The service role is used at run time only in the two Edge Functions,
+  `delete-account` and `read-scorecard`, each of which verifies the caller's
+  token itself and acts only on the account in it.
+- Deleting an account goes through `delete-account`. It deletes only the account
+  in the verified token, with what that account organised, and re-checks the
+  password itself. The SQL function it calls can be executed only by the service
+  role, and the integration suite checks that a signed-in or anonymous call is
+  refused.
 - The move notices that function leaves hold opaque ids and no personal
   data. An account reads only its own, and nothing can write one from the client.
   Where a guest's own rows stay on the departed account's group, their copy of it
   holds only the players they could already read or that those rows name.
+- `read-scorecard` sends a scorecard's photos to Anthropic's API with a key that
+  is a function secret (`ANTHROPIC_API_KEY`), never in the app or an
+  `EXPO_PUBLIC_` variable. It never stores or logs the photos; it writes only a
+  daily scan count, which no client can read or change, and whose two SQL
+  functions only the service role can execute. A local stack reads with a fake
+  model, which a hosted project, served over https, never gets. See
+  [architecture.md](docs/architecture.md#reading-a-scorecard).
 - Asking for a password reset never reveals whether an address has an account.
   The reset and confirmation links open pages on pressgolf.cc that spend the
   link's token only when the person presses the button, run no script, send no

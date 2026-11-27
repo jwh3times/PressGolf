@@ -34,7 +34,8 @@
 - `docs/architecture.md` — domain engine, formats and game rules, local data and demo isolation,
   sync, themes, repository layout, app artwork. **When:** `src/domain/`, `src/store/`,
   `src/sync/`, `src/theme/` or the data model (`supabase/migrations/`) changes; what the
-  `delete-account` Edge Function does changes (`supabase/functions/`: § Deleting an account); a
+  `delete-account` Edge Function does changes (`supabase/functions/`: § Deleting an account), or
+  what `read-scorecard` takes, answers or checks (§ Reading a scorecard); a
   top-level `src/` directory, a `scripts/` file or a `.maestro/` file is added or removed
   (§ Repository layout).
 - `docs/testing-and-ci.md` — local checks, coverage floors, CI jobs, the support site's deploy,
@@ -110,7 +111,7 @@ volatile service prices or quotas outside a dated research note.
   `main`; `gh api repos/jwh3times/PressGolf/rulesets`, then `rulesets/<id>` for each, for every
   ruleset (`Protect Release Tags` on `refs/tags/v*`: its rules, enforcement and bypass list)
 - Security settings: `gh api repos/jwh3times/PressGolf/private-vulnerability-reporting`
-- RLS assertion count ("156" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
+- RLS assertion count ("163" in `README.md`, `SECURITY.md`, `docs/testing-and-ci.md`):
   `grep -cE "select (expect|refused|refused_by_key)\(|raise notice 'ok: [^%]" supabase/ci/rls-test.sql`
 - Migrations: `supabase/migrations/*.sql`
 - EAS profiles: the `build` and `submit` keys in `eas.json`
