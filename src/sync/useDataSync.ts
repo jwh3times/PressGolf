@@ -36,6 +36,12 @@ const heldCourses = (held: Documents): string[] => coursesUsed(toRows(held));
 /** The courses this account created: the ones it last pushed, which the shared merge leaves as the phone has them. */
 const createdCourses = (own: Snapshot | null): ReadonlySet<string> => new Set((own?.courses ?? []).map((course) => course.id));
 
+/** Whether the phone holds a course that's in neither what it pushed nor what it last pulled. */
+function holdsUnseenCourse(held: Documents, server: Snapshot, shared: Snapshot): boolean {
+  const seen = new Set([...server.courses, ...shared.courses].map((course) => course.id));
+  return held.courses.some((course) => !seen.has(course.id));
+}
+
 /** Long enough that a hole's worth of taps goes up as one write. */
 const PUSH_DELAY_MS = 2500;
 
@@ -210,6 +216,12 @@ export function useDataSync(options: {
           if (!read) return;
           const { held, notices, taken } = read;
           if (held === documents) {
+            // A course neither pull has seen, as one just added from the library (#383): the
+            // shared pull says whose it is, so it isn't pushed as this account's own.
+            if (holdsUnseenCourse(held, server, sharedHas.current)) {
+              sharedHas.current = await pullSharedOutings(heldCourses(held));
+              if (!stillOn()) return;
+            }
             const pushed = await pushChanges(toRows(held), server, sharedHas.current);
             // Sync went off meanwhile. Writing this down would undo the reset, and
             // coming back on would then skip first contact, trusting a server that

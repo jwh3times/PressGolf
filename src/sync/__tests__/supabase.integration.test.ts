@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withScoringChange } from '../../domain/course-version';
+import { makeCourse } from '../../domain/factory';
+import { fetchLibraryCourse, searchLibrary } from '../library';
 import { mergeShared } from '../merge-shared';
 import { approveSuggestion, editCourse, isAdmin, mySuggestions, waitingSuggestions } from '../suggestions';
 import { pullSharedOutings, pullSnapshot, pushChanges, pushSnapshot, reconcile } from '../remote';
@@ -238,6 +240,52 @@ describe('sync against a local Supabase stack', () => {
     expect(merged.courses.map((c) => c.name)).toEqual(['Renamed by its creator']);
     // And his next push leaves her course alone.
     await expect(pushChanges(toRows(merged), contact.own, shared)).resolves.toBeDefined();
+  });
+
+  it('finds library courses by name, nearest first, and adds one to a phone without making it its own (#383)', async () => {
+    const ann = await signUp('ann');
+    // Two courses with one name, a long way apart, and a third that doesn't match.
+    const name = `${RUN} Pine Hollow`;
+    const portland = { ...makeCourse(name), location: { lat: 45.52, lng: -122.68 } };
+    const seattle = {
+      ...makeCourse(name),
+      location: { lat: 47.61, lng: -122.33 },
+      tees: [
+        { ...makeCourse(name).tees[0], id: `${RUN}-white`, name: 'White' },
+        { ...makeCourse(name).tees[0], id: `${RUN}-blue`, name: 'Blue' },
+      ],
+    };
+    const other = { ...makeCourse(`${RUN} Elsewhere`), location: { lat: 45.5, lng: -122.6 } };
+    const NONE: Documents = { groups: [], courses: [], rounds: [], outings: [], clubs: [], marks: [] };
+    await pushSnapshot(toRows({ ...NONE, courses: [portland, seattle, other] }));
+
+    const ben = await signUp('ben');
+    const near = await searchLibrary(`${RUN} pine`, { lat: 47.6, lng: -122.3 });
+    expect(near.map((m) => m.id)).toEqual([seattle.id, portland.id]);
+    expect(near[0]).toEqual({ id: seattle.id, name, location: seattle.location, km: expect.any(Number), tees: ['White', 'Blue'] });
+    expect(near[0].km!).toBeLessThan(5);
+    expect(near[1].km!).toBeGreaterThan(200);
+
+    // Without a position, by name alone, with no distance.
+    const byName = await searchLibrary(`${RUN} PINE`, null);
+    expect(byName.map((m) => m.id).sort()).toEqual([portland.id, seattle.id].sort());
+    expect(byName.every((m) => m.km === null)).toBe(true);
+    // A typed wildcard is a letter, and one letter is too few to search.
+    expect(await searchLibrary(`${RUN}%Hollow`, null)).toEqual([]);
+    expect(await searchLibrary('P', null)).toEqual([]);
+
+    // Adding a match brings the course whole, as its creator's, and Ben's push leaves it alone.
+    const added = await fetchLibraryCourse(seattle.id);
+    expect(added).toMatchObject({ id: seattle.id, createdBy: ann.id, location: seattle.location });
+    expect(added!.tees.map((t) => t.name)).toEqual(['White', 'Blue']);
+    const contact = await reconcile(toRows({ ...NONE, courses: [added!] }));
+    if (contact.status !== 'pushed') throw new Error(contact.status);
+    expect(contact.own.courses).toEqual([]);
+    expect(ben.id).not.toEqual(ann.id);
+
+    // Signed out, nothing.
+    await signOut();
+    await expect(searchLibrary(`${RUN} pine`, null)).rejects.toThrow('permission denied');
   });
 
   it("keeps a bag its owner's: a guest of her day never sees it, and her second phone takes it", async () => {

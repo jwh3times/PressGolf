@@ -32,6 +32,8 @@ interface StoredPayload {
   cardRoundId: string | null;
   /** In the one blob with the documents, so a phone killed mid-save can't have one without the other. */
   seenCells?: SeenCells | null;
+  /** Courses the golfer took off their list (#383), still on the phone and in the library. */
+  hiddenCourses?: string[];
 }
 
 export const EMPTY_DATA: Omit<AppData, 'settings'> & {
@@ -40,6 +42,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeOutingId: null;
   cardRoundId: null;
   seenCells: null;
+  hiddenCourses: string[];
 } = {
   groups: [],
   courses: [],
@@ -54,6 +57,7 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   activeOutingId: null,
   cardRoundId: null,
   seenCells: null,
+  hiddenCourses: [],
 };
 
 function dataKey(demoMode: boolean): string {
@@ -115,6 +119,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     activeOutingId: parsed.activeOutingId ?? null,
     cardRoundId: parsed.cardRoundId ?? null,
     seenCells: parsed.seenCells ?? null,
+    hiddenCourses: parsed.hiddenCourses ?? [],
   };
 }
 
@@ -147,6 +152,7 @@ function startAfresh(payload: StoredPayload): StoredPayload {
     activeOutingId: null,
     cardRoundId: null,
     seenCells: null,
+    hiddenCourses: [],
   };
 }
 

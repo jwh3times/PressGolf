@@ -16,6 +16,7 @@ import { trackedShots } from '../domain/tracked-shots';
 import { withNote } from '../domain/course-map';
 import { asPlayed, forTee, withScoringChange } from '../domain/course-version';
 import { courseChanges } from '../domain/course-changes';
+import { canSave, edited, type CourseDraft, type SourceMarks } from '../domain/course-draft';
 import { editCourse, isAdmin as readIsAdmin, type EditResult } from '../sync/suggestions';
 import { defaultTeams, makeId, reconcileRound } from '../domain/factory';
 import { DEFAULT_HOUSE_RULES, houseRules } from '../domain/formats';
@@ -81,6 +82,8 @@ interface Dataset {
    */
   cardRoundId: string | null;
   seenCells: SeenCells | null;
+  /** Courses the golfer took off their list (#383). Still on the phone, for the rounds on them, and in the library. */
+  hiddenCourses: string[];
 }
 
 interface AppState extends Dataset {
@@ -180,6 +183,28 @@ export interface AppStore extends AppState {
   sendCourseDraft(courseId: string): Promise<EditResult>;
   discardCourseDraft(courseId: string): void;
 
+  // The course library (#383)
+  /**
+   * Whether new courses come from the course library: signed in, on a build with a
+   * server. The demo and a build with none type their courses in, phone only.
+   */
+  libraryOpen: boolean;
+  /** The golfer's courses: every course on the phone but those taken off the list. */
+  myCourses: Course[];
+  /** Puts a library course on the list, and on the phone if it isn't there yet. */
+  addLibraryCourse(course: Course): void;
+  /** Takes a course off the list. It stays on the phone for the rounds on it, and in the library for everyone. */
+  removeFromMyCourses(id: string): void;
+  /** The new course being made, until it's saved or discarded; null with none. Kept in memory only. */
+  newCourse: CourseDraft | null;
+  /** Starts a new course as a draft, with where each filled value came from. Replaces one in progress. */
+  startNewCourse(course: Course, marks?: SourceMarks): void;
+  /** Says every value the draft was given is right. */
+  confirmNewCourse(): void;
+  /** Saves the draft to the golfer's courses, and so the library. False, and nothing saved, without a name and a location. */
+  saveNewCourse(): boolean;
+  discardNewCourse(): void;
+
   // The bag
   /** Adds a club where it belongs in the bag; nothing for a name already there. */
   addClub(name: string): void;
@@ -268,6 +293,7 @@ const EMPTY_STATE: AppState = {
   activeOutingId: null,
   cardRoundId: null,
   seenCells: null,
+  hiddenCourses: [],
 };
 
 /** Writes one box of the card. A score and a pick-up can never both stand in it. */
@@ -404,6 +430,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         activeOutingId: next.activeOutingId,
         cardRoundId: next.cardRoundId,
         seenCells: next.seenCells,
+        hiddenCourses: next.hiddenCourses,
       });
     }, 250);
   }, []);
@@ -430,14 +457,26 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     (course: Course | undefined) => !course || course.createdBy === undefined || course.createdBy === auth.userId,
     [auth.userId],
   );
+  // A new course before it's saved (#383). In memory too: leaving without saving makes nothing.
+  const [newCourse, setNewCourse] = useState<CourseDraft | null>(null);
+  /** A course as the editor shows it: the new course's draft, or one on the phone. */
+  const heldCourse = useCallback(
+    (courseId: string) => (newCourse?.course.id === courseId ? newCourse.course : state.courses.find((c) => c.id === courseId)),
+    [newCourse, state.courses],
+  );
 
   /**
    * Every edit to a course goes through here. On a course of this account's, a change
    * that scores a round archives the version it replaces (#377), so no round already on
-   * it moves. Someone else's course takes it in its draft, to send.
+   * it moves. Someone else's course takes it in its draft, to send. A new course, not
+   * saved yet, takes it as it is, and a value the golfer changes is theirs (#383).
    */
   const changeCourse = useCallback(
     (courseId: string, change: (course: Course) => Course) => {
+      if (newCourse?.course.id === courseId) {
+        setNewCourse((prev) => (prev?.course.id === courseId ? edited(prev, change(prev.course)) : prev));
+        return;
+      }
       const course = state.courses.find((c) => c.id === courseId);
       if (course && !owns(course)) {
         setDrafts((prev) => ({ ...prev, [courseId]: change(prev[courseId] ?? course) }));
@@ -448,7 +487,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         courses: prev.courses.map((c) => (c.id === courseId ? withScoringChange(c, change(c)) : c)),
       }));
     },
-    [commit, owns, state.courses],
+    [commit, owns, state.courses, newCourse],
   );
   const { signOut, stopDemo } = auth;
   // Someone trying the demo has no account, so only the demo dataset opens (#275).
@@ -651,6 +690,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           activeOutingId: null,
           cardRoundId: null,
           seenCells: null,
+          hiddenCourses: [],
         }));
       }
     };
@@ -869,7 +909,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           }),
         })),
       addTee: (courseId, fromTeeId, name) => {
-        const from = state.courses.find((c) => c.id === courseId)?.tees.find((t) => t.id === fromTeeId);
+        const from = heldCourse(courseId)?.tees.find((t) => t.id === fromTeeId);
         if (!from) return null;
         const created: Tee = { ...from, id: makeId('t'), name, holes: from.holes.map((h) => ({ ...h })) };
         changeCourse(courseId, (c) => ({ ...c, tees: [...c.tees, created] }));
@@ -878,7 +918,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       updateTee: (courseId, teeId, patch) =>
         changeCourse(courseId, (c) => ({ ...c, tees: c.tees.map((t) => (t.id === teeId ? { ...t, ...patch } : t)) })),
       deleteTee: (courseId, teeId) => {
-        const target = state.courses.find((c) => c.id === courseId);
+        const target = heldCourse(courseId);
         // Taking a tee off someone else's course isn't a change anyone can send (#381).
         if (!owns(target)) return false;
         const inUse = state.rounds.some(
@@ -925,6 +965,38 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         return result;
       },
       discardCourseDraft: (courseId) => setDrafts(({ [courseId]: _discarded, ...rest }) => rest),
+
+      libraryOpen: syncEnabled,
+      myCourses: state.courses.filter((c) => !state.hiddenCourses.includes(c.id)),
+      addLibraryCourse: (added) =>
+        commit((prev) => ({
+          ...prev,
+          courses: prev.courses.some((c) => c.id === added.id) ? prev.courses : [...prev.courses, added],
+          hiddenCourses: prev.hiddenCourses.filter((id) => id !== added.id),
+        })),
+      // Hidden rather than dropped: a round on it still needs it, and dropping one of this
+      // account's own would delete it from the library with the next push.
+      removeFromMyCourses: (id) =>
+        commit((prev) =>
+          prev.hiddenCourses.includes(id)
+            ? prev
+            : {
+                ...prev,
+                hiddenCourses: [...prev.hiddenCourses, id],
+                groups: prev.groups.map((g) => (g.defaultCourseId === id ? { ...g, defaultCourseId: null } : g)),
+              },
+        ),
+      newCourse,
+      startNewCourse: (started, marks = {}) => setNewCourse({ course: started, marks }),
+      confirmNewCourse: () => setNewCourse((prev) => (prev ? { ...prev, marks: {} } : prev)),
+      saveNewCourse: () => {
+        if (!newCourse || !canSave(newCourse)) return false;
+        const saved = { ...newCourse.course, name: newCourse.course.name.trim() };
+        commit((prev) => ({ ...prev, courses: [...prev.courses, saved] }));
+        setNewCourse(null);
+        return true;
+      },
+      discardNewCourse: () => setNewCourse(null),
 
       addClub: (name) => commit((prev) => ({ ...prev, clubs: withClub(prev.clubs, name) })),
       fillBag: (clubs) => commit((prev) => (prev.clubs.length ? prev : { ...prev, clubs })),
@@ -1099,7 +1171,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setRoundPlayers: (playerIds) =>
         patchRound((r) => reconcileRound({ ...r, playerIds }, course?.tees[0]?.holes.length ?? 18)),
     };
-  }, [state, sync, commit, changeCourse, owns, admin, syncEnabled, drafts, setDemoMode, signOut]);
+  }, [state, sync, commit, changeCourse, owns, admin, syncEnabled, drafts, newCourse, heldCourse, setDemoMode, signOut]);
 
   // Keep the demo/live preference and the active pointers in sync on disk.
   const { activeRoundId } = store;
@@ -1130,7 +1202,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
   if (demoMode && stored.groups.length === 0) {
     const seeded = buildDemoDataset();
     await saveDataset(true, seeded);
-    return { ...seeded, seenCells: null };
+    return { ...seeded, seenCells: null, hiddenCourses: [] };
   }
   return {
     groups: stored.groups,
@@ -1146,6 +1218,7 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     activeOutingId: stored.activeOutingId,
     cardRoundId: stored.cardRoundId,
     seenCells: stored.seenCells ?? null,
+    hiddenCourses: stored.hiddenCourses ?? [],
   };
 }
 

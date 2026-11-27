@@ -43,7 +43,7 @@ export default function NewRoundScreen() {
   const [chosenTee, setChosenTee] = useState<string | null>(null);
 
   const [courseId, setCourseId] = useState<string | null>(
-    group?.defaultCourseId ?? store.courses[0]?.id ?? null,
+    group?.defaultCourseId ?? store.myCourses[0]?.id ?? null,
   );
   const [selected, setSelected] = useState<PlayerId[]>(group?.players.map((p) => p.id) ?? []);
   const [practice, setPractice] = useState(false);
@@ -140,7 +140,7 @@ export default function NewRoundScreen() {
 
       <View style={{ gap: 10 }}>
         <Eyebrow>Course</Eyebrow>
-        {store.courses.length === 0 ? (
+        {store.myCourses.length === 0 ? (
           <Card style={{ padding: 16, gap: 12 }}>
             <Body style={{ color: ink.soft, lineHeight: 19 }}>
               No courses saved. You need one with a real par and stroke index per hole before pops
@@ -149,7 +149,7 @@ export default function NewRoundScreen() {
             <PrimaryButton label="Add a course" onPress={() => router.push('/courses')} />
           </Card>
         ) : (
-          store.courses.map((c) => {
+          store.myCourses.map((c) => {
             const on = courseId === c.id;
             return (
               <Pressable
@@ -188,7 +188,7 @@ export default function NewRoundScreen() {
             ))}
           </View>
         ) : null}
-        {store.courses.length > 0 ? (
+        {store.myCourses.length > 0 ? (
           <GhostButton dashed label="Manage courses" onPress={() => router.push('/courses')} />
         ) : null}
       </View>

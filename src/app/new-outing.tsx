@@ -35,7 +35,7 @@ export default function NewOutingScreen() {
 
   const [name, setName] = useState('');
   const [courseId, setCourseId] = useState<string | null>(
-    group?.defaultCourseId ?? store.courses[0]?.id ?? null,
+    group?.defaultCourseId ?? store.myCourses[0]?.id ?? null,
   );
   const [teeFormat, setTeeFormat] = useState<TeeFormat>('sequential');
   const [field, setField] = useState<PlayerId[]>(group?.players.map((p) => p.id) ?? []);
@@ -101,7 +101,7 @@ export default function NewOutingScreen() {
 
       <View style={{ gap: 10 }}>
         <Eyebrow>Course</Eyebrow>
-        {store.courses.length === 0 ? (
+        {store.myCourses.length === 0 ? (
           <Card style={{ padding: 16, gap: 12 }}>
             <Body style={{ color: ink.soft, lineHeight: 19 }}>
               No courses saved yet.
@@ -109,7 +109,7 @@ export default function NewOutingScreen() {
             <PrimaryButton label="Add a course" onPress={() => router.push('/courses')} />
           </Card>
         ) : (
-          store.courses.map((c) => {
+          store.myCourses.map((c) => {
             const on = courseId === c.id;
             return (
               <Pressable

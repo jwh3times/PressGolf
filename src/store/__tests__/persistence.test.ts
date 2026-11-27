@@ -175,6 +175,13 @@ describe('dataset persistence', () => {
     expect((await loadDataset(false)).marks).toEqual([]);
   });
 
+  it('keeps the courses taken off the list (#383), and gives data saved before them none', async () => {
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ hiddenCourses: ['c1'] }));
+    expect((await loadDataset(false)).hiddenCourses).toEqual(['c1']);
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ groups: [] }));
+    expect((await loadDataset(false)).hiddenCourses).toEqual([]);
+  });
+
   it('treats rounds saved before card entry as scored live', async () => {
     const dataset = buildDemoDataset(123);
     const round = { ...dataset.rounds[0] } as Record<string, unknown>;
@@ -199,6 +206,7 @@ describe('dataset persistence', () => {
           cardRoundId: dataset.rounds[0].id,
           practice: { [dataset.rounds[0].id]: { on: true, ever: true } },
           seenCells: { scores: {}, junk: {} },
+          hiddenCourses: [dataset.courses[0].id],
         }),
       };
     };
@@ -219,6 +227,7 @@ describe('dataset persistence', () => {
         activeOutingId: null,
         cardRoundId: null,
         seenCells: null,
+        hiddenCourses: [],
         activeGroupId: dataset.groups[0].id,
         clubs: dataset.clubs,
         usualScore: dataset.usualScore,

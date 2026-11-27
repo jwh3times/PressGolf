@@ -509,4 +509,14 @@ select expect('the admin changes a set value directly', (select count(*) from co
 
 set request.jwt.claim.sub = :'bob';
 select expect('he sees it declined, with the reason', (select count(*) from course_suggestions where status = 'declined' and reason = 'The card says 131.'), 1);
+
+-- ── Searching the library (#383) ─────────────────────────────────────────────
+select expect('a golfer finds a course someone else created by part of its name', (select count(*) from search_courses('pine holl')), 1);
+select expect('with its tee names', (select count(*) from search_courses('pine holl') where tees = '{Navy}'), 1);
+select expect('and its distance, when both ends have a location', (select round(km)::int from search_courses('renamed', 44.1, -121.3)), 0);
+select expect('a typed wildcard is a letter', (select count(*) from search_courses('%')), 0);
+reset role;
+grant execute on function search_courses(text, double precision, double precision) to anon;
+set role anon;
+select expect('signed out, the search finds nothing', (select count(*) from search_courses('pine holl')), 0);
 reset role;

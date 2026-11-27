@@ -93,13 +93,7 @@ export async function pullSharedOutings(heldCourses: readonly string[] = []): Pr
   await requireUserId();
 
   const snapshot = emptySnapshot();
-
-  // The table name is the snapshot key in every case, so one argument does.
-  const add = async (table: keyof Snapshot, column: string, values: string[]): Promise<void> => {
-    if (values.length === 0) return;
-    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.in(column, values));
-    (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
-  };
+  const add = readerInto(supabase, snapshot);
 
   const { data: memberships, error: memberError } = await supabase
     .from('outing_members')
@@ -110,7 +104,36 @@ export async function pullSharedOutings(heldCourses: readonly string[] = []): Pr
 
   // The courses, from the library. A hole note is still its author's, and comes only
   // with a shared day's course.
-  const courseIds = [...new Set([...snapshot.outings.map((o) => o.course_id), ...heldCourses])];
+  await addCourses(add, [...new Set([...snapshot.outings.map((o) => o.course_id), ...heldCourses])]);
+  await add('course_hole_notes', 'course_id', [...new Set(snapshot.outings.map((o) => o.course_id))]);
+
+  return snapshot;
+}
+
+/** These courses as the library has them, each row with its creator: a match the golfer adds (#383). */
+export async function pullLibraryCourses(courseIds: readonly string[]): Promise<Snapshot> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('This build has no server configured.');
+  await requireUserId();
+  const snapshot = emptySnapshot();
+  await addCourses(readerInto(supabase, snapshot), [...courseIds]);
+  return snapshot;
+}
+
+/** Reads into `snapshot` a table's rows whose `column` is one of `values`. */
+type Add = (table: keyof Snapshot, column: string, values: string[]) => Promise<void>;
+
+function readerInto(supabase: SupabaseClient, snapshot: Snapshot): Add {
+  // The table name is the snapshot key in every case, so one argument does.
+  return async (table, column, values) => {
+    if (values.length === 0) return;
+    const rows = await selectAll(supabase, table, conflictTarget(table), (query) => query.in(column, values));
+    (snapshot[table] as unknown as Record<string, unknown>[]).push(...rows);
+  };
+}
+
+/** A course's rows from the library: the course, its tees and cards, greens, map and versions. */
+async function addCourses(add: Add, courseIds: string[]): Promise<void> {
   await add('courses', 'id', courseIds);
   await add('tees', 'course_id', courseIds);
   await add('tee_holes', 'course_id', courseIds);
@@ -118,15 +141,12 @@ export async function pullSharedOutings(heldCourses: readonly string[] = []): Pr
   await add('course_features', 'course_id', courseIds);
   // The versions a round may be on (#377).
   await add('course_versions', 'course_id', courseIds);
-  await add('course_hole_notes', 'course_id', [...new Set(snapshot.outings.map((o) => o.course_id))]);
-
-  return snapshot;
 }
 
 /** The shared days themselves, and everything on them, into `snapshot`. */
 async function addOutings(
   snapshot: Snapshot,
-  add: (table: keyof Snapshot, column: string, values: string[]) => Promise<void>,
+  add: Add,
   outingIds: string[],
 ): Promise<void> {
   await add('outings', 'id', outingIds);

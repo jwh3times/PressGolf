@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { buildDemoDataset } from '../../demo/seed';
+import { makeTestCourse } from '../../domain/__tests__/helpers';
 import { changesAnything, mergeShared } from '../merge-shared';
 import type { MoveNotice } from '../move-notices';
 import { pullMoveNotices, pullSharedOutings, pushChanges, reconcile } from '../remote';
@@ -353,6 +354,30 @@ it('pushes against what the server holds and the last shared pull, and keeps wha
   await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(2));
   expect(mockPush.mock.calls[1][1]).toBe(afterFirst);
   expect(mockPush.mock.calls[1][2]).toBe(pulled);
+});
+
+it("reads whose a course is before pushing one neither pull has seen, as one just added from the library (#383)", async () => {
+  const input = options();
+  const own = toRows({ ...documents, outings: [] });
+  mockReconcile.mockResolvedValueOnce({ status: 'pushed', upserted: 1, deleted: 0, own, shared: emptySnapshot() });
+  const view = await renderHook((props: SyncOptions) => useDataSync(props), { initialProps: input });
+  await waitFor(() => expect(view.result.current.status).toBe('synced'));
+
+  // A course the server and the last pull both hold isn't read again.
+  await view.rerender({ ...input, documents: { ...documents, rounds: [] } });
+  await advancePush();
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+  expect(mockPullShared).toHaveBeenCalledTimes(1);
+
+  const added = { ...makeTestCourse(), id: 'library-course', createdBy: 'someone-else' };
+  const withIt = { ...documents, rounds: [], courses: [...documents.courses, added] };
+  const library = toRows({ groups: [], courses: [added], rounds: [], outings: [], clubs: [], marks: [] });
+  mockPullShared.mockResolvedValueOnce(library);
+  await view.rerender({ ...input, documents: withIt });
+  await advancePush();
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(2));
+  expect(mockPullShared.mock.calls[1][0]).toContain('library-course');
+  expect(mockPush.mock.calls[1][2]).toBe(library);
 });
 
 it('does not publish an unchanged shared merge', async () => {
