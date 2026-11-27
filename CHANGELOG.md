@@ -23,6 +23,15 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   the season standings never change when its course does. Rounds started later play the new
   card. Picking a tee added after a round started moves that round, if it isn't posted yet, to
   the course as it is now (#377).
+- Any signed-in golfer can improve a course someone else added. Edits made in the course editor
+  collect as changes, which send together and need a connection. A gap filled (an empty slope,
+  rating, location or green) or a tee added goes straight in. Changing a value someone already
+  set becomes a suggestion for the admin. The editor shows each change and how it will be taken,
+  and your suggestions as waiting, approved, or declined with the reason. The admin reviews them
+  on a new Course suggestions screen in Settings. Approving applies a suggestion whole, and is
+  refused if a value it changes has changed since. The course's creator still edits it directly.
+  A course the server has changed, for example by an approval, reaches every phone on its newer
+  version, the creator's included (#381).
 
 ### Changed
 

@@ -369,6 +369,37 @@ describe('reconcile', () => {
     expect(pushed.some((row) => row.name === 'Old name')).toBe(false);
   });
 
+  it('keeps its own copy of its own course when the server has it on the same version, and pushes it (#381)', async () => {
+    const course = { id: 'c1', name: 'Renamed on this phone', created_at: 1, lat: null, lng: null, version: 2 };
+    const local = snapshotWithGroup();
+    local.courses.push(course);
+    const remote = snapshotWithGroup();
+    remote.courses.push({ ...course, name: 'Older name', owner_id: 'owner-1' });
+    const fake = reconciliationClient(remote);
+    mockGetSupabase.mockReturnValue(fake as never);
+
+    const outcome = await reconcile(local);
+
+    if (outcome.status !== 'pushed') throw new Error(outcome.status);
+    expect(outcome.newerCourses).toBeUndefined();
+    expect(outcome.own.courses).toEqual([course]);
+    const pushed = fake.from.mock.results
+      .map((r) => r.value as ReturnType<typeof query>)
+      .flatMap((q) => q.upsert.mock.calls.map(([rows]) => rows as Record<string, unknown>[]))
+      .flat();
+    expect(pushed.some((row) => row.name === 'Renamed on this phone')).toBe(true);
+  });
+
+  it("pulls this account's own courses with no creator on them: absent means its own (#381)", async () => {
+    const remote = emptySnapshot();
+    remote.courses.push({ id: 'c1', name: 'Mine', created_at: 1, lat: null, lng: null, owner_id: 'owner-1' });
+    mockGetSupabase.mockReturnValue(reconciliationClient(remote) as never);
+    const pulled = await pullSnapshot();
+    expect(pulled.courses).toEqual([{ id: 'c1', name: 'Mine', created_at: 1, lat: null, lng: null }]);
+    // The rows as read are left as they were.
+    expect(remote.courses[0].owner_id).toBe('owner-1');
+  });
+
   it("knows a shared day's rows before pushing: sends the guest's card edit, and none of the organiser's day", async () => {
     // Ann's day, as the shared pull returns it, with owners.
     const ann = 'owner-ann';

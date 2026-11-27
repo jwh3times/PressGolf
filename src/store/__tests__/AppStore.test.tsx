@@ -447,10 +447,19 @@ describe("someone else's course (#381)", () => {
     expect(store.courseDraft(own.id)).toBeNull();
   });
 
-  it('says whether the account is the admin, once signed in with sync', async () => {
+  it('says whether the account is the admin, once signed in with sync, and stops saying so once signed out', async () => {
     (readIsAdmin as jest.Mock).mockResolvedValue(true);
-    await mount(buildDemoDataset(1_750_000_000_000), false);
+    const view = await mount(buildDemoDataset(1_750_000_000_000), false);
     await waitFor(() => expect(store.isAdmin).toBe(true));
+
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), status: 'signed-out', userId: null });
+    await view.rerender(
+      <AppStoreProvider>
+        <Probe />
+      </AppStoreProvider>,
+    );
+    expect(store.isAdmin).toBe(false);
+    (readIsAdmin as jest.Mock).mockResolvedValue(false);
   });
 
   it('is never the admin in the demo', async () => {

@@ -20,7 +20,9 @@ practice, since the Rules of Golf don't allow it in a counted one. Courses
 belong to one [course library](docs/architecture.md#the-course-library) that
 every signed-in account reads, and a round can be played on any of them. The
 account that added a course changes it, and can leave a note on each hole and
-draw its out-of-bounds lines. A
+draw its out-of-bounds lines. Anyone else can fill a value nobody set or add a
+tee, which goes straight in, and suggest any other change, which waits for the
+[admin](docs/architecture.md#suggestions) to approve or decline. A
 player's bag keeps how far they carry each club and how they usually score,
 typed in once and backed up with their account. In a practice round, or
 looking a course over, the app suggests a club, where to aim and when to lay
@@ -164,9 +166,11 @@ As of October 2026:
   fresh physical device are covered by tests, not by a live-device pass.
 - A phone holds only the library courses it uses or was shared an outing on:
   there is no search of the library yet
-  ([#383](https://github.com/jwh3times/PressGolf/issues/383)). The course editor
-  still opens on a course someone else added, but that edit isn't synced and the
-  next pull replaces it ([#381](https://github.com/jwh3times/PressGolf/issues/381)).
+  ([#383](https://github.com/jwh3times/PressGolf/issues/383)). Changes to a course
+  someone else added ([#381](https://github.com/jwh3times/PressGolf/issues/381))
+  are held on the phone only until the app closes, need signal to send, and can't
+  take a tee off it. Suggestions and the admin's review have been checked in Jest
+  and against a local stack, not on a phone.
   A round keeps the course version it started on, so a par or slope corrected
   mid-round reaches only rounds started afterwards; only choosing a tee added since
   moves it to the newest

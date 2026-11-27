@@ -13,7 +13,8 @@
  * outing you have actually joined. A course someone else created is the course
  * library's (#378): the server's copy of it wins, so a change its creator makes
  * reaches every phone that holds it. The courses this account created stay as the
- * phone has them.
+ * phone has them, unless the server's copy is on a newer version, as after an
+ * approved suggestion (#381): the highest version wins.
  */
 import { currentVersion } from '../domain/course-version';
 import type { Course, Group, Outing, Round } from '../domain/types';

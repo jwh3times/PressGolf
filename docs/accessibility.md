@@ -186,6 +186,18 @@ substitute for assistive-technology use on both platforms.
 - Drawing out-of-bounds lines is pointer-only: the points go where the map is
   tapped, and there is no other way to place them. Choosing, limiting and
   deleting a line are buttons, and the map is named for what a tap will do.
+- Changes to someone else's course (#381) are text: the course editor says how
+  they go, and lists each unsent change, and each of the golfer's suggestions,
+  as a line saying from what to what, with whether it goes straight in and
+  where a suggestion stands in words. **Send changes** and **Discard changes**
+  are named buttons, and what sending did is announced (a polite live region).
+  On the admin's **Course suggestions** screen, **Approve** and **Decline** are
+  named buttons, the decline reason is a labelled field ("Reason, to decline"),
+  and a conflict or a missing reason is announced the same way. Jest covers the
+  names and the text (`src/app/__tests__/course-suggestions.test.tsx`). The web
+  suite doesn't show either, since the demo has no one else's course and no
+  admin, and neither has been tried with VoiceOver or TalkBack or at the largest
+  text size.
 
 Relevant tests and helpers:
 

@@ -680,14 +680,16 @@ When the two Supabase public variables are present and a user is signed in,
 <a id="the-course-library"></a>**The course library** (#378, ADR 0001). A course
 belongs to no account: every signed-in account reads every course, with its tees,
 cards, greens and map, and a round or outing may be played on any of them. Writing a
-course stays with the account that created it, which each row records as its
-`owner_id` for the history (null once that account has gone), until changes open to
-every golfer (#381). Hole notes are still their author's, read only by their outings.
+course's rows stays with the account that created it, which each row records as its
+`owner_id` (null once that account has gone, and read onto the phone as
+`Course.createdBy`). Anyone else changes it through the server, by
+[suggestion](#suggestions). Hole notes are still their author's, read only by their outings.
 The phone never mirrors the library: the shared pull fetches the courses it holds or
 its rounds, outings and groups point at (`coursesUsed`), and `mergeShared` takes the
 server's copy of each one someone else created, so its creator's change reaches every
-phone that holds it. The courses this account created stay as the phone has them. A phone's
-edit to someone else's course isn't pushed, and the next pull replaces it. Courses
+phone that holds it. The courses this account created stay as the phone has them,
+unless the server's copy is on a newer version. A phone's edit to someone else's
+course is never pushed as rows. Courses
 carry an optional location (`Course.location`; `lat` and `lng`, both or neither).
 
 The switch started from a clean server: the migration that made the library wiped
