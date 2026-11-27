@@ -221,6 +221,21 @@ export async function saveThemeChoice(choice: ThemeChoice): Promise<void> {
   await AsyncStorage.setItem(THEME_KEY, JSON.stringify(choice));
 }
 
+/** Whether the golfer has been told, before a first scan, where its photos go (#385). Phone-wide, like the theme. */
+const SCAN_NOTICE_KEY = 'press:scan-notice';
+
+export async function loadScanNoticeSeen(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(SCAN_NOTICE_KEY)) === 'seen';
+  } catch {
+    return false;
+  }
+}
+
+export async function saveScanNoticeSeen(): Promise<void> {
+  await AsyncStorage.setItem(SCAN_NOTICE_KEY, 'seen');
+}
+
 /** Wipes one dataset. Used by "reset demo data" and "erase everything". */
 export async function clearDataset(demoMode: boolean): Promise<void> {
   await AsyncStorage.removeItem(dataKey(demoMode));
