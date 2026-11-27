@@ -2,6 +2,7 @@ import React from 'react';
 import { act, render, waitFor } from '@testing-library/react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { buildDemoDataset } from '../../demo/seed';
+import { settleRound } from '../../domain/engine';
 import { makeCourse, makeOuting, makePlayer, makeRound } from '../../domain/factory';
 import { frame } from '../../domain/hole-map';
 import { trackedShots } from '../../domain/tracked-shots';
@@ -992,6 +993,35 @@ describe('AppStoreProvider', () => {
     const inOuting = { ...store.round!.pops };
     await change(() => store.recalculatePops());
     expect(store.round!.pops).toEqual(inOuting);
+  });
+
+  it('keeps a round on the course version it started on while the course changes, and moves it to a tee added since (#377)', async () => {
+    await startIndexedRound();
+    const course = store.course!;
+    const round = store.round!;
+    expect(round.courseVersion).toBe(course.version ?? 1);
+    const startedOn = round.courseVersion!;
+    const before = settleRound(round, course, store.roundGroup!.players);
+
+    // A par and a stroke index change: the course moves on, and the round doesn't.
+    await change(() => store.updateHole(course.id, course.tees[0].id, 0, { par: 3, strokeIndex: 18 }));
+    const changed = store.course!;
+    expect(changed.version).toBe(startedOn + 1);
+    expect(changed.versions?.at(-1)).toEqual({ version: startedOn, tees: course.tees });
+    expect(store.round!.courseVersion).toBe(startedOn);
+    expect(settleRound(store.round!, changed, store.roundGroup!.players)).toEqual(before);
+
+    // A rename is no version.
+    await change(() => store.updateCourse(course.id, { name: 'Renamed Links' }));
+    expect(store.course!.version).toBe(startedOn + 1);
+
+    // A tee added since the round started puts the round on the course as it is now.
+    let red!: ReturnType<AppStore['addTee']>;
+    await change(() => {
+      red = store.addTee(course.id, course.tees[0].id, 'Red');
+    });
+    await change(() => store.setRoundTee(red!.id));
+    expect(store.round!.courseVersion).toBe(store.course!.version);
   });
 
   it('flags a tee change instead of recalculating, until recalculated', async () => {

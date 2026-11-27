@@ -60,6 +60,27 @@ A round records its tee (`teeId`), and a player can play a different one
 one plays the course's first tee. New rounds and outings start on the tee the
 group last played at that course.
 
+<a id="course-versions"></a>**Course versions** (#377, `src/domain/course-version.ts`).
+A course is one record everyone plays, so a round also records the version of its
+course current when it started (`Round.courseVersion`). A change to anything that
+scores a round (adding or removing a tee, or changing a tee's name, slope, rating or
+tee card) archives the tees it replaces under the course's version and moves the course
+to the next (`withScoringChange`, which every course edit in `AppStore` goes
+through). The course keeps its archive in `Course.versions`, synced as
+`course_versions` (one row a version, its tees in one jsonb column). `RoundContext`
+and `playerTee` read a round's course through `asPlayed`, the course with its tees
+at the round's version, so settlement, the season ledger and course handicaps see
+the tees a round was played on, and a posted round never changes when its course
+does, and an outing's field pots play the version its groups started on. Nothing
+copies a course into a round. A round saved before versions, or one whose version
+isn't on the phone, plays the course as it is. The course's own name, location,
+greens, map and notes change in place. Choosing a tee added since a round started
+moves that round, if it hasn't been posted, to the course's current version
+(`forTee`), with every change made since. The server stores the versions the phone
+makes, as it stores every id; it doesn't make them itself. Every change makes a
+version, however small, since the phone can't know whether another account has a
+round on the one it replaces.
+
 `RoundContext.par(hole, playerId)` and `strokeIndex(hole, playerId)` read the
 player's own tee. Pops allocation, the max score, Stableford, birdie detection,
 Vegas's birdie flip and field pots all go through them, so players on different

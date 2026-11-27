@@ -1,3 +1,4 @@
+import { currentVersion } from './course-version';
 import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions, houseRules } from './formats';
 import type { Course, Group, Hole, MaxScoreRule, Outing, Player, PlayerId, Round, RoundEntry, TeeFormat, TeeId } from './types';
 
@@ -135,6 +136,8 @@ export function makeRound(
     junk: {},
     pickups: {},
     teeId: extras.teeId ?? null,
+    // Played on the course as it stands now (#377), whatever changes later.
+    courseVersion: currentVersion(course),
     playerTees: {},
     entry,
     presses: [],

@@ -17,6 +17,7 @@ import {
   Stepper,
   Switch,
 } from '../../components/primitives';
+import { asPlayed } from '../../domain/course-version';
 import { maxExposure } from '../../domain/engine';
 import { money, popsSpread } from '../../domain/engine/context';
 import { FORMATS } from '../../domain/formats';
@@ -60,7 +61,9 @@ export default function FormatScreen() {
   }
 
   const roster = group.players.filter((p) => round.playerIds.includes(p.id));
-  const roundTee = course.tees.find((t) => t.id === round.teeId) ?? course.tees[0];
+  // The tees as this round plays them (#377).
+  const { tees } = asPlayed(course, round);
+  const roundTee = tees.find((t) => t.id === round.teeId) ?? tees[0];
   const exposure = maxExposure(round, course, group.players);
   // An outing's low man is the lowest in the whole field, so the working looks across every group.
   const workings = workingsFor(round.outingId ? store.outingRounds : [round], course, group.players);

@@ -70,6 +70,9 @@ insert into course_greens (course_id, number, middle_lat, middle_lng, source) va
 insert into course_features (course_id, id, kind, hole, points, source)
   values ('c1', 'osm:way/1', 'bunker', null, '[[45.5, -122.6], [45.5, -122.601], [45.501, -122.6]]', 'osm');
 insert into course_hole_notes (course_id, number, text) values ('c1', 1, 'Blind tee shot, aim at the steeple.');
+-- The tees as they stood before her last change (#377).
+insert into course_versions (course_id, version, tees) values ('c1', 1, '[{"id": "t1", "name": "Blue", "slope": 130, "rating": 71.5, "holes": []}]');
+update courses set version = 2 where id = 'c1';
 -- Internal out of bounds, for hole 1 only. Only out of bounds may be limited to holes.
 insert into course_features (course_id, id, kind, hole, points, holes, source)
   values ('c1', 'map:ob-1', 'outOfBounds', null, '[[45.5, -122.6], [45.6, -122.6]]', '{1}', 'map');
@@ -130,6 +133,7 @@ select expect('stranger reads every card',      (select count(*) from tee_holes)
 select expect('stranger reads every green',     (select count(*) from course_greens), 2);
 select expect('stranger reads every map',       (select count(*) from course_features), 3);
 select expect('stranger reads who made a course', (select count(*) from courses where owner_id = :'alice'), 2);
+select expect('stranger reads a course''s earlier versions', (select count(*) from course_versions), 1);
 select expect('stranger sees no notes',    (select count(*) from course_hole_notes), 0);
 select expect('stranger sees no bag',      (select count(*) from clubs), 0);
 select expect('stranger sees no usual score', (select count(*) from bag_settings), 0);
@@ -138,13 +142,14 @@ select expect('stranger sees no marks',    (select count(*) from marks), 0);
 -- Signed out, nothing: the library is for accounts. Granted here as Supabase grants it.
 reset role;
 grant usage on schema public to anon;
-grant select on courses, tees, tee_holes, course_greens, course_features to anon;
+grant select on courses, tees, tee_holes, course_greens, course_features, course_versions to anon;
 set role anon;
 select expect('signed out reads no course', (select count(*) from courses), 0);
 select expect('signed out reads no tee',    (select count(*) from tees), 0);
 select expect('signed out reads no card',   (select count(*) from tee_holes), 0);
 select expect('signed out reads no green',  (select count(*) from course_greens), 0);
 select expect('signed out reads no map',    (select count(*) from course_features), 0);
+select expect('signed out reads no version', (select count(*) from course_versions), 0);
 set role authenticated;
 
 -- ── The same stranger, now holding the code ─────────────────────────────────
@@ -278,6 +283,10 @@ update courses set name = 'Renamed by a stranger' where id = 'c9';
 delete from course_greens where course_id = 'c9';
 select refused('a golfer can''t add a tee to a course he didn''t create', $q$
   insert into tees (id, course_id, name) values ('t-bob-c9', 'c9', 'Bob') $q$);
+select refused('a golfer can''t archive a version of a course he didn''t create', $q$
+  insert into course_versions (course_id, version, tees) values ('c9', 1, '[{"id": "x"}]') $q$);
+update course_versions set tees = '[{"id": "rewritten"}]' where course_id = 'c1';
+delete from course_versions where course_id = 'c1';
 select refused('nor take a course for his own', $q$
   insert into courses (id, owner_id, name, created_at) values ('c-forged', '11111111-1111-1111-1111-111111111111', 'Forged', 1) $q$);
 select refused('guest can''t field a private player', $q$
@@ -307,6 +316,7 @@ select expect('no press of his',        (select count(*) from presses where roun
 select expect('no round of his in her outing', (select count(*) from rounds where outing_id = 'o1'), 1);
 select expect('private green untouched',(select count(*) from course_greens where course_id = 'c9'), 1);
 select expect('her other course keeps its name', (select count(*) from courses where id = 'c9' and name = 'Somewhere else'), 1);
+select expect('her earlier version untouched', (select count(*) from course_versions where course_id = 'c1' and tees -> 0 ->> 'id' = 't1'), 1);
 select expect('stake untouched',        (select stake from round_games where round_id = 'r1'), 500);
 select expect('private score untouched',(select strokes from scores where round_id = 'r9'), 3);
 select expect('private round survived', (select count(*) from rounds where id = 'r9'), 1);

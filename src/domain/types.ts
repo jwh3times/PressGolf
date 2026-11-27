@@ -160,6 +160,19 @@ export interface Course {
   createdAt: number;
   /** Where the course is, to tell two of the same name apart in the course library (#378). Absent until someone sets it. */
   location?: LatLng;
+  /**
+   * The course version it is on now (#377), from 1. Absent means 1. Any change to
+   * its tees, their slope, rating or tee cards moves it to the next.
+   */
+  version?: number;
+  /** The tees as they stood at each earlier version, oldest first, so a round keeps the course it was played on. */
+  versions?: CourseVersion[];
+}
+
+/** A course's scoring state as it stood at one version: its tees, with their slope, rating and tee cards. */
+export interface CourseVersion {
+  version: number;
+  tees: Tee[];
 }
 
 /** What the course owner wants players to know about a hole: "Blind tee shot, aim at the steeple." */
@@ -369,6 +382,11 @@ export interface Round {
   playerIds: PlayerId[];
   /** The round's tee: what the hole header and card show. Null means the course's first tee. */
   teeId: TeeId | null;
+  /**
+   * The course version the round was started on (#377), whose tees it is scored
+   * from. Absent on a round saved before versions, which plays the course as it is.
+   */
+  courseVersion?: number;
   /** Each player's tee when it differs from the round's. */
   playerTees: Record<PlayerId, TeeId>;
   /** Pops (strokes received) per player, applied to the lowest stroke indexes first. */
