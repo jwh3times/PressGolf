@@ -64,6 +64,13 @@ explicit `owner_id`, then apply it.
 
   Add `auto_explain` with `log_nested_statements` and `log_level = notice` to see each statement's
   plan. PostgREST's `authenticator` role carries the 8-second timeout `delete-account` runs under.
+- **`[edge_runtime.secrets]` in `supabase/config.toml` is not local only.** `supabase secrets set`
+  pushes the whole section to the hosted project along with what it's given (#402). Local-only
+  function settings go in the gitignored `supabase/functions/.env`. To see what a CLI command would
+  send without reaching a hosted project, point it at a stub with `--profile <file>` (a YAML file
+  with `name`, `api_url`, `dashboard_url` and `project_host`), as
+  `scripts/supabase-secrets-push.test.mjs` does: `SUPABASE_API_URL` alone doesn't redirect
+  `secrets set`.
 
 ## Linting workflows and scripts
 
