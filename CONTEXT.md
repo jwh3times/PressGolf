@@ -12,13 +12,9 @@ A round closed and counted in the season ledger.
 A round closed without being posted, so it never counts in the season ledger.
 _Avoid_: cancelled, discarded (discarding a card deletes it)
 
-**Counted round**:
-A round played under the Rules, where Press gives no club advice: every round, unless this phone has made it a practice round. Not the same as counting in the season ledger, which only a posted round does.
-_Avoid_: real round, competitive round
-
-**Practice round**:
-A round this phone has marked as practice, where club suggestions and where to aim are shown. Each phone chooses for itself, so the same round can be counted on another.
-_Avoid_: casual round
+**Tournament round**:
+A round this phone has marked as played under the Rules, a competition or a round for a handicap, where Press shows no club suggestions and not where to aim. Each phone chooses for itself, so the same round can be a tournament round on one phone and not on another; any other round shows them. Not the same as counting in the season ledger, which only a posted round does.
+_Avoid_: counted round, practice round, real round, competitive round
 
 **Mark**:
 Where a player's ball lay when they stood at it during a round, with the club they were about to hit, or that it wasn't a full swing, or that the ball was on the green.

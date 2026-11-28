@@ -4,7 +4,7 @@ import type { Club, Group, UsualScore } from './types';
 /**
  * The bag (#125): each club the player carries and how far it carries, typed
  * in by the player. A chart of your own distances, made before the round, is
- * allowed in a counted round (Rule 4.3a); a device suggesting a club is not,
+ * allowed in a tournament round (Rule 4.3a); a device suggesting a club is not,
  * so nothing here picks one.
  */
 

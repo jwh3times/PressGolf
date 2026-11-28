@@ -22,5 +22,7 @@ export function storageNamespace(demoMode: boolean): string {
  * 2 — outings: a round can belong to a bigger day with field-wide pots.
  * 3 — the course library (#378): a phone that syncs clears its courses and the
  *     days on them once, as the server did.
+ * 4 — the tournament round (#410) replaces the practice round: rounds open at
+ *     the update keep what they showed, and the next new round shows advice.
  */
-export const STORAGE_VERSION = 3;
+export const STORAGE_VERSION = 4;

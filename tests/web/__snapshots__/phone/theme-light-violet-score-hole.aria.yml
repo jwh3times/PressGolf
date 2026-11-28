@@ -24,6 +24,7 @@
 - text: No green saved for this hole. Standing on it?
 - button /Mark this green, hole \d+/: MARK THIS GREEN
 - button /Mark ball, hole \d+/: MARK BALL
+- 'button "Club suggestion: Mark the green for suggestions."'
 - text: MB Marcus tap 3 for par
 - button "Decrease score for Marcus": −
 - button "Enter par, 3, for Marcus"

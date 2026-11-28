@@ -1,6 +1,6 @@
 import { DEFAULT_HOUSE_RULES, defaultFieldGames, defaultGames, defaultOptions } from '../domain/formats';
 import { withHandicapPops } from '../domain/handicap';
-import type { Club, Course, Group, Hole, Mark, Outing, Player, PlayerId, PracticeMark, Round, UsualScore } from '../domain/types';
+import type { Club, Course, Group, Hole, Mark, Outing, Player, PlayerId, Round, TournamentState, UsualScore } from '../domain/types';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -390,7 +390,8 @@ export function buildDemoDataset(now = Date.now()): {
   outings: Outing[];
   clubs: Club[];
   usualScore: UsualScore | null;
-  practice: Record<string, PracticeMark>;
+  tournament: Record<string, TournamentState>;
+  tournamentNext: boolean;
   marks: Mark[];
   activeGroupId: string;
   /** Each group's open round: the Dogs' Saturday round. */
@@ -407,7 +408,8 @@ export function buildDemoDataset(now = Date.now()): {
     outings: [outing.outing],
     clubs: demoBag(),
     usualScore: '80s',
-    practice: {},
+    tournament: {},
+    tournamentNext: false,
     marks: [],
     activeGroupId: DEMO_GROUP_ID,
     openRoundIds: [DEMO_ROUND_ID],

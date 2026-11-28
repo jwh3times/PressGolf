@@ -218,7 +218,7 @@ const actions = {
   changeMark: jest.fn(),
   undoMark: jest.fn(),
   setUsualScore: jest.fn(),
-  setPractice: jest.fn(),
+  setTournament: jest.fn(),
   deleteTee: jest.fn(),
   setRoundTee: jest.fn(),
   setPlayerTee: jest.fn(),
@@ -1056,32 +1056,47 @@ describe('setup and outing state matrices', () => {
     expect(screen.getByRole('button', { name: 'Pick at least two players' })).toBeDisabled();
     await user.press(screen.getByRole('button', { name: new RegExp(group.players[0].name) }));
     await user.press(screen.getByRole('button', { name: /Start · 2 players/ }));
-    expect(actions.startRound).toHaveBeenCalled();
+    expect(actions.startRound).toHaveBeenCalledWith(expect.objectContaining({ courseId: course.id }), { tournament: false, remember: false });
     expect(mockRouter.replace).toHaveBeenCalledWith('/format');
-    expect(actions.setPractice).not.toHaveBeenCalled();
   });
 
-  it('starts a practice round once the Rule is explained, and offers none for a finished card', async () => {
+  it('starts a tournament round with no asking, and offers none for a finished card', async () => {
     const user = userEvent.setup();
     const view = await render(<NewRoundScreen />);
-    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
-    expect(screen.getByText(/Rule 4\.3/)).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Make it a practice round' }));
-    expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
+    expect(screen.getByText(/^Playing under the Rules\? Turn on Tournament round/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('switch', { name: 'Tournament round' }));
+    expect(screen.queryByText(/Rule 4\.3a\)\. The first time/)).toBeNull();
+    expect(screen.queryByText(/^Playing under the Rules\?/)).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Tournament round' })).toBeChecked();
+    expectEveryControlToHaveAName();
     await user.press(screen.getByRole('button', { name: /^Start · / }));
-    const started = actions.startRound.mock.calls[0][0];
-    expect(actions.setPractice).toHaveBeenCalledWith(started.id, true);
+    expect(actions.startRound).toHaveBeenCalledWith(expect.anything(), { tournament: true, remember: true });
     await view.unmount();
 
     mockParams = { mode: 'card' };
     await render(<NewRoundScreen />);
-    expect(screen.queryByRole('switch', { name: 'Practice round' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: 'Tournament round' })).toBeNull();
   });
 
-  it('marks in History a round that was played as practice on this phone', async () => {
-    useStoreValue({ practice: { [round.id]: { on: false, ever: true } } });
+  it('starts New round with the switch as this phone last left it', async () => {
+    useStoreValue({ tournamentNext: true });
+    await render(<NewRoundScreen />);
+    expect(screen.getByRole('switch', { name: 'Tournament round' })).toBeChecked();
+  });
+
+  it('tags in History a round that was a tournament round from start to finish on this phone', async () => {
+    const closed = dataset.rounds.filter((candidate) => candidate.status === 'completed');
+    useStoreValue({
+      tournament: {
+        [closed[0].id]: { on: true, fromStart: true },
+        // Turned off and on again part-way: no tag.
+        [closed[1].id]: { on: true, fromStart: false },
+        // Still going: no tag until it closes.
+        [round.id]: { on: true, fromStart: true },
+      },
+    });
     await render(<HistoryScreen />);
-    expect(screen.getByText('PRACTICE')).toBeOnTheScreen();
+    expect(screen.getAllByText('TOURNAMENT')).toHaveLength(1);
   });
 
   it('covers outing sharing, group summaries, pots, standings, and closing', async () => {
@@ -3110,11 +3125,11 @@ describe('the hole map', () => {
     expect(screen.getByLabelText('Short: some trouble. Bunker.')).toBeOnTheScreen();
     expect(screen.getByLabelText('Long: worst. Likely out of bounds (the course edge).')).toBeOnTheScreen();
     expect(screen.getByLabelText('Left: clear.')).toBeOnTheScreen();
-    expect(screen.getByText(/allowed in a counted round/)).toBeOnTheScreen();
+    expect(screen.getByText(/allowed in a tournament round/)).toBeOnTheScreen();
   });
 
-  it('suggests a club on Score in a practice round, opening the hole map, and none in a counted one', async () => {
-    useStoreValue({ course: mapped, courses: [mapped], practice: { [round.id]: { on: true, ever: true } } });
+  it('suggests a club on Score in a round, opening the hole map, and none in a tournament round', async () => {
+    useStoreValue({ course: mapped, courses: [mapped] });
     let view = await render(<ScoreScreen />);
     const user = userEvent.setup();
     await user.press(screen.getByRole('button', { name: 'Go to hole 1' }));
@@ -3126,7 +3141,7 @@ describe('the hole map', () => {
     expect(mockRouter.push).toHaveBeenCalledWith(expect.objectContaining({ pathname: '/hole-map', params: expect.objectContaining({ hole: '3', round: round.id }) }));
     await view.unmount();
 
-    useStoreValue({ course: mapped, courses: [mapped] });
+    useStoreValue({ course: mapped, courses: [mapped], tournament: { [round.id]: { on: true, fromStart: true } } });
     view = await render(<ScoreScreen />);
     await user.press(screen.getByRole('button', { name: 'Go to hole 3' }));
     expect(screen.queryByRole('button', { name: /^Club suggestion/ })).toBeNull();
@@ -3162,43 +3177,48 @@ describe('the hole map', () => {
     expect(screen.getByText('Course not found')).toBeOnTheScreen();
   });
 
-  it('says where to aim when looking a course over, but not in a counted round', async () => {
+  it('says where to aim when looking a course over and in a round, but not in a tournament round', async () => {
     // With no carries in the bag there is no club to suggest, so the hole strategy's aim stands.
-    const view = await open({ hole: '3' }, { clubs: [], marks: [] });
+    let view = await open({ hole: '3' }, { clubs: [], marks: [] });
     expect(screen.getByLabelText('Aim: Aim at the middle of the green. Short is safer than long.')).toBeOnTheScreen();
-    expect(screen.queryByRole('switch', { name: 'Practice round' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: 'Tournament round' })).toBeNull();
     await view.unmount();
 
-    await open({ hole: '3', round: round.id });
+    view = await open({ hole: '3', round: round.id }, { clubs: [], marks: [] });
+    expect(screen.getByLabelText('Aim: Aim at the middle of the green. Short is safer than long.')).toBeOnTheScreen();
+    expect(screen.getByRole('switch', { name: 'Tournament round' })).not.toBeChecked();
+    await view.unmount();
+
+    await open({ hole: '3', round: round.id }, { clubs: [], marks: [], tournament: { [round.id]: { on: true, fromStart: true } } });
     expect(screen.queryByLabelText(/^Aim:/)).toBeNull();
-    expect(screen.getByRole('switch', { name: 'Practice round' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Tournament round' })).toBeChecked();
   });
 
-  it('explains the Rule before making a round practice, and says where to aim once it is', async () => {
-    const view = await open({ hole: '3', round: round.id });
+  it('makes a round a tournament round at once, and explains the Rule before showing advice in one', async () => {
+    let view = await open({ hole: '3', round: round.id });
     const user = userEvent.setup();
-    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
-    expect(screen.getByText(/Rule 4\.3a\)\. The first time costs two strokes/)).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Keep it a counted round' }));
-    expect(screen.queryByText(/Rule 4\.3/)).toBeNull();
-    expect(actions.setPractice).not.toHaveBeenCalled();
-    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
-    await user.press(screen.getByRole('button', { name: 'Make it a practice round' }));
-    expect(actions.setPractice).toHaveBeenCalledWith(round.id, true);
+    await user.press(screen.getByRole('switch', { name: 'Tournament round' }));
+    expect(actions.setTournament).toHaveBeenCalledWith(round.id, true);
+    expect(screen.queryByText(/Rule 4\.3a\)\. The first time/)).toBeNull();
     await view.unmount();
 
-    useStoreValue({ courses: [mapped], course: mapped, clubs: [], practice: { [round.id]: { on: true, ever: true } } });
-    mockParams = { course: mapped.id, hole: '3', round: round.id };
-    await render(<HoleMapScreen />);
-    expect(screen.getByLabelText(/^Aim: /)).toBeOnTheScreen();
-    expect(screen.getByText('Aiming advice is on for this round, on this phone.')).toBeOnTheScreen();
-    await user.press(screen.getByRole('switch', { name: 'Practice round' }));
-    expect(actions.setPractice).toHaveBeenLastCalledWith(round.id, false);
+    actions.setTournament.mockClear();
+    view = await open({ hole: '3', round: round.id }, { tournament: { [round.id]: { on: true, fromStart: true } } });
+    // On or off, the switch says who it's for.
+    expect(screen.getByText(/^For any round under the Rules, a competition or one for your handicap: hides club suggestions and where to aim, on this phone only\. Scores, games and money work the same\.$/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('switch', { name: 'Tournament round' }));
+    expect(screen.getByText(/Rule 4\.3a\)\. The first time costs two strokes/)).toBeOnTheScreen();
+    expectEveryControlToHaveAName();
+    await user.press(screen.getByRole('button', { name: 'Keep it a tournament round' }));
+    expect(screen.queryByText(/Rule 4\.3/)).toBeNull();
+    expect(actions.setTournament).not.toHaveBeenCalled();
+    await user.press(screen.getByRole('switch', { name: 'Tournament round' }));
+    await user.press(screen.getByRole('button', { name: 'Show advice in this round' }));
+    expect(actions.setTournament).toHaveBeenCalledWith(round.id, false);
   });
 
-  it('suggests a club in a practice round in place of the aim for that shot, and none in a counted one', async () => {
-    const practice = { [round.id]: { on: true, ever: true } };
-    const view = await open({ hole: '3', round: round.id }, { practice });
+  it('suggests a club in a round in place of the aim for that shot, and none in a tournament round', async () => {
+    const view = await open({ hole: '3', round: round.id });
     expect(screen.getByText('Club suggestion')).toBeOnTheScreen();
     expect(screen.getByText(/^Aim (at the .+ of the (green|fairway)|down the line|\d+ yards (left|right) of the line)\.$/)).toBeOnTheScreen();
     expect(screen.getByText(/^Based on published shot patterns for golfers who usually shoot in the 80s, and your bag’s carries\.$/)).toBeOnTheScreen();
@@ -3208,7 +3228,7 @@ describe('the hole map', () => {
     expectEveryControlToHaveAName();
     await view.unmount();
 
-    await open({ hole: '3', round: round.id });
+    await open({ hole: '3', round: round.id }, { tournament: { [round.id]: { on: true, fromStart: true } } });
     expect(screen.queryByText('Club suggestion')).toBeNull();
   });
 
@@ -3244,7 +3264,7 @@ describe('the hole map', () => {
     expect(screen.getByRole('button', { name: /^Hole 1 PAR \d · \d+ YARDS Not mapped yet$/ })).toBeOnTheScreen();
   });
 
-  it('gives the course guide aiming advice outside a round, and in one only when it is practice', async () => {
+  it('gives the course guide aiming advice outside a round, and in one unless it is a tournament round', async () => {
     // No carries, so no club to suggest: the hole strategy's aim is the advice.
     useStoreValue({ courses: [mapped], clubs: [], marks: [] });
     mockParams = { course: mapped.id };
@@ -3252,17 +3272,19 @@ describe('the hole map', () => {
     expect(screen.getByRole('button', { name: /^Hole 3 PAR .*Aim: Aim at the middle of the green\./ })).toBeOnTheScreen();
     await view.unmount();
 
+    useStoreValue({ courses: [mapped], clubs: [], marks: [], tournament: { [round.id]: { on: true, fromStart: true } } });
     mockParams = { course: mapped.id, round: round.id };
     view = await render(<CourseGuideScreen />);
     expect(screen.queryByRole('button', { name: /Aim:/ })).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Tournament round' })).toBeChecked();
     await userEvent.setup().press(screen.getByRole('button', { name: /^Hole 3 PAR/ }));
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hole-map', params: { course: mapped.id, hole: '3', tee: mapped.tees[0].id, round: round.id } });
     await view.unmount();
 
-    useStoreValue({ courses: [mapped], clubs: [], practice: { [round.id]: { on: true, ever: true } } });
+    useStoreValue({ courses: [mapped], clubs: [], marks: [] });
     await render(<CourseGuideScreen />);
     expect(screen.getByRole('button', { name: /^Hole 3 PAR .*Aim: / })).toBeOnTheScreen();
-    expect(screen.getByRole('switch', { name: 'Practice round' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Tournament round' })).not.toBeChecked();
   });
 
   it('lets the course owner write, change and remove a note on a hole, and shows it in the guide', async () => {
