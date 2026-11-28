@@ -34,8 +34,15 @@ local Supabase stack (Docker required; see
 [development.md](development.md#sync-integration-tests)):
 
 ```bash
+echo 'READ_SCORECARD_FAKE_MODEL=on' > supabase/functions/.env   # once per checkout, before the stack starts
 npm run test:integration    # needs `npx supabase start` first
 ```
+
+The first line switches on `read-scorecard`'s fake model for the local stack, so the scorecard
+tests need no Anthropic key; without it they fail with `unavailable`. The file is gitignored, and
+`supabase start` loads it, so restart a running stack after writing it. Don't put the switch under
+`[edge_runtime.secrets]` in `supabase/config.toml`: `supabase secrets set` pushes that section to
+the hosted project (#402).
 
 When a change touches what a screen shows or how it is labelled, run the web
 UI suite (Docker required):
