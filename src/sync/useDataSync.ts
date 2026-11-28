@@ -173,7 +173,9 @@ export function useDataSync(options: {
       inFlight.current = true;
       setState({ status: 'syncing', at: null, message: null });
       try {
-        const read = await followNotices(documents, () => !cancelled);
+        // The documents as they are now, through the ref: this runs once per
+        // session, and the effect below follows the data from then on.
+        const read = await followNotices(latest.current, () => !cancelled);
         if (!read) return;
         await contact(read.held, () => !cancelled);
         if (cancelled) return;
@@ -188,9 +190,6 @@ export function useDataSync(options: {
     return () => {
       cancelled = true;
     };
-    // `documents` is deliberately not a dependency: this runs once per session,
-    // and the effect below follows the data from then on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, fail, followNotices, contact]);
 
   // Everything after that: push what changed, debounced.
