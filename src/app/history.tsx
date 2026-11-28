@@ -150,10 +150,10 @@ export default function HistoryScreen() {
                         ABANDONED
                       </Mono>
                     ) : null}
-                    {/* Aiming advice was on in it, on this phone. */}
-                    {store.practice[round.id]?.ever ? (
+                    {/* A tournament round from start to finish, on this phone: no advice all round. */}
+                    {round.status !== 'active' && store.tournament[round.id]?.fromStart ? (
                       <Mono size={10} style={{ color: ink.quiet, letterSpacing: 0.85 }}>
-                        PRACTICE
+                        TOURNAMENT
                       </Mono>
                     ) : null}
                   </View>

@@ -238,14 +238,14 @@ export interface Mark {
 }
 
 /**
- * A round this phone has marked as a practice round (#136), where aiming
- * advice is shown. Kept on the phone only: each phone chooses for itself, and
- * it never syncs.
+ * A round this phone has made a tournament round (#410): one played under the
+ * Rules, where no club suggestions and not where to aim are shown. Kept on the
+ * phone only: each phone chooses for itself, and it never syncs.
  */
-export interface PracticeMark {
+export interface TournamentState {
   on: boolean;
-  /** Stays true once the switch has been on, so History can say advice was used. */
-  ever: boolean;
+  /** True while it has been a tournament round since it started, never turned off: History tags those. */
+  fromStart: boolean;
 }
 
 // ─── Games ──────────────────────────────────────────────────────────────────
@@ -613,8 +613,10 @@ export interface AppData {
   clubs: Club[];
   /** How the bag's owner usually scores, once they've said; synced with the bag. */
   usualScore: UsualScore | null;
-  /** This phone's practice-round marks, by round. Never synced. */
-  practice: Record<RoundId, PracticeMark>;
+  /** This phone's tournament-round marks, by round. Never synced. */
+  tournament: Record<RoundId, TournamentState>;
+  /** Whether this phone's next new round starts as a tournament round: the switch as last left. Never synced. */
+  tournamentNext: boolean;
   /** The bag's owner's marks (#295), backed up with their account (#296). */
   marks: Mark[];
   settings: AppSettings;

@@ -19,7 +19,7 @@ import type { Course, CourseFeature, LatLng, TeeId } from './types';
  * How a hole plays (#136): where the trouble is, read from the course map
  * alone, the same for everyone, like a yardage book. Nothing here depends on
  * where a player is or how their round is going, which is what lets the Rules
- * of Golf allow it during a counted round (Rule 4.3a).
+ * of Golf allow it during a tournament round (Rule 4.3a).
  */
 
 export type Zone = 'teeShot' | 'secondShot' | 'green';
@@ -44,7 +44,7 @@ export interface SideReading {
 /**
  * Where to aim, from the grades alone: away from the worse side, and, around
  * the green, whether long or short is the safer miss. Line-of-play advice, so
- * only given when looking a course over or in a practice round.
+ * never given in a tournament round.
  */
 export interface Aim {
   lean: 'left' | 'centre' | 'right';
@@ -270,7 +270,7 @@ export function teeForward(course: Course, number: number, teeId: TeeId | null |
 export interface StrategyOptions {
   /** The tee being played; the course's first tee when missing. */
   teeId?: TeeId | null;
-  /** Include where to aim. Only outside a round, or in a practice round. */
+  /** Include where to aim. Outside a round, or in one that isn't a tournament round. */
   advice?: boolean;
 }
 

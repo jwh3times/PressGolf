@@ -254,7 +254,7 @@ version, so `GreenMap.web.tsx` says to use the OpenStreetMap search instead.
 
 `holeStrategy` (`src/domain/hole-strategy.ts`, #136) reads a mapped hole the
 same way for everyone, from the course map alone, like a yardage book, which
-is what lets the Rules of Golf allow it in a counted round. It reads up to
+is what lets the Rules of Golf allow it in a tournament round. It reads up to
 three zones:
 
 - **Around the green**: short, long, left and right, along the line of
@@ -292,13 +292,22 @@ on the tee shot.
 **Where to aim** (`Aim`, `aimSentence`) comes from the grades: away from the
 worse side, or the middle when both are alike, and around the green whether
 long or short is the safer miss. That is line-of-play advice, which Rule 4.3a
-doesn't allow from a device in a counted round. So it shows when looking a
-course over outside a round, and in a round only when this phone has marked it
-as a **practice round** (`AppData.practice`, by round id). The switch is on New
-round, the hole map and the course guide, and explains the Rule and its
-penalty before turning on. The mark is kept on the phone and never synced,
-since each phone chooses for itself; `ever` stays set once it has been on, for
-History's "Practice". It changes nothing about scores, games or money.
+doesn't allow from a device in a round played under the Rules. So it shows
+when looking a course over outside a round, and in a round unless this phone
+has made it a **tournament round** (#410, `AppData.tournament`, by round id).
+The switch is on New round, the hole map and the course guide. Turning it on
+needs no asking; turning it off in a round explains the Rule and its penalty
+first. New round starts it as this phone last left it (`tournamentNext`), off
+on a phone's first round, and shows a reminder under it while it's off.
+`startRound` records New round's choice, setting `tournamentNext` only when
+the golfer changed the switch there, and `setTournament` records a change in
+the round and always sets it. Card entry has no switch. The choice is kept on
+the phone and never synced, since each phone chooses for itself; `fromStart`
+stays set while the round has been a tournament round from its start, for
+History's "Tournament". It changes nothing about scores, games or money. Data
+saved before #410 (storage version 3 or older) had practice marks instead: a
+live round still going at the update keeps what it showed, and the next new
+round shows advice (`tournamentFromPractice` in `src/store/persistence.ts`).
 
 The course's owner can leave a **note** on each hole (`Course.notes`, synced as
 `course_hole_notes`): plain text up to 280 characters (`MAX_NOTE`), written on
@@ -346,7 +355,7 @@ and an `id` that is always `bag`, since the phone's rows carry no owner.
 
 ### Club suggestions
 
-In a practice round, or looking a course over outside a round, the app
+In a round that isn't a tournament round, or looking a course over outside a round, the app
 suggests a club, where to aim and, when it is close, a second way to play the
 shot (#146). `suggestShot` (`src/domain/club-suggestion.ts`) is pure: given
 the course, the hole, where the shot is from (the tee when it isn't known),
@@ -560,7 +569,7 @@ runs out, or saying so when none came. The wait counts from when GPS is running,
 so a permission prompt doesn't use it up. Both limits are judgement calls from
 #293, not published figures (`src/domain/marks.ts`). The club picker lists the
 bag in its own order with nothing chosen, so it never suggests a club in a
-counted round. Afterwards the
+tournament round. Afterwards the
 card says "Marked: <club>" for the hole's last mark, and a tap on it changes
 what was hit or undoes the mark. Nothing else on the Score screen or the hole
 map reads marks.
@@ -1004,7 +1013,7 @@ On the phone, `deleteAccount` in `AppStore` turns sync off and waits out any
 push in flight (`settle` from `useDataSync`), then calls the server. On failure
 it turns sync back on, which starts again from first contact, and the phone is
 unchanged. On success it erases the live dataset, which includes the bag and
-practice-round state, and then signs out, which forgets the remembered email and
+tournament-round state, and then signs out, which forgets the remembered email and
 unmounts the store, so the phone is back at first run. The demo dataset, the
 demo/live preference and the theme stay.
 

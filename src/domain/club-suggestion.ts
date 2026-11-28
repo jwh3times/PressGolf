@@ -17,7 +17,7 @@ import {
 import type { Club, Course, LatLng, TeeId, UsualScore } from './types';
 
 /**
- * Club suggestions for a practice round (#146): which club to hit and where to
+ * Club suggestions (#146): which club to hit and where to
  * aim, from the bag's carries and the course map. Each club is simulated from
  * where the player stands, a few aim points across the target, with the
  * spread of shots of a golfer of their usual score; every finish is scored by
@@ -25,8 +25,8 @@ import type { Club, Course, LatLng, TeeId, UsualScore } from './types';
  * out of bounds; and the fewest expected strokes wins.
  *
  * This is club advice, which the Rules of Golf don't allow a device to give in
- * a round that counts (Rule 4.3a): callers show it only in a practice round,
- * or looking a course over outside one.
+ * a round under the Rules (Rule 4.3a): callers never show it in a round this
+ * phone has made a tournament round (#410).
  */
 
 export type { Lie } from './shot-model';

@@ -254,9 +254,10 @@ across a reload. The default theme is the one `screens.spec.ts` covers.
 `tests/web/course-map.spec.ts` imports a course map the way a player would, with
 OpenStreetMap's answers replaced by the recorded Torrey Pines South (holes 3 and
 8 mapped). It covers the course guide, how hole 3 plays (in every base theme,
-for the grades' colours), the Score screen's summary line, a hole note, turning
-on a practice round, and club suggestions: the hole map's card, its lie choice,
-planning from a tapped point, and the Score screen's line in a practice round.
+for the grades' colours), the Score screen's summary line, a hole note, making
+a round a tournament round and back, and club suggestions: the hole map's card,
+its lie choice, planning from a tapped point, and the Score screen's line in a
+round.
 The card and the line are photographed on their own. On the Score screen it
 photographs only the hole preview and its line; the rest of that page is covered
 by `score, hole by hole`, and its Next button and Course guide chip rendered a

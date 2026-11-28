@@ -6,7 +6,7 @@ import { HoleDiagram, holeView } from '../components/HoleDiagram';
 import { HoleSatellite } from '../components/HoleSatellite';
 import { HoleNoteCard } from '../components/HoleNote';
 import { HoleStrategyView } from '../components/HoleStrategy';
-import { PracticeSwitch, useAdvice } from '../components/PracticeRound';
+import { TournamentSwitch, useAdvice } from '../components/TournamentRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Card, CHIP_ROW_GAP, Chip, Display, Eyebrow, Mono, Switch } from '../components/primitives';
 import { noteFor } from '../domain/course-map';
@@ -63,7 +63,7 @@ type Aim = { kind: 'line' } | { kind: 'short'; yards: number } | { kind: 'point'
  * One hole of the course map (#125): the drawn hole, and the yards from where
  * you are to the green, to a target, and to and past every hazard between.
  * Distances, which the Rules allow during a round; club and aiming advice
- * (#136, #146) only outside one, or in a practice round. Away from the
+ * (#136, #146) outside one, or in a round that isn't a tournament round (#410). Away from the
  * course, it measures from the tee, to look a hole over beforehand.
  */
 export default function HoleMapScreen() {
@@ -88,7 +88,7 @@ export default function HoleMapScreen() {
   }, [params.live, start]);
 
   const plan = useMemo(() => (course ? holePlan(course, hole) : null), [course, hole]);
-  const { advice, practice } = useAdvice(params.round);
+  const { advice, tournament } = useAdvice(params.round);
   // The tee being played, from the Score screen; looking the course over, its first tee.
   const advised = useMemo(
     () => (course ? holeStrategy(course, hole, { teeId: params.tee, advice }) : null),
@@ -319,7 +319,7 @@ export default function HoleMapScreen() {
 
           {strategy ? <HoleStrategyView strategy={strategy} /> : null}
           {strategy && params.round ? (
-            <PracticeSwitch on={practice === true} onChange={(on) => store.setPractice(params.round!, on)} />
+            <TournamentSwitch on={tournament === true} onChange={(on) => store.setTournament(params.round!, on)} inRound />
           ) : null}
         </>
       )}

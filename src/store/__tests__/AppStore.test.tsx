@@ -74,7 +74,8 @@ function stored(data: Dataset) {
     outings: data.outings,
     clubs: data.clubs,
     usualScore: data.usualScore,
-    practice: data.practice,
+    tournament: data.tournament,
+    tournamentNext: data.tournamentNext,
     marks: data.marks,
     activeGroupId: data.activeGroupId,
     openRoundIds: data.openRoundIds,
@@ -279,7 +280,8 @@ describe('deleting the account', () => {
       outings: [],
       clubs: [],
       usualScore: null,
-      practice: {},
+      tournament: {},
+      tournamentNext: false,
       marks: [],
       activeGroupId: null,
       openRoundIds: [],
@@ -655,7 +657,8 @@ describe('AppStoreProvider', () => {
       outings: [],
       clubs: [],
       usualScore: null,
-      practice: {},
+      tournament: {},
+      tournamentNext: false,
       marks: [],
       activeGroupId: null,
       openRoundIds: [],
@@ -1684,21 +1687,28 @@ describe('AppStoreProvider', () => {
     expect(store.groups).toBe(groups);
   });
 
-  it('marks a round as practice on this phone, remembers it was, saves it, and never syncs it', async () => {
+  it('makes a round a tournament round on this phone, remembers the choice, saves both, and never syncs them', async () => {
     await mount();
     const id = store.round!.id;
-    expect(store.practice[id]).toBeUndefined();
-    await change(() => store.setPractice(id, true));
-    expect(store.practice[id]).toEqual({ on: true, ever: true });
-    await change(() => store.setPractice(id, false));
-    expect(store.practice[id]).toEqual({ on: false, ever: true });
-    const unchanged = store.practice;
-    await change(() => store.setPractice(id, false));
-    expect(store.practice).toBe(unchanged);
+    expect(store.tournament[id]).toBeUndefined();
+    // Turned on part-way: a tournament round now, but not from its start.
+    await change(() => store.setTournament(id, true));
+    expect(store.tournament[id]).toEqual({ on: true, fromStart: false });
+    expect(store.tournamentNext).toBe(true);
+    await change(() => store.setTournament(id, false));
+    expect(store.tournament[id]).toEqual({ on: false, fromStart: false });
+    expect(store.tournamentNext).toBe(false);
+    const unchanged = store.tournament;
+    await change(() => store.setTournament(id, false));
+    expect(store.tournament).toBe(unchanged);
 
     await new Promise((resolve) => setTimeout(resolve, 275));
-    expect(mockSaveDataset).toHaveBeenLastCalledWith(true, expect.objectContaining({ practice: { [id]: { on: false, ever: true } } }));
+    expect(mockSaveDataset).toHaveBeenLastCalledWith(
+      true,
+      expect.objectContaining({ tournament: { [id]: { on: false, fromStart: false } }, tournamentNext: false }),
+    );
     const syncOptions = mockUseDataSync.mock.calls.at(-1)?.[0];
-    expect(Object.keys(syncOptions!.documents)).not.toContain('practice');
+    expect(Object.keys(syncOptions!.documents)).not.toContain('tournament');
+    expect(Object.keys(syncOptions!.documents)).not.toContain('tournamentNext');
   });
 });

@@ -99,7 +99,7 @@ export default function DeleteAccountScreen() {
         <View style={styles.section}>
           <Eyebrow>Your phones</Eyebrow>
           <Body style={styles.item}>
-            This phone goes back to first run: your rounds, bag and practice rounds on it are erased,
+            This phone goes back to first run: your rounds, bag and tournament rounds on it are erased,
             and you’re signed out. The demo data stays.
           </Body>
           <Body style={styles.item}>

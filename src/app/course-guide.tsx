@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTeeSuggestion } from '../components/ClubSuggestion';
 import { HoleDiagram } from '../components/HoleDiagram';
-import { PracticeSwitch, useAdvice } from '../components/PracticeRound';
+import { TournamentSwitch, useAdvice } from '../components/TournamentRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import { Body, Mono } from '../components/primitives';
 import { holePlan } from '../domain/hole-map';
@@ -29,7 +29,7 @@ export default function CourseGuideScreen() {
   const router = useRouter();
   const styles = useStyles();
   const course = store.courses.find((c) => c.id === params.course);
-  const { advice, practice } = useAdvice(params.round);
+  const { advice, tournament } = useAdvice(params.round);
 
   if (!course) {
     return (
@@ -46,7 +46,9 @@ export default function CourseGuideScreen() {
       <Body style={styles.copy}>
         {`How each hole plays from the ${tee.name} tee, read from the course map. Tap a hole for its map and distances.`}
       </Body>
-      {params.round ? <PracticeSwitch on={practice === true} onChange={(on) => store.setPractice(params.round!, on)} /> : null}
+      {params.round ? (
+        <TournamentSwitch on={tournament === true} onChange={(on) => store.setTournament(params.round!, on)} inRound />
+      ) : null}
       {tee.holes.map((hole) => (
         <GuideHole
           key={hole.number}

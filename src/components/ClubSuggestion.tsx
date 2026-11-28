@@ -17,13 +17,13 @@ import type { Course, LatLng, TeeId, UsualScore } from '../domain/types';
 import { useStore } from '../store/AppStore';
 import { makeStyles } from '../theme/theme';
 import { fonts, radius } from '../theme/tokens';
-import { useAdvice } from './PracticeRound';
+import { useAdvice } from './TournamentRound';
 import { Body, Chip, CHIP_ROW_GAP, Eyebrow } from './primitives';
 
 /**
  * Club suggestions on screen (#146): the Score screen's line and the hole
  * map's card. Club advice, so only shown where `useAdvice` allows it: outside
- * a round, or in a practice round.
+ * a round, or in a round that isn't a tournament round.
  */
 
 const YARD = 0.9144;
@@ -290,8 +290,8 @@ const useStyles = makeStyles(({ colors, ink, line }) =>
 
 /**
  * The Score screen's suggestion for one hole: keyed by hole, so each starts
- * from its tee. Club advice, so only in a round this phone has made practice
- * (Rule 4.3a).
+ * from its tee. Club advice, so never in a round this phone has made a
+ * tournament round (Rule 4.3a).
  */
 export function ScoreClubSuggestion({
   course,

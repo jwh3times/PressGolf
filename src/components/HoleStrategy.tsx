@@ -78,7 +78,7 @@ export function HoleStrategyView({ strategy }: { strategy: HoleStrategy }) {
         </Card>
       ))}
       <Body style={styles.copy}>
-        Read from the course map, the same for everyone, so it’s allowed in a counted round. Only what’s mapped is
+        Read from the course map, the same for everyone, so it’s allowed in a tournament round. Only what’s mapped is
         counted.
       </Body>
     </View>
