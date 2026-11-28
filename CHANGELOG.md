@@ -33,6 +33,15 @@ Prepare release workflow, moves them into a dated section and sets `package.json
   to pass oxlint 1.95.0's React checks, which no longer accept the comments that silenced them
   (#407). Both work as before.
 
+### Fixed
+
+- Setting a secret on the hosted project with `supabase secrets set` no longer also sends the
+  local stack's switch for the scorecard reader's fake model (#402). The switch had sat in
+  `supabase/config.toml`'s `[edge_runtime.secrets]`, which the command pushes with whatever it's
+  given; it now lives in the gitignored `supabase/functions/.env`, which only the local stack
+  reads. A new check fails if a push ever carries more than it was given. Scanning a scorecard in
+  the app is unchanged: production never used the fake, which needs plain http.
+
 ## [1.5.0] - 2026-11-27
 
 ### Added

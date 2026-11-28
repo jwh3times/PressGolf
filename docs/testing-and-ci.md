@@ -14,7 +14,7 @@ npx expo-doctor
 When a change touches `scripts/`, `app.json`, `supabase/config.toml`, `supabase/functions/`, `@supabase/supabase-js`'s version, `skills-lock.json`, `.agents/skills/` or `.claude/agents/`, also run:
 
 ```bash
-npm run test:scripts        # node:test suites for the repository scripts, the generated native config, supabase/config.toml and the Edge Functions' supabase-js pin
+npm run test:scripts        # node:test suites for the repository scripts, the generated native config, supabase/config.toml (including that `supabase secrets set` pushes only what it's given) and the Edge Functions' supabase-js pin
 npm run sync:agents:check   # .claude/skills matches .agents/skills
 node scripts/check-skills.mjs # installed skills match skills-lock.json and the shared install commands
 npm run lint:agents         # agent and skill sources read correctly from their mirrored copies
