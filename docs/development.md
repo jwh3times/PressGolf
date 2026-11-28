@@ -636,10 +636,10 @@ code. Codex has no counterpart list.
 new Codex session. It points at the `MCP_URL` that `supabase start` prints,
 the API gateway's `/mcp` route. The gateway hands it to Studio, so a start
 that excludes `studio` (as the integration-test command above does) leaves it
-unreachable: the route answers `503`. Studio's own endpoint,
-`http://127.0.0.1:54323/api/mcp`, serves the same server. The entries used it
-while the gateway's route returned `400 Bad Request` on Supabase CLI 3.0.0.
-CLI 3.4.0 serves both (checked 2026-11-28).
+unreachable: the route answers `503`. On Supabase CLI 3.4.0 the route answers
+an MCP `initialize` and lists the server's tools (checked 2026-11-28); on 3.0.0
+it returned `400 Bad Request`, and both files pointed at Studio's own endpoint,
+`http://127.0.0.1:54323/api/mcp`, which serves the same server.
 
 **Per-machine overrides.** In Claude Code, a local-scope server with the same
 name replaces the project entry on that machine only. Remove it with
@@ -655,7 +655,7 @@ name replaces the project entry on that machine only. Remove it with
 
 Codex ranks the project file above `~/.codex/config.toml`, so override a value
 for one run with `-c`, for example
-`codex -c 'mcp_servers.supabase.url="http://127.0.0.1:55321/mcp"'`.
+`codex -c 'mcp_servers.supabase.url="http://127.0.0.1:<api-port>/mcp"'`.
 
 **Upgrading `@playwright/mcp`.** Its version is pinned in both files, and
 Dependabot does not read them. Bump both together.
