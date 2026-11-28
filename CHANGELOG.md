@@ -10,6 +10,10 @@ Prepare release workflow, moves them into a dated section and sets `package.json
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.6.0] - 2026-11-28
+
 ### Changed
 
 - A round now shows club suggestions and where to aim unless the phone makes it a **tournament
