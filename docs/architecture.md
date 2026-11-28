@@ -342,8 +342,9 @@ the end. A carry is 1–450 yards (`parseCarry`). A club typed as carrying
 further than a longer club above it is flagged (`outOfOrder`), since that is
 usually a slip; two clubs carrying the same is not.
 
-A chart of your own distances, made before the round, is allowed in a counted
-round (Rule 4.3a), so the bag is plain information and is always on.
+A chart of your own distances, made before the round, is allowed in a round
+played under the Rules (Rule 4.3a), so the bag is plain information and is
+always on, in a tournament round too.
 
 The bag also keeps how its owner usually scores (`AppData.usualScore`: the
 70s, 80s, 90s or 100s or more), which sets how widely club suggestions spread

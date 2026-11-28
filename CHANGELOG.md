@@ -10,7 +10,25 @@ Prepare release workflow, moves them into a dated section and sets `package.json
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- A round now shows club suggestions and where to aim unless the phone makes it a **tournament
+  round**, which replaces the practice round (#410). The switch is on New round, the hole map and
+  the course guide. It's for any round under the Rules, a competition or one for your handicap,
+  where Rule 4.3a doesn't allow a device to give that advice. Distances, hazards, hole notes and
+  the bag show in every round, as before, and scores, games and money work the same either way.
+  - Each new round starts the way the phone last left the switch. A phone's first round starts
+    with it off. While it's off, New round reminds you that a round under the Rules needs it.
+  - Turning it on takes effect at once. Turning it off in a round explains Rule 4.3a and its
+    penalty first, and **Keep it a tournament round** backs out.
+  - History tags a round "TOURNAMENT" when it was one from start to finish. The old "PRACTICE"
+    tags are gone.
+  - Updating keeps what a round still going showed: one that wasn't marked practice stays without
+    advice, as a tournament round. The next new round starts with advice.
+  - On a course with no greens mapped, the Score screen says "Mark the green for suggestions" in
+    a round, where before it said so only in a practice round.
+  - The terms of use say so, effective 27 November 2026, and the account-deletion page now names
+    tournament rounds among what a phone erases.
 
 ## [1.5.0] - 2026-11-27
 
