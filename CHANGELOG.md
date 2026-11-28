@@ -29,6 +29,9 @@ Prepare release workflow, moves them into a dated section and sets `package.json
     a round, where before it said so only in a practice round.
   - The terms of use say so, effective 27 November 2026, and the account-deletion page now names
     tournament rounds among what a phone erases.
+- The search a new course's map starts with, and the first sync after signing in, are rewritten
+  to pass oxlint 1.95.0's React checks, which no longer accept the comments that silenced them
+  (#407). Both work as before.
 
 ## [1.5.0] - 2026-11-27
 
