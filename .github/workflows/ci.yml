@@ -218,6 +218,13 @@ jobs:
 
       - run: npm ci
 
+      # `read-scorecard` reads with its fake model on the local stack, so the
+      # tests need no Anthropic key. The switch lives in the gitignored
+      # supabase/functions/.env, which `supabase start` loads and
+      # `supabase secrets set` never pushes (#402).
+      - name: Switch on the local fake model
+        run: echo 'READ_SCORECARD_FAKE_MODEL=on' > supabase/functions/.env
+
       # Real auth, PostgREST, row-level security, realtime and Edge Functions,
       # with every migration applied. Only the services the app talks to are
       # started.

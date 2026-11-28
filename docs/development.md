@@ -269,11 +269,15 @@ Supabase stack (Docker required): the sync suites in `src/sync/` and the site's
 reset and confirmation pages (`site/__tests__/link-pages.integration.test.ts`),
 through real auth, PostgREST, row-level security, realtime and the Edge
 Functions, with every migration applied. `read-scorecard` reads with its fake
-model there (`READ_SCORECARD_FAKE_MODEL` under `[edge_runtime.secrets]` in
-`supabase/config.toml`), so the suite needs no Anthropic key and spends nothing. Start the stack first, with only the
-services the app uses:
+model there, so the suite needs no Anthropic key and spends nothing. The switch
+for it goes in `supabase/functions/.env`, which is gitignored: `supabase start`
+loads it, and `supabase secrets set` never pushes it. It doesn't go under
+`[edge_runtime.secrets]` in `supabase/config.toml`, because `secrets set` pushes
+that section to the hosted project with whatever it's given (#402). Write the
+switch once, then start the stack with only the services the app uses:
 
 ```bash
+echo 'READ_SCORECARD_FAKE_MODEL=on' > supabase/functions/.env
 npx supabase start -x studio,imgproxy,storage-api,logflare,vector,mailpit,postgres-meta,supavisor
 npm run test:integration
 npx supabase stop            # when you're done
@@ -292,8 +296,9 @@ repeated against a stack that stays up. It refuses any host but `localhost` or
 `supabase stop` keeps the database, so a later `start` restores it as it was and
 doesn't apply migrations added since. A missing table in the tests usually means
 this: run `npx supabase migration up --local --include-all`. The edge runtime
-lists functions and loads `[edge_runtime.secrets]` as it starts, so restart the
-stack after adding a function or changing those secrets.
+lists functions and loads `supabase/functions/.env` as it starts, so restart the
+stack after adding a function or changing that file. Without the switch, the
+scorecard tests fail with `unavailable`.
 
 If another project's local Supabase already holds the default ports (54321 and
 up), start this one on others and point the runner at it:
@@ -325,13 +330,17 @@ answers `unavailable`. Set it as a function secret on the project, never in the
 app or an `EXPO_PUBLIC_` variable:
 
 ```bash
-npx supabase secrets set ANTHROPIC_API_KEY=<key> --project-ref <project-ref>
+npx supabase secrets set ANTHROPIC_API_KEY=<key> --remote=<project-ref>
 ```
 
-or on the dashboard's Edge Function Secrets page. The local stack needs no
-key: `READ_SCORECARD_FAKE_MODEL = "on"` under `[edge_runtime.secrets]` in
-`supabase/config.toml` gives it the fake model, which the function uses only when
-served over plain http, so a hosted project never gets it.
+or on the dashboard's Edge Function Secrets page. `secrets set` also pushes
+every entry under `[edge_runtime.secrets]` in `supabase/config.toml`, so that
+section stays empty; `scripts/supabase-secrets-push.test.mjs` (in
+`npm run test:scripts`) fails if a push carries anything it wasn't given (#402).
+The local stack needs no key: `READ_SCORECARD_FAKE_MODEL=on` in the gitignored
+`supabase/functions/.env` ([Sync integration tests](#sync-integration-tests))
+gives it the fake model, which the function uses only when served over plain
+http.
 
 CI's `migrate` job deploys both. To deploy them to a personal project:
 

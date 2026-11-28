@@ -5,8 +5,8 @@ import { createClient } from '@supabase/supabase-js';
  * (#384), on a local Supabase stack: real auth, the real daily count, and the
  * function's own checks on what the model gives back.
  *
- * The local stack reads with the function's fake model (`READ_SCORECARD_FAKE_MODEL`
- * in supabase/config.toml), which needs no key and costs nothing: each "photo" here
+ * The local stack reads with the function's fake model (`READ_SCORECARD_FAKE_MODEL=on`
+ * in the gitignored supabase/functions/.env, #402), which needs no key and costs nothing: each "photo" here
  * is the card the model is to read, as JSON, in place of the image's bytes.
  */
 

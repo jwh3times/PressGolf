@@ -1069,7 +1069,8 @@ a golfer [scans a scorecard](#scanning-a-scorecard), and its reading fills
 - **Nothing of a photo is kept.** The photos go to the model and nowhere else;
   the function never stores or logs them. The count is the only thing written.
 - **The fake model.** On the local stack (`SUPABASE_URL` over plain http) with
-  `READ_SCORECARD_FAKE_MODEL = "on"`, the function reads with a fake that needs no
+  `READ_SCORECARD_FAKE_MODEL=on` in `supabase/functions/.env`, which only the local
+  stack loads (#402), the function reads with a fake that needs no
   key: each "photo" is the reading itself, as JSON, and `{"readerDown": true}`
   stands for a model that can't be reached. A hosted project is served over https,
   so it never gets the fake; with neither the fake nor a key, the function answers

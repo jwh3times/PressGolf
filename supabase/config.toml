@@ -393,12 +393,12 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# The local stack only: `read-scorecard` reads with its fake model, which needs no key
-# and costs nothing, so the integration tests can run it (#384). A hosted project
-# never gets this, and the function ignores it unless served over plain http and
-# without `ANTHROPIC_API_KEY`; production sets that key with `supabase secrets set`.
-[edge_runtime.secrets]
-READ_SCORECARD_FAKE_MODEL = "on"
+# No `[edge_runtime.secrets]` here: `supabase secrets set` pushes that section to
+# the hosted project along with whatever it is given (#402). The local stack's
+# fake-model switch for `read-scorecard` goes in the gitignored
+# `supabase/functions/.env` instead, which `supabase start` loads and `secrets set`
+# never reads (docs/development.md § Sync integration tests);
+# scripts/supabase-secrets-push.test.mjs holds the push to what it is given.
 
 # The function verifies the token itself, with the auth server. Left to the
 # platform, a missing or bad token is refused before the function runs, with no
