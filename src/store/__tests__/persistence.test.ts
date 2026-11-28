@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_VERSION } from '../../config/flags';
 import { buildDemoDataset } from '../../demo/seed';
 import {
   EMPTY_DATA,
@@ -158,12 +159,53 @@ describe('dataset persistence', () => {
     expect((await loadDataset(false)).clubs).toEqual([]);
   });
 
-  it('keeps practice-round marks, and gives data saved before them none', async () => {
-    const practice = { r1: { on: false, ever: true } };
-    storage.getItem.mockResolvedValueOnce(JSON.stringify({ practice }));
-    expect((await loadDataset(false)).practice).toEqual(practice);
+  it('keeps tournament-round marks and the remembered choice, and gives data saved before marks none', async () => {
+    const tournament = { r1: { on: true, fromStart: false } };
+    storage.getItem.mockResolvedValueOnce(JSON.stringify({ version: STORAGE_VERSION, tournament, tournamentNext: true }));
+    expect(await loadDataset(false)).toMatchObject({ tournament, tournamentNext: true });
     storage.getItem.mockResolvedValueOnce(JSON.stringify({ groups: [] }));
-    expect((await loadDataset(false)).practice).toEqual({});
+    const none = await loadDataset(false);
+    expect(none).toMatchObject({ tournament: {}, tournamentNext: false });
+    expect(none).not.toHaveProperty('practice');
+  });
+
+  it('keeps what each round still going showed when practice rounds become tournament rounds (#410), and starts the next round with advice', async () => {
+    const base = buildDemoDataset(123).rounds[0];
+    const live = (id: string) => ({ ...base, id, status: 'active', entry: 'live' });
+    storage.getItem.mockResolvedValueOnce(
+      JSON.stringify({
+        version: 3,
+        rounds: [
+          live('never'),
+          live('now'),
+          live('once'),
+          // Out of its group's slot, waiting in History to be resumed.
+          live('waiting'),
+          { ...base, id: 'card', status: 'active', entry: 'card' },
+          { ...base, id: 'closed', status: 'completed', entry: 'live' },
+        ],
+        openRoundIds: ['never', 'now', 'once'],
+        cardRoundId: 'card',
+        practice: {
+          // Marked practice now, and practice once but not now.
+          now: { on: true, ever: true },
+          once: { on: false, ever: true },
+          // Closed, once practice: its old tag goes.
+          closed: { on: false, ever: true },
+        },
+      }),
+    );
+
+    const loaded = await loadDataset(false);
+
+    expect(loaded.tournamentNext).toBe(false);
+    expect(loaded.tournament).toEqual({
+      // Never marked practice: they showed no advice from the start.
+      never: { on: true, fromStart: true },
+      waiting: { on: true, fromStart: true },
+      once: { on: true, fromStart: false },
+    });
+    expect(loaded).not.toHaveProperty('practice');
   });
 
   it('keeps the marked ball positions (#295), and gives data saved before them none', async () => {
@@ -224,7 +266,8 @@ describe('dataset persistence', () => {
         rounds: [],
         outings: [],
         marks: [],
-        practice: {},
+        tournament: {},
+        tournamentNext: false,
         openRoundIds: [],
         activeOutingId: null,
         cardRoundId: null,

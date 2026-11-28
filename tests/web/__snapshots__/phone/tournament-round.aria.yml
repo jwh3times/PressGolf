@@ -1,10 +1,10 @@
 - text: Pine Hollow Course guide
 - button "Back"
-- text: How each hole plays from the Blue tee, read from the course map. Tap a hole for its map and distances. Practice round Shows where to aim on each hole, on this phone only. Scores, games and money work the same.
-- switch "Practice round"
-- text: In a round that counts, the Rules of Golf don’t allow a device to suggest where to aim or which club to hit (Rule 4.3a). The first time costs two strokes, or the hole in match play; the second is disqualification.
-- button "Make it a practice round"
-- button "Keep it a counted round"
+- text: "How each hole plays from the Blue tee, read from the course map. Tap a hole for its map and distances. Tournament round For any round under the Rules, a competition or one for your handicap: hides club suggestions and where to aim, on this phone only. Scores, games and money work the same."
+- switch "Tournament round" [checked]
+- text: In a round under the Rules, the Rules of Golf don’t allow a device to suggest where to aim or which club to hit (Rule 4.3a). The first time costs two strokes, or the hole in match play; the second is disqualification.
+- button "Show advice in this round"
+- button "Keep it a tournament round"
 - button /Hole 1 PAR 4 · \d+ YARDS Not mapped yet/
 - button /Hole 2 PAR 5 · \d+ YARDS Not mapped yet/
 - 'button /Hole 3 PAR 4 · \d+ YARDS Green: likely OB long · bunker short · clear left, right/':

@@ -93,22 +93,26 @@ test('a note on a hole, written on its map and read in the guide', async ({ page
   await expect(page.getByRole('button', { name: /^Hole 3 PAR .* Note: Blind tee shot, aim at the steeple\.$/ })).toBeVisible();
 });
 
-test('practice round, from the Score screen', async ({ page }) => {
+test('tournament round, from the Score screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Back' }).last().click();
   await page.getByRole('button', { name: 'Done' }).last().click();
   await page.getByRole('button', { name: 'Done' }).last().click();
   await openTab(page, 'Score');
   await page.getByRole('button', { name: 'Go to hole 3' }).click();
   await page.getByRole('button', { name: 'Open the course guide' }).click();
-  // A counted round: no aiming advice until the round is made practice, and the Rule comes first.
-  await expect(page.getByRole('button', { name: /Aim:/ })).toHaveCount(0);
-  await page.getByRole('switch', { name: 'Practice round' }).click();
+  // A round shows advice: with a bag, the club off the tee is the advice for the shot from the tee.
+  const offTheTee = page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / });
+  await expect(offTheTee).toBeVisible();
+  // A tournament round at once, with no advice.
+  await page.getByRole('switch', { name: 'Tournament round' }).click();
+  await expect(page.getByRole('button', { name: /Off the tee:|Aim:/ })).toHaveCount(0);
+  // Advice back in the round only once the Rule is explained.
+  await page.getByRole('switch', { name: 'Tournament round' }).click();
   await expect(page.getByText(/Rule 4\.3/)).toBeVisible();
-  await expectScreen(page, 'practice-round');
+  await expectScreen(page, 'tournament-round');
   await expectAccessible(page);
-  await page.getByRole('button', { name: 'Make it a practice round' }).click();
-  // With a bag, the club off the tee is the advice for the shot from the tee.
-  await expect(page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / })).toBeVisible();
+  await page.getByRole('button', { name: 'Show advice in this round' }).click();
+  await expect(offTheTee).toBeVisible();
 });
 
 test('club suggestion, on the hole map', async ({ page }) => {
@@ -137,21 +141,16 @@ test('club suggestion, planned from a point on the hole map', async ({ page }) =
   await expect(page.getByText('From the point you tapped.')).toHaveCount(0);
 });
 
-test('club suggestion, on Score in a practice round', async ({ page }) => {
+test('club suggestion, on Score in a round', async ({ page }) => {
   await page.getByRole('button', { name: 'Back' }).last().click();
   await page.getByRole('button', { name: 'Done' }).last().click();
   await page.getByRole('button', { name: 'Done' }).last().click();
   await openTab(page, 'Score');
   await page.getByRole('button', { name: 'Go to hole 3' }).click();
-  // A counted round: no club suggested.
-  await expect(page.getByRole('button', { name: /^Club suggestion/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Open the course guide' }).click();
-  await page.getByRole('switch', { name: 'Practice round' }).click();
-  await page.getByRole('button', { name: 'Make it a practice round' }).click();
-  await expect(page.getByRole('button', { name: /^Hole 3 PAR .*Off the tee: .+, aim / })).toBeVisible();
-  await page.getByRole('button', { name: 'Back' }).last().click();
   const line = page.getByRole('button', { name: /^Club suggestion: .+ · aim / }).last();
   await expect(line).toBeVisible();
+  // Clear of the floating tab bar, which covers it at 320 wide.
+  await line.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await expect(line).toHaveScreenshot('score-club-suggestion.png');
   await expectAccessible(page);
 });

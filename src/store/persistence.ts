@@ -21,7 +21,10 @@ interface StoredPayload {
   outings: AppData['outings'];
   clubs: AppData['clubs'];
   usualScore: AppData['usualScore'];
-  practice: AppData['practice'];
+  tournament: AppData['tournament'];
+  tournamentNext: AppData['tournamentNext'];
+  /** The practice marks from before the tournament round (#410). Read only, to migrate. */
+  practice?: Record<string, { on: boolean; ever: boolean }>;
   marks: AppData['marks'];
   activeGroupId: string | null;
   /** Each group's open round (#258). */
@@ -50,7 +53,8 @@ export const EMPTY_DATA: Omit<AppData, 'settings'> & {
   outings: [],
   clubs: [],
   usualScore: null,
-  practice: {},
+  tournament: {},
+  tournamentNext: false,
   marks: [],
   activeGroupId: null,
   openRoundIds: [],
@@ -74,9 +78,10 @@ function dataKey(demoMode: boolean): string {
  * the low man at 100% with its pops as typed, so nothing it already settled moves.
  * Courses saved before greens, the course map or hole notes know none, and data
  * saved before the bag has no clubs and no usual score, and none before
- * practice rounds marks any, and none before marking (#295) has marks. The one
- * open round a phone had before each group had its own stays open, for the
- * group it belongs to.
+ * marking (#295) has marks. The one open round a phone had before each group
+ * had its own stays open, for the group it belongs to. Data saved before the
+ * tournament round (#410) has the older per-round advice marks instead: see
+ * `tournamentFromPractice`.
  */
 function migrate(parsed: Partial<StoredPayload>): StoredPayload {
   const rounds = (parsed.rounds ?? []).map((round) => ({
@@ -91,6 +96,7 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     handicapTees: round.handicapTees ?? {},
     options: { ...round.options, ...houseRulesOrDefault(round.options) },
   }));
+  const openRoundIds = parsed.openRoundIds ?? (parsed.activeRoundId ? [parsed.activeRoundId] : []);
   return {
     version: STORAGE_VERSION,
     groups: (parsed.groups ?? []).map((group) => ({
@@ -112,15 +118,41 @@ function migrate(parsed: Partial<StoredPayload>): StoredPayload {
     outings: (parsed.outings ?? []).map((outing) => ({ ...outing, ...houseRulesOrDefault(outing) })),
     clubs: parsed.clubs ?? [],
     usualScore: parsed.usualScore ?? null,
-    practice: parsed.practice ?? {},
+    ...tournamentFromPractice(parsed, rounds),
     marks: parsed.marks ?? [],
     activeGroupId: parsed.activeGroupId ?? null,
-    openRoundIds: parsed.openRoundIds ?? (parsed.activeRoundId ? [parsed.activeRoundId] : []),
+    openRoundIds,
     activeOutingId: parsed.activeOutingId ?? null,
     cardRoundId: parsed.cardRoundId ?? null,
     seenCells: parsed.seenCells ?? null,
     hiddenCourses: parsed.hiddenCourses ?? [],
   };
+}
+
+/**
+ * The tournament rounds for a blob from before the tournament round (#410),
+ * when a round showed advice only once this phone marked it practice. The next
+ * new round shows advice. A live round still going at the update keeps what
+ * it showed, whether it holds its group's open slot or waits in History to be
+ * resumed: one never marked practice is a tournament round from its start, one
+ * marked practice now isn't one, and one marked practice once but not now is
+ * one, but not from its start. Closed rounds and cards get none, so History
+ * tags none of them.
+ */
+function tournamentFromPractice(
+  parsed: Partial<StoredPayload>,
+  rounds: StoredPayload['rounds'],
+): Pick<StoredPayload, 'tournament' | 'tournamentNext'> {
+  if (parsed.tournament) return { tournament: parsed.tournament, tournamentNext: parsed.tournamentNext ?? false };
+  const practice = parsed.practice ?? {};
+  const tournament: StoredPayload['tournament'] = {};
+  for (const round of rounds) {
+    if (round.status !== 'active' || round.entry !== 'live') continue;
+    const was = practice[round.id];
+    if (was?.on) continue;
+    tournament[round.id] = { on: true, fromStart: !was?.ever };
+  }
+  return { tournament, tournamentNext: false };
 }
 
 /** A course saved before tees had one card; it becomes the course's Default tee. */
@@ -146,7 +178,8 @@ function startAfresh(payload: StoredPayload): StoredPayload {
     courses: [],
     rounds: [],
     outings: [],
-    practice: {},
+    tournament: {},
+    tournamentNext: false,
     marks: [],
     openRoundIds: [],
     activeOutingId: null,

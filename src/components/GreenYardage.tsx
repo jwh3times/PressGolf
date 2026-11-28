@@ -219,7 +219,7 @@ type Step = { step: 'idle' } | { step: 'finding' } | { step: 'picking'; fix: Fix
 /**
  * Mark ball: a close fix, then what's about to be hit from it. The picker lists
  * the bag as it is with nothing chosen, so it never suggests a club in a
- * counted round. Afterwards the card says what was marked, and a tap on that
+ * tournament round. Afterwards the card says what was marked, and a tap on that
  * changes it or takes it back.
  */
 function BallMark({

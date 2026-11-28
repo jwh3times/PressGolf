@@ -40,7 +40,7 @@ import type {
   OutingSettlement,
   Player,
   PlayerId,
-  PracticeMark,
+  TournamentState,
   UsualScore,
   Round,
   RoundId,
@@ -64,8 +64,10 @@ interface Dataset {
   clubs: Club[];
   /** How the bag's owner usually scores, once they've said (#146). */
   usualScore: UsualScore | null;
-  /** Rounds this phone marked as practice (#136). Saved here, never synced. */
-  practice: Record<RoundId, PracticeMark>;
+  /** Rounds this phone made tournament rounds (#410). Saved here, never synced. */
+  tournament: Record<RoundId, TournamentState>;
+  /** Whether the next new round starts as a tournament round: the switch as this phone last left it. */
+  tournamentNext: boolean;
   /** The bag's owner's marks (#295), synced with their account like the bag (#296). */
   marks: Mark[];
   activeGroupId: string | null;
@@ -240,12 +242,20 @@ export interface AppStore extends AppState {
   deleteTrackedShot(startId: string): void;
 
   // Rounds
-  startRound(round: Round): void;
   /**
-   * Marks a round as practice on this phone, or not, which decides whether
-   * aiming advice is shown in it. Once on, the round stays marked as having been.
+   * Starts a live round. With `tournament`, the switch New round showed: the
+   * round starts as a tournament round or not. With `remember`, the golfer
+   * changed it there, so the next new round starts the same way; otherwise
+   * the remembered choice stays as it is.
    */
-  setPractice(roundId: string, on: boolean): void;
+  startRound(round: Round, options?: { tournament: boolean; remember: boolean }): void;
+  /**
+   * Makes a round a tournament round on this phone, or not, which decides
+   * whether club suggestions and where to aim are shown in it. The next new
+   * round starts the same way. Once turned off, the round is no longer one
+   * from start to finish.
+   */
+  setTournament(roundId: string, on: boolean): void;
   setActiveRound(id: string | null): void;
   completeRound(id: string): void;
   /** Closes a round without posting it: it stays in History and never counts in the ledger. */
@@ -293,7 +303,8 @@ const EMPTY_STATE: AppState = {
   outings: [],
   clubs: [],
   usualScore: null,
-  practice: {},
+  tournament: {},
+  tournamentNext: false,
   marks: [],
   activeGroupId: null,
   openRoundIds: [],
@@ -430,7 +441,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         outings: next.outings,
         clubs: next.clubs,
         usualScore: next.usualScore,
-        practice: next.practice,
+        tournament: next.tournament,
+        tournamentNext: next.tournamentNext,
         marks: next.marks,
         activeGroupId: next.activeGroupId,
         openRoundIds: next.openRoundIds,
@@ -702,7 +714,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           outings: [],
           clubs: [],
           usualScore: null,
-          practice: {},
+          tournament: {},
+          tournamentNext: false,
           marks: [],
           activeGroupId: null,
           openRoundIds: [],
@@ -1066,18 +1079,28 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       deleteTrackedShot: (startId) =>
         commit((prev) => ({ ...prev, marks: withHit(prev.marks, startId, { kind: 'partial' }) })),
 
-      setPractice: (roundId, on) =>
+      setTournament: (roundId, on) =>
         commit((prev) => {
-          const was = prev.practice[roundId];
-          if ((was?.on ?? false) === on) return prev;
-          return { ...prev, practice: { ...prev.practice, [roundId]: { on, ever: on || (was?.ever ?? false) } } };
+          const was = prev.tournament[roundId];
+          if ((was?.on ?? false) === on && prev.tournamentNext === on) return prev;
+          // Turned on part-way, or back on, it was not one from the start.
+          const mark: TournamentState = { on, fromStart: on && (was?.fromStart ?? false) };
+          return { ...prev, tournament: { ...prev.tournament, [roundId]: mark }, tournamentNext: on };
         }),
 
       // A new round takes its group's open slot; other groups keep theirs.
-      startRound: (created) =>
-        commit((prev) =>
-          focusRound({ ...prev, rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])] }, created.id),
-        ),
+      startRound: (created, options) =>
+        commit((prev) => {
+          const next = focusRound({ ...prev, rounds: [...prev.rounds, ...withFieldHandicapPops(prev, [created])] }, created.id);
+          if (!options) return next;
+          return {
+            ...next,
+            tournament: options.tournament
+              ? { ...next.tournament, [created.id]: { on: true, fromStart: true } }
+              : next.tournament,
+            tournamentNext: options.remember ? options.tournament : next.tournamentNext,
+          };
+        }),
       // A card round opens in the card slot, never as the live round.
       setActiveRound: (id) => commit((prev) => focusRound(prev, id)),
       completeRound: (id) => commit((prev) => completeIn(prev, id, false)),
@@ -1237,7 +1260,8 @@ async function hydrate(demoMode: boolean): Promise<Dataset> {
     outings: stored.outings,
     clubs: stored.clubs,
     usualScore: stored.usualScore,
-    practice: stored.practice,
+    tournament: stored.tournament,
+    tournamentNext: stored.tournamentNext,
     marks: stored.marks,
     activeGroupId: stored.activeGroupId,
     openRoundIds: stored.openRoundIds,

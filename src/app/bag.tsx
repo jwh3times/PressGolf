@@ -14,12 +14,12 @@ import { fonts, MIN_TAP_TARGET, radius } from '../theme/tokens';
 
 /**
  * The bag (#125): each club and how far it carries, typed in by the player,
- * and how they usually score, which club suggestions in a practice round use
- * (#146). Distances you wrote down yourself before the round are allowed in a
- * counted one, so this is plain information; nothing here suggests a club.
+ * and how they usually score, which club suggestions use (#146). Distances
+ * you wrote down yourself before the round are allowed in a tournament round,
+ * so this is plain information; nothing here suggests a club.
  * Neither is a club's tracked carry (#297): it comes only from rounds that have
  * closed, and changes the bag only when the player taps Use. Its measured
- * spread (#299) reaches the practice suggestions on its own: it is how the
+ * spread (#299) reaches the club suggestions on its own: it is how the
  * player's shots have gone, not a club to hit.
  */
 export default function BagScreen() {
@@ -76,7 +76,7 @@ export default function BagScreen() {
           ))}
         </View>
         <Body style={{ color: ink.soft, lineHeight: 19 }}>
-          {`Over 18 holes${usual.from === 'guess' ? ' (a starting guess)' : usual.from === 'handicap' ? ' (from your handicap)' : ''}. Club suggestions in a practice round spread your shots the way published figures say they spread for golfers who score like this.`}
+          {`Over 18 holes${usual.from === 'guess' ? ' (a starting guess)' : usual.from === 'handicap' ? ' (from your handicap)' : ''}. Club suggestions spread your shots the way published figures say they spread for golfers who score like this.`}
         </Body>
       </View>
 

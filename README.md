@@ -15,8 +15,10 @@ each hole, with the yards to the green, to a target, and to and over every
 bunker and penalty area in play. Each mapped hole also says how it plays:
 which misses run into out of bounds, water or bunkers, around the green, off
 the tee and on a par 5's lay-up, hole by hole or in a course guide. Where to
-aim is shown when looking a course over, or in a round its scorer marks as
-practice, since the Rules of Golf don't allow it in a counted one. Courses
+aim is shown when looking a course over and in a round, unless the phone has
+made it a tournament round, since the Rules of Golf don't allow it in a round
+played under them. Each new round starts the way the phone last left that
+switch. Courses
 belong to one [course library](docs/architecture.md#the-course-library) that
 every signed-in account reads, and a round can be played on any of them.
 Adding a course starts with a search of the library, nearest first, and one
@@ -27,8 +29,8 @@ draw its out-of-bounds lines. Anyone else can fill a value nobody set or add a
 tee, which goes straight in, and suggest any other change, which waits for the
 [admin](docs/architecture.md#suggestions) to approve or decline. A
 player's bag keeps how far they carry each club and how they usually score,
-typed in once and backed up with their account. In a practice round, or
-looking a course over, the app suggests a club, where to aim and when to lay
+typed in once and backed up with their account. In a round that isn't a
+tournament round, or looking a course over, the app suggests a club, where to aim and when to lay
 up, by simulating each club's spread of shots from where the player stands.
 In a live round, the bag's owner can mark where their ball lies and what they
 hit from it, backed up with their account and seen by nobody else. Once a
@@ -239,8 +241,8 @@ As of October 2026:
 - How each hole plays ([#136](https://github.com/jwh3times/PressGolf/issues/136))
   is only as good as the course's map: a side is called clear only where
   something nearby is mapped, and the course edge counts as likely out of
-  bounds until the owner draws lines. The practice-round mark stays on the
-  phone that set it. Out-of-bounds lines are drawn on the satellite map, on a
+  bounds until the owner draws lines. The tournament-round choice stays on the
+  phone that made it. Out-of-bounds lines are drawn on the satellite map, on a
   phone only. Checked in Jest and the web build, not yet on a phone.
 - Handicap indexes are typed in by hand. Keeping them in step with GHIN is
   tracked in [issue #44](https://github.com/jwh3times/PressGolf/issues/44).

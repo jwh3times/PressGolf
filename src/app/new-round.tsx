@@ -2,7 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { PracticeSwitch } from '../components/PracticeRound';
+import { TournamentSwitch } from '../components/TournamentRound';
 import { ModalHeader, Screen } from '../components/Screen';
 import {
   Avatar,
@@ -46,7 +46,9 @@ export default function NewRoundScreen() {
     group?.defaultCourseId ?? store.myCourses[0]?.id ?? null,
   );
   const [selected, setSelected] = useState<PlayerId[]>(group?.players.map((p) => p.id) ?? []);
-  const [practice, setPractice] = useState(false);
+  // As this phone last left the switch (#410). Starting without touching it leaves that as it is.
+  const [tournament, setTournament] = useState(store.tournamentNext);
+  const [changedTournament, setChangedTournament] = useState(false);
 
   if (!group) {
     return (
@@ -82,8 +84,7 @@ export default function NewRoundScreen() {
       store.startCard(makeRound(group, course, ordered, { entry: 'card', playedOn: playedOn.getTime(), teeId }));
     } else {
       const round = makeRound(group, course, ordered, { teeId });
-      store.startRound(round);
-      if (practice) store.setPractice(round.id, true);
+      store.startRound(round, { tournament, remember: changedTournament });
     }
     router.replace('/format');
   };
@@ -226,7 +227,16 @@ export default function NewRoundScreen() {
       </View>
 
       {/* A finished card has no aiming to do. */}
-      {cardMode ? null : <PracticeSwitch on={practice} onChange={setPractice} />}
+      {cardMode ? null : (
+        <TournamentSwitch
+          on={tournament}
+          onChange={(on) => {
+            setTournament(on);
+            setChangedTournament(true);
+          }}
+          inRound={false}
+        />
+      )}
 
       <PrimaryButton
         label={

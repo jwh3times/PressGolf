@@ -177,8 +177,10 @@ substitute for assistive-technology use on both platforms.
   only backs up its name, which is always written. axe checks the grades'
   colours in every base theme on the web build. Each hole in the course guide
   is one button named by what it shows: its par, yards, summary, aiming advice
-  and note. The practice-round switch shows its saved state, and stays off while
-  the Rule is explained, until "Make it a practice round" is pressed.
+  and note. The tournament-round switch (#410) shows its saved state. Turning it
+  on needs no confirming; in a round it stays on while the Rule is explained,
+  until "Show advice in this round" is pressed. On New round, its reminder is
+  text under the switch while it's off.
 - Club suggestions (#146) are text: the Score screen's line is one button whose
   name reads the club, the aim and the odds, and the hole map's card says the
   same in sentences. The shot-pattern oval is decorative. The lie and the usual
