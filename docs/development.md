@@ -605,7 +605,7 @@ extensions) stay in your own user config.
 | `expo` | `https://mcp.expo.dev/mcp`: EAS builds, workflows, submissions, store crashes and reviews | Expo account (OAuth) |
 | `context7` | `https://mcp.context7.com/mcp`: library docs | none; an API key raises the rate limit |
 | `playwright` | a local browser through `@playwright/mcp` 0.0.83, headless, with a fresh profile each run | none |
-| `supabase` | `http://127.0.0.1:54323/api/mcp`: the local stack's Studio only | none |
+| `supabase` | `http://127.0.0.1:54321/mcp`: the local stack only, through its API gateway to Studio | none |
 
 **Claude Code.** The first session in the repository asks you to approve the
 project servers. Then run `/mcp`, pick `expo`, and sign in with the Expo
@@ -633,19 +633,20 @@ code. Codex has no counterpart list.
 
 **`supabase` needs the local stack, with Studio.** It shows as failed until
 `npx supabase start` is up. Reconnect it from `/mcp` in Claude Code, or start a
-new Codex session. The server lives in Studio, so a start that excludes
-`studio` (as the integration-test command above does) leaves it unreachable.
-It points at Studio's port rather than the `MCP_URL` that `supabase start`
-prints: with Supabase CLI 3.0.0, the API gateway's `/mcp` route returns
-`400 Bad Request`, because Studio rejects the gateway's
-`supabase_studio_<project>` host name (checked 2026-11-11).
+new Codex session. It points at the `MCP_URL` that `supabase start` prints,
+the API gateway's `/mcp` route. The gateway hands it to Studio, so a start
+that excludes `studio` (as the integration-test command above does) leaves it
+unreachable: the route answers `503`. Studio's own endpoint,
+`http://127.0.0.1:54323/api/mcp`, serves the same server. The entries used it
+while the gateway's route returned `400 Bad Request` on Supabase CLI 3.0.0.
+CLI 3.4.0 serves both (checked 2026-11-28).
 
 **Per-machine overrides.** In Claude Code, a local-scope server with the same
 name replaces the project entry on that machine only. Remove it with
 `claude mcp remove <name> -s local`.
 
-- The local stack on other ports (Studio on `SUPABASE_STUDIO_PORT`):
-  `claude mcp add -s local --transport http supabase http://127.0.0.1:<studio-port>/api/mcp`.
+- The local stack on other ports (the gateway on `SUPABASE_API_PORT`):
+  `claude mcp add -s local --transport http supabase http://127.0.0.1:<api-port>/mcp`.
 - A Context7 API key:
   `claude mcp add -s local --transport http context7 https://mcp.context7.com/mcp --header "Authorization: Bearer <key>"`.
   Never commit the key.
@@ -654,7 +655,7 @@ name replaces the project entry on that machine only. Remove it with
 
 Codex ranks the project file above `~/.codex/config.toml`, so override a value
 for one run with `-c`, for example
-`codex -c 'mcp_servers.supabase.url="http://127.0.0.1:55323/api/mcp"'`.
+`codex -c 'mcp_servers.supabase.url="http://127.0.0.1:55321/mcp"'`.
 
 **Upgrading `@playwright/mcp`.** Its version is pinned in both files, and
 Dependabot does not read them. Bump both together.
