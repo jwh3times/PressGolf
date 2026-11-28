@@ -46,6 +46,6 @@ url = "https://mcp.context7.com/mcp"
 command = "npx"
 args = ["-y", "@playwright/mcp@0.0.83", "--headless", "--isolated"]
 
-# Studio's endpoint: the API gateway's /mcp route returns 400 (docs/development.md § MCP servers).
+# The MCP_URL `supabase start` prints: the API gateway's /mcp route, served by Studio (docs/development.md § MCP servers).
 [mcp_servers.supabase]
-url = "http://127.0.0.1:54323/api/mcp"
+url = "http://127.0.0.1:54321/mcp"

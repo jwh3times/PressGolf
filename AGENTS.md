@@ -51,8 +51,9 @@ sign-in and per-machine overrides: [development § MCP servers](docs/development
 - **`context7`**: library docs. Expo APIs still come from the versioned Expo docs above.
 - **`playwright`**: a browser on the web build (`npm run web`) for looking at a change.
   `npm run test:web` stays the check.
-- **`supabase`**: the local stack's Studio, once `npx supabase start` is up. The hosted project changes
-  only through CI's `migrate` job, so every server points at the local stack.
+- **`supabase`**: the local stack's `MCP_URL` (its API gateway's `/mcp`, served by Studio), once
+  `npx supabase start` is up. The hosted project changes only through CI's `migrate` job, so every
+  server points at the local stack.
 
 ## Rules
 
